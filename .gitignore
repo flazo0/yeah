@@ -1,0 +1,20 @@
+node_modules/
+coolify/
+savvy/
+# Notas de pesquisa sobre a instância real de produção (domínio/contas reais) — não é pra ir num repo público.
+docs/coolify-research.md
+.env
+.env.*
+!.env.example
+dist/
+build/
+*.log
+.DS_Store
+apps/web/dist/
+.claude/
+*.pem
+*.key
+.vscode/
+.idea/
+tmp/
+coverage/

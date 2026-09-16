@@ -1,0 +1,24 @@
+{
+  "name": "yeah",
+  "private": true,
+  "version": "0.0.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,worker,ws,web -c blue,magenta,yellow,green \"bun --cwd apps/api run dev\" \"bun --cwd apps/worker run dev\" \"bun --cwd apps/ws run dev\" \"bun --cwd apps/web run dev\"",
+    "dev:infra": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:infra:down": "docker compose -f docker-compose.dev.yml down",
+    "db:generate": "bun --cwd packages/db run db:generate",
+    "db:migrate": "bun --cwd packages/db run db:migrate",
+    "db:push": "bun --cwd packages/db run db:push",
+    "db:studio": "bun --cwd packages/db run db:studio",
+    "typecheck": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.3"
+  }
+}
