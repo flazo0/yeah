@@ -107,3 +107,14 @@ Primeiro item da lista de robustez a sair depois do empacotamento público — `
 - **Achado real**: o schema TypeBox do Elysia (`t.Optional(t.Number())`) rejeita `null` explícito — só aceita "campo ausente". Como o frontend manda `null` pra "sem limite" (em vez de omitir o campo), a validação falhava em silêncio. Corrigido trocando pra `t.Optional(t.Nullable(t.Number()))` nas seis rotas que tocam esses campos.
 - Testado contra banco real (não só typecheck): subi o Postgres/Redis de dev, apliquei a migration `0009_far_mesmero.sql`, confirmei as colunas via `psql`, subi a API e testei via `curl` contra dados reais de uma sessão existente — criar aplicação com limites, editar pra outro valor, e limpar mandando `null` explícito, os três casos retornando o DTO certo.
 
+
+## Notificações com filtro por tipo de evento
+
+Segundo item da lista de robustez — até aqui todo canal ativo recebia todo tipo de alerta; agora dá pra escolher por canal (ex.: só falhas críticas no Telegram, tudo no Discord).
+
+- `notification_channels.events` (`text[]`, nullable): `null` = todos os tipos (comportamento anterior, preservado pra canais já existentes); setado = só os tipos listados.
+- `NotificationEventType` (`packages/shared/src/types.ts`): união fechada com os seis tipos que os jobs do worker já disparavam (`deploy.success`, `deploy.failed`, `backup.failed`, `server.down`, `server.reconnected`, `server.metrics`) — mais `NOTIFICATION_EVENT_LABELS` pros rótulos em português no frontend.
+- `notifyTeam()` (`apps/worker/src/lib/notify.ts`) ganhou um parâmetro `event` obrigatório; o filtro vira `channel.events === null || channel.events.includes(event)`. Todo call site (`deployApplication`, `backupDatabase`, `checkServer`, `serverMetrics`) passou a informar o tipo certo.
+- Frontend (`NotificationsPage.vue`): checkboxes de evento no formulário de criação e um editor inline por canal (`tune` → marca/desmarca → salva) — nenhum marcado equivale a `null` (todos).
+- Testado contra banco real: criei um canal só com `deploy.failed`+`backup.failed`, outro sem filtro (`null`), editei o filtro do primeiro pra `server.down` e depois limpei de volta pra `null` — os quatro casos retornando o formato certo.
+

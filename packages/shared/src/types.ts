@@ -232,6 +232,23 @@ export interface ServiceDto extends ResourceLimits {
 
 export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook";
 
+export type NotificationEventType =
+  | "deploy.success"
+  | "deploy.failed"
+  | "backup.failed"
+  | "server.down"
+  | "server.reconnected"
+  | "server.metrics";
+
+export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
+  "deploy.success": "Deploy concluído",
+  "deploy.failed": "Deploy falhou",
+  "backup.failed": "Backup falhou",
+  "server.down": "Servidor caiu",
+  "server.reconnected": "Servidor reconectou",
+  "server.metrics": "CPU/RAM/disco no limite",
+};
+
 export interface NotificationChannelDto {
   id: string;
   teamId: string;
@@ -239,6 +256,8 @@ export interface NotificationChannelDto {
   type: NotificationChannelType;
   url: string | null;
   telegramChatId: string | null;
+  // null = recebe todos os tipos de evento (padrão). Setado = só esses.
+  events: NotificationEventType[] | null;
   enabled: boolean;
   createdAt: string;
 }

@@ -71,6 +71,13 @@
       "when": 1789652296043,
       "tag": "0009_far_mesmero",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789653619923,
+      "tag": "0010_spicy_valkyrie",
+      "breakpoints": true
     }
   ]
 }

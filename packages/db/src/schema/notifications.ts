@@ -1,4 +1,4 @@
-import { boolean, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
 
 export const notificationChannelTypeEnum = pgEnum("notification_channel_type", [
@@ -19,6 +19,8 @@ export const notificationChannels = pgTable("notification_channels", {
   url: varchar("url", { length: 1024 }),
   telegramBotToken: varchar("telegram_bot_token", { length: 255 }),
   telegramChatId: varchar("telegram_chat_id", { length: 255 }),
+  // null = every event type (the original, backward-compatible behavior). Set = only these.
+  events: text("events").array(),
   enabled: boolean("enabled").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

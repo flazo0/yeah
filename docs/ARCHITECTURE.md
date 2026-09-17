@@ -120,7 +120,7 @@ Sete filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra 
 | `service-provision` | `{ serviceId }` | `docker run` da imagem do catálogo, com volume nomeado se a entrada pedir persistência |
 | `server-metrics` | `{}` | Job de sistema, único, agendado uma vez no boot do worker (`ensureServerMetricsScheduler`, a cada 60s) — a cada tick, percorre todo servidor `connected` e lê `/proc/stat`+`/proc/meminfo`+`df` por SSH |
 
-Notificações (`packages/notifications`) não têm fila própria — são disparadas inline, fire-and-forget, direto de dentro dos jobs acima (`deployApplication`, `backupDatabase`, `checkServer`, `serverMetrics`) via o helper `apps/worker/src/lib/notify.ts`. Uma falha ao enviar (webhook fora do ar, token errado) é logada e engolida — nunca derruba o job que a disparou.
+Notificações (`packages/notifications`) não têm fila própria — são disparadas inline, fire-and-forget, direto de dentro dos jobs acima (`deployApplication`, `backupDatabase`, `checkServer`, `serverMetrics`) via o helper `apps/worker/src/lib/notify.ts`. Uma falha ao enviar (webhook fora do ar, token errado) é logada e engolida — nunca derruba o job que a disparou. Cada canal pode filtrar por `NotificationChannel.events` (`text[]`, nullable — `null` = recebe todo `NotificationEventType`); `notifyTeam(teamId, event, ...)` exige o tipo do evento e filtra os canais antes de despachar.
 
 ## Proxy reverso (Traefik) — dois usos diferentes, não confundir
 

@@ -59,10 +59,12 @@ CPU/RAM/disco (`cpuPercent`/`memPercent`/`diskPercent`/`metricsCheckedAt` no `Se
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `/teams/:teamId/notifications` | — | Lista canais do time |
-| POST | `/teams/:teamId/notifications` | `{ name, type: discord\|slack\|telegram\|webhook, url?, telegramBotToken?, telegramChatId? }` | Cria canal. `url` pra discord/slack/webhook; `telegramBotToken`+`telegramChatId` pra telegram |
-| PUT | `/teams/:teamId/notifications/:channelId` | `{ enabled }` | Ativa/pausa sem apagar |
+| POST | `/teams/:teamId/notifications` | `{ name, type: discord\|slack\|telegram\|webhook, url?, telegramBotToken?, telegramChatId?, events? }` | Cria canal. `url` pra discord/slack/webhook; `telegramBotToken`+`telegramChatId` pra telegram. `events` é uma lista de tipos (ver abaixo) — omitido/`null` = recebe todos |
+| PUT | `/teams/:teamId/notifications/:channelId` | `{ enabled?, events? }` | Ativa/pausa e/ou troca o filtro de eventos, sem apagar |
 | POST | `/teams/:teamId/notifications/:channelId/test` | — | Envia uma mensagem de teste, retorna `{ ok }` |
 | DELETE | `/teams/:teamId/notifications/:channelId` | — | Remove o canal |
+
+Tipos de evento válidos em `events`: `deploy.success`, `deploy.failed`, `backup.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disco cruzou o limiar).
 
 Eventos que disparam notificação hoje (todo canal ativo recebe todos, sem filtro por tipo ainda — ver `docs/ROADMAP.md`): deploy concluído/falhou, backup falhou, servidor ficou inacessível/reconectou, CPU/RAM/disco cruzou o limiar (90%/90%/85%).
 

@@ -171,7 +171,7 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
         scheduleId,
         status: "failed",
       });
-      await notifyTeam(database.teamId, `Backup de ${database.name} falhou`, message, "error");
+      await notifyTeam(database.teamId, "backup.failed", `Backup de ${database.name} falhou`, message, "error");
     } finally {
       conn?.end();
     }

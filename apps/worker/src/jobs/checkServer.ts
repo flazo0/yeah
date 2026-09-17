@@ -53,9 +53,9 @@ export function makeCheckServerProcessor(publishConnection: Redis) {
     // Only alert on the transition, not on every check while a server stays down — otherwise
     // this fires every time someone reopens the Servidores page and re-tests.
     if (server.status !== "error" && !result.ok) {
-      await notifyTeam(server.teamId, `Servidor ${server.name} inacessível`, "A conexão SSH falhou no teste de conexão.", "error");
+      await notifyTeam(server.teamId, "server.down", `Servidor ${server.name} inacessível`, "A conexão SSH falhou no teste de conexão.", "error");
     } else if (server.status === "error" && result.ok) {
-      await notifyTeam(server.teamId, `Servidor ${server.name} reconectou`, "A conexão SSH voltou a funcionar.", "info");
+      await notifyTeam(server.teamId, "server.reconnected", `Servidor ${server.name} reconectou`, "A conexão SSH voltou a funcionar.", "info");
     }
   };
 }

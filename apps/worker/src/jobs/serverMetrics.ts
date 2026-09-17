@@ -94,13 +94,13 @@ async function checkOne(server: Server, publishConnection: Redis) {
     });
 
     if (crossedThreshold(server.cpuPercent, metrics.cpu, CPU_THRESHOLD)) {
-      await notifyTeam(server.teamId, `CPU alta em ${server.name}`, `CPU em ${metrics.cpu}% (limiar: ${CPU_THRESHOLD}%).`, "warning");
+      await notifyTeam(server.teamId, "server.metrics", `CPU alta em ${server.name}`, `CPU em ${metrics.cpu}% (limiar: ${CPU_THRESHOLD}%).`, "warning");
     }
     if (crossedThreshold(server.memPercent, metrics.mem, MEM_THRESHOLD)) {
-      await notifyTeam(server.teamId, `Memória alta em ${server.name}`, `RAM em ${metrics.mem}% (limiar: ${MEM_THRESHOLD}%) — novos deploys/provisionamentos podem falhar por falta de memória.`, "warning");
+      await notifyTeam(server.teamId, "server.metrics", `Memória alta em ${server.name}`, `RAM em ${metrics.mem}% (limiar: ${MEM_THRESHOLD}%) — novos deploys/provisionamentos podem falhar por falta de memória.`, "warning");
     }
     if (crossedThreshold(server.diskPercent, metrics.disk, DISK_THRESHOLD)) {
-      await notifyTeam(server.teamId, `Disco cheio em ${server.name}`, `Disco em ${metrics.disk}% (limiar: ${DISK_THRESHOLD}%) — considere limpar imagens/volumes não usados.`, "error");
+      await notifyTeam(server.teamId, "server.metrics", `Disco cheio em ${server.name}`, `Disco em ${metrics.disk}% (limiar: ${DISK_THRESHOLD}%) — considere limpar imagens/volumes não usados.`, "error");
     }
   } catch (err) {
     // A single unreachable server shouldn't break the metrics tick for every other server —

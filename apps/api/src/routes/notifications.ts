@@ -1,11 +1,20 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
 import { notificationChannels, type NotificationChannel } from "@yeah/db";
-import type { NotificationChannelDto } from "@yeah/shared";
+import type { NotificationChannelDto, NotificationEventType } from "@yeah/shared";
 import { sendNotification } from "@yeah/notifications";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+
+const EVENT_TYPE_SCHEMA = t.Union([
+  t.Literal("deploy.success"),
+  t.Literal("deploy.failed"),
+  t.Literal("backup.failed"),
+  t.Literal("server.down"),
+  t.Literal("server.reconnected"),
+  t.Literal("server.metrics"),
+]);
 
 function toChannelDto(channel: NotificationChannel): NotificationChannelDto {
   return {
@@ -15,6 +24,7 @@ function toChannelDto(channel: NotificationChannel): NotificationChannelDto {
     type: channel.type,
     url: channel.url,
     telegramChatId: channel.telegramChatId,
+    events: (channel.events as NotificationEventType[] | null) ?? null,
     enabled: channel.enabled,
     createdAt: channel.createdAt.toISOString(),
   };
@@ -57,6 +67,7 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
           url: body.url ?? null,
           telegramBotToken: body.telegramBotToken ?? null,
           telegramChatId: body.telegramChatId ?? null,
+          events: body.events ?? null,
         })
         .returning();
       if (!channel) {
@@ -73,6 +84,7 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
         url: t.Optional(t.String()),
         telegramBotToken: t.Optional(t.String()),
         telegramChatId: t.Optional(t.String()),
+        events: t.Optional(t.Nullable(t.Array(EVENT_TYPE_SCHEMA))),
       }),
     },
   )
@@ -89,19 +101,33 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
         return { error: "forbidden" };
       }
 
-      const [channel] = await db
-        .update(notificationChannels)
-        .set({ enabled: body.enabled })
+      const existingRows = await db
+        .select()
+        .from(notificationChannels)
         .where(and(eq(notificationChannels.id, params.channelId), eq(notificationChannels.teamId, params.teamId)))
-        .returning();
-      if (!channel) {
+        .limit(1);
+      const existing = existingRows[0];
+      if (!existing) {
         set.status = 404;
         return { error: "channel not found" };
       }
 
+      const [channel] = await db
+        .update(notificationChannels)
+        .set({
+          enabled: body.enabled ?? existing.enabled,
+          events: "events" in body ? (body.events ?? null) : existing.events,
+        })
+        .where(eq(notificationChannels.id, params.channelId))
+        .returning();
+      if (!channel) {
+        set.status = 500;
+        return { error: "failed to update channel" };
+      }
+
       return { channel: toChannelDto(channel) };
     },
-    { body: t.Object({ enabled: t.Boolean() }) },
+    { body: t.Object({ enabled: t.Optional(t.Boolean()), events: t.Optional(t.Nullable(t.Array(EVENT_TYPE_SCHEMA))) }) },
   )
   .post("/:channelId/test", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

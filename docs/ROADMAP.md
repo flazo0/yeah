@@ -18,6 +18,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - **Notificações**: Discord, Slack, Telegram e webhook genérico — deploy falhou/concluiu, backup falhou, servidor caiu/reconectou, CPU/RAM/disco cruzou o limiar
 - **Tela de atualizações**: versão da plataforma (commit atual vs `main` no GitHub) e tag de cada imagem Docker em uso vs a mais recente no Docker Hub — checagem manual, nada automático
 - **Limites de recurso por container**: `--memory`/`--cpus` configuráveis por aplicação/banco/serviço (formulário de criação e aba "Geral" de cada recurso) — sem limite continua sendo o padrão
+- **Notificações com filtro por tipo de evento**: cada canal escolhe quais tipos recebe (deploy ok/falhou, backup falhou, servidor caiu/reconectou, CPU/RAM/disco no limite) — sem filtro (padrão) recebe todos
 - Editor Monaco, terminal xterm.js, tema claro/escuro
 
 ## 🚧 Falta pra fechar as fases já abertas
@@ -37,10 +38,9 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 
 ## 🛡️ Robustez, monitoramento e alertas
 
-O que já saiu (monitoramento de recursos, notificações, tela de atualizações, limites de recurso por container) está em "✅ Já funciona" acima. O que ainda falta pra fechar essa frente:
+O que já saiu (monitoramento de recursos, notificações, tela de atualizações, limites de recurso por container, filtro de notificação por evento) está em "✅ Já funciona" acima. O que ainda falta pra fechar essa frente:
 
 - **Sistema de prioridade/degradação mais ativo**: hoje o monitoramento *avisa* quando CPU/RAM/disco passa do limiar, mas não *impede* uma ação — um deploy/provisionamento novo ainda tenta rodar num servidor sob pressão e só descobre que falhou depois. Falta checar o último snapshot de métricas *antes* de enfileirar e barrar (ou pelo menos avisar na hora) se o servidor já estiver no limite.
-- **Notificações com filtro por tipo de evento**: hoje todo canal ativo recebe todo tipo de alerta — falta deixar escolher por canal (ex.: só falhas críticas no Telegram, tudo no Discord).
 - **Alerta de certificado TLS perto de expirar**: o Traefik renova sozinho via Let's Encrypt, mas não tem uma checagem própria avisando se a renovação falhou silenciosamente.
 - **Logs mais robustos**: hoje os logs são só o texto bruto de cada deploy/backup, guardado inteiro numa coluna. Falta: logs estruturados (JSON) dos próprios serviços (`api`/`worker`/`ws`) com nível (info/warn/error) e correlação por request/job id, retenção configurável (não guardar log de deploy pra sempre), e um jeito de ver `docker logs` ao vivo da aplicação rodando (não só do build) — igual ao Coolify tem uma aba "Logs" separada de "Deployments".
 - **Proteção contra queda do sistema**: healthcheck + `--restart unless-stopped` já existe nos containers que a gente sobe (incluindo o próprio `yeah` via `docker-compose.prod.yml`); falta um circuit breaker no `worker` pra jobs que falham repetidamente não ficarem re-tentando pra sempre e consumindo fila.
