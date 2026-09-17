@@ -8,7 +8,10 @@ import {
   createServiceProvisionWorker,
   createServerMetricsQueue,
   createServerMetricsWorker,
+  createTlsCheckQueue,
+  createTlsCheckWorker,
   ensureServerMetricsScheduler,
+  ensureTlsCheckScheduler,
 } from "@yeah/queue";
 import { makeCheckServerProcessor } from "./jobs/checkServer";
 import { makeDeployApplicationProcessor } from "./jobs/deployApplication";
@@ -17,6 +20,7 @@ import { makeBackupDatabaseProcessor } from "./jobs/backupDatabase";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
 import { makeProvisionServiceProcessor } from "./jobs/provisionService";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
+import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -38,6 +42,8 @@ const servicePublishConnection = createRedisConnection(redisUrl);
 const metricsJobConnection = createRedisConnection(redisUrl);
 const metricsPublishConnection = createRedisConnection(redisUrl);
 const metricsSchedulerConnection = createRedisConnection(redisUrl);
+const tlsJobConnection = createRedisConnection(redisUrl);
+const tlsSchedulerConnection = createRedisConnection(redisUrl);
 
 const serverCheckWorker = createServerCheckWorker(jobConnection, makeCheckServerProcessor(publishConnection));
 serverCheckWorker.on("completed", (job) => console.log(`[worker] server-check ${job.id} completed`));
@@ -78,6 +84,12 @@ metricsWorker.on("failed", (job, err) => console.error(`[worker] server-metrics 
 const metricsSchedulerQueue = createServerMetricsQueue(metricsSchedulerConnection);
 await ensureServerMetricsScheduler(metricsSchedulerQueue);
 
+const tlsWorker = createTlsCheckWorker(tlsJobConnection, makeTlsCheckProcessor());
+tlsWorker.on("failed", (job, err) => console.error(`[worker] tls-check ${job?.id} failed:`, err.message));
+
+const tlsSchedulerQueue = createTlsCheckQueue(tlsSchedulerConnection);
+await ensureTlsCheckScheduler(tlsSchedulerQueue);
+
 console.log(
-  "[worker] listening for server-check, application-deploy, database-provision, database-backup, proxy-provision, service-provision and server-metrics jobs",
+  "[worker] listening for server-check, application-deploy, database-provision, database-backup, proxy-provision, service-provision, server-metrics and tls-check jobs",
 );

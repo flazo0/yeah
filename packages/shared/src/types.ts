@@ -238,7 +238,8 @@ export type NotificationEventType =
   | "backup.failed"
   | "server.down"
   | "server.reconnected"
-  | "server.metrics";
+  | "server.metrics"
+  | "tls.expiring";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -247,6 +248,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "server.down": "Servidor caiu",
   "server.reconnected": "Servidor reconectou",
   "server.metrics": "CPU/RAM/disco no limite",
+  "tls.expiring": "Certificado TLS perto de expirar",
 };
 
 export interface NotificationChannelDto {

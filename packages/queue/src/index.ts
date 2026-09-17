@@ -9,9 +9,12 @@ export const DATABASE_BACKUP_QUEUE = "database-backup";
 export const PROXY_PROVISION_QUEUE = "proxy-provision";
 export const SERVICE_PROVISION_QUEUE = "service-provision";
 export const SERVER_METRICS_QUEUE = "server-metrics";
+export const TLS_CHECK_QUEUE = "tls-check";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
+/** Fixed id for the single system-wide repeatable job that ticks the TLS expiry check. */
+export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
 
 export interface ServerCheckJobData {
   serverId: string;
@@ -41,6 +44,9 @@ export interface ServiceProvisionJobData {
 
 /** Tick job, no per-run data — it just re-checks every connected server each time it fires. */
 export type ServerMetricsJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it re-checks every domain in use each time it fires. */
+export type TlsCheckJobData = Record<string, never>;
 
 /** Each queue/worker/pubsub role should get its own connection instance (ioredis convention). */
 export function createRedisConnection(url: string): Redis {
@@ -127,6 +133,19 @@ export function createServerMetricsWorker(
 /** Called once at worker boot — idempotent (upsert), so restarting the worker never double-schedules it. */
 export async function ensureServerMetricsScheduler(queue: Queue<ServerMetricsJobData>, everyMs = 60_000): Promise<void> {
   await queue.upsertJobScheduler(SERVER_METRICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createTlsCheckQueue(connection: Redis): Queue<TlsCheckJobData> {
+  return new Queue<TlsCheckJobData>(TLS_CHECK_QUEUE, { connection });
+}
+
+export function createTlsCheckWorker(connection: Redis, processor: Processor<TlsCheckJobData>): Worker<TlsCheckJobData> {
+  return new Worker<TlsCheckJobData>(TLS_CHECK_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Certs don't need minute-level polling, so this defaults to once a day. */
+export async function ensureTlsCheckScheduler(queue: Queue<TlsCheckJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(TLS_CHECK_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 /** A schedule's job scheduler is keyed by `scheduleId` so it can be found again to remove or edit in place. */

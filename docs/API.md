@@ -64,7 +64,7 @@ CPU/RAM/disco (`cpuPercent`/`memPercent`/`diskPercent`/`metricsCheckedAt` no `Se
 | POST | `/teams/:teamId/notifications/:channelId/test` | — | Envia uma mensagem de teste, retorna `{ ok }` |
 | DELETE | `/teams/:teamId/notifications/:channelId` | — | Remove o canal |
 
-Tipos de evento válidos em `events`: `deploy.success`, `deploy.failed`, `backup.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disco cruzou o limiar).
+Tipos de evento válidos em `events`: `deploy.success`, `deploy.failed`, `backup.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disco cruzou o limiar), `tls.expiring` (certificado de um domínio em uso expira em 14 dias ou menos).
 
 Eventos que disparam notificação hoje (todo canal ativo recebe todos, sem filtro por tipo ainda — ver `docs/ROADMAP.md`): deploy concluído/falhou, backup falhou, servidor ficou inacessível/reconectou, CPU/RAM/disco cruzou o limiar (90%/90%/85%).
 

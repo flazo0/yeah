@@ -118,3 +118,12 @@ Segundo item da lista de robustez — até aqui todo canal ativo recebia todo ti
 - Frontend (`NotificationsPage.vue`): checkboxes de evento no formulário de criação e um editor inline por canal (`tune` → marca/desmarca → salva) — nenhum marcado equivale a `null` (todos).
 - Testado contra banco real: criei um canal só com `deploy.failed`+`backup.failed`, outro sem filtro (`null`), editei o filtro do primeiro pra `server.down` e depois limpei de volta pra `null` — os quatro casos retornando o formato certo.
 
+
+## Alerta de certificado TLS perto de expirar
+
+Terceiro item da lista de robustez — o Traefik renova sozinho via Let's Encrypt, mas até aqui não existia nenhuma checagem própria avisando se essa renovação falhou silenciosamente.
+
+- **Job de sistema `tls-check`** (`apps/worker/src/jobs/tlsCheck.ts`), agendado uma vez no boot do worker (`ensureTlsCheckScheduler`, a cada 24h — certificado não precisa de checagem em minutos, diferente de `server-metrics`). Percorre todo domínio em uso (`applications.domain`/`services.domain` não-nulos) e conecta via `node:tls` na porta 443 pra ler `getPeerCertificate().valid_to` — **sem SSH**, é uma conexão TLS direta pro domínio público, igual qualquer monitor externo de certificado faria (diferente de todo o resto do worker, que só fala com os servidores via SSH).
+- Alerta (`tls.expiring`, novo tipo de evento) quando faltam 14 dias ou menos pra expirar — `error` se já expirou/expira hoje, `warning` caso contrário. Domínio inalcançável (DNS não propagado, firewall) só loga e segue pro próximo — não é motivo de alerta por si só, já que pode ser transitório.
+- **Testado com domínio real** (não dava pra usar o rig SSH+Docker descartável, já que TLS de verdade exige Let's Encrypt público): rodei a lógica de `checkExpiry` contra `github.com` e confirmei que o `valid_to`/dias restantes batem certinho, e contra um domínio inexistente pra confirmar que o erro (`ENOTFOUND`) é capturado sem derrubar o job.
+

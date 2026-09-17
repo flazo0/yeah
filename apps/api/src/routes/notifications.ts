@@ -14,6 +14,7 @@ const EVENT_TYPE_SCHEMA = t.Union([
   t.Literal("server.down"),
   t.Literal("server.reconnected"),
   t.Literal("server.metrics"),
+  t.Literal("tls.expiring"),
 ]);
 
 function toChannelDto(channel: NotificationChannel): NotificationChannelDto {
