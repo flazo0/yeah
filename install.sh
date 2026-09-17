@@ -118,13 +118,17 @@ docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
 
 # ---------------------------------------------------------------------------
 log "Aguardando o Postgres ficar saudável..."
+# `< /dev/null` é essencial aqui: "docker compose exec"/"run" tentam encaminhar o stdin do
+# processo chamador pro container mesmo sem precisar dele, e ficam esperando ele fechar antes
+# de retornar — sem isso, rodando via "curl | bash" (onde o stdin do script pode não fechar de
+# forma confiável até o fim), essas chamadas travam pra sempre logo no primeiro loop.
 for _ in $(seq 1 30); do
-  docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U yeah >/dev/null 2>&1 && break
+  docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U yeah < /dev/null >/dev/null 2>&1 && break
   sleep 2
 done
 
 log "Rodando migrations..."
-docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm api bun run --cwd ../../packages/db db:migrate
+docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" run --rm api bun run --cwd ../../packages/db db:migrate < /dev/null
 
 # ---------------------------------------------------------------------------
 log "Instalando o helper 'yeah' em /usr/local/bin..."
@@ -139,7 +143,7 @@ case "${1:-}" in
     export YEAH_COMMIT
     YEAH_COMMIT=$(git rev-parse HEAD)
     docker compose -f docker-compose.prod.yml --env-file .env up -d --build
-    docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db db:migrate
+    docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db db:migrate < /dev/null
     ;;
   logs)
     shift
