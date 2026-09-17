@@ -66,15 +66,15 @@ else
   log "Gerando .env de produção..."
   # Rodando via "curl | bash", stdin é o próprio script sendo transmitido — um "read" comum
   # consumiria as linhas seguintes do script como se fossem resposta do usuário (corrompendo
-  # a config). /dev/tty é o terminal de verdade por trás do pipe; sem ele (script 100% não
-  # interativo, ex. CI), cai direto nos valores padrão em vez de travar ou ler lixo.
-  if [ -r /dev/tty ]; then
-    read -rp "Domínio ou IP público pra acessar o dashboard (deixe em branco pra localhost): " PUBLIC_HOST < /dev/tty
-    read -rp "Porta pra expor o dashboard web [8080]: " WEB_PORT < /dev/tty
+  # a config). /dev/tty é o terminal de verdade por trás do pipe; sem ele (sessão sem terminal
+  # de controle, ex. nohup/CI), abrir o arquivo falha (ENXIO) mesmo que `-r /dev/tty` diga que
+  # é "legível" — por isso o teste real é tentar o próprio `read` e cair pro default se falhar.
+  PUBLIC_HOST=""
+  WEB_PORT=""
+  if read -rp "Domínio ou IP público pra acessar o dashboard (deixe em branco pra localhost): " PUBLIC_HOST < /dev/tty 2>/dev/null; then
+    read -rp "Porta pra expor o dashboard web [8080]: " WEB_PORT < /dev/tty 2>/dev/null || true
   else
     warn "Sem terminal interativo — usando localhost:8080. Edite $ENV_FILE depois se precisar de outro host/porta."
-    PUBLIC_HOST=""
-    WEB_PORT=""
   fi
   PUBLIC_HOST=${PUBLIC_HOST:-localhost}
   WEB_PORT=${WEB_PORT:-8080}
