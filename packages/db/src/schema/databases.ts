@@ -2,6 +2,7 @@ import { integer, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
+import { resourceLimitColumns } from "./columns";
 
 export const databaseEngineEnum = pgEnum("database_engine", ["postgresql", "mysql", "mariadb", "redis", "mongodb"]);
 export const databaseStatusEnum = pgEnum("database_status", ["idle", "provisioning", "running", "error"]);
@@ -27,6 +28,7 @@ export const databases = pgTable("databases", {
   password: varchar("password", { length: 255 }).notNull(),
   // Redis has no named database either — null for that engine, set for the others.
   databaseName: varchar("database_name", { length: 255 }),
+  ...resourceLimitColumns(),
   status: databaseStatusEnum("status").default("idle").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

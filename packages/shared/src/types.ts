@@ -79,7 +79,21 @@ export type BuildPack = "dockerfile";
 export type ApplicationStatus = "idle" | "deploying" | "running" | "error";
 export type DeploymentStatus = "queued" | "running" | "success" | "failed";
 
-export interface ApplicationDto {
+/** `docker run --memory=<memoryLimitMb>m --cpus=<cpuLimit>` — null in either means unlimited. */
+export interface ResourceLimits {
+  memoryLimitMb: number | null;
+  cpuLimit: number | null;
+}
+
+/** Builds the `docker run` flags for whichever limits are set — empty string if neither is. */
+export function resourceLimitFlags(limits: ResourceLimits): string {
+  const flags: string[] = [];
+  if (limits.memoryLimitMb) flags.push(`--memory=${limits.memoryLimitMb}m`);
+  if (limits.cpuLimit) flags.push(`--cpus=${limits.cpuLimit}`);
+  return flags.length > 0 ? `${flags.join(" ")} ` : "";
+}
+
+export interface ApplicationDto extends ResourceLimits {
   id: string;
   teamId: string;
   environmentId: string;
@@ -128,7 +142,7 @@ export const DATABASE_ENGINES: Record<DatabaseEngine, DatabaseEngineInfo> = {
   mongodb: { label: "MongoDB", defaultImage: "mongo:7", defaultPort: 27017, hasUsername: true, hasDatabaseName: true },
 };
 
-export interface DatabaseDto {
+export interface DatabaseDto extends ResourceLimits {
   id: string;
   teamId: string;
   environmentId: string;
@@ -200,7 +214,7 @@ export interface GithubRepoDto {
 
 export type ServiceStatus = "idle" | "provisioning" | "running" | "error";
 
-export interface ServiceDto {
+export interface ServiceDto extends ResourceLimits {
   id: string;
   teamId: string;
   environmentId: string;

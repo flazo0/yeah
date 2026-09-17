@@ -33,6 +33,8 @@ function toDatabaseDto(database: Database, serverName: string): DatabaseDto {
     port: database.port,
     username: database.username,
     databaseName: database.databaseName,
+    memoryLimitMb: database.memoryLimitMb,
+    cpuLimit: database.cpuLimit,
     status: database.status,
     createdAt: database.createdAt.toISOString(),
   };
@@ -168,6 +170,8 @@ export const databaseRoutes = new Elysia({
           username: engineInfo.hasUsername ? (body.username ?? "app") : null,
           password: generatePassword(),
           databaseName: engineInfo.hasDatabaseName ? (body.databaseName ?? "app") : null,
+          memoryLimitMb: body.memoryLimitMb ?? null,
+          cpuLimit: body.cpuLimit ?? null,
         })
         .returning();
       if (!database) {
@@ -196,6 +200,8 @@ export const databaseRoutes = new Elysia({
         port: t.Optional(t.Number()),
         username: t.Optional(t.String()),
         databaseName: t.Optional(t.String()),
+        memoryLimitMb: t.Optional(t.Nullable(t.Number())),
+        cpuLimit: t.Optional(t.Nullable(t.Number())),
       }),
     },
   )
@@ -218,6 +224,43 @@ export const databaseRoutes = new Elysia({
 
     return { database: toDatabaseDto(row.database, row.serverName) };
   })
+  .put(
+    "/:databaseId/limits",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadDatabase(params.environmentId, params.databaseId);
+      if (!row) {
+        set.status = 404;
+        return { error: "database not found" };
+      }
+
+      const [updated] = await db
+        .update(databases)
+        .set({ memoryLimitMb: body.memoryLimitMb ?? null, cpuLimit: body.cpuLimit ?? null, status: "provisioning" })
+        .where(eq(databases.id, params.databaseId))
+        .returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update limits" };
+      }
+
+      // Limits only take effect on container recreation — the processor removes and re-runs
+      // the container idempotently, so re-queueing here is safe and has no other side effects.
+      await databaseProvisionQueue.add("provision", { databaseId: updated.id });
+
+      return { database: toDatabaseDto(updated, row.serverName) };
+    },
+    { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
+  )
   .get("/:databaseId/backup-schedule", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

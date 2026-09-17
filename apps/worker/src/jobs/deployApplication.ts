@@ -3,6 +3,7 @@ import { applications, deployments, servers, type Application, type Server } fro
 import { connectSsh, execStream, shellQuote, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
+import { resourceLimitFlags } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -25,7 +26,9 @@ function resolveDomain(application: Application, server: Server): string | null 
 }
 
 function buildRunCommand(application: Application, appDir: string, containerName: string, domain: string | null): string {
-  const base = `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} `;
+  const base =
+    `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
+    resourceLimitFlags(application);
   const restart = `--restart unless-stopped ${shellQuote(containerName)}`;
 
   if (!domain) {

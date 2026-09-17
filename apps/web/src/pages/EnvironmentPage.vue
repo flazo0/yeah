@@ -31,7 +31,16 @@ const teamServers = ref<ServerDto[]>([]);
 const loading = ref(true);
 const error = ref("");
 
-const appForm = ref({ name: "", serverId: "", repoUrl: "", githubRepo: "", branch: "main", port: 3000 });
+const appForm = ref({
+  name: "",
+  serverId: "",
+  repoUrl: "",
+  githubRepo: "",
+  branch: "main",
+  port: 3000,
+  memoryLimitMb: null as number | null,
+  cpuLimit: null as number | null,
+});
 const appSourceMode = ref<"url" | "github">("url");
 const githubRepos = ref<GithubRepoDto[]>([]);
 const githubConnected = ref(false);
@@ -60,8 +69,16 @@ const dbForm = ref({
   username: "app",
   databaseName: "app",
   port: DATABASE_ENGINES.postgresql.defaultPort,
+  memoryLimitMb: null as number | null,
+  cpuLimit: null as number | null,
 });
-const svcForm = ref({ name: "", serverId: "", catalogKey: SERVICE_CATALOG[0]!.key });
+const svcForm = ref({
+  name: "",
+  serverId: "",
+  catalogKey: SERVICE_CATALOG[0]!.key,
+  memoryLimitMb: null as number | null,
+  cpuLimit: null as number | null,
+});
 const submittingApp = ref(false);
 const submittingDb = ref(false);
 const submittingSvc = ref(false);
@@ -141,9 +158,22 @@ async function createApp() {
       appSourceMode.value === "github"
         ? { name: appForm.value.name, serverId: appForm.value.serverId, githubRepo: appForm.value.githubRepo, branch: appForm.value.branch, port: appForm.value.port }
         : { name: appForm.value.name, serverId: appForm.value.serverId, repoUrl: appForm.value.repoUrl, branch: appForm.value.branch, port: appForm.value.port };
-    const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, payload);
+    const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, {
+      ...payload,
+      memoryLimitMb: appForm.value.memoryLimitMb || null,
+      cpuLimit: appForm.value.cpuLimit || null,
+    });
     apps.value.push(res.application);
-    appForm.value = { name: "", serverId: appForm.value.serverId, repoUrl: "", githubRepo: "", branch: "main", port: 3000 };
+    appForm.value = {
+      name: "",
+      serverId: appForm.value.serverId,
+      repoUrl: "",
+      githubRepo: "",
+      branch: "main",
+      port: 3000,
+      memoryLimitMb: null,
+      cpuLimit: null,
+    };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar aplicação";
   } finally {
@@ -155,7 +185,11 @@ async function createDb() {
   submittingDb.value = true;
   error.value = "";
   try {
-    const res = await api.post<{ database: DatabaseDto }>(`${basePath}/databases`, dbForm.value);
+    const res = await api.post<{ database: DatabaseDto }>(`${basePath}/databases`, {
+      ...dbForm.value,
+      memoryLimitMb: dbForm.value.memoryLimitMb || null,
+      cpuLimit: dbForm.value.cpuLimit || null,
+    });
     dbs.value.push(res.database);
     dbForm.value = {
       name: "",
@@ -164,6 +198,8 @@ async function createDb() {
       username: "app",
       databaseName: "app",
       port: DATABASE_ENGINES.postgresql.defaultPort,
+      memoryLimitMb: null,
+      cpuLimit: null,
     };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar banco de dados";
@@ -176,9 +212,19 @@ async function createService() {
   submittingSvc.value = true;
   error.value = "";
   try {
-    const res = await api.post<{ service: ServiceDto }>(`${basePath}/services`, svcForm.value);
+    const res = await api.post<{ service: ServiceDto }>(`${basePath}/services`, {
+      ...svcForm.value,
+      memoryLimitMb: svcForm.value.memoryLimitMb || null,
+      cpuLimit: svcForm.value.cpuLimit || null,
+    });
     svcs.value.push(res.service);
-    svcForm.value = { name: "", serverId: svcForm.value.serverId, catalogKey: SERVICE_CATALOG[0]!.key };
+    svcForm.value = {
+      name: "",
+      serverId: svcForm.value.serverId,
+      catalogKey: SERVICE_CATALOG[0]!.key,
+      memoryLimitMb: null,
+      cpuLimit: null,
+    };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar serviço";
   } finally {
@@ -442,6 +488,16 @@ onUnmounted(() => {
               <label for="app-repo">URL do repositório</label>
               <input id="app-repo" v-model="appForm.repoUrl" class="form-control" placeholder="https://github.com/..." required />
             </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="app-mem">Limite de memória (MB)</label>
+                <input id="app-mem" v-model.number="appForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="app-cpu">Limite de CPU (cores)</label>
+                <input id="app-cpu" v-model.number="appForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+              </div>
+            </div>
             <button type="submit" class="btn" :disabled="submittingApp">
               {{ submittingApp ? "criando..." : "Criar aplicação" }}
             </button>
@@ -486,6 +542,16 @@ onUnmounted(() => {
                 <input id="db-port" v-model.number="dbForm.port" type="number" class="form-control" />
               </div>
             </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="db-mem">Limite de memória (MB)</label>
+                <input id="db-mem" v-model.number="dbForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="db-cpu">Limite de CPU (cores)</label>
+                <input id="db-cpu" v-model.number="dbForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+              </div>
+            </div>
             <button type="submit" class="btn" :disabled="submittingDb">
               {{ submittingDb ? "criando..." : "Criar banco de dados" }}
             </button>
@@ -518,6 +584,16 @@ onUnmounted(() => {
               <p class="hint" style="margin-top: 6px">
                 {{ SERVICE_CATALOG.find((e) => e.key === svcForm.catalogKey)?.description }}
               </p>
+            </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="svc-mem">Limite de memória (MB)</label>
+                <input id="svc-mem" v-model.number="svcForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="svc-cpu">Limite de CPU (cores)</label>
+                <input id="svc-cpu" v-model.number="svcForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+              </div>
             </div>
             <button type="submit" class="btn" :disabled="submittingSvc">
               {{ submittingSvc ? "criando..." : "Criar serviço" }}

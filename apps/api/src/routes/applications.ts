@@ -24,6 +24,8 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     envContent: app.envContent,
     domain: app.domain,
     githubRepo: app.githubRepo,
+    memoryLimitMb: app.memoryLimitMb,
+    cpuLimit: app.cpuLimit,
     status: app.status,
     createdAt: app.createdAt.toISOString(),
   };
@@ -138,6 +140,8 @@ export const applicationRoutes = new Elysia({
           port: body.port ?? 3000,
           githubInstallationId,
           githubRepo: body.githubRepo ?? null,
+          memoryLimitMb: body.memoryLimitMb ?? null,
+          cpuLimit: body.cpuLimit ?? null,
         })
         .returning();
       if (!application) {
@@ -155,6 +159,8 @@ export const applicationRoutes = new Elysia({
         githubRepo: t.Optional(t.String()),
         branch: t.Optional(t.String()),
         port: t.Optional(t.Number()),
+        memoryLimitMb: t.Optional(t.Nullable(t.Number())),
+        cpuLimit: t.Optional(t.Nullable(t.Number())),
       }),
     },
   )
@@ -242,6 +248,39 @@ export const applicationRoutes = new Elysia({
       return { application: toApplicationDto(updated, row.serverName) };
     },
     { body: t.Object({ domain: t.Optional(t.String()) }) },
+  )
+  .put(
+    "/:applicationId/limits",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const [updated] = await db
+        .update(applications)
+        .set({ memoryLimitMb: body.memoryLimitMb ?? null, cpuLimit: body.cpuLimit ?? null })
+        .where(eq(applications.id, params.applicationId))
+        .returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update limits" };
+      }
+
+      return { application: toApplicationDto(updated, row.serverName) };
+    },
+    { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
   )
   .get("/:applicationId/deployments", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { databases, servers, type Database } from "@yeah/db";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { publishServerEvent, type DatabaseProvisionJobData } from "@yeah/queue";
+import { resourceLimitFlags } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -11,7 +12,7 @@ export function containerNameForDatabase(databaseId: string): string {
 }
 
 function buildRunCommand(database: Database, containerName: string, volumeName: string): string {
-  const base = `docker run -d --name ${shellQuote(containerName)} `;
+  const base = `docker run -d --name ${shellQuote(containerName)} ` + resourceLimitFlags(database);
   const restart = `--restart unless-stopped ${shellQuote(database.image)}`;
 
   switch (database.engine) {

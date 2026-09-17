@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { services, servers, type Service, type Server } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
-import { findServiceCatalogEntry } from "@yeah/shared";
+import { findServiceCatalogEntry, resourceLimitFlags } from "@yeah/shared";
 import { publishServerEvent, type ServiceProvisionJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -23,7 +23,9 @@ function resolveDomain(service: Service, server: Server): string | null {
 function buildRunCommand(service: Service, containerName: string, envFilePath: string, domain: string | null): string {
   const catalogEntry = findServiceCatalogEntry(service.catalogKey);
   const volumeFlag = catalogEntry?.volumePath ? `-v ${shellQuote(`${containerName}-data`)}:${shellQuote(catalogEntry.volumePath)} ` : "";
-  const base = `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(envFilePath)} ${volumeFlag}`;
+  const base =
+    `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(envFilePath)} ${volumeFlag}` +
+    resourceLimitFlags(service);
   const restart = `--restart unless-stopped ${shellQuote(service.image)}`;
 
   if (!domain) {

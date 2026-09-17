@@ -2,6 +2,7 @@ import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzl
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
+import { resourceLimitColumns } from "./columns";
 
 // Only Dockerfile-based deploys are wired up today — compose/static/nixpacks/railpack
 // come later, once the worker knows how to drive each of those builds too.
@@ -33,6 +34,7 @@ export const applications = pgTable("applications", {
   // URL — the worker mints a fresh installation token per deploy and matches pushes for auto-deploy.
   githubInstallationId: integer("github_installation_id"),
   githubRepo: varchar("github_repo", { length: 255 }),
+  ...resourceLimitColumns(),
   status: applicationStatusEnum("status").default("idle").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

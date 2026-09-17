@@ -27,6 +27,10 @@ const domainForm = ref("");
 const savingDomain = ref(false);
 const domainSaved = ref(false);
 
+const limitsForm = ref<{ memoryLimitMb: number | null; cpuLimit: number | null }>({ memoryLimitMb: null, cpuLimit: null });
+const savingLimits = ref(false);
+const limitsSaved = ref(false);
+
 const redeploying = ref(false);
 const activeSubTab = ref<"general" | "env">("general");
 
@@ -48,6 +52,7 @@ async function load() {
     service.value = res.service;
     envContent.value = res.service.envContent;
     domainForm.value = res.service.domain ?? "";
+    limitsForm.value = { memoryLimitMb: res.service.memoryLimitMb, cpuLimit: res.service.cpuLimit };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar serviço";
   } finally {
@@ -84,6 +89,25 @@ async function saveDomain() {
     error.value = err instanceof ApiError ? err.message : "falha ao salvar domínio";
   } finally {
     savingDomain.value = false;
+  }
+}
+
+async function saveLimits() {
+  savingLimits.value = true;
+  limitsSaved.value = false;
+  error.value = "";
+  try {
+    const res = await api.put<{ service: ServiceDto }>(`${basePath}/limits`, {
+      memoryLimitMb: limitsForm.value.memoryLimitMb || null,
+      cpuLimit: limitsForm.value.cpuLimit || null,
+    });
+    service.value = res.service;
+    limitsSaved.value = true;
+    setTimeout(() => (limitsSaved.value = false), 2000);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar limites";
+  } finally {
+    savingLimits.value = false;
   }
 }
 
@@ -216,6 +240,30 @@ onUnmounted(() => {
               {{ savingDomain ? "salvando..." : "Salvar" }}
             </button>
             <span v-if="domainSaved" class="muted" style="align-self: center; font-size: 13px">salvo — reimplante pra aplicar</span>
+          </div>
+        </div>
+        <div class="card-header" style="border-top: 1px solid var(--border)">
+          <span class="material-symbols-outlined" style="font-size: 18px">speed</span>
+          Limites de recurso
+        </div>
+        <div class="card-body">
+          <p class="hint mb-16">Deixe em branco pra não limitar. Reimplante pra aplicar.</p>
+          <div class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="svc-limit-mem">Memória (MB)</label>
+              <input id="svc-limit-mem" v-model.number="limitsForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="svc-limit-cpu">CPU (cores)</label>
+              <input id="svc-limit-cpu" v-model.number="limitsForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn btn-secondary" :disabled="savingLimits" @click="saveLimits">
+              <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+              {{ savingLimits ? "salvando..." : "Salvar" }}
+            </button>
+            <span v-if="limitsSaved" class="muted" style="align-self: center; font-size: 13px">salvo — reimplante pra aplicar</span>
           </div>
         </div>
       </div>

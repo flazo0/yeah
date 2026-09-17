@@ -72,6 +72,7 @@ User ──┬── TeamMember ──── Team ──┬── Server (SSH, p
 - **BackupSchedule.storageId** nulo = dump fica no disco do servidor remoto. Setado = sobe pro S3 e apaga a cópia local.
 - **Service** segue a mesma forma de Application/Database (nome, servidor, ambiente, domínio opcional), mas a imagem/porta/env-template vêm de uma entrada estática do catálogo (`packages/shared/src/serviceCatalog.ts`) em vez de um build de repositório ou um motor de banco embutido no código.
 - **Server.cpuPercent/memPercent/diskPercent/metricsCheckedAt** são a última leitura do job periódico `server-metrics` (a cada 60s, todo servidor `connected`) — não é uma série histórica, só o snapshot mais recente.
+- **Application/Database/Service.memoryLimitMb/cpuLimit** (`resourceLimitColumns()` em `packages/db/src/schema/columns.ts`) são nuláveis — `null` nos dois significa sem limite (comportamento padrão). Quando setados, viram `--memory=<mb>m`/`--cpus=<cpu>` no `docker run` via `resourceLimitFlags()` (`packages/shared/src/types.ts`).
 
 ## Fluxo de um deploy, passo a passo
 

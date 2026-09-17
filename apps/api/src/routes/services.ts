@@ -22,6 +22,8 @@ function toServiceDto(service: Service, serverName: string): ServiceDto {
     port: service.port,
     envContent: service.envContent,
     domain: service.domain,
+    memoryLimitMb: service.memoryLimitMb,
+    cpuLimit: service.cpuLimit,
     status: service.status,
     createdAt: service.createdAt.toISOString(),
   };
@@ -108,6 +110,8 @@ export const serviceRoutes = new Elysia({
           image: catalogEntry.image,
           port: body.port ?? catalogEntry.port,
           envContent: catalogEntry.envTemplate,
+          memoryLimitMb: body.memoryLimitMb ?? null,
+          cpuLimit: body.cpuLimit ?? null,
         })
         .returning();
       if (!service) {
@@ -125,6 +129,8 @@ export const serviceRoutes = new Elysia({
         serverId: t.String({ minLength: 1 }),
         catalogKey: t.String({ minLength: 1 }),
         port: t.Optional(t.Number()),
+        memoryLimitMb: t.Optional(t.Nullable(t.Number())),
+        cpuLimit: t.Optional(t.Nullable(t.Number())),
       }),
     },
   )
@@ -212,6 +218,39 @@ export const serviceRoutes = new Elysia({
       return { service: toServiceDto(updated, row.serverName) };
     },
     { body: t.Object({ domain: t.Optional(t.String()) }) },
+  )
+  .put(
+    "/:serviceId/limits",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadService(params.environmentId, params.serviceId);
+      if (!row) {
+        set.status = 404;
+        return { error: "service not found" };
+      }
+
+      const [updated] = await db
+        .update(services)
+        .set({ memoryLimitMb: body.memoryLimitMb ?? null, cpuLimit: body.cpuLimit ?? null })
+        .where(eq(services.id, params.serviceId))
+        .returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update limits" };
+      }
+
+      return { service: toServiceDto(updated, row.serverName) };
+    },
+    { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
   )
   .post("/:serviceId/redeploy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

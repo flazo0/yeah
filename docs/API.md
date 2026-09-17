@@ -80,11 +80,12 @@ Qualquer imagem pública do catálogo (`packages/shared/src/serviceCatalog.ts` �
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `.../services` | — | Lista serviços do ambiente |
-| POST | `.../services` | `{ name, serverId, catalogKey, port? }` | Cria a partir de uma entrada do catálogo (imagem/porta/env template vêm de lá) e enfileira provisionamento |
+| POST | `.../services` | `{ name, serverId, catalogKey, port?, memoryLimitMb?, cpuLimit? }` | Cria a partir de uma entrada do catálogo (imagem/porta/env template vêm de lá) e enfileira provisionamento |
 | GET | `.../services/:id` | — | Detalhe |
 | PUT | `.../services/:id/env` | `{ envContent }` | Substitui o `.env` bruto |
 | PUT | `.../services/:id/domain` | `{ domain? }` | Seta/limpa domínio customizado |
-| POST | `.../services/:id/redeploy` | — | Reprovisiona com a config atual (aplica mudanças de env/domínio) |
+| PUT | `.../services/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Seta/limpa limites de recurso (`null` = sem limite); aplica no próximo redeploy |
+| POST | `.../services/:id/redeploy` | — | Reprovisiona com a config atual (aplica mudanças de env/domínio/limites) |
 | DELETE | `.../services/:id` | — | Remove container + volume remoto via SSH (best-effort) e apaga a linha |
 
 ## Projetos e ambientes (`/teams/:teamId/projects`)
@@ -102,10 +103,11 @@ Qualquer imagem pública do catálogo (`packages/shared/src/serviceCatalog.ts` �
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `.../applications` | — | Lista aplicações do ambiente |
-| POST | `.../applications` | `{ name, serverId, repoUrl? \| githubRepo?, branch?, port? }` | Cria (exatamente um de `repoUrl`/`githubRepo`) |
+| POST | `.../applications` | `{ name, serverId, repoUrl? \| githubRepo?, branch?, port?, memoryLimitMb?, cpuLimit? }` | Cria (exatamente um de `repoUrl`/`githubRepo`) |
 | GET | `.../applications/:id` | — | Detalhe |
 | PUT | `.../applications/:id/env` | `{ envContent }` | Substitui o `.env` bruto (aplica no próximo deploy) |
 | PUT | `.../applications/:id/domain` | `{ domain? }` | Seta/limpa domínio customizado |
+| PUT | `.../applications/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Seta/limpa limites de recurso (`null` = sem limite); aplica no próximo deploy |
 | GET | `.../applications/:id/deployments` | — | Histórico (últimos 20) |
 | GET | `.../applications/:id/deployments/:deploymentId` | — | Um deploy específico (com log completo) |
 | POST | `.../applications/:id/deploy` | — | Enfileira deploy (`application-deploy`) |
@@ -116,8 +118,9 @@ Qualquer imagem pública do catálogo (`packages/shared/src/serviceCatalog.ts` �
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `.../databases` | — | Lista bancos do ambiente |
-| POST | `.../databases` | `{ name, serverId, engine?, image?, port?, username?, databaseName? }` | Cria e enfileira provisionamento. `engine` default `postgresql`; ver `DATABASE_ENGINES` pra defaults por motor |
+| POST | `.../databases` | `{ name, serverId, engine?, image?, port?, username?, databaseName?, memoryLimitMb?, cpuLimit? }` | Cria e enfileira provisionamento. `engine` default `postgresql`; ver `DATABASE_ENGINES` pra defaults por motor |
 | GET | `.../databases/:id` | — | Detalhe |
+| PUT | `.../databases/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Seta/limpa limites de recurso (`null` = sem limite) e reenfileira provisionamento — o processor recria o container idempotentemente, então o novo limite aplica na hora |
 | GET | `.../databases/:id/backup-schedule` | — | Agendamento atual (ou `null`) |
 | POST | `.../databases/:id/backup-schedule` | `{ cron, timezone?, timeoutSeconds?, retentionCount?, retentionDays?, retentionSizeGb?, storageId? }` | Cria (409 se já existir um) |
 | PUT | `.../databases/:id/backup-schedule/:scheduleId` | mesmos campos, todos opcionais | Edita in-place (cron/timezone/retenção/destino) sem apagar e recriar |

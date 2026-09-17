@@ -2,6 +2,7 @@ import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzl
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
+import { resourceLimitColumns } from "./columns";
 
 export const serviceStatusEnum = pgEnum("service_status", ["idle", "provisioning", "running", "error"]);
 
@@ -26,6 +27,7 @@ export const services = pgTable("services", {
   // Application.envContent, user-editable before/after provisioning.
   envContent: text("env_content").default("").notNull(),
   domain: varchar("domain", { length: 255 }),
+  ...resourceLimitColumns(),
   status: serviceStatusEnum("status").default("idle").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
