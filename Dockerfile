@@ -1,7 +1,10 @@
 # Single Dockerfile, multiple targets — one image layer cache shared by api/worker/ws, so a
 # `docker compose build` only recompiles what actually changed instead of doing this 4x.
 
-FROM oven/bun:1-alpine AS base
+# Pinned exact (not the floating "1-alpine" tag) — 1.4.x broke vue-tsc's .vue module
+# resolution silently (every .vue import became a TS2307 "module not found" even though
+# the files and deps were all present); 1.3.14 is what local dev actually uses and verified working.
+FROM oven/bun:1.3.14-alpine AS base
 WORKDIR /app
 # Baked in at build time so the running API can report "you're N commits behind" — the image has
 # no .git directory (only specific paths get COPY'd below), so this is the only way it knows.
@@ -43,7 +46,12 @@ ARG VITE_API_URL
 ARG VITE_WS_URL
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
-RUN bun run build
+# `bun run build` (Bun's own JS engine executing vue-tsc) silently fails to recognize .vue files
+# as modules on Linux — every single .vue import becomes "cannot find module", confirmed by
+# A/B-testing real Node.js vs Bun against the identical installed node_modules on this exact
+# image (works fine on Windows, where Bun happens to dispatch to real node.exe instead).
+# Invoking the .bin scripts directly lets the OS honor their "#!/usr/bin/env node" shebang.
+RUN apk add --no-cache nodejs && ./node_modules/.bin/vue-tsc -b && ./node_modules/.bin/vite build
 
 FROM nginx:1.27-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html

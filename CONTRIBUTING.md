@@ -20,6 +20,8 @@ bun run typecheck
 
 Roda `tsc --noEmit` em todo pacote/app do monorepo. Não tem suite de testes automatizados ainda (ver `docs/ROADMAP.md`) — a validação hoje é typecheck + teste manual real (subir o app, testar o fluxo no navegador ou via `curl`). Se sua mudança mexe em `worker` (SSH/Docker), teste contra um alvo real — veja "Testando contra um servidor de verdade" em `docs/INSTALLATION.md`.
 
+**Linux/Mac**: se `bun run typecheck` (ou `bun run --cwd apps/web build`) explodir com uma parede de `Cannot find module '*.vue'` — um erro por cada import de `.vue` do projeto, mesmo os relativos (`./App.vue`) — isso é um bug conhecido do Bun ao executar o `vue-tsc` no Linux (não reproduz no Windows, onde o `.bin` do Bun usa um `.exe` nativo em vez do script com shebang). Rode com Node de verdade em vez de deixar o Bun executar: `node apps/web/node_modules/.bin/vue-tsc --noEmit`. O `Dockerfile` já faz isso pro build de produção.
+
 ## Estrutura do monorepo
 
 ```
