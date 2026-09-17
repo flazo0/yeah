@@ -3,6 +3,10 @@
 
 FROM oven/bun:1-alpine AS base
 WORKDIR /app
+# Baked in at build time so the running API can report "you're N commits behind" — the image has
+# no .git directory (only specific paths get COPY'd below), so this is the only way it knows.
+ARG YEAH_COMMIT=dev
+ENV YEAH_COMMIT=${YEAH_COMMIT}
 COPY package.json bun.lock tsconfig.base.json ./
 COPY packages ./packages
 COPY apps/api/package.json ./apps/api/package.json

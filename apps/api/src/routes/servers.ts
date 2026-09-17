@@ -21,6 +21,10 @@ function toServerDto(server: Server): ServerDto {
     wildcardDomain: server.wildcardDomain,
     acmeEmail: server.acmeEmail,
     proxyStatus: server.proxyStatus,
+    cpuPercent: server.cpuPercent,
+    memPercent: server.memPercent,
+    diskPercent: server.diskPercent,
+    metricsCheckedAt: server.metricsCheckedAt ? server.metricsCheckedAt.toISOString() : null,
     createdAt: server.createdAt.toISOString(),
   };
 }

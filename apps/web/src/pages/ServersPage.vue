@@ -103,6 +103,13 @@ async function addServer() {
   }
 }
 
+function metricBarClass(value: number | null, threshold: number): string {
+  if (value === null) return "metric-bar-fill-neutral";
+  if (value >= threshold) return "metric-bar-fill-bad";
+  if (value >= threshold - 20) return "metric-bar-fill-warn";
+  return "metric-bar-fill-good";
+}
+
 async function testConnection(serverId: string) {
   const server = servers.value.find((s) => s.id === serverId);
   if (server) server.status = "pending";
@@ -124,6 +131,14 @@ onMounted(() => {
     if (event.type === "server.proxy") {
       const server = servers.value.find((s) => s.id === event.serverId);
       if (server) server.proxyStatus = event.proxyStatus;
+    }
+    if (event.type === "server.metrics") {
+      const server = servers.value.find((s) => s.id === event.serverId);
+      if (server) {
+        server.cpuPercent = event.cpuPercent;
+        server.memPercent = event.memPercent;
+        server.diskPercent = event.diskPercent;
+      }
     }
   });
 });
@@ -223,6 +238,32 @@ onUnmounted(() => unsubscribe?.());
             <span class="material-symbols-outlined" style="font-size: 18px">bolt</span>
             {{ server.proxyStatus === "active" ? "Reativar proxy" : "Ativar proxy" }}
           </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-for="server in servers" :key="`metrics-${server.id}`" class="card mb-16">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">monitor_heart</span>
+        Recursos — {{ server.name }}
+      </div>
+      <div class="card-body">
+        <div v-if="server.metricsCheckedAt === null" class="empty-state">
+          Sem dados ainda — a primeira checagem roda até 1 minuto depois do servidor conectar.
+        </div>
+        <div v-else class="grid grid-3">
+          <div>
+            <div class="stat-label">CPU · {{ server.cpuPercent }}%</div>
+            <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.cpuPercent, 90)" :style="{ width: `${server.cpuPercent}%` }"></div></div>
+          </div>
+          <div>
+            <div class="stat-label">RAM · {{ server.memPercent }}%</div>
+            <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.memPercent, 90)" :style="{ width: `${server.memPercent}%` }"></div></div>
+          </div>
+          <div>
+            <div class="stat-label">Disco · {{ server.diskPercent }}%</div>
+            <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.diskPercent, 85)" :style="{ width: `${server.diskPercent}%` }"></div></div>
+          </div>
         </div>
       </div>
     </div>

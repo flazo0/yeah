@@ -7,7 +7,11 @@ export const APPLICATION_DEPLOY_QUEUE = "application-deploy";
 export const DATABASE_PROVISION_QUEUE = "database-provision";
 export const DATABASE_BACKUP_QUEUE = "database-backup";
 export const PROXY_PROVISION_QUEUE = "proxy-provision";
+export const SERVICE_PROVISION_QUEUE = "service-provision";
+export const SERVER_METRICS_QUEUE = "server-metrics";
 export const SERVER_EVENTS_CHANNEL = "server-events";
+/** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
+export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
 
 export interface ServerCheckJobData {
   serverId: string;
@@ -30,6 +34,13 @@ export interface DatabaseBackupJobData {
 export interface ProxyProvisionJobData {
   serverId: string;
 }
+
+export interface ServiceProvisionJobData {
+  serviceId: string;
+}
+
+/** Tick job, no per-run data — it just re-checks every connected server each time it fires. */
+export type ServerMetricsJobData = Record<string, never>;
 
 /** Each queue/worker/pubsub role should get its own connection instance (ioredis convention). */
 export function createRedisConnection(url: string): Redis {
@@ -89,6 +100,33 @@ export function createProxyProvisionWorker(
   processor: Processor<ProxyProvisionJobData>,
 ): Worker<ProxyProvisionJobData> {
   return new Worker<ProxyProvisionJobData>(PROXY_PROVISION_QUEUE, processor, { connection });
+}
+
+export function createServiceProvisionQueue(connection: Redis): Queue<ServiceProvisionJobData> {
+  return new Queue<ServiceProvisionJobData>(SERVICE_PROVISION_QUEUE, { connection });
+}
+
+export function createServiceProvisionWorker(
+  connection: Redis,
+  processor: Processor<ServiceProvisionJobData>,
+): Worker<ServiceProvisionJobData> {
+  return new Worker<ServiceProvisionJobData>(SERVICE_PROVISION_QUEUE, processor, { connection });
+}
+
+export function createServerMetricsQueue(connection: Redis): Queue<ServerMetricsJobData> {
+  return new Queue<ServerMetricsJobData>(SERVER_METRICS_QUEUE, { connection });
+}
+
+export function createServerMetricsWorker(
+  connection: Redis,
+  processor: Processor<ServerMetricsJobData>,
+): Worker<ServerMetricsJobData> {
+  return new Worker<ServerMetricsJobData>(SERVER_METRICS_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert), so restarting the worker never double-schedules it. */
+export async function ensureServerMetricsScheduler(queue: Queue<ServerMetricsJobData>, everyMs = 60_000): Promise<void> {
+  await queue.upsertJobScheduler(SERVER_METRICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 /** A schedule's job scheduler is keyed by `scheduleId` so it can be found again to remove or edit in place. */

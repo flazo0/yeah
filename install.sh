@@ -102,6 +102,8 @@ fi
 
 # ---------------------------------------------------------------------------
 log "Buildando e subindo os containers (isso demora um pouco na primeira vez)..."
+export YEAH_COMMIT
+YEAH_COMMIT=$(git -C "$INSTALL_DIR" rev-parse HEAD)
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
 
 # ---------------------------------------------------------------------------
@@ -124,6 +126,8 @@ case "${1:-}" in
   update)
     git fetch --quiet origin
     git reset --hard --quiet origin/main
+    export YEAH_COMMIT
+    YEAH_COMMIT=$(git rev-parse HEAD)
     docker compose -f docker-compose.prod.yml --env-file .env up -d --build
     docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db db:migrate
     ;;

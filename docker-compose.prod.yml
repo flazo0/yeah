@@ -48,6 +48,8 @@ services:
     build:
       context: .
       target: api
+      args:
+        YEAH_COMMIT: ${YEAH_COMMIT:-dev}
     restart: unless-stopped
     depends_on:
       postgres:
@@ -60,6 +62,7 @@ services:
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
       API_PORT: 3000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      YEAH_COMMIT: ${YEAH_COMMIT:-dev}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
       GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}

@@ -12,6 +12,7 @@
     "@elysiajs/cors": "^1.4.2",
     "@yeah/db": "workspace:*",
     "@yeah/github": "workspace:*",
+    "@yeah/notifications": "workspace:*",
     "@yeah/queue": "workspace:*",
     "@yeah/shared": "workspace:*",
     "@yeah/ssh": "workspace:*",

@@ -57,6 +57,13 @@
       "when": 1789577797245,
       "tag": "0007_wet_wildside",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789597169181,
+      "tag": "0008_lazy_saracen",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,8 @@ const isProjectsRoute = computed(() => Boolean(teamId.value) && route.path === `
 const isServersRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/servers`);
 const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/storages`);
 const isGithubRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/github`);
+const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
+const isUpdatesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/updates`);
 
 const breadcrumb = computed(() => {
   if (!teamId.value) return ["Times"];
@@ -27,10 +29,13 @@ const breadcrumb = computed(() => {
   if (isServersRoute.value) return [...base, "Servidores"];
   if (isStoragesRoute.value) return [...base, "Armazenamento"];
   if (isGithubRoute.value) return [...base, "GitHub"];
+  if (isNotificationsRoute.value) return [...base, "Notificações"];
+  if (isUpdatesRoute.value) return [...base, "Atualizações"];
   if (!projectId.value) return [...base, "Projetos"];
   if (!environmentId.value) return [...base, "Projetos", "Ambientes"];
   if (route.params.applicationId) return [...base, "Projetos", "Ambiente", "Aplicação"];
   if (route.params.databaseId) return [...base, "Projetos", "Ambiente", "Banco de dados"];
+  if (route.params.serviceId) return [...base, "Projetos", "Ambiente", "Serviço"];
   return [...base, "Projetos", "Recursos"];
 });
 </script>
@@ -83,6 +88,24 @@ const breadcrumb = computed(() => {
         >
           <span class="material-symbols-outlined">hub</span>
           GitHub
+        </RouterLink>
+        <RouterLink
+          v-if="teamId"
+          :to="`/teams/${teamId}/notifications`"
+          class="sidebar-link"
+          :class="{ active: isNotificationsRoute }"
+        >
+          <span class="material-symbols-outlined">notifications</span>
+          Notificações
+        </RouterLink>
+        <RouterLink
+          v-if="teamId"
+          :to="`/teams/${teamId}/updates`"
+          class="sidebar-link"
+          :class="{ active: isUpdatesRoute }"
+        >
+          <span class="material-symbols-outlined">deployed_code_update</span>
+          Atualizações
         </RouterLink>
       </nav>
       <div class="sidebar-footer">

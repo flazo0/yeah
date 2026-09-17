@@ -5,6 +5,7 @@ import {
   createProxyProvisionQueue,
   createRedisConnection,
   createServerCheckQueue,
+  createServiceProvisionQueue,
 } from "@yeah/queue";
 
 const redisUrl = process.env.REDIS_URL;
@@ -19,3 +20,4 @@ export const applicationDeployQueue = createApplicationDeployQueue(connection);
 export const databaseProvisionQueue = createDatabaseProvisionQueue(connection);
 export const databaseBackupQueue = createDatabaseBackupQueue(connection);
 export const proxyProvisionQueue = createProxyProvisionQueue(connection);
+export const serviceProvisionQueue = createServiceProvisionQueue(connection);

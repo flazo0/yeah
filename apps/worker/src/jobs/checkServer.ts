@@ -5,6 +5,7 @@ import { publishServerEvent, type ServerCheckJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { notifyTeam } from "../lib/notify";
 
 export function makeCheckServerProcessor(publishConnection: Redis) {
   return async function checkServer(job: Job<ServerCheckJobData>) {
@@ -48,5 +49,13 @@ export function makeCheckServerProcessor(publishConnection: Redis) {
       status: result.ok ? "connected" : "error",
       dockerVersion: result.dockerVersion,
     });
+
+    // Only alert on the transition, not on every check while a server stays down — otherwise
+    // this fires every time someone reopens the Servidores page and re-tests.
+    if (server.status !== "error" && !result.ok) {
+      await notifyTeam(server.teamId, `Servidor ${server.name} inacessível`, "A conexão SSH falhou no teste de conexão.", "error");
+    } else if (server.status === "error" && result.ok) {
+      await notifyTeam(server.teamId, `Servidor ${server.name} reconectou`, "A conexão SSH voltou a funcionar.", "info");
+    }
   };
 }

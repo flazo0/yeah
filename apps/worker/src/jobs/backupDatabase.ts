@@ -6,6 +6,7 @@ import { s3ClientFor } from "@yeah/storage";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { notifyTeam } from "../lib/notify";
 import { containerNameForDatabase } from "./provisionDatabase";
 
 const BACKUP_DIR = (databaseId: string) => `/opt/yeah-backups/${databaseId}`;
@@ -170,6 +171,7 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
         scheduleId,
         status: "failed",
       });
+      await notifyTeam(database.teamId, `Backup de ${database.name} falhou`, message, "error");
     } finally {
       conn?.end();
     }

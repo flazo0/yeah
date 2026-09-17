@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import {
   DATABASE_ENGINES,
+  SERVICE_CATALOG,
   type ApplicationDto,
   type ApplicationStatus,
   type DatabaseDto,
@@ -10,6 +11,8 @@ import {
   type DatabaseStatus,
   type GithubRepoDto,
   type ServerDto,
+  type ServiceDto,
+  type ServiceStatus,
   type WsServerEvent,
 } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
@@ -23,6 +26,7 @@ const basePath = `/teams/${teamId}/projects/${projectId}/environments/${environm
 
 const apps = ref<ApplicationDto[]>([]);
 const dbs = ref<DatabaseDto[]>([]);
+const svcs = ref<ServiceDto[]>([]);
 const teamServers = ref<ServerDto[]>([]);
 const loading = ref(true);
 const error = ref("");
@@ -57,8 +61,10 @@ const dbForm = ref({
   databaseName: "app",
   port: DATABASE_ENGINES.postgresql.defaultPort,
 });
+const svcForm = ref({ name: "", serverId: "", catalogKey: SERVICE_CATALOG[0]!.key });
 const submittingApp = ref(false);
 const submittingDb = ref(false);
+const submittingSvc = ref(false);
 const databaseEngineOptions = Object.entries(DATABASE_ENGINES) as [DatabaseEngine, (typeof DATABASE_ENGINES)[DatabaseEngine]][];
 
 function onEngineChange() {
@@ -89,21 +95,36 @@ const dbStatusDot: Record<DatabaseStatus, string> = {
   running: "status-dot-good",
   error: "status-dot-bad",
 };
+const svcStatusBadge: Record<ServiceStatus, string> = {
+  idle: "badge-neutral",
+  provisioning: "badge-warn",
+  running: "badge-good",
+  error: "badge-bad",
+};
+const svcStatusDot: Record<ServiceStatus, string> = {
+  idle: "status-dot-neutral",
+  provisioning: "status-dot-warn",
+  running: "status-dot-good",
+  error: "status-dot-bad",
+};
 
 async function load() {
   loading.value = true;
   try {
-    const [appsRes, dbsRes, serversRes] = await Promise.all([
+    const [appsRes, dbsRes, svcsRes, serversRes] = await Promise.all([
       api.get<{ applications: ApplicationDto[] }>(`${basePath}/applications`),
       api.get<{ databases: DatabaseDto[] }>(`${basePath}/databases`),
+      api.get<{ services: ServiceDto[] }>(`${basePath}/services`),
       api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`),
     ]);
     apps.value = appsRes.applications;
     dbs.value = dbsRes.databases;
+    svcs.value = svcsRes.services;
     teamServers.value = serversRes.servers;
     if (teamServers.value[0]) {
       if (!appForm.value.serverId) appForm.value.serverId = teamServers.value[0].id;
       if (!dbForm.value.serverId) dbForm.value.serverId = teamServers.value[0].id;
+      if (!svcForm.value.serverId) svcForm.value.serverId = teamServers.value[0].id;
     }
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar o ambiente";
@@ -151,6 +172,20 @@ async function createDb() {
   }
 }
 
+async function createService() {
+  submittingSvc.value = true;
+  error.value = "";
+  try {
+    const res = await api.post<{ service: ServiceDto }>(`${basePath}/services`, svcForm.value);
+    svcs.value.push(res.service);
+    svcForm.value = { name: "", serverId: svcForm.value.serverId, catalogKey: SERVICE_CATALOG[0]!.key };
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao criar serviço";
+  } finally {
+    submittingSvc.value = false;
+  }
+}
+
 const pendingDeleteId = ref<string | null>(null);
 let pendingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -193,6 +228,21 @@ async function deleteDb(item: DatabaseDto) {
   }
 }
 
+async function deleteService(item: ServiceDto) {
+  if (pendingDeleteId.value !== item.id) {
+    armDelete(item.id);
+    return;
+  }
+  pendingDeleteId.value = null;
+  clearTimeout(pendingDeleteTimer);
+  try {
+    await api.delete(`${basePath}/services/${item.id}`);
+    svcs.value = svcs.value.filter((s) => s.id !== item.id);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao excluir serviço";
+  }
+}
+
 let unsubscribe: (() => void) | undefined;
 
 onMounted(() => {
@@ -202,6 +252,10 @@ onMounted(() => {
     if (event.type === "database.status") {
       const database = dbs.value.find((d) => d.id === event.databaseId);
       if (database) database.status = event.status;
+    }
+    if (event.type === "service.status") {
+      const service = svcs.value.find((s) => s.id === event.serviceId);
+      if (service) service.status = event.status;
     }
   });
 });
@@ -216,7 +270,7 @@ onUnmounted(() => {
     <div class="page-header">
       <div>
         <h1>Recursos</h1>
-        <p>Aplicações e bancos de dados deste ambiente.</p>
+        <p>Aplicações, bancos de dados e serviços deste ambiente.</p>
       </div>
     </div>
 
@@ -292,16 +346,51 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-if="teamServers.length === 0" class="card">
-      <div class="card-body">
-        <div class="empty-state">
-          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">servidor conectado</RouterLink>
-          antes de criar aplicações ou bancos de dados.
+    <div class="card mb-16">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">widgets</span>
+        Serviços
+      </div>
+      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
+      <div v-else-if="svcs.length === 0" class="card-body">
+        <div class="empty-state">Nenhum serviço ainda.</div>
+      </div>
+      <div v-else class="card-body">
+        <div class="resource-cards">
+          <div v-for="item in svcs" :key="item.id" class="resource-card-wrap">
+            <RouterLink :to="`${basePath}/services/${item.id}`" class="resource-card">
+              <div class="name">
+                <span class="status-dot" :class="svcStatusDot[item.status]"></span>
+                {{ item.name }}
+                <span class="badge" :class="svcStatusBadge[item.status]" style="margin-left: auto">{{ item.status }}</span>
+              </div>
+              <div class="desc mono">{{ item.catalogKey }} · {{ item.image }}</div>
+              <div class="desc">{{ item.serverName }}</div>
+            </RouterLink>
+            <button
+              type="button"
+              class="resource-card-delete"
+              :class="{ confirming: pendingDeleteId === item.id }"
+              :title="pendingDeleteId === item.id ? 'Clique de novo pra confirmar' : 'Excluir'"
+              @click="deleteService(item)"
+            >
+              <span class="material-symbols-outlined">{{ pendingDeleteId === item.id ? "warning" : "delete" }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
-    <div v-else class="grid grid-2">
+    <div v-if="teamServers.length === 0" class="card">
+      <div class="card-body">
+        <div class="empty-state">
+          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">servidor conectado</RouterLink>
+          antes de criar aplicações, bancos de dados ou serviços.
+        </div>
+      </div>
+    </div>
+
+    <div v-else class="grid grid-3">
       <div class="card" style="margin-bottom: 0">
         <div class="card-header">
           <span class="material-symbols-outlined" style="font-size: 18px">add</span>
@@ -399,6 +488,39 @@ onUnmounted(() => {
             </div>
             <button type="submit" class="btn" :disabled="submittingDb">
               {{ submittingDb ? "criando..." : "Criar banco de dados" }}
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom: 0">
+        <div class="card-header">
+          <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+          Novo serviço
+        </div>
+        <div class="card-body">
+          <form @submit.prevent="createService">
+            <div class="form-group">
+              <label for="svc-name">Nome</label>
+              <input id="svc-name" v-model="svcForm.name" class="form-control" placeholder="meu-uptime-kuma" required />
+            </div>
+            <div class="form-group">
+              <label for="svc-server">Servidor</label>
+              <select id="svc-server" v-model="svcForm.serverId" class="form-control" required>
+                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="svc-catalog">Serviço</label>
+              <select id="svc-catalog" v-model="svcForm.catalogKey" class="form-control">
+                <option v-for="entry in SERVICE_CATALOG" :key="entry.key" :value="entry.key">{{ entry.name }}</option>
+              </select>
+              <p class="hint" style="margin-top: 6px">
+                {{ SERVICE_CATALOG.find((e) => e.key === svcForm.catalogKey)?.description }}
+              </p>
+            </div>
+            <button type="submit" class="btn" :disabled="submittingSvc">
+              {{ submittingSvc ? "criando..." : "Criar serviço" }}
             </button>
           </form>
         </div>

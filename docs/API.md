@@ -32,6 +32,8 @@ Convenção de erro: `{ "error": "mensagem" }` com o status HTTP correspondente.
 | PUT | `/teams/:teamId/servers/:serverId/domain` | `{ wildcardDomain?, acmeEmail? }` | Configura domínio wildcard e e-mail do Let's Encrypt |
 | POST | `/teams/:teamId/servers/:serverId/proxy` | — | Enfileira provisionamento do Traefik (`proxy-provision`) — resultado via WS (`server.proxy`) |
 
+CPU/RAM/disco (`cpuPercent`/`memPercent`/`diskPercent`/`metricsCheckedAt` no `ServerDto`) são atualizados em background por um job de sistema (`server-metrics`, a cada 60s pra todo servidor `connected`) — não tem rota própria pra disparar isso manualmente, só o valor mais recente no `GET` da lista e eventos `server.metrics` via WS.
+
 ## Armazenamento S3 (`/teams/:teamId/storages`)
 
 | Método | Rota | Body | Descrição |
@@ -52,6 +54,39 @@ Convenção de erro: `{ "error": "mensagem" }` com o status HTTP correspondente.
 | DELETE | `/teams/:teamId/github` | — | Desconecta (não desinstala o App no lado do GitHub) |
 | POST | `/webhooks/github` | raw body + header `X-Hub-Signature-256` | Recebe push events, casa `installationId`+`repo`+`branch` e dispara deploy |
 
+## Notificações (`/teams/:teamId/notifications`)
+
+| Método | Rota | Body | Descrição |
+|---|---|---|---|
+| GET | `/teams/:teamId/notifications` | — | Lista canais do time |
+| POST | `/teams/:teamId/notifications` | `{ name, type: discord\|slack\|telegram\|webhook, url?, telegramBotToken?, telegramChatId? }` | Cria canal. `url` pra discord/slack/webhook; `telegramBotToken`+`telegramChatId` pra telegram |
+| PUT | `/teams/:teamId/notifications/:channelId` | `{ enabled }` | Ativa/pausa sem apagar |
+| POST | `/teams/:teamId/notifications/:channelId/test` | — | Envia uma mensagem de teste, retorna `{ ok }` |
+| DELETE | `/teams/:teamId/notifications/:channelId` | — | Remove o canal |
+
+Eventos que disparam notificação hoje (todo canal ativo recebe todos, sem filtro por tipo ainda — ver `docs/ROADMAP.md`): deploy concluído/falhou, backup falhou, servidor ficou inacessível/reconectou, CPU/RAM/disco cruzou o limiar (90%/90%/85%).
+
+## Atualizações
+
+| Método | Rota | Body | Descrição |
+|---|---|---|---|
+| GET | `/updates/platform` | — | `{ currentCommit, latestCommit, updateAvailable, compareUrl }` — compara `YEAH_COMMIT` (baked no build da imagem) contra o HEAD do `main` no GitHub. `null` em tudo se rodando fora de um container de produção |
+| GET | `/teams/:teamId/updates/images` | — | Pra cada imagem Docker em uso (bancos + serviços do time, mais imagens de sistema como o Traefik), retorna `{ image, currentTag, latestTag, updateAvailable }` comparando contra o Docker Hub. Imagens do `quay.io` voltam `updateAvailable: null` (não verificável por essa API) |
+
+## Serviços (`/teams/:teamId/projects/:projectId/environments/:environmentId/services`)
+
+Qualquer imagem pública do catálogo (`packages/shared/src/serviceCatalog.ts` — Uptime Kuma, n8n, MinIO, RabbitMQ, Meilisearch, Ghost, Metabase, Portainer, Adminer, Redis Commander), fora dos 5 motores de banco.
+
+| Método | Rota | Body | Descrição |
+|---|---|---|---|
+| GET | `.../services` | — | Lista serviços do ambiente |
+| POST | `.../services` | `{ name, serverId, catalogKey, port? }` | Cria a partir de uma entrada do catálogo (imagem/porta/env template vêm de lá) e enfileira provisionamento |
+| GET | `.../services/:id` | — | Detalhe |
+| PUT | `.../services/:id/env` | `{ envContent }` | Substitui o `.env` bruto |
+| PUT | `.../services/:id/domain` | `{ domain? }` | Seta/limpa domínio customizado |
+| POST | `.../services/:id/redeploy` | — | Reprovisiona com a config atual (aplica mudanças de env/domínio) |
+| DELETE | `.../services/:id` | — | Remove container + volume remoto via SSH (best-effort) e apaga a linha |
+
 ## Projetos e ambientes (`/teams/:teamId/projects`)
 
 | Método | Rota | Body | Descrição |
@@ -59,7 +94,7 @@ Convenção de erro: `{ "error": "mensagem" }` com o status HTTP correspondente.
 | GET | `/teams/:teamId/projects` | — | Lista projetos com `environmentCount` |
 | POST | `/teams/:teamId/projects` | `{ name, firstEnvironmentName? }` | Cria projeto + primeiro ambiente (default `"production"`) |
 | GET | `/teams/:teamId/projects/:projectId` | — | Detalhe do projeto |
-| GET | `/teams/:teamId/projects/:projectId/environments` | — | Lista ambientes com `applicationCount`/`databaseCount` |
+| GET | `/teams/:teamId/projects/:projectId/environments` | — | Lista ambientes com `applicationCount`/`databaseCount`/`serviceCount` |
 | POST | `/teams/:teamId/projects/:projectId/environments` | `{ name }` | Cria ambiente |
 
 ## Aplicações (`/teams/:teamId/projects/:projectId/environments/:environmentId/applications`)
@@ -95,4 +130,4 @@ Convenção de erro: `{ "error": "mensagem" }` com o status HTTP correspondente.
 
 ## WebSocket (`ws`, porta separada — `WS_PORT`)
 
-Conecta em `ws://<host>:<WS_PORT>`. Sem autenticação própria — o socket só recebe eventos já públicos-pro-usuário-logado no sentido de que o frontend filtra por IDs que ele já tem carregados na tela (não há canal privado por usuário ainda; ver `docs/ROADMAP.md`). Mensagens são o JSON de `WsServerEvent` (ver `docs/ARCHITECTURE.md`).
+Conecta em `ws://<host>:<WS_PORT>`. Sem autenticação própria — o socket só recebe eventos já públicos-pro-usuário-logado no sentido de que o frontend filtra por IDs que ele já tem carregados na tela (não há canal privado por usuário ainda; ver `docs/ROADMAP.md`). Mensagens são o JSON de `WsServerEvent` (ver `docs/ARCHITECTURE.md`), que inclui `server.status`, `server.proxy`, `server.metrics`, `deployment.log`, `deployment.status`, `database.status`, `service.status` e `backup.status`.

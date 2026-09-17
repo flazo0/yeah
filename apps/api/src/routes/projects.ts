@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { eq, sql } from "drizzle-orm";
-import { applications, databases, environments, projects } from "@yeah/db";
+import { applications, databases, environments, projects, services } from "@yeah/db";
 import type { EnvironmentDto, ProjectDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -121,10 +121,12 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
         environment: environments,
         applicationCount: sql<number>`count(distinct ${applications.id})::int`,
         databaseCount: sql<number>`count(distinct ${databases.id})::int`,
+        serviceCount: sql<number>`count(distinct ${services.id})::int`,
       })
       .from(environments)
       .leftJoin(applications, eq(applications.environmentId, environments.id))
       .leftJoin(databases, eq(databases.environmentId, environments.id))
+      .leftJoin(services, eq(services.environmentId, environments.id))
       .where(eq(environments.projectId, params.projectId))
       .groupBy(environments.id);
 
@@ -134,6 +136,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       name: row.environment.name,
       applicationCount: row.applicationCount,
       databaseCount: row.databaseCount,
+      serviceCount: row.serviceCount,
       createdAt: row.environment.createdAt.toISOString(),
     }));
 
@@ -171,6 +174,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
         name: environment.name,
         applicationCount: 0,
         databaseCount: 0,
+        serviceCount: 0,
         createdAt: environment.createdAt.toISOString(),
       };
       return { environment: dto };

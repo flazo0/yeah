@@ -6,6 +6,7 @@ import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/gi
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { notifyTeam } from "../lib/notify";
 import { PROXY_NETWORK_NAME } from "./provisionProxy";
 
 interface Step {
@@ -143,12 +144,14 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await finish(deploymentId, "success", "\n\x1b[32mDeploy concluído.\x1b[0m\n", log);
       await db.update(applications).set({ status: "running" }).where(eq(applications.id, application.id));
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "success" });
+      await notifyTeam(application.teamId, `Deploy de ${application.name} concluído`, `${application.repoUrl} (${application.branch}) → ${server.name}`, "info");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await appendAndPublish(`\n\x1b[31mFalha no deploy: ${message}\x1b[0m\n`);
       await finish(deploymentId, "failed", "", log);
       await db.update(applications).set({ status: "error" }).where(eq(applications.id, application.id));
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "failed" });
+      await notifyTeam(application.teamId, `Deploy de ${application.name} falhou`, message, "error");
     } finally {
       conn?.end();
     }

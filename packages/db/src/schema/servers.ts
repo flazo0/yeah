@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
 
 export const serverStatusEnum = pgEnum("server_status", ["pending", "connected", "error"]);
@@ -24,6 +24,11 @@ export const servers = pgTable("servers", {
   // Required by Let's Encrypt to register the ACME account that issues certs on this server.
   acmeEmail: varchar("acme_email", { length: 255 }),
   proxyStatus: proxyStatusEnum("proxy_status").default("inactive").notNull(),
+  // Latest snapshot from the periodic `server-metrics` job — null until the first check runs.
+  cpuPercent: real("cpu_percent"),
+  memPercent: real("mem_percent"),
+  diskPercent: real("disk_percent"),
+  metricsCheckedAt: timestamp("metrics_checked_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

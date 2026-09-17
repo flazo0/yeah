@@ -10,6 +10,9 @@ import { applicationRoutes } from "./routes/applications";
 import { databaseRoutes } from "./routes/databases";
 import { githubRoutes } from "./routes/github";
 import { githubWebhookRoutes } from "./routes/githubWebhook";
+import { notificationRoutes } from "./routes/notifications";
+import { serviceRoutes } from "./routes/services";
+import { updateRoutes } from "./routes/updates";
 
 const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3000;
 
@@ -30,6 +33,9 @@ const app = new Elysia()
   .use(databaseRoutes)
   .use(githubRoutes)
   .use(githubWebhookRoutes)
+  .use(notificationRoutes)
+  .use(serviceRoutes)
+  .use(updateRoutes)
   .listen(port);
 
 console.log(`[api] listening on http://localhost:${port}`);

@@ -9,8 +9,11 @@ import EnvironmentPage from "../pages/EnvironmentPage.vue";
 import ServersPage from "../pages/ServersPage.vue";
 import StoragesPage from "../pages/StoragesPage.vue";
 import GithubPage from "../pages/GithubPage.vue";
+import NotificationsPage from "../pages/NotificationsPage.vue";
+import UpdatesPage from "../pages/UpdatesPage.vue";
 import ApplicationDetailPage from "../pages/ApplicationDetailPage.vue";
 import DatabaseDetailPage from "../pages/DatabaseDetailPage.vue";
+import ServiceDetailPage from "../pages/ServiceDetailPage.vue";
 
 export const router = createRouter({
   history: createWebHistory(),
@@ -23,6 +26,8 @@ export const router = createRouter({
     { path: "/teams/:teamId/servers", component: ServersPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/storages", component: StoragesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/github", component: GithubPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/notifications", component: NotificationsPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/updates", component: UpdatesPage, meta: { requiresAuth: true }, props: true },
     {
       path: "/teams/:teamId/projects/:projectId",
       component: ProjectPage,
@@ -44,6 +49,12 @@ export const router = createRouter({
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId/databases/:databaseId",
       component: DatabaseDetailPage,
+      meta: { requiresAuth: true },
+      props: true,
+    },
+    {
+      path: "/teams/:teamId/projects/:projectId/environments/:environmentId/services/:serviceId",
+      component: ServiceDetailPage,
       meta: { requiresAuth: true },
       props: true,
     },

@@ -9,3 +9,5 @@ export * from "./databases";
 export * from "./backups";
 export * from "./storages";
 export * from "./github";
+export * from "./notifications";
+export * from "./services";

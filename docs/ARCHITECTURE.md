@@ -39,15 +39,29 @@ Essa separação existe pra robustez, não performance prematura: um deploy trav
 - **WebSocket nativo** (`Bun.serve({ websocket: ... })`) no `ws`.
 - **`node:crypto`** ainda é usado onde faz sentido (assinar JWT do GitHub App com RS256, HMAC de webhook) — Bun tem compat total com a API do Node aqui, não precisou de lib de JWT.
 
+## Pacotes compartilhados (`packages/`)
+
+| Pacote | Usado por | O que faz |
+|---|---|---|
+| `db` | todos | Schema Drizzle + client Postgres |
+| `shared` | todos | Tipos TypeScript + `DATABASE_ENGINES` + `SERVICE_CATALOG` |
+| `queue` | api, worker, ws | Definições de fila/pub-sub BullMQ + Redis |
+| `ssh` | worker | Cliente SSH (ssh2) — só o worker importa isso |
+| `storage` | api, worker | Wrapper fino sobre `Bun.S3Client` |
+| `github` | api, worker | JWT do GitHub App, token de instalação, verificação de webhook |
+| `notifications` | worker | Envio pra Discord/Slack/Telegram/webhook genérico — best-effort, nunca lança |
+
 ## Modelo de domínio
 
 ```
 User ──┬── TeamMember ──── Team ──┬── Server (SSH, por time — compartilhado entre projetos)
         │                          ├── S3Storage (por time — destino de backup)
         │                          ├── GithubInstallation (0 ou 1 por time)
+        │                          ├── NotificationChannel (por time — Discord/Slack/Telegram/webhook)
         │                          └── Project ──── Environment ──┬── Application
-        │                                                          └── Database ──┬── BackupSchedule
-        │                                                                          └── BackupExecution
+        │                                                          ├── Database ──┬── BackupSchedule
+        │                                                          │               └── BackupExecution
+        │                                                          └── Service (catálogo — Uptime Kuma, n8n, MinIO...)
         └── Session (cookie)
 ```
 
@@ -56,6 +70,8 @@ User ──┬── TeamMember ──── Team ──┬── Server (SSH, p
 - **Application.domain** nulo = porta publicada direto no host (`-p porta:porta`). Setado (manual ou derivado do `wildcardDomain` do servidor) = roteado via Traefik, sem publicar porta.
 - **Database.username/databaseName** são nuláveis porque Redis não tem esses conceitos — veja `DATABASE_ENGINES` em `packages/shared/src/types.ts` pra saber quais campos cada motor usa.
 - **BackupSchedule.storageId** nulo = dump fica no disco do servidor remoto. Setado = sobe pro S3 e apaga a cópia local.
+- **Service** segue a mesma forma de Application/Database (nome, servidor, ambiente, domínio opcional), mas a imagem/porta/env-template vêm de uma entrada estática do catálogo (`packages/shared/src/serviceCatalog.ts`) em vez de um build de repositório ou um motor de banco embutido no código.
+- **Server.cpuPercent/memPercent/diskPercent/metricsCheckedAt** são a última leitura do job periódico `server-metrics` (a cada 60s, todo servidor `connected`) — não é uma série histórica, só o snapshot mais recente.
 
 ## Fluxo de um deploy, passo a passo
 
@@ -79,9 +95,11 @@ Um único canal Redis (`SERVER_EVENTS_CHANNEL`) carrega todos os tipos de evento
 type WsServerEvent =
   | { type: "server.status"; serverId; status; dockerVersion? }
   | { type: "server.proxy"; serverId; proxyStatus }
+  | { type: "server.metrics"; serverId; cpuPercent; memPercent; diskPercent }
   | { type: "deployment.log"; deploymentId; line }
   | { type: "deployment.status"; deploymentId; status }
   | { type: "database.status"; databaseId; status }
+  | { type: "service.status"; serviceId; status }
   | { type: "backup.status"; executionId; scheduleId; status };
 ```
 
@@ -89,7 +107,7 @@ type WsServerEvent =
 
 ## Filas (BullMQ)
 
-Cinco filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra consumir jobs, outra só pra publicar eventos — evita que uma conexão em modo "block" pra pegar jobs atrapalhe publicações):
+Sete filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra consumir jobs, outra só pra publicar eventos — evita que uma conexão em modo "block" pra pegar jobs atrapalhe publicações):
 
 | Fila | Job data | O que faz |
 |---|---|---|
@@ -98,6 +116,10 @@ Cinco filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra
 | `database-provision` | `{ databaseId }` | `docker run` do motor certo (Postgres/MySQL/MariaDB/Redis/MongoDB) |
 | `database-backup` | `{ scheduleId, manual? }` | Dump + upload S3 opcional + retenção. Agendado via **BullMQ Job Scheduler** (`upsertJobScheduler`/`removeJobScheduler`) — não tem scheduler próprio |
 | `proxy-provision` | `{ serverId }` | Sobe o Traefik no servidor com config de ACME |
+| `service-provision` | `{ serviceId }` | `docker run` da imagem do catálogo, com volume nomeado se a entrada pedir persistência |
+| `server-metrics` | `{}` | Job de sistema, único, agendado uma vez no boot do worker (`ensureServerMetricsScheduler`, a cada 60s) — a cada tick, percorre todo servidor `connected` e lê `/proc/stat`+`/proc/meminfo`+`df` por SSH |
+
+Notificações (`packages/notifications`) não têm fila própria — são disparadas inline, fire-and-forget, direto de dentro dos jobs acima (`deployApplication`, `backupDatabase`, `checkServer`, `serverMetrics`) via o helper `apps/worker/src/lib/notify.ts`. Uma falha ao enviar (webhook fora do ar, token errado) é logada e engolida — nunca derruba o job que a disparou.
 
 ## Proxy reverso (Traefik) — dois usos diferentes, não confundir
 
@@ -106,10 +128,10 @@ Cinco filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra
 
 ## Padrão de exceção "a API nunca fala SSH direto"
 
-Documentado com comentário no código em cada ocorrência (`servers.ts`, `databases.ts`, `applications.ts`). As únicas exceções:
+Documentado com comentário no código em cada ocorrência (`servers.ts`, `databases.ts`, `applications.ts`, `services.ts`). As únicas exceções:
 
 - **Download de backup**: leitura síncrona e limitada via SFTP — o navegador já está esperando o arquivo, rotear por um job + endpoint de polling só adicionaria latência sem ganho nenhum.
-- **Exclusão de Application/Database**: teardown do container (e volume, no caso de banco) via SSH antes de apagar a linha do Postgres. Se o SSH falhar (servidor offline, chave errada), a exclusão segue em frente mesmo assim — o cascade do Postgres cuida do resto, e não faz sentido travar o usuário só porque não conseguimos limpar o container remoto.
+- **Exclusão de Application/Database/Service**: teardown do container (e volume, no caso de banco/serviço com persistência) via SSH antes de apagar a linha do Postgres. Se o SSH falhar (servidor offline, chave errada), a exclusão segue em frente mesmo assim — o cascade do Postgres cuida do resto, e não faz sentido travar o usuário só porque não conseguimos limpar o container remoto.
 
 ## Segurança conhecida (pré-produção)
 

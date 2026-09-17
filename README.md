@@ -12,10 +12,14 @@ A maioria das plataformas self-hosted ou consome muita máquina (agente pesado, 
 
 - **Deploy de aplicações** via Git (URL manual ou GitHub App com auto-deploy em push), build via Dockerfile, log ao vivo no navegador
 - **Bancos de dados um-clique**: PostgreSQL, MySQL, MariaDB, Redis, MongoDB
+- **Catálogo de serviços um-clique**: Uptime Kuma, n8n, MinIO, RabbitMQ, Meilisearch, Ghost, Metabase, Portainer, Adminer, Redis Commander — qualquer imagem pública, além dos bancos
 - **Backup agendado** (cron) com retenção configurável, local ou em qualquer S3-compatível (AWS, MinIO, R2, Spaces)
 - **HTTPS automático**: proxy reverso Traefik por servidor, domínio wildcard, certificado Let's Encrypt — sem publicar porta manualmente
+- **Monitoramento de servidor**: CPU/RAM/disco ao vivo (sem agente, só SSH), com alerta na transição pro limiar
+- **Notificações**: Discord, Slack, Telegram, webhook genérico — deploy, backup, servidor caiu, uso de recursos
+- **Tela de atualizações**: versão da plataforma e das imagens Docker em uso vs. a mais recente — checagem manual, nada automático
 - **Times e projetos**: `Team → Project → Environment → Recurso`, papéis (owner/admin/member), convites
-- **Tudo em tempo real**: WebSocket dedicado pra status de deploy, banco, backup e proxy
+- **Tudo em tempo real**: WebSocket dedicado pra status de deploy, banco, serviço, backup, proxy e métricas
 
 Veja `docs/ROADMAP.md` pro que ainda falta (incluindo paridade completa com Coolify) e `docs/DEVLOG.md` pro histórico de como cada peça foi construída e testada.
 
@@ -49,12 +53,13 @@ apps/
   ws/      Bun WebSocket — repassa eventos do Redis pub/sub pros clientes conectados
   web/     Vue 3 + Vite + Tailwind — dashboard (Monaco pra config, xterm.js pra terminal)
 packages/
-  db/       Schema Drizzle + client (Postgres via driver nativo do Bun)
-  shared/   Tipos TypeScript compartilhados entre todos os apps
-  queue/    Filas/pub-sub BullMQ + Redis compartilhadas entre api/worker/ws
-  ssh/      Cliente SSH (ssh2), usado só pelo worker
-  storage/  Wrapper fino sobre o Bun.S3Client nativo
-  github/   JWT do GitHub App, tokens de instalação, verificação de webhook
+  db/             Schema Drizzle + client (Postgres via driver nativo do Bun)
+  shared/         Tipos TypeScript compartilhados entre todos os apps
+  queue/          Filas/pub-sub BullMQ + Redis compartilhadas entre api/worker/ws
+  ssh/            Cliente SSH (ssh2), usado só pelo worker
+  storage/        Wrapper fino sobre o Bun.S3Client nativo
+  github/         JWT do GitHub App, tokens de instalação, verificação de webhook
+  notifications/  Envio pra Discord/Slack/Telegram/webhook genérico
 ```
 
 Arquitetura completa (por que 4 processos, modelo de domínio, fluxo de deploy passo a passo, sistema de eventos): **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.

@@ -40,6 +40,10 @@ export interface ServerDto {
   wildcardDomain: string | null;
   acmeEmail: string | null;
   proxyStatus: ProxyStatus;
+  cpuPercent: number | null;
+  memPercent: number | null;
+  diskPercent: number | null;
+  metricsCheckedAt: string | null;
   createdAt: string;
 }
 
@@ -57,6 +61,7 @@ export interface EnvironmentDto {
   name: string;
   applicationCount: number;
   databaseCount: number;
+  serviceCount: number;
   createdAt: string;
 }
 
@@ -193,10 +198,43 @@ export interface GithubRepoDto {
   private: boolean;
 }
 
+export type ServiceStatus = "idle" | "provisioning" | "running" | "error";
+
+export interface ServiceDto {
+  id: string;
+  teamId: string;
+  environmentId: string;
+  serverId: string;
+  serverName: string;
+  name: string;
+  catalogKey: string;
+  image: string;
+  port: number;
+  envContent: string;
+  domain: string | null;
+  status: ServiceStatus;
+  createdAt: string;
+}
+
+export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook";
+
+export interface NotificationChannelDto {
+  id: string;
+  teamId: string;
+  name: string;
+  type: NotificationChannelType;
+  url: string | null;
+  telegramChatId: string | null;
+  enabled: boolean;
+  createdAt: string;
+}
+
 /** Messages broadcast over the dedicated `ws` service, fanned out via Redis pub/sub. */
 export type WsServerEvent =
   | { type: "server.status"; serverId: string; status: ServerStatus; dockerVersion?: string }
   | { type: "server.proxy"; serverId: string; proxyStatus: ProxyStatus }
+  | { type: "server.metrics"; serverId: string; cpuPercent: number; memPercent: number; diskPercent: number }
+  | { type: "service.status"; serviceId: string; status: ServiceStatus }
   | { type: "deployment.log"; deploymentId: string; line: string }
   | { type: "deployment.status"; deploymentId: string; status: DeploymentStatus }
   | { type: "database.status"; databaseId: string; status: DatabaseStatus }
