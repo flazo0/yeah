@@ -92,13 +92,16 @@ API_PORT=3000
 WS_PORT=3001
 WEB_PORT=${WEB_PORT}
 
-# CORS allowlist — precisa bater com de onde o navegador acessa o dashboard.
+# Usado pro CORS (casos fora do proxy — dev local, etc.) e pra montar a callback URL do GitHub App.
 WEB_ORIGIN=http://${PUBLIC_HOST}:${WEB_PORT}
 
-# Embutidas no build do frontend (Vite) — mude e rode 'docker compose build web' de novo se
-# trocar de domínio depois.
-VITE_API_URL=http://${PUBLIC_HOST}:3000
-VITE_WS_URL=ws://${PUBLIC_HOST}:3001
+# Deixe em branco: o nginx do próprio container "web" já reverse-proxya /api e /ws pro api/ws
+# internamente (apps/web/nginx.conf), então o frontend usa caminho relativo (mesma origem) e não
+# precisa saber o host/IP público em tempo de build. Só preencha se for rodar api/ws num host ou
+# porta diferente do dashboard (sem proxy compartilhado) — nesse caso rode 'docker compose build web'
+# de novo depois de mudar.
+VITE_API_URL=
+VITE_WS_URL=
 
 # GitHub App (opcional) — veja .env.example pra passo a passo de como cadastrar.
 GITHUB_APP_ID=

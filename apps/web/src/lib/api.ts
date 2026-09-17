@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+// Empty string (production default) means "same origin as the page" — the api is reverse-proxied
+// under /api by nginx (see apps/web/nginx.conf), so the frontend never needs to know its own
+// public host/IP at build time. Local dev sets VITE_API_URL explicitly since there's no proxy.
+const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 export class ApiError extends Error {
   status: number;

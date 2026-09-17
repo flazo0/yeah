@@ -2,7 +2,10 @@ import type { WsServerEvent } from "@yeah/shared";
 
 type Listener = (event: WsServerEvent) => void;
 
-const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:3001";
+// Empty (production default) means "same origin as the page, over /ws" — reverse-proxied by
+// nginx (see apps/web/nginx.conf). Local dev sets VITE_WS_URL explicitly since there's no proxy.
+const WS_URL =
+  import.meta.env.VITE_WS_URL || `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
 
 class WsClient {
   private socket: WebSocket | null = null;
