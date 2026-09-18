@@ -155,9 +155,12 @@ services:
         # gets a bare closed connection from nginx, see apps/web/docker-entrypoint-panel-path.sh).
         # Baked into the frontend build (Vite `base`) here, and read by nginx at container start
         # via the PANEL_PATH env var below — both need to agree, hence the same variable twice.
-        VITE_BASE_PATH: ${PANEL_PATH:-/}
+        # NOTE: ":-" treats PANEL_PATH="" (what install.sh writes when it's off) the same as unset,
+        # so this must default to empty too — defaulting to "/" here would silently re-enable a
+        # broken half-camouflaged state (nginx.conf.template's old duplicate-location "/" bug).
+        VITE_BASE_PATH: ${PANEL_PATH:-}
     environment:
-      PANEL_PATH: ${PANEL_PATH:-/}
+      PANEL_PATH: ${PANEL_PATH:-}
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-8080}:80"
