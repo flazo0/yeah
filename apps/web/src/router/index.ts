@@ -15,8 +15,12 @@ import ApplicationDetailPage from "../pages/ApplicationDetailPage.vue";
 import DatabaseDetailPage from "../pages/DatabaseDetailPage.vue";
 import ServiceDetailPage from "../pages/ServiceDetailPage.vue";
 
+// import.meta.env.BASE_URL comes from Vite's own `base` config (set at build time — see
+// vite.config.ts) — in production this is the random per-install panel path (see install.sh),
+// so the router, the built asset URLs and the api/ws relative paths (lib/api.ts, lib/ws.ts) all
+// agree on the same prefix without hardcoding it anywhere.
 export const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: "/", redirect: "/dashboard" },
     { path: "/login", component: LoginPage, meta: { guest: true } },

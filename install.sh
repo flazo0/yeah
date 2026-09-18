@@ -18,6 +18,9 @@ set -euo pipefail
 REPO_URL="https://github.com/flazo0/yeah.git"
 INSTALL_DIR="/opt/yeah"
 COMPOSE_FILE="docker-compose.prod.yml"
+# Não é uma porta óbvia (8080/8000/3000/9000/...) — só isso já tira o painel da maioria dos scans
+# automatizados. Some com o PANEL_PATH aleatório gerado abaixo pra esconder de verdade.
+DEFAULT_WEB_PORT=58943
 
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$1"; }
@@ -72,15 +75,19 @@ else
   PUBLIC_HOST=""
   WEB_PORT=""
   if read -rp "Domínio ou IP público pra acessar o dashboard (deixe em branco pra localhost): " PUBLIC_HOST < /dev/tty 2>/dev/null; then
-    read -rp "Porta pra expor o dashboard web [8080]: " WEB_PORT < /dev/tty 2>/dev/null || true
+    read -rp "Porta pra expor o dashboard web [${DEFAULT_WEB_PORT}]: " WEB_PORT < /dev/tty 2>/dev/null || true
   else
-    warn "Sem terminal interativo — usando localhost:8080. Edite $ENV_FILE depois se precisar de outro host/porta."
+    warn "Sem terminal interativo — usando localhost:${DEFAULT_WEB_PORT}. Edite $ENV_FILE depois se precisar de outro host/porta."
   fi
   PUBLIC_HOST=${PUBLIC_HOST:-localhost}
-  WEB_PORT=${WEB_PORT:-8080}
+  WEB_PORT=${WEB_PORT:-$DEFAULT_WEB_PORT}
 
   POSTGRES_PASSWORD=$(openssl rand -hex 24)
   SESSION_SECRET=$(openssl rand -hex 32)
+  # Painel só responde sob esse caminho aleatório — qualquer outra URL na mesma porta não devolve
+  # nada (ver apps/web/nginx.conf.template). Sem isso, mesmo numa porta incomum, quem achar a
+  # porta aberta acha o painel de cara em "/".
+  PANEL_PATH="/$(openssl rand -hex 8)"
 
   cat > "$ENV_FILE" <<EOF
 POSTGRES_USER=yeah
@@ -92,14 +99,18 @@ API_PORT=3000
 WS_PORT=3001
 WEB_PORT=${WEB_PORT}
 
+# Caminho aleatório sob o qual o painel responde de verdade (ver apps/web/nginx.conf.template) —
+# gerado uma vez na instalação, nunca sobrescrito depois. Não perca essa URL.
+PANEL_PATH=${PANEL_PATH}
+
 # Usado pro CORS (casos fora do proxy — dev local, etc.) e pra montar a callback URL do GitHub App.
 WEB_ORIGIN=http://${PUBLIC_HOST}:${WEB_PORT}
 
 # Deixe em branco: o nginx do próprio container "web" já reverse-proxya /api e /ws pro api/ws
-# internamente (apps/web/nginx.conf), então o frontend usa caminho relativo (mesma origem) e não
-# precisa saber o host/IP público em tempo de build. Só preencha se for rodar api/ws num host ou
-# porta diferente do dashboard (sem proxy compartilhado) — nesse caso rode 'docker compose build web'
-# de novo depois de mudar.
+# internamente (apps/web/nginx.conf.template), então o frontend usa caminho relativo (mesma
+# origem) e não precisa saber o host/IP público em tempo de build. Só preencha se for rodar api/ws
+# num host ou porta diferente do dashboard (sem proxy compartilhado) — nesse caso rode
+# 'docker compose build web' de novo depois de mudar.
 VITE_API_URL=
 VITE_WS_URL=
 
@@ -170,10 +181,12 @@ HELPER
 chmod +x /usr/local/bin/yeah
 
 # ---------------------------------------------------------------------------
-WEB_PORT_FINAL=$(grep -oP '^WEB_PORT=\K.*' "$ENV_FILE" || echo 8080)
+WEB_PORT_FINAL=$(grep -oP '^WEB_PORT=\K.*' "$ENV_FILE" || echo "$DEFAULT_WEB_PORT")
 PUBLIC_HOST_FINAL=$(grep -oP '^WEB_ORIGIN=http://\K[^:]*' "$ENV_FILE" || echo localhost)
+PANEL_PATH_FINAL=$(grep -oP '^PANEL_PATH=\K.*' "$ENV_FILE" || echo "")
 
 echo
-log "Pronto! Acesse http://${PUBLIC_HOST_FINAL}:${WEB_PORT_FINAL} e crie sua conta em /register."
+log "Pronto! Acesse http://${PUBLIC_HOST_FINAL}:${WEB_PORT_FINAL}${PANEL_PATH_FINAL}/ e crie sua conta em /register."
+warn "Guarde essa URL — o painel só responde nesse caminho (PANEL_PATH em $ENV_FILE); qualquer outra URL na mesma porta não devolve nada, de propósito."
 log "Comandos: yeah update | yeah logs [serviço] | yeah restart | yeah status | yeah stop"
 warn "Sem domínio real + TLS na frente ainda — coloque um Caddy/nginx com certificado se for expor na internet. Veja docs/INSTALLATION.md."

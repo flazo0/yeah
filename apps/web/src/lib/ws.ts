@@ -2,10 +2,12 @@ import type { WsServerEvent } from "@yeah/shared";
 
 type Listener = (event: WsServerEvent) => void;
 
-// Empty (production default) means "same origin as the page, over /ws" — reverse-proxied by
-// nginx (see apps/web/nginx.conf). Local dev sets VITE_WS_URL explicitly since there's no proxy.
+// Empty (production default) means "same origin as the page, under the app's own base path" —
+// reverse-proxied by nginx to the ws container (see apps/web/nginx.conf and lib/api.ts for the
+// matching /api case). Local dev sets VITE_WS_URL explicitly since there's no proxy there.
 const WS_URL =
-  import.meta.env.VITE_WS_URL || `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`;
+  import.meta.env.VITE_WS_URL ||
+  `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}${import.meta.env.BASE_URL}ws`;
 
 class WsClient {
   private socket: WebSocket | null = null;

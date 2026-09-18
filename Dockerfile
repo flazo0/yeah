@@ -44,8 +44,10 @@ COPY apps/web ./apps/web
 WORKDIR /app/apps/web
 ARG VITE_API_URL
 ARG VITE_WS_URL
+ARG VITE_BASE_PATH
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_WS_URL=${VITE_WS_URL}
+ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 # `bun run build` (Bun's own JS engine executing vue-tsc) silently fails to recognize .vue files
 # as modules on Linux — every single .vue import becomes "cannot find module", confirmed by
 # A/B-testing real Node.js vs Bun against the identical installed node_modules on this exact
@@ -55,5 +57,9 @@ RUN apk add --no-cache nodejs && ./node_modules/.bin/vue-tsc -b && ./node_module
 
 FROM nginx:1.27-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
-COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# nginx's own entrypoint envsubst's *.template -> conf.d/*.conf at container start using only
+# real container env vars (PANEL_PATH here — see docker-compose.prod.yml) — nginx's own runtime
+# variables ($host, $uri, etc.) are untouched since they aren't actual env vars, just $-prefixed
+# nginx syntax. This lets the panel path change on restart without rebuilding the image.
+COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
 EXPOSE 80

@@ -1,7 +1,9 @@
-// Empty string (production default) means "same origin as the page" — the api is reverse-proxied
-// under /api by nginx (see apps/web/nginx.conf), so the frontend never needs to know its own
-// public host/IP at build time. Local dev sets VITE_API_URL explicitly since there's no proxy.
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+// Empty (production default) means "same origin as the page, under the app's own base path" —
+// nginx reverse-proxies <base>api to the api container (see apps/web/nginx.conf), matching
+// wherever the SPA itself is served (import.meta.env.BASE_URL — see vite.config.ts), so the
+// frontend never needs to know its own public host/IP or panel path at build time twice.
+// Local dev sets VITE_API_URL explicitly since there's no proxy there.
+const API_URL = import.meta.env.VITE_API_URL || `${import.meta.env.BASE_URL}api`;
 
 export class ApiError extends Error {
   status: number;
