@@ -6,21 +6,24 @@ Convenção de erro: `{ "error": "mensagem" }` com o status HTTP correspondente.
 
 ## Auth (`/auth`)
 
+yeah é single-admin, não multi-tenant: `/auth/register` só funciona pra criar a primeira (e única) conta da instância — ver `/auth/setup-status` abaixo.
+
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
-| POST | `/auth/register` | `{ email, password (≥8), name? }` | Cria usuário + time pessoal + projeto/ambiente `Default`/`production` automáticos. Seta cookie de sessão |
+| GET | `/auth/setup-status` | — | `{ needsSetup: boolean }` — `true` enquanto não existe usuário nenhum na instância |
+| POST | `/auth/register` | `{ email, password (≥8), name? }` | Cria o usuário + time pessoal + projeto/ambiente `Default`/`production` automáticos + servidor local automático (se `LOCALHOST_SSH_*` estiver configurado — ver `docs/ARCHITECTURE.md`). Seta cookie de sessão. Retorna `403` se já existir qualquer usuário |
 | POST | `/auth/login` | `{ email, password }` | Seta cookie de sessão |
 | POST | `/auth/logout` | — | Destrói a sessão |
 | GET | `/auth/me` | — | Usuário autenticado atual (`null` se não logado) |
 
 ## Times (`/teams`)
 
+Não existe rota de convite — de propósito, não tem como uma segunda pessoa ganhar login nessa instância (ver `/auth/register` acima).
+
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `/teams` | — | Times do usuário logado, com o papel dele em cada um |
 | POST | `/teams` | `{ name }` | Cria time (usuário vira `owner`) + projeto/ambiente padrão |
-| POST | `/teams/:teamId/invitations` | `{ email, role? }` | Convida (precisa ser `owner`/`admin`) |
-| POST | `/teams/invitations/:token/accept` | — | Aceita convite pendente |
 
 ## Servidores (`/teams/:teamId/servers`)
 

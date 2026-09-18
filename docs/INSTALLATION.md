@@ -21,6 +21,10 @@ Ao final, o script imprime a URL completa: `http://<seu-host>:<porta><caminho-al
 
 > **Por quê um caminho aleatório?** O painel só responde nesse caminho — qualquer outra URL na mesma porta (incluindo a raiz `/`) recebe conexão fechada, sem resposta HTTP nenhuma (ver `apps/web/nginx.conf.template`). Combinado com uma porta não-padrão, isso tira o painel da varredura casual — não substitui autenticação (que já existe via login), é uma camada a mais. Pra ver ou trocar o caminho depois, edite `PANEL_PATH` em `/opt/yeah/.env` e rode `sudo yeah update`.
 
+> **`/register` só funciona uma vez.** `yeah` é single-admin, não um produto de cadastro aberto — assim que essa primeira conta existe, `/register` para de funcionar pra sempre (redireciona pra `/login`) e não tem convite nem forma de uma segunda pessoa ganhar login nessa instância.
+
+> **A própria máquina já vira o primeiro servidor.** Antes de gerar o `.env`, o script cria uma chave SSH e já autoriza ela em `~/.ssh/authorized_keys` do host — assim que você cria a conta de admin, essa máquina aparece cadastrada como "Servidor local" (status `connected`), sem precisar adicionar nada manualmente pra já fazer o primeiro deploy. Detalhes em `docs/ARCHITECTURE.md`.
+
 > **Sem HTTPS por padrão.** O instalador expõe o dashboard em HTTP puro pra simplificar o primeiro acesso. Se for expor pra internet, coloque um reverse proxy na frente com certificado — o jeito mais simples é [Caddy](https://caddyserver.com/) (HTTPS automático, um arquivo `Caddyfile` de 3 linhas), mas Traefik ou nginx+certbot funcionam igual. Isso é **infra de quem hospeda o `yeah`**, diferente do Traefik que o próprio `yeah` sobe nos servidores dos *seus* usuários (isso aí já vem automático, ver `docs/ARCHITECTURE.md`).
 
 ### Atualizando

@@ -4,8 +4,8 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 
 ## ✅ Já funciona
 
-- Auth por sessão, times, papéis, convites
-- Servidores via SSH (agentless, igual Coolify)
+- Auth por sessão — **single-admin de propósito**: `/register` só funciona uma vez (primeira conta da instância), sem convite nem forma de uma segunda pessoa ganhar login. Times/papéis (`owner`/`admin`/`member`) continuam existindo como o jeito de todo recurso ser organizado, mas hoje sempre tem um usuário só
+- Servidores via SSH (agentless, igual Coolify) — a própria máquina onde o `yeah` roda já entra automaticamente como o primeiro servidor (chave SSH gerada e autorizada pelo `install.sh`), igual o "localhost" do Coolify
 - `Project → Environment → Application | Database | Service`, igual Coolify
 - Deploy de aplicações (só `Dockerfile` por enquanto) com log ao vivo
 - GitHub App: conectar conta, escolher repo numa lista, auto-deploy em push
@@ -36,6 +36,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - **2FA**: autenticação em dois fatores pra login.
 - **Múltiplos registries privados**: hoje só clona repo público/via GitHub App — falta suporte a registry Docker privado pra imagens já buildadas (em vez de sempre buildar do zero).
 - **Templates docker-compose multi-container**: o catálogo de serviços de hoje só cobre imagem única (um `docker run`) — Coolify também tem templates compostos (ex.: Plausible = app + ClickHouse + Postgres). Fica pro dia que precisar de um serviço assim.
+- **Deliberadamente sem paridade**: Coolify permite deixar outras pessoas hospedar no seu servidor (com visibilidade limitada pra quem não é dono). O `yeah` não vai ter isso — é single-admin de propósito, sem `/register` depois da primeira conta (ver `docs/ARCHITECTURE.md`).
 
 ## 🛡️ Robustez, monitoramento e alertas
 

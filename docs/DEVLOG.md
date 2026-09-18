@@ -140,3 +140,28 @@ Ganhei acesso a uma VPS Ubuntu 24.04 de verdade (Hostinger) e rodei o `install.s
 
 Depois dos três fixes, `curl -fsSL .../install.sh | sudo bash` completo (Docker, clone, `.env`, build de todas as imagens, `docker compose up`, migrations, helper `yeah`) rodou do início ao fim numa VPS real de 1 vCPU / 3.8GB RAM sem nenhuma intervenção manual — confirmado batendo no dashboard (`curl http://localhost:8080` → 200) e no `yeah status` depois.
 
+
+## Bug crítico de deploy: URL da API embutida errada no build
+
+Depois de conseguir instalar de ponta a ponta na VPS de teste, o usuário reportou que o dashboard carregava mas não fazia nada — sem tela de registro, sem nada. Causa: `VITE_API_URL`/`VITE_WS_URL` são embutidas no bundle do frontend **em tempo de build**, como URL absoluta — e como a instalação rodou sem terminal interativo, `PUBLIC_HOST` caiu no default `localhost`, então o JS estático literalmente tentava chamar `http://localhost:3000` a partir do **navegador de quem acessa**, nunca o servidor de verdade. Qualquer instalação sem domínio real (a maioria) ficaria assim.
+
+**Fix estrutural, não só um patch pro `.env`**: o nginx do próprio container `web` passou a reverse-proxyar `/api` e `/ws` pros containers `api`/`ws` internamente (`apps/web/nginx.conf`), e o frontend passou a usar caminho relativo (mesma origem) como padrão em vez de precisar saber seu próprio host público em tempo de build (`lib/api.ts`, `lib/ws.ts`). Vantagem colateral: só a porta do `web` precisa estar exposta na internet — `api`/`ws` já ficavam só em `127.0.0.1`, agora isso é reforçado por não ter mais razão nenhuma pra abrir aquelas portas externamente.
+
+## Painel escondido — caminho aleatório + porta não-óbvia
+
+Pedido direto do usuário depois de testar: o painel não pode ficar num endereço óbvio. Com o fix acima (tudo já passando por uma porta só), ficou barato adicionar uma segunda camada:
+
+- `install.sh` gera um `PANEL_PATH` aleatório (`/$(openssl rand -hex 8)`) a cada instalação nova, e trocou o default de `WEB_PORT` de `8080` pra uma porta não-óbvia.
+- Uma variável só alimenta tudo: o `base` do Vite (`vite.config.ts`), a base do Vue Router (`createWebHistory(import.meta.env.BASE_URL)`), o prefixo relativo de `lib/api.ts`/`lib/ws.ts`, e o roteamento do nginx.
+- `nginx.conf` virou `nginx.conf.template` — o próprio entrypoint da imagem oficial do nginx faz `envsubst` nele usando a env var `PANEL_PATH` a cada boot do container (não precisa rebuildar a imagem pra trocar o caminho).
+- Qualquer URL fora do `PANEL_PATH` recebe `return 444` — conexão fechada, nem uma resposta HTTP válida. Testado de ponta a ponta na VPS: `/` e caminhos chutados não respondem nada, o caminho certo serve o dashboard, `/api`/`/ws` funcionam através dele, registro completo funcionando.
+- É uma camada de obscuridade em cima da autenticação real, não substitui ela.
+
+## Single-admin de propósito + servidor local automático
+
+Dois pedidos do usuário depois de comparar com o Coolify: (1) `/register` sempre disponível não devia existir — devia funcionar só a primeira vez, depois só login; (2) a própria máquina onde o `yeah` roda devia entrar sozinha como servidor de deploy, sem precisar cadastrar nada manualmente.
+
+- **Registro trava depois da primeira conta**: `hasAnyUser()` em `apps/api/src/routes/auth.ts` bloqueia `POST /auth/register` (403) assim que existe qualquer usuário; `GET /auth/setup-status` expõe isso pro frontend decidir entre mostrar `/register` ou `/login`. Removidas as rotas de convite de time (`/teams/:teamId/invitations`, `/teams/invitations/:token/accept`) — nunca tiveram frontend, e existiam só pra uma segunda pessoa ganhar login, exatamente o que estava sendo travado.
+- **Servidor local automático**: `install.sh` gera uma chave SSH e já autoriza ela em `~/.ssh/authorized_keys` do host, guardando a chave privada (base64) e o endereço no `.env`. Quando a conta de admin é criada, `createLocalhostServerIfConfigured()` insere um `Server` apontando pra `host.docker.internal:22` e já enfileira a checagem de conexão. O `worker` (única peça do stack que fala SSH) alcança o host via `extra_hosts: host-gateway` no `docker-compose.prod.yml`.
+- **Testado de ponta a ponta na VPS real**: instalação limpa → chave gerada e presente em `authorized_keys` → registro via `curl` → segunda tentativa de registro barrada (403) → `select * from servers` mostrando `Servidor local`, `host.docker.internal`, status `connected`, com a versão do Docker do host detectada certinha pelo `server-check` do worker.
+
