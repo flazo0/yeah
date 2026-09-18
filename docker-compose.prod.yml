@@ -150,10 +150,11 @@ services:
         # dashboard itself (no shared nginx in front of them in that case).
         VITE_API_URL: ${VITE_API_URL:-}
         VITE_WS_URL: ${VITE_WS_URL:-}
-        # Random per-install path (install.sh) the dashboard is actually served under — anything
-        # outside it gets a bare closed connection from nginx. Baked into the frontend build (Vite
-        # `base`) here, and into nginx's own routing via the PANEL_PATH env var below — both need
-        # to agree, hence reading the same variable in both places.
+        # Opt-in (empty/unset by default, see install.sh) — set PANEL_PATH in .env if you want the
+        # dashboard to only answer under a random/secret path instead of "/" (anything else then
+        # gets a bare closed connection from nginx, see apps/web/docker-entrypoint-panel-path.sh).
+        # Baked into the frontend build (Vite `base`) here, and read by nginx at container start
+        # via the PANEL_PATH env var below — both need to agree, hence the same variable twice.
         VITE_BASE_PATH: ${PANEL_PATH:-/}
     environment:
       PANEL_PATH: ${PANEL_PATH:-/}

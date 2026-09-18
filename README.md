@@ -20,7 +20,7 @@ A maioria das plataformas self-hosted ou consome muita máquina (agente pesado, 
 - **Tela de atualizações**: versão da plataforma e das imagens Docker em uso vs. a mais recente — checagem manual, nada automático
 - **Projetos organizados por time**: `Team → Project → Environment → Recurso` — mas a instância é **single-admin**: `/register` só funciona uma vez, sem convite nem forma de outra pessoa ganhar login nela
 - **A própria máquina já entra como servidor**: `install.sh` gera e autoriza uma chave SSH pra ela mesma, então dá pra fazer o primeiro deploy sem cadastrar servidor nenhum manualmente — igual o "localhost" do Coolify
-- **Painel escondido por padrão**: porta não-óbvia + caminho aleatório por instalação — qualquer outra URL na mesma porta não responde nada
+- **Painel opcionalmente escondível**: porta padrão não-óbvia, e um caminho secreto opt-in (`PANEL_PATH` no `.env`) pra quem quiser — qualquer URL fora dele para de responder
 - **Tudo em tempo real**: WebSocket dedicado pra status de deploy, banco, serviço, backup, proxy e métricas
 
 Veja `docs/ROADMAP.md` pro que ainda falta (incluindo paridade completa com Coolify) e `docs/DEVLOG.md` pro histórico de como cada peça foi construída e testada.

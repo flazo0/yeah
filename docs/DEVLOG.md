@@ -165,3 +165,10 @@ Dois pedidos do usuário depois de comparar com o Coolify: (1) `/register` sempr
 - **Servidor local automático**: `install.sh` gera uma chave SSH e já autoriza ela em `~/.ssh/authorized_keys` do host, guardando a chave privada (base64) e o endereço no `.env`. Quando a conta de admin é criada, `createLocalhostServerIfConfigured()` insere um `Server` apontando pra `host.docker.internal:22` e já enfileira a checagem de conexão. O `worker` (única peça do stack que fala SSH) alcança o host via `extra_hosts: host-gateway` no `docker-compose.prod.yml`.
 - **Testado de ponta a ponta na VPS real**: instalação limpa → chave gerada e presente em `authorized_keys` → registro via `curl` → segunda tentativa de registro barrada (403) → `select * from servers` mostrando `Servidor local`, `host.docker.internal`, status `connected`, com a versão do Docker do host detectada certinha pelo `server-check` do worker.
 
+
+## Caminho secreto do painel virou opt-in
+
+O usuário testou e não gostou de ter um hash aleatório na URL por padrão — pediu pra tirar isso e deixar opcional. Revertido: `install.sh` não gera mais `PANEL_PATH` sozinho (fica em branco, dashboard responde em `/` normalmente); quem quiser a camuflagem seta `PANEL_PATH` no `.env` manualmente e roda `yeah update`. A porta não-óbvia como default continua (isso não foi criticado).
+
+Reestruturado pra suportar os dois modos de verdade em vez de só fingir suportar: `nginx.conf.template` (sempre ativo, tinha o defeito de tratar `PANEL_PATH=/` como um caso degenerado que nunca foi testado) virou `nginx.conf` simples de novo + um script `docker-entrypoint-panel-path.sh` que roda como hook `/docker-entrypoint.d/` do próprio nginx: sem `PANEL_PATH` setado, não faz nada (usa o `nginx.conf` baked na imagem); com `PANEL_PATH` setado, reescreve `conf.d/default.conf` pro modo com prefixo + `return 444` no resto. Dois caminhos de código separados em vez de um template tentando cobrir os dois casos com interpolação de variável vazia.
+

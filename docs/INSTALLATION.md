@@ -12,14 +12,14 @@ O que o script faz (veja `install.sh` na raiz do repo — é só bash, dá pra l
 
 1. Instala Docker + o plugin Compose, se não tiver.
 2. Clona o repositório em `/opt/yeah` (ou atualiza, se já existir).
-3. Pergunta o domínio/IP público e a porta do dashboard (padrão: uma porta não-óbvia, não 8080), gera um `.env` com senha de banco, segredo de sessão e um **caminho de painel aleatório** (`PANEL_PATH`) — nunca sobrescreve um `.env` já existente.
+3. Pergunta o domínio/IP público e a porta do dashboard (padrão: uma porta não-óbvia, não 8080), gera um `.env` com senha de banco e segredo de sessão aleatórios — nunca sobrescreve um `.env` já existente.
 4. Builda e sobe `postgres`, `redis`, `api`, `worker`, `ws` e `web` via `docker-compose.prod.yml`.
 5. Roda as migrations do banco.
 6. Instala um helper `yeah` em `/usr/local/bin` (`yeah update`, `yeah logs`, `yeah restart`, `yeah status`, `yeah stop`).
 
-Ao final, o script imprime a URL completa: `http://<seu-host>:<porta><caminho-aleatório>/` — **guarde essa URL**, ela não fica em lugar nenhum além do `.env` e do que o script mostrou na tela. Crie sua conta em `<mesma-url>/register`.
+Ao final, acesse `http://<seu-host>:<porta>` e crie sua conta em `/register`.
 
-> **Por quê um caminho aleatório?** O painel só responde nesse caminho — qualquer outra URL na mesma porta (incluindo a raiz `/`) recebe conexão fechada, sem resposta HTTP nenhuma (ver `apps/web/nginx.conf.template`). Combinado com uma porta não-padrão, isso tira o painel da varredura casual — não substitui autenticação (que já existe via login), é uma camada a mais. Pra ver ou trocar o caminho depois, edite `PANEL_PATH` em `/opt/yeah/.env` e rode `sudo yeah update`.
+> **Quer esconder o painel atrás de um caminho secreto também?** É opcional, desligado por padrão. Edite `PANEL_PATH` em `/opt/yeah/.env` (ex.: `PANEL_PATH=/a1b2c3d4`) e rode `sudo yeah update` — o dashboard passa a só responder sob essa URL; qualquer outra coisa na mesma porta (incluindo `/`) para de responder. Detalhes em `docs/ARCHITECTURE.md`.
 
 > **`/register` só funciona uma vez.** `yeah` é single-admin, não um produto de cadastro aberto — assim que essa primeira conta existe, `/register` para de funcionar pra sempre (redireciona pra `/login`) e não tem convite nem forma de uma segunda pessoa ganhar login nessa instância.
 

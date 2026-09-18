@@ -84,10 +84,6 @@ else
 
   POSTGRES_PASSWORD=$(openssl rand -hex 24)
   SESSION_SECRET=$(openssl rand -hex 32)
-  # Painel só responde sob esse caminho aleatório — qualquer outra URL na mesma porta não devolve
-  # nada (ver apps/web/nginx.conf.template). Sem isso, mesmo numa porta incomum, quem achar a
-  # porta aberta acha o painel de cara em "/".
-  PANEL_PATH="/$(openssl rand -hex 8)"
 
   # Cadastra a própria máquina como o primeiro servidor de deploy, igual o Coolify faz — sem isso
   # o usuário teria que adicionar "localhost" manualmente antes de conseguir fazer o primeiro
@@ -119,9 +115,10 @@ API_PORT=3000
 WS_PORT=3001
 WEB_PORT=${WEB_PORT}
 
-# Caminho aleatório sob o qual o painel responde de verdade (ver apps/web/nginx.conf.template) —
-# gerado uma vez na instalação, nunca sobrescrito depois. Não perca essa URL.
-PANEL_PATH=${PANEL_PATH}
+# Opcional: deixe em branco pra servir o painel direto em "/" (padrão). Preencha com um caminho
+# (ex.: /a1b2c3d4) se quiser que o painel só responda sob essa URL — qualquer outra coisa na mesma
+# porta (incluindo "/") passa a não devolver nada. Depois de mudar, rode 'sudo yeah update'.
+PANEL_PATH=
 
 # Usado pro CORS (casos fora do proxy — dev local, etc.) e pra montar a callback URL do GitHub App.
 WEB_ORIGIN=http://${PUBLIC_HOST}:${WEB_PORT}
@@ -215,6 +212,8 @@ PANEL_PATH_FINAL=$(grep -oP '^PANEL_PATH=\K.*' "$ENV_FILE" || echo "")
 
 echo
 log "Pronto! Acesse http://${PUBLIC_HOST_FINAL}:${WEB_PORT_FINAL}${PANEL_PATH_FINAL}/ e crie sua conta em /register."
-warn "Guarde essa URL — o painel só responde nesse caminho (PANEL_PATH em $ENV_FILE); qualquer outra URL na mesma porta não devolve nada, de propósito."
+if [ -n "$PANEL_PATH_FINAL" ]; then
+  warn "Guarde essa URL — o painel só responde nesse caminho (PANEL_PATH em $ENV_FILE); qualquer outra URL na mesma porta não devolve nada, de propósito."
+fi
 log "Comandos: yeah update | yeah logs [serviço] | yeah restart | yeah status | yeah stop"
 warn "Sem domínio real + TLS na frente ainda — coloque um Caddy/nginx com certificado se for expor na internet. Veja docs/INSTALLATION.md."

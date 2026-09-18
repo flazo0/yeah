@@ -57,9 +57,11 @@ RUN apk add --no-cache nodejs && ./node_modules/.bin/vue-tsc -b && ./node_module
 
 FROM nginx:1.27-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
-# nginx's own entrypoint envsubst's *.template -> conf.d/*.conf at container start using only
-# real container env vars (PANEL_PATH here — see docker-compose.prod.yml) — nginx's own runtime
-# variables ($host, $uri, etc.) are untouched since they aren't actual env vars, just $-prefixed
-# nginx syntax. This lets the panel path change on restart without rebuilding the image.
-COPY apps/web/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# PANEL_PATH (docker-compose.prod.yml) is opt-in — empty by default, in which case this script is
+# a no-op and nginx just uses the plain config above. If it's set, this rewrites conf.d/default.conf
+# at container start (nginx's own /docker-entrypoint.d/ hook mechanism) to answer only under that
+# prefix. See apps/web/docker-entrypoint-panel-path.sh.
+COPY apps/web/docker-entrypoint-panel-path.sh /docker-entrypoint.d/40-panel-path.sh
+RUN chmod +x /docker-entrypoint.d/40-panel-path.sh
 EXPOSE 80
