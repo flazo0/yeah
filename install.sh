@@ -89,6 +89,26 @@ else
   # porta aberta acha o painel de cara em "/".
   PANEL_PATH="/$(openssl rand -hex 8)"
 
+  # Cadastra a própria máquina como o primeiro servidor de deploy, igual o Coolify faz — sem isso
+  # o usuário teria que adicionar "localhost" manualmente antes de conseguir fazer o primeiro
+  # deploy. Fica pro worker (rodando em container) alcançar via host.docker.internal, e o api
+  # insere a linha no banco assim que a conta de admin é criada (ver createLocalhostServerIfConfigured
+  # em apps/api/src/lib/localhostServer.ts) — não dá pra fazer isso aqui ainda porque não existe
+  # time/usuário até o registro na tela web.
+  log "Gerando chave SSH pra registrar esta máquina como servidor de deploy..."
+  SSH_KEY_PATH="$INSTALL_DIR/.yeah_localhost.key"
+  if [ ! -f "$SSH_KEY_PATH" ]; then
+    ssh-keygen -t ed25519 -N "" -f "$SSH_KEY_PATH" -C "yeah-localhost" -q
+  fi
+  mkdir -p ~/.ssh
+  chmod 700 ~/.ssh
+  touch ~/.ssh/authorized_keys
+  if ! grep -qF "$(cat "${SSH_KEY_PATH}.pub")" ~/.ssh/authorized_keys 2>/dev/null; then
+    cat "${SSH_KEY_PATH}.pub" >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+  fi
+  LOCALHOST_SSH_PRIVATE_KEY_BASE64=$(base64 -w0 "$SSH_KEY_PATH")
+
   cat > "$ENV_FILE" <<EOF
 POSTGRES_USER=yeah
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -119,6 +139,14 @@ GITHUB_APP_ID=
 GITHUB_APP_SLUG=
 GITHUB_APP_PRIVATE_KEY_BASE64=
 GITHUB_APP_WEBHOOK_SECRET=
+
+# Chave gerada só pra isto — já autorizada em ~/.ssh/authorized_keys desta máquina. Usada pra
+# cadastrar esta própria máquina como servidor de deploy assim que a conta de admin é criada
+# (ver apps/api/src/lib/localhostServer.ts). Apague as três linhas abaixo se não quiser isso.
+LOCALHOST_SSH_PRIVATE_KEY_BASE64=${LOCALHOST_SSH_PRIVATE_KEY_BASE64}
+LOCALHOST_SSH_HOST=host.docker.internal
+LOCALHOST_SSH_PORT=22
+LOCALHOST_SSH_USER=root
 EOF
   chmod 600 "$ENV_FILE"
   log ".env gerado com senha de banco e segredo de sessão aleatórios."

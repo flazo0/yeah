@@ -67,6 +67,12 @@ services:
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
       GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}
       GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
+      # Used once, right when the first (only) account registers, to add this machine itself as
+      # a deploy target — see apps/api/src/lib/localhostServer.ts. Empty means skip it entirely.
+      LOCALHOST_SSH_PRIVATE_KEY_BASE64: ${LOCALHOST_SSH_PRIVATE_KEY_BASE64:-}
+      LOCALHOST_SSH_HOST: ${LOCALHOST_SSH_HOST:-host.docker.internal}
+      LOCALHOST_SSH_PORT: ${LOCALHOST_SSH_PORT:-22}
+      LOCALHOST_SSH_USER: ${LOCALHOST_SSH_USER:-root}
     ports:
       - "127.0.0.1:${API_PORT:-3000}:3000"
     deploy:
@@ -84,6 +90,11 @@ services:
       context: .
       target: worker
     restart: unless-stopped
+    # Lets the worker's SSH client reach the host machine itself at host.docker.internal —
+    # needed for the auto-registered "Servidor local" (see apps/api/src/lib/localhostServer.ts).
+    # Docker only maps this on Linux when told to; it's automatic on Docker Desktop (Mac/Windows).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy

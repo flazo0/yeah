@@ -15,6 +15,7 @@ apps/web/dist/
 .claude/
 *.pem
 *.key
+*.key.pub
 .vscode/
 .idea/
 tmp/

@@ -7,6 +7,10 @@ export const useAuthStore = defineStore("auth", {
     user: null as SafeUser | null,
     teams: [] as TeamDto[],
     loaded: false,
+    // Whether "/register" is still usable at all — yeah is single-admin, so this flips to false
+    // forever the moment the first (only) account exists. See apps/api/src/routes/auth.ts.
+    needsSetup: false,
+    setupChecked: false,
   }),
   actions: {
     async fetchMe() {
@@ -18,6 +22,16 @@ export const useAuthStore = defineStore("auth", {
         this.user = null;
       } finally {
         this.loaded = true;
+      }
+    },
+    async checkSetup() {
+      try {
+        const { needsSetup } = await api.get<{ needsSetup: boolean }>("/auth/setup-status");
+        this.needsSetup = needsSetup;
+      } catch {
+        this.needsSetup = false;
+      } finally {
+        this.setupChecked = true;
       }
     },
     async fetchTeams() {
@@ -34,6 +48,7 @@ export const useAuthStore = defineStore("auth", {
       const { user } = await api.post<{ user: SafeUser }>("/auth/register", { email, password, name });
       this.user = user;
       this.loaded = true;
+      this.needsSetup = false;
       await this.fetchTeams();
     },
     async logout() {

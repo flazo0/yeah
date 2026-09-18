@@ -34,8 +34,8 @@ async function submit() {
         <Logo :height="44" />
       </div>
       <div class="auth-form-head">
-        <h1>Criar conta</h1>
-        <p>Seu time pessoal é criado automaticamente.</p>
+        <h1>Configurar instância</h1>
+        <p>Primeiro acesso — cria a única conta de administrador desta instância.</p>
       </div>
       <form @submit.prevent="submit">
         <div class="form-group">
@@ -81,9 +81,6 @@ async function submit() {
           {{ loading ? "criando..." : "Criar conta" }}
         </button>
       </form>
-      <p style="margin-top: 16px; text-align: center; font-size: 13px; color: var(--ink-dim)">
-        Já tem conta? <RouterLink to="/login" class="label-link">Entrar</RouterLink>
-      </p>
     </div>
   </div>
 </template>

@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
-import { and, eq } from "drizzle-orm";
-import { teams, teamMembers, teamInvitations } from "@yeah/db";
+import { eq } from "drizzle-orm";
+import { teams, teamMembers } from "@yeah/db";
 import type { TeamDto, TeamRole } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -57,58 +57,10 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
       return { team: dto };
     },
     { body: t.Object({ name: t.String({ minLength: 1 }) }) },
-  )
-  .post(
-    "/:teamId/invitations",
-    async ({ cookie, params, body, set }) => {
-      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
-      if (!user) {
-        set.status = 401;
-        return { error: "unauthorized" };
-      }
+  );
 
-      const membership = await db
-        .select()
-        .from(teamMembers)
-        .where(and(eq(teamMembers.teamId, params.teamId), eq(teamMembers.userId, user.id)))
-        .limit(1);
-      const role = membership[0]?.role;
-      if (role !== "owner" && role !== "admin") {
-        set.status = 403;
-        return { error: "forbidden" };
-      }
-
-      const token = crypto.randomUUID().replace(/-/g, "");
-      const [invitation] = await db
-        .insert(teamInvitations)
-        .values({ teamId: params.teamId, email: body.email, role: body.role ?? "member", token })
-        .returning();
-
-      return { invitation };
-    },
-    {
-      body: t.Object({
-        email: t.String({ format: "email" }),
-        role: t.Optional(t.Union([t.Literal("admin"), t.Literal("member")])),
-      }),
-    },
-  )
-  .post("/invitations/:token/accept", async ({ cookie, params, set }) => {
-    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
-    if (!user) {
-      set.status = 401;
-      return { error: "unauthorized" };
-    }
-
-    const rows = await db.select().from(teamInvitations).where(eq(teamInvitations.token, params.token)).limit(1);
-    const invitation = rows[0];
-    if (!invitation || invitation.acceptedAt) {
-      set.status = 404;
-      return { error: "invitation not found" };
-    }
-
-    await db.insert(teamMembers).values({ teamId: invitation.teamId, userId: user.id, role: invitation.role });
-    await db.update(teamInvitations).set({ acceptedAt: new Date() }).where(eq(teamInvitations.id, invitation.id));
-
-    return { ok: true };
-  });
+// No team-invitation routes here on purpose: yeah is single-admin (see auth.ts's
+// hasAnyUser()/setup-status lock on /auth/register) — there's deliberately no path for a second
+// person to ever get a login on the same instance. teamInvitations/teamMembers.role stay in the
+// schema because every resource is scoped by teamId either way, not because more than one person
+// is ever meant to hold one.

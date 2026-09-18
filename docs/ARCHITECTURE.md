@@ -123,10 +123,14 @@ Oito filas, cada uma com seu próprio par de conexões Redis dedicadas (uma pra 
 
 Notificações (`packages/notifications`) não têm fila própria — são disparadas inline, fire-and-forget, direto de dentro dos jobs acima (`deployApplication`, `backupDatabase`, `checkServer`, `serverMetrics`) via o helper `apps/worker/src/lib/notify.ts`. Uma falha ao enviar (webhook fora do ar, token errado) é logada e engolida — nunca derruba o job que a disparou. Cada canal pode filtrar por `NotificationChannel.events` (`text[]`, nullable — `null` = recebe todo `NotificationEventType`); `notifyTeam(teamId, event, ...)` exige o tipo do evento e filtra os canais antes de despachar.
 
-## Proxy reverso (Traefik) — dois usos diferentes, não confundir
+## Proxy reverso — dois níveis diferentes, não confundir
 
-1. **Por servidor de usuário** (`provisionProxy.ts`): cada servidor pode ativar seu próprio Traefik, que roteia as *aplicações do usuário* deployadas nele. É o worker que sobe isso via SSH.
-2. **Do próprio `yeah`** (produção, via `docker-compose.prod.yml` + `install.sh`): o dashboard/API do `yeah` em si não usa esse mesmo Traefik — é publicado direto em portas (ou atrás de um Caddy/nginx que você configurar na frente, ver `docs/INSTALLATION.md`). São coisas separadas de propósito: o proxy do worker é uma *feature do produto*, gerenciado pela própria aplicação; o proxy na frente do `yeah` (se você quiser um) é *infra de quem hospeda o `yeah`*.
+1. **Por servidor de usuário** (`provisionProxy.ts`, Traefik): cada servidor pode ativar seu próprio Traefik, que roteia as *aplicações do usuário* deployadas nele. É o worker que sobe isso via SSH.
+2. **Do próprio `yeah`** (produção, via `docker-compose.prod.yml` + `install.sh`, nginx): o container `web` já embute um nginx que reverse-proxya `<PANEL_PATH>/api/*` e `<PANEL_PATH>/ws` pros containers `api`/`ws` internamente (`apps/web/nginx.conf.template`) — `api`/`ws` ficam só em `127.0.0.1` no host, nunca expostos direto. Só a porta do `web` precisa estar alcançável de fora. Isso também resolve o frontend nunca precisar saber seu próprio host/IP público em tempo de build (`lib/api.ts`/`lib/ws.ts` usam caminho relativo via `import.meta.env.BASE_URL`, que é o mesmo `PANEL_PATH`). Se você quiser HTTPS/domínio próprio na frente disso, é *infra de quem hospeda o `yeah`* (Caddy/nginx externo, ver `docs/INSTALLATION.md`) — coisa separada do Traefik do item 1, que é *feature do produto*.
+
+### `PANEL_PATH` — caminho aleatório do painel
+
+`install.sh` gera um caminho aleatório (`/$(openssl rand -hex 8)`) por instalação e uma porta padrão não-óbvia — o dashboard só responde sob esse caminho; qualquer outra URL na mesma porta (incluindo `/`) recebe `return 444` do nginx (conexão fechada, nem uma resposta HTTP válida). Uma única variável (`PANEL_PATH` no `.env`) alimenta tudo: o `base` do Vite (`vite.config.ts`), a base do Vue Router (`createWebHistory(import.meta.env.BASE_URL)`), o prefixo relativo de `lib/api.ts`/`lib/ws.ts`, e o `location` do nginx (via envsubst do próprio entrypoint da imagem oficial, `nginx.conf.template` → `/etc/nginx/conf.d/default.conf` a cada boot do container, sem precisar rebuildar a imagem pra trocar o caminho). É uma camada de obscuridade em cima da autenticação real que já existe — não a substitui.
 
 ## Padrão de exceção "a API nunca fala SSH direto"
 

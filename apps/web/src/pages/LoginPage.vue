@@ -73,9 +73,6 @@ async function submit() {
           {{ loading ? "entrando..." : "Entrar" }}
         </button>
       </form>
-      <p style="margin-top: 16px; text-align: center; font-size: 13px; color: var(--ink-dim)">
-        Não tem conta? <RouterLink to="/register" class="label-link">Criar conta</RouterLink>
-      </p>
     </div>
   </div>
 </template>

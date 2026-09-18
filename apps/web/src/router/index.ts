@@ -68,7 +68,13 @@ export const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (!auth.loaded) await auth.fetchMe();
-  if (to.meta.requiresAuth && !auth.user) return "/login";
+  if (!auth.setupChecked) await auth.checkSetup();
+  // Single-admin instance: "/register" only works once, before that first account exists —
+  // after that it's just "/login" for anyone, including a first-time visitor who'd otherwise
+  // land on "/register" by default.
+  if (to.path === "/register" && !auth.needsSetup) return "/login";
+  if (to.path === "/login" && auth.needsSetup) return "/register";
+  if (to.meta.requiresAuth && !auth.user) return auth.needsSetup ? "/register" : "/login";
   if (to.meta.guest && auth.user) return "/dashboard";
   return true;
 });
