@@ -6,6 +6,7 @@ import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import CodeEditor from "../components/CodeEditor.vue";
 import DeployLogTerminal from "../components/DeployLogTerminal.vue";
+import Breadcrumb from "../components/Breadcrumb.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -207,6 +208,7 @@ onUnmounted(() => {
   <div v-if="loading" class="empty-state">carregando...</div>
   <div v-else-if="!app" class="empty-state">Aplicação não encontrada.</div>
   <div v-else>
+    <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" :current="app.name" />
     <div class="resource-header">
       <div class="resource-title">
         <span class="material-symbols-outlined">deployed_code</span>

@@ -5,6 +5,7 @@ import { findServiceCatalogEntry, type ServiceDto, type ServiceStatus, type WsSe
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import CodeEditor from "../components/CodeEditor.vue";
+import Breadcrumb from "../components/Breadcrumb.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -163,6 +164,7 @@ onUnmounted(() => {
   <div v-if="loading" class="empty-state">carregando...</div>
   <div v-else-if="!service" class="empty-state">Serviço não encontrado.</div>
   <div v-else>
+    <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" :current="service.name" />
     <div class="resource-header">
       <div class="resource-title">
         <span class="material-symbols-outlined">{{ findServiceCatalogEntry(service.catalogKey)?.icon ?? "widgets" }}</span>

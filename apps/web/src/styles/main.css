@@ -515,6 +515,30 @@ a:hover {
 /* Mirrors Coolify's resource pages: a tab strip up top (Configuration/Deployments/Backups/...),
    and — inside Configuration — a slim left sub-nav for General/Environment Variables/etc. */
 
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  margin-bottom: 10px;
+}
+.breadcrumb-item {
+  color: var(--ink-dim);
+  text-decoration: none;
+}
+.breadcrumb-item:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.breadcrumb-sep {
+  opacity: 0.5;
+}
+.breadcrumb-current {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 .resource-header {
   display: flex;
   align-items: center;

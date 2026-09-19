@@ -17,6 +17,7 @@ import {
 } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
+import Breadcrumb from "../components/Breadcrumb.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -313,6 +314,7 @@ onUnmounted(() => {
 
 <template>
   <div>
+    <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" />
     <div class="page-header">
       <div>
         <h1>Recursos</h1>

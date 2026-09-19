@@ -12,6 +12,7 @@ import type {
 } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
+import Breadcrumb from "../components/Breadcrumb.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -243,6 +244,7 @@ onUnmounted(() => {
   <div v-if="loading" class="empty-state">carregando...</div>
   <div v-else-if="!database" class="empty-state">Banco de dados não encontrado.</div>
   <div v-else>
+    <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" :current="database.name" />
     <div class="resource-header">
       <div class="resource-title">
         <span class="material-symbols-outlined">database</span>

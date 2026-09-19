@@ -5,7 +5,7 @@ import type { EnvironmentDto, ProjectDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
-import { loadProject } from "../lib/projects";
+import { loadEnvironment, loadProject } from "../lib/projects";
 
 export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
   .get("/", async ({ cookie, params, set }) => {
@@ -100,6 +100,32 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       createdAt: project.createdAt.toISOString(),
     };
     return { project: dto };
+  })
+  // Just the names needed to render a breadcrumb (Project › Environment › resource) on every
+  // resource detail page — those routes already carry teamId/projectId/environmentId, so this
+  // is the one extra call each of them makes instead of duplicating project/environment name
+  // joins into every Application/Database/Service route.
+  .get("/:projectId/environments/:environmentId", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const loaded = await loadEnvironment(params.teamId, params.projectId, params.environmentId);
+    if (!loaded) {
+      set.status = 404;
+      return { error: "environment not found" };
+    }
+
+    return {
+      project: { id: loaded.project.id, name: loaded.project.name },
+      environment: { id: loaded.environment.id, name: loaded.environment.name },
+    };
   })
   .get("/:projectId/environments", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
