@@ -202,3 +202,21 @@ Pedido direto do usuário: alerta por email era o que mais fazia falta na lista 
 - **Achado real testando contra a API de verdade**: a validação `format: "email"` do Elysia pro campo `smtpFrom` rejeitava o formato `"Nome <email@dominio.com>"` — comum e válido pra cabeçalho De, só não é um endereço de email "puro". Corrigido pra validação solta (`minLength: 1`) tanto em `smtpFrom` quanto `emailTo`, deixando o SMTP de verdade validar o endereço na hora de enviar.
 - **Testado de ponta a ponta duas vezes**: primeiro isolado (`sendNotification` direto, conta de teste descartável do Ethereal, confirmando negociação STARTTLS + auth + entrega), depois através da API de verdade rodando local (criar canal → `POST .../test` → email aceito pelo servidor SMTP) — achando o bug de validação nesse segundo teste, que o primeiro (chamada direta, sem passar pela validação do Elysia) não pegaria.
 
+
+## Breadcrumb de navegação nas páginas de ambiente e recurso
+
+O usuário pediu explicitamente pra estudar como o Coolify estrutura as telas (visitou a própria instância de produção dele, `dash.esc-software.com`, e tirou prints) porque achava a exibição atual do `yeah` inferior. Comparando lado a lado: a hierarquia de navegação (`Project → Environment → Application/Database/Service`) já era estruturalmente igual — o gap real era informacional, não de rota. O Coolify mostra, no topo de toda página de recurso, uma trilha clicável tipo "Projeto › ambiente › NomeDoRecurso (servidor) ● Rodando", e o `yeah` só tinha o título estático da página.
+
+Primeiro passo concreto: endpoint novo `GET /teams/:teamId/projects/:projectId/environments/:environmentId` retornando `{ project, environment }`, e um componente `Breadcrumb.vue` que busca isso e renderiza como links clicáveis. Adicionado na página de ambiente (`Default › production`) e nas três páginas de detalhe de recurso, com o nome do recurso como último item não-clicável (`:current`). Verificado no navegador contra o banco de dev de verdade — a trilha aparece corretamente acima do cabeçalho "Recursos".
+
+Prints de projetos/clientes reais do Coolify do usuário não entraram em nenhum commit nem doc pública — só a estrutura de navegação foi usada como referência.
+
+A granularidade da sub-navegação de "Configuration" (Coolify tem itens de menu lateral separados pra Persistent Storage, Webhooks, Preview Deployments, Rollback etc.) fica registrada no roadmap como o próximo passo dessa frente, condicionada a cada feature correspondente já existir de verdade.
+
+
+## `bun --cwd <dir> run <script>` não executa o script
+
+Achado tentando subir o stack local (`bun run dev`) só pra testar visualmente o breadcrumb acima. Todo script de dev/banco do `package.json` raiz usava `bun --cwd apps/api run dev` (flag `--cwd` antes do subcomando `run`) — nesse Bun 1.3.14, isso não roda o script: imprime a ajuda da CLI e lista os scripts disponíveis, silenciosamente, sem erro. Bug real, não só uma preferência de estilo — afetava o fluxo de dev documentado inteiro (`bun run dev`, `db:generate`, `db:migrate`, `db:push`, `db:studio`).
+
+Corrigido invertendo a ordem: `bun run --cwd apps/api dev` (`--cwd` depois do `run`) funciona certinho. Confirmado subindo o stack completo (api:3000, worker, ws:3001, web:5174) com sucesso.
+

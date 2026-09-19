@@ -6,7 +6,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 
 - Auth por sessão — **single-admin de propósito**: `/register` só funciona uma vez (primeira conta da instância), sem convite nem forma de uma segunda pessoa ganhar login. Times/papéis (`owner`/`admin`/`member`) continuam existindo como o jeito de todo recurso ser organizado, mas hoje sempre tem um usuário só
 - Servidores via SSH (agentless, igual Coolify) — a própria máquina onde o `yeah` roda já entra automaticamente como o primeiro servidor (chave SSH gerada e autorizada pelo `install.sh`), igual o "localhost" do Coolify
-- `Project → Environment → Application | Database | Service`, igual Coolify
+- `Project → Environment → Application | Database | Service`, igual Coolify — com breadcrumb clicável ("Projeto › ambiente › Recurso") no topo de toda página de ambiente/recurso, igual o Coolify mostra
 - Deploy de aplicações (só `Dockerfile` por enquanto) com log ao vivo
 - GitHub App: conectar conta, escolher repo numa lista, auto-deploy em push
 - 5 motores de banco (Postgres, MySQL, MariaDB, Redis, MongoDB) com provisionamento e backup
@@ -29,6 +29,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - **Preview deployments**: cada PR do GitHub vira um ambiente efêmero, com URL própria, que morre quando o PR fecha
 - **Rollback**: redeployar um build anterior com um clique (o histórico de deploys já existe — falta o botão)
 - **Scheduled tasks**: rodar comandos arbitrários dentro do container da aplicação, num cron (tipo Coolify) — hoje só bancos têm agendamento (backup)
+- **Sub-navegação de Configuração mais granular por recurso**: hoje cada página de recurso tem só duas abas (Geral/Variáveis de ambiente); o Coolify separa em Advanced, Persistent Storage, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Rollback, Resource Limits, Resource Operations como itens de menu lateral próprios dentro de "Configuration" — só vale desmembrar conforme cada uma dessas features (storage persistente, webhooks, preview deployments, rollback) for sendo implementada de verdade, pra não criar aba vazia
 
 ## 🎯 Paridade com Coolify — o que ele tem e a gente não
 
