@@ -1,50 +1,22 @@
 import { eq } from "drizzle-orm";
-import { applications, deployments, servers, type Application, type Server } from "@yeah/db";
-import { connectSsh, execStream, shellQuote, writeRemoteFile, type Client } from "@yeah/ssh";
+import { applications, deployments, servers, type Application } from "@yeah/db";
+import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
-import { resourceLimitFlags } from "@yeah/shared";
+import { shellQuote } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
-import { PROXY_NETWORK_NAME } from "./provisionProxy";
+import { buildRunCommand, resolveDomain } from "./deployApplication.commands";
+
+export { buildRunCommand, resolveDomain } from "./deployApplication.commands";
 
 interface Step {
   label: string;
   command: string;
   /** A non-zero exit code here doesn't abort the deploy (e.g. removing a container that may not exist). */
   allowFailure?: boolean;
-}
-
-/** null means "publish the port directly on the host" — the original, proxy-less behavior. */
-function resolveDomain(application: Application, server: Server): string | null {
-  if (application.domain) return application.domain;
-  if (server.proxyStatus !== "active" || !server.wildcardDomain) return null;
-  const slug = application.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return `${slug}.${server.wildcardDomain}`;
-}
-
-function buildRunCommand(application: Application, appDir: string, containerName: string, domain: string | null): string {
-  const base =
-    `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
-    resourceLimitFlags(application);
-  const restart = `--restart unless-stopped ${shellQuote(containerName)}`;
-
-  if (!domain) {
-    return base + `-p ${application.port}:${application.port} ` + restart;
-  }
-
-  return (
-    base +
-    `--network ${shellQuote(PROXY_NETWORK_NAME)} ` +
-    `--label traefik.enable=true ` +
-    `--label ${shellQuote(`traefik.http.routers.${containerName}.rule=Host(\`${domain}\`)`)} ` +
-    `--label traefik.http.routers.${containerName}.entrypoints=websecure ` +
-    `--label traefik.http.routers.${containerName}.tls.certresolver=letsencrypt ` +
-    `--label traefik.http.services.${containerName}.loadbalancer.server.port=${application.port} ` +
-    restart
-  );
 }
 
 export function makeDeployApplicationProcessor(publishConnection: Redis) {

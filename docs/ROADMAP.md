@@ -20,6 +20,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - **Limites de recurso por container**: `--memory`/`--cpus` configuráveis por aplicação/banco/serviço (formulário de criação e aba "Geral" de cada recurso) — sem limite continua sendo o padrão
 - **Notificações com filtro por tipo de evento**: cada canal escolhe quais tipos recebe (deploy ok/falhou, backup falhou, servidor caiu/reconectou, CPU/RAM/disco no limite, TLS perto de expirar) — sem filtro (padrão) recebe todos
 - **Alerta de certificado TLS perto de expirar**: checagem diária (conexão TLS direta, sem SSH) em todo domínio de aplicação/serviço em uso — avisa se faltar 14 dias ou menos pra expirar
+- **Suíte de testes unitários** (`bun test`, zero dependência extra): cobre lógica pura que já causou bug real (comparação de versão do Docker Hub, `shellQuote`, construção do `docker run` de cada motor de banco/aplicação/serviço, JWT/HMAC do GitHub App, hash de senha, parsing de métricas) — não substitui o teste manual de fluxo completo, mas trava regressão nessas partes sem precisar de Postgres/Redis/servidor real
 - Editor Monaco, terminal xterm.js, tema claro/escuro
 
 ## 🚧 Falta pra fechar as fases já abertas
@@ -31,12 +32,48 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 
 ## 🎯 Paridade com Coolify — o que ele tem e a gente não
 
-- **Audit log**: trilha de quem fez o quê (deploy, exclusão, mudança de config), com timestamp.
-- **Tokens de API pessoais**: pra automação sem precisar de cookie de sessão (CI/CD externo chamando a API do `yeah` diretamente).
-- **2FA**: autenticação em dois fatores pra login.
-- **Múltiplos registries privados**: hoje só clona repo público/via GitHub App — falta suporte a registry Docker privado pra imagens já buildadas (em vez de sempre buildar do zero).
-- **Templates docker-compose multi-container**: o catálogo de serviços de hoje só cobre imagem única (um `docker run`) — Coolify também tem templates compostos (ex.: Plausible = app + ClickHouse + Postgres). Fica pro dia que precisar de um serviço assim.
-- **Deliberadamente sem paridade**: Coolify permite deixar outras pessoas hospedar no seu servidor (com visibilidade limitada pra quem não é dono). O `yeah` não vai ter isso — é single-admin de propósito, sem `/register` depois da primeira conta (ver `docs/ARCHITECTURE.md`).
+Levantado pesquisando o site oficial, a documentação (`coolify.io/docs`) e o changelog de verdade (`coolify.io/changelog`, versões v4.0 até v4.4-rc, ago/2026) — não é chute. Coolify é um app Laravel 12 + Livewire + Alpine.js monolítico (PHP-FPM renderizando o dashboard inteiro no servidor, Soketi como WebSocket, Postgres + Redis próprios) — isso por si só já é mais pesado que Bun+Vue (SPA de verdade + API separada), então parte do "menos consumo" já vem de graça da nossa arquitetura, sem precisar copiar nada.
+
+**Build e deploy:**
+- **Registry Docker privado com push automático**: hoje o `yeah` só builda a partir de repo Git — falta poder configurar um registry (Docker Hub privado, GHCR, etc.) pro qual a imagem buildada é automaticamente enviada, taggeada com o SHA do commit. Item já citado no roadmap (registries privados), mas o achado novo é que o Coolify faz **push**, não só pull — ou seja, builda uma vez e reusa a imagem em vez de rebuildar toda vez que reinicia.
+- **`[skip ci]`/`[skip cd]` na mensagem de commit**: pula o auto-deploy daquele push especificamente — simples de fazer, útil pra quem commita só docs/README.
+- **Tela de "mudanças pendentes"**: Coolify mostra um aviso com contagem de quantos campos mudaram (env, domínio, etc.) desde o último deploy, antes de aplicar — evita "esqueci que troquei a porta e não redeployei".
+- **Grace period configurável de parada**: quanto tempo esperar um container terminar de responder requisições antes de matar ele num redeploy (hoje o `yeah` já mata e sobe na hora).
+- **Timeout de conexão SSH configurável por servidor**: pra servidores com latência alta/instável, evita falso-negativo de "servidor offline".
+
+**Variáveis de ambiente:**
+- **Variáveis compartilhadas por escopo** (time/projeto/ambiente): hoje cada `Application`/`Database`/`Service` tem seu próprio bloco de `.env` isolado — Coolify deixa declarar uma variável uma vez no nível do time/projeto/ambiente e referenciar em vários recursos (`{{project.NODE_ENV}}` etc.) em vez de copiar o mesmo valor em cada um.
+- **Distinção build-time vs runtime**: uma variável só usada durante o build (ex. token de um pacote privado) não precisa vazar pro container rodando.
+
+**Backup:**
+- **Backup de volume/storage persistente, não só de banco**: hoje o `yeah` só agenda backup de `Database` — Coolify também agenda backup do volume de dados de qualquer aplicação/serviço (útil pra apps com estado que não é um banco relacional, tipo Uptime Kuma ou n8n do nosso próprio catálogo).
+- **Compressão paralela no backup**: Coolify usa gzip paralelo (múltiplos cores) pra acelerar backups grandes — vale a pena se algum dump ficar lento em produção.
+
+**Observabilidade — cuidado pra não copiar do jeito errado:**
+- Coolify tem um componente chamado **Sentinel**: um agente (binário Go) instalado em cada servidor gerenciado, que fica rodando e reportando métricas por push. Isso contradiz o próprio pitch "agentless" deles mesmos e é exatamente o tipo de consumo extra que o `yeah` quer evitar — **não copiar esse modelo**. Mas a métrica que ele habilita, métricas **por container** (não só CPU/RAM/disco do servidor inteiro), é um dado real que falta: dá pra conseguir isso continuando 100% agentless, rodando `docker stats --no-stream` por SSH periodicamente no mesmo job que já lê `/proc` hoje (`server-metrics`), sem instalar nada no servidor do usuário.
+- **Encaminhar logs pra um sink externo** (Loki, Axiom, New Relic, Fluent Bit): hoje os logs ficam só no Postgres do `yeah`. Nice-to-have pra quem já tem stack de observabilidade própria — baixa prioridade.
+- **Gráfico histórico de métricas com visual dedicado**: já está no roadmap (seção Robustez) — Coolify mostra isso num card por container, não só por servidor.
+
+**Terminal:**
+- **Terminal web interativo de verdade**: o `yeah` tem xterm.js hoje, mas é só pra log de deploy — Coolify deixa abrir um shell interativo dentro de qualquer container rodando ou do próprio servidor, direto do navegador (WebSocket → API → SSH). Isso é uma feature de UX que faz diferença real na hora de debugar ("por que esse container não sobe") sem precisar copiar/colar comando de SSH manual.
+
+**API e automação:**
+- **Expiração de token de API com aviso antecipado**: já citamos "tokens de API pessoais" como faltando — o achado novo é que o Coolify deixa configurar expiração e avisa antes de vencer, em vez de token eterno.
+- **Mover recurso entre ambientes via API**: trocar um `Application`/`Database` de ambiente sem recriar do zero.
+- **CLI oficial** e **servidor MCP** (inclusive um modo read-only, pra deixar um agente de IA consultar o estado sem poder mudar nada): tendência recente (v4.1+) de expor a plataforma pra automação/agentes, não só a UI. Vale pensar num `yeah` MCP mais pra frente, já que a API já existe.
+
+**Provisionamento de servidor:**
+- **Criar VPS direto de dentro do painel** (integração com Hetzner/Vultr/DigitalOcean via API do provedor, incluindo firewall/rede): o `yeah` hoje só conecta em servidor que já existe. Isso é uma feature grande — provavelmente não vale a pena antes de fechar o básico, mas é a diferença mais visível pra quem nunca mexeu com VPS.
+
+**UX menor, mas real:**
+- **Tags em recursos** pra filtrar/organizar a listagem.
+- **Ícone customizado por projeto** no card do dashboard.
+- **2FA** e **status de 2FA visível por membro do time** — já citado, mas nota: como o `yeah` é single-admin, 2FA aqui protege a ÚNICA conta que existe, não é feature multi-usuário.
+
+**Templates docker-compose multi-container**: já citado — Coolify tem 300+ templates um-clique (o nosso catálogo tem 10); a diferença de escala é grande, mas builda em cima do mesmo padrão que a gente já tem, não é uma feature nova pra arquitetar.
+
+**Deliberadamente sem paridade** (decisão de produto, não gap técnico):
+- Coolify permite deixar outras pessoas hospedar no seu servidor (com visibilidade limitada pra quem não é dono), tem OIDC/SSO e múltiplos usuários por time. O `yeah` não vai ter nada disso — é single-admin de propósito, sem `/register` depois da primeira conta (ver `docs/ARCHITECTURE.md`).
 
 ## 🛡️ Robustez, monitoramento e alertas
 

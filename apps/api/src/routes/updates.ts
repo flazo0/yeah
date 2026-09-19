@@ -53,13 +53,13 @@ interface ParsedVersionTag {
 }
 
 /** "16-alpine" → {parts:[16], suffix:"-alpine"}. "v2.11" → {hasV:true, parts:[2,11], suffix:""}. */
-function parseVersionTag(tag: string): ParsedVersionTag | null {
+export function parseVersionTag(tag: string): ParsedVersionTag | null {
   const match = /^(v)?(\d+(?:\.\d+){0,3})(.*)$/.exec(tag);
   if (!match) return null;
   return { hasV: Boolean(match[1]), parts: match[2]!.split(".").map(Number), suffix: match[3] ?? "" };
 }
 
-function compareVersionParts(a: number[], b: number[]): number {
+export function compareVersionParts(a: number[], b: number[]): number {
   for (let i = 0; i < Math.max(a.length, b.length); i++) {
     const diff = (a[i] ?? 0) - (b[i] ?? 0);
     if (diff !== 0) return diff;

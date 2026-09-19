@@ -14,7 +14,8 @@
     "db:migrate": "bun --cwd packages/db run db:migrate",
     "db:push": "bun --cwd packages/db run db:push",
     "db:studio": "bun --cwd packages/db run db:studio",
-    "typecheck": "bun run --filter '*' typecheck"
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

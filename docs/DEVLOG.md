@@ -172,3 +172,22 @@ O usuário testou e não gostou de ter um hash aleatório na URL por padrão —
 
 Reestruturado pra suportar os dois modos de verdade em vez de só fingir suportar: `nginx.conf.template` (sempre ativo, tinha o defeito de tratar `PANEL_PATH=/` como um caso degenerado que nunca foi testado) virou `nginx.conf` simples de novo + um script `docker-entrypoint-panel-path.sh` que roda como hook `/docker-entrypoint.d/` do próprio nginx: sem `PANEL_PATH` setado, não faz nada (usa o `nginx.conf` baked na imagem); com `PANEL_PATH` setado, reescreve `conf.d/default.conf` pro modo com prefixo + `return 444` no resto. Dois caminhos de código separados em vez de um template tentando cobrir os dois casos com interpolação de variável vazia.
 
+
+## Primeira suíte de testes automatizados
+
+Até aqui a validação era só `bun run typecheck` + teste manual (rig SSH+Docker descartável ou `curl` direto). O usuário pediu pra finalmente escrever os testes de verdade — comecei pela lógica pura que já causou bug real ou é crítica pra segurança, já que é onde um teste automatizado paga o investimento mais rápido:
+
+- **`compareVersionParts`/`parseVersionTag`** (`apps/api/src/routes/updates.ts`): trava o bug real que já apareceu (Docker Hub retornando `windowsservercore-ltsc2025` como "última versão" do `traefik`).
+- **`shellQuote`**: teste de injeção de comando de verdade (`'; rm -rf / #` como input) e um teste de round-trip que decodifica a escapagem POSIX pra confirmar que reproduz o valor original, em vez de fixar uma string exata (mais robusto a mudanças no estilo de escape).
+- **`buildRunCommand`** dos três jobs de provisionamento (`deployApplication`, `provisionDatabase` — 5 motores, `provisionService`): cobre os limites de recurso, labels do Traefik, quoting seguro de senha com aspas simples.
+- **JWT do GitHub App**: gera um par de chaves RSA descartável na hora (`generateKeyPairSync`) e verifica a assinatura de verdade com `createVerify`, incluindo um teste que confirma que um payload adulterado falha a verificação.
+- **HMAC do webhook do GitHub**: assinatura válida/inválida/corpo adulterado/header ausente/tamanho errado.
+- **Hash de senha** (`Bun.password` com argon2id): confirma salt aleatório (duas chamadas pra mesma senha geram hashes diferentes, ambos verificam).
+- **Notificações**: `escapeMarkdown` do Telegram e o dispatch de `sendNotification` com `fetch` mockado (`bun:test`'s `mock()`).
+
+**Achado real durante a configuração**: rodar a suíte inteira (`bun test`, todos os arquivos no mesmo processo) quebrava de forma não-determinística — um erro `console.log.bind is not a function` vindo de dentro do polyfill WASM do `ssh2` (poly1305, usado pra um algoritmo de assinatura que a lib nem usa na maioria das conexões). Isolei: `shellQuote` morava no mesmo arquivo que importa `ssh2` (`packages/ssh/src/index.ts`), e as funções `buildRunCommand`/`resolveDomain` dos jobs do worker moravam nos mesmos arquivos que `connectSsh`/`execStream` — testar essa lógica pura, mesmo sem nunca chamar SSH de verdade, carregava o `ssh2` inteiro no processo de teste, e alguma interação entre múltiplos arquivos de teste no mesmo processo deixava o polyfill instável. Corrigido extraindo tudo isso pra arquivos sem dependência de `@yeah/ssh`: `shellQuote` virou parte de `@yeah/shared` (zero dependência pesada, é só uma função de string), e cada job de provisionamento ganhou um `<nome>.commands.ts` irmão com só a lógica pura, reexportado pelo arquivo original pra não quebrar nenhum import existente.
+
+**Infra de teste**: `bunfig.toml` + `test/setup.ts` define `DATABASE_URL`/`REDIS_URL`/`SESSION_SECRET` falsos antes de qualquer teste rodar — os clients do Postgres (`drizzle-orm/bun-sql`) e Redis (`ioredis`) são preguiçosos (não conectam de verdade só de serem construídos), confirmado testando na mão antes de assumir isso, então dá pra importar qualquer módulo que os usa sem precisar de Postgres/Redis reais rodando.
+
+123 testes, 0 falhas, roda em ~1.2s.
+

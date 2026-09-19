@@ -86,6 +86,6 @@ async function sendWebhook(url: string | null, message: NotificationMessage): Pr
 
 // Telegram's MarkdownV2 treats most punctuation as formatting syntax — anything in a title/body
 // we didn't author ourselves (a repo name, an error message) needs every one of these escaped.
-function escapeMarkdown(text: string): string {
+export function escapeMarkdown(text: string): string {
   return text.replace(/[_*[\]()~`>#+\-=|{}.!]/g, "\\$&");
 }

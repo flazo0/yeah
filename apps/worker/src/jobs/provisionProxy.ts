@@ -2,12 +2,13 @@ import { eq } from "drizzle-orm";
 import { servers } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ProxyProvisionJobData } from "@yeah/queue";
+import { PROXY_NETWORK_NAME } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 
+export { PROXY_NETWORK_NAME };
 export const PROXY_CONTAINER_NAME = "yeah-proxy";
-export const PROXY_NETWORK_NAME = "yeah-proxy-net";
 const PROXY_DIR = "/opt/yeah-proxy";
 
 function traefikStaticConfig(acmeEmail: string): string {

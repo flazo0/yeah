@@ -44,7 +44,7 @@ Essa separação existe pra robustez, não performance prematura: um deploy trav
 | Pacote | Usado por | O que faz |
 |---|---|---|
 | `db` | todos | Schema Drizzle + client Postgres |
-| `shared` | todos | Tipos TypeScript + `DATABASE_ENGINES` + `SERVICE_CATALOG` |
+| `shared` | todos | Tipos TypeScript + `DATABASE_ENGINES` + `SERVICE_CATALOG` + `shellQuote`/`PROXY_NETWORK_NAME` (zero dependência pesada — de propósito, pra lógica pura tipo `docker run` de cada job poder ser testada sem carregar `ssh2`) |
 | `queue` | api, worker, ws | Definições de fila/pub-sub BullMQ + Redis |
 | `ssh` | worker | Cliente SSH (ssh2) — só o worker importa isso |
 | `storage` | api, worker | Wrapper fino sobre `Bun.S3Client` |

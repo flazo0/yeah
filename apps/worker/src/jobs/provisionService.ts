@@ -1,48 +1,14 @@
 import { eq } from "drizzle-orm";
-import { services, servers, type Service, type Server } from "@yeah/db";
-import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
-import { findServiceCatalogEntry, resourceLimitFlags } from "@yeah/shared";
+import { services, servers } from "@yeah/db";
+import { connectSsh, execStream, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ServiceProvisionJobData } from "@yeah/queue";
+import { shellQuote } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
-import { PROXY_NETWORK_NAME } from "./provisionProxy";
+import { buildRunCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
 
-function containerNameForService(serviceId: string): string {
-  return `yeah-svc-${serviceId}`;
-}
-
-/** null means "publish the port directly on the host" — same rule as applications. */
-function resolveDomain(service: Service, server: Server): string | null {
-  if (service.domain) return service.domain;
-  if (server.proxyStatus !== "active" || !server.wildcardDomain) return null;
-  const slug = service.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return `${slug}.${server.wildcardDomain}`;
-}
-
-function buildRunCommand(service: Service, containerName: string, envFilePath: string, domain: string | null): string {
-  const catalogEntry = findServiceCatalogEntry(service.catalogKey);
-  const volumeFlag = catalogEntry?.volumePath ? `-v ${shellQuote(`${containerName}-data`)}:${shellQuote(catalogEntry.volumePath)} ` : "";
-  const base =
-    `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(envFilePath)} ${volumeFlag}` +
-    resourceLimitFlags(service);
-  const restart = `--restart unless-stopped ${shellQuote(service.image)}`;
-
-  if (!domain) {
-    return base + `-p ${service.port}:${service.port} ` + restart;
-  }
-
-  return (
-    base +
-    `--network ${shellQuote(PROXY_NETWORK_NAME)} ` +
-    `--label traefik.enable=true ` +
-    `--label ${shellQuote(`traefik.http.routers.${containerName}.rule=Host(\`${domain}\`)`)} ` +
-    `--label traefik.http.routers.${containerName}.entrypoints=websecure ` +
-    `--label traefik.http.routers.${containerName}.tls.certresolver=letsencrypt ` +
-    `--label traefik.http.services.${containerName}.loadbalancer.server.port=${service.port} ` +
-    restart
-  );
-}
+export { buildRunCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
 
 export function makeProvisionServiceProcessor(publishConnection: Redis) {
   return async function provisionService(job: Job<ServiceProvisionJobData>) {

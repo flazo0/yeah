@@ -76,10 +76,10 @@ export function testSshConnection(opts: TestConnectionOptions): Promise<TestConn
   });
 }
 
-/** Quotes a value for safe interpolation into a POSIX shell command (single-quote style). */
-export function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`;
-}
+// shellQuote itself has zero SSH dependency — it lives in @yeah/shared so pure command-building
+// logic (docker run string construction, tested in apps/worker/src/jobs/*.test.ts) can use it
+// without pulling in this whole module's ssh2 dependency. Re-exported here for existing callers.
+export { shellQuote } from "@yeah/shared";
 
 /**
  * Opens a long-lived SSH connection for a caller that needs to run several
