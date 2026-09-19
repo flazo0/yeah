@@ -49,7 +49,7 @@ Essa separação existe pra robustez, não performance prematura: um deploy trav
 | `ssh` | worker | Cliente SSH (ssh2) — só o worker importa isso |
 | `storage` | api, worker | Wrapper fino sobre `Bun.S3Client` |
 | `github` | api, worker | JWT do GitHub App, token de instalação, verificação de webhook |
-| `notifications` | worker | Envio pra Discord/Slack/Telegram/webhook genérico — best-effort, nunca lança |
+| `notifications` | worker | Envio pra Discord/Slack/Telegram/Email (SMTP, via `nodemailer`)/webhook genérico — best-effort, nunca lança |
 
 ## Modelo de domínio
 

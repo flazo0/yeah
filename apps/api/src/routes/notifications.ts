@@ -25,6 +25,12 @@ function toChannelDto(channel: NotificationChannel): NotificationChannelDto {
     type: channel.type,
     url: channel.url,
     telegramChatId: channel.telegramChatId,
+    smtpHost: channel.smtpHost,
+    smtpPort: channel.smtpPort,
+    smtpSecure: channel.smtpSecure,
+    smtpUser: channel.smtpUser,
+    smtpFrom: channel.smtpFrom,
+    emailTo: channel.emailTo,
     events: (channel.events as NotificationEventType[] | null) ?? null,
     enabled: channel.enabled,
     createdAt: channel.createdAt.toISOString(),
@@ -68,6 +74,13 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
           url: body.url ?? null,
           telegramBotToken: body.telegramBotToken ?? null,
           telegramChatId: body.telegramChatId ?? null,
+          smtpHost: body.smtpHost ?? null,
+          smtpPort: body.smtpPort ?? null,
+          smtpSecure: body.smtpSecure ?? null,
+          smtpUser: body.smtpUser ?? null,
+          smtpPassword: body.smtpPassword ?? null,
+          smtpFrom: body.smtpFrom ?? null,
+          emailTo: body.emailTo ?? null,
           events: body.events ?? null,
         })
         .returning();
@@ -81,10 +94,23 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
     {
       body: t.Object({
         name: t.String({ minLength: 1 }),
-        type: t.Union([t.Literal("discord"), t.Literal("slack"), t.Literal("telegram"), t.Literal("webhook")]),
+        type: t.Union([
+          t.Literal("discord"),
+          t.Literal("slack"),
+          t.Literal("telegram"),
+          t.Literal("webhook"),
+          t.Literal("email"),
+        ]),
         url: t.Optional(t.String()),
         telegramBotToken: t.Optional(t.String()),
         telegramChatId: t.Optional(t.String()),
+        smtpHost: t.Optional(t.String()),
+        smtpPort: t.Optional(t.Number()),
+        smtpSecure: t.Optional(t.Boolean()),
+        smtpUser: t.Optional(t.String()),
+        smtpPassword: t.Optional(t.String()),
+        smtpFrom: t.Optional(t.String({ minLength: 1 })),
+        emailTo: t.Optional(t.String({ minLength: 1 })),
         events: t.Optional(t.Nullable(t.Array(EVENT_TYPE_SCHEMA))),
       }),
     },
@@ -118,6 +144,13 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
         .set({
           enabled: body.enabled ?? existing.enabled,
           events: "events" in body ? (body.events ?? null) : existing.events,
+          smtpHost: body.smtpHost ?? existing.smtpHost,
+          smtpPort: body.smtpPort ?? existing.smtpPort,
+          smtpSecure: "smtpSecure" in body ? (body.smtpSecure ?? null) : existing.smtpSecure,
+          smtpUser: body.smtpUser ?? existing.smtpUser,
+          smtpPassword: body.smtpPassword ?? existing.smtpPassword,
+          smtpFrom: body.smtpFrom ?? existing.smtpFrom,
+          emailTo: body.emailTo ?? existing.emailTo,
         })
         .where(eq(notificationChannels.id, params.channelId))
         .returning();
@@ -128,7 +161,19 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
 
       return { channel: toChannelDto(channel) };
     },
-    { body: t.Object({ enabled: t.Optional(t.Boolean()), events: t.Optional(t.Nullable(t.Array(EVENT_TYPE_SCHEMA))) }) },
+    {
+      body: t.Object({
+        enabled: t.Optional(t.Boolean()),
+        events: t.Optional(t.Nullable(t.Array(EVENT_TYPE_SCHEMA))),
+        smtpHost: t.Optional(t.String()),
+        smtpPort: t.Optional(t.Number()),
+        smtpSecure: t.Optional(t.Boolean()),
+        smtpUser: t.Optional(t.String()),
+        smtpPassword: t.Optional(t.String()),
+        smtpFrom: t.Optional(t.String({ minLength: 1 })),
+        emailTo: t.Optional(t.String({ minLength: 1 })),
+      }),
+    },
   )
   .post("/:channelId/test", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

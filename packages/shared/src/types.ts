@@ -230,7 +230,7 @@ export interface ServiceDto extends ResourceLimits {
   createdAt: string;
 }
 
-export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook";
+export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email";
 
 export type NotificationEventType =
   | "deploy.success"
@@ -258,6 +258,13 @@ export interface NotificationChannelDto {
   type: NotificationChannelType;
   url: string | null;
   telegramChatId: string | null;
+  // Secrets (telegramBotToken, smtpPassword) are deliberately never sent back to the frontend.
+  smtpHost: string | null;
+  smtpPort: number | null;
+  smtpSecure: boolean | null;
+  smtpUser: string | null;
+  smtpFrom: string | null;
+  emailTo: string | null;
   // null = recebe todos os tipos de evento (padrão). Setado = só esses.
   events: NotificationEventType[] | null;
   enabled: boolean;

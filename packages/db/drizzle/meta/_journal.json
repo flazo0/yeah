@@ -78,6 +78,13 @@
       "when": 1789653619923,
       "tag": "0010_spicy_valkyrie",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789829662350,
+      "tag": "0011_oval_winter_soldier",
+      "breakpoints": true
     }
   ]
 }

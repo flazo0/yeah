@@ -15,7 +15,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - Proxy reverso por servidor (Traefik) com domínio wildcard e HTTPS automático (Let's Encrypt)
 - Exclusão de recursos com limpeza remota (container, volume, agendamento no BullMQ)
 - **Monitoramento de recursos por servidor**: CPU/RAM/disco lidos via SSH a cada 60s (sem agente), com barra ao vivo no dashboard
-- **Notificações**: Discord, Slack, Telegram e webhook genérico — deploy falhou/concluiu, backup falhou, servidor caiu/reconectou, CPU/RAM/disco cruzou o limiar
+- **Notificações**: Discord, Slack, Telegram, **Email (SMTP — qualquer provedor: Gmail, SES, SendGrid, Postfix próprio)** e webhook genérico — deploy falhou/concluiu, backup falhou, servidor caiu/reconectou, CPU/RAM/disco cruzou o limiar
 - **Tela de atualizações**: versão da plataforma (commit atual vs `main` no GitHub) e tag de cada imagem Docker em uso vs a mais recente no Docker Hub — checagem manual, nada automático
 - **Limites de recurso por container**: `--memory`/`--cpus` configuráveis por aplicação/banco/serviço (formulário de criação e aba "Geral" de cada recurso) — sem limite continua sendo o padrão
 - **Notificações com filtro por tipo de evento**: cada canal escolhe quais tipos recebe (deploy ok/falhou, backup falhou, servidor caiu/reconectou, CPU/RAM/disco no limite, TLS perto de expirar) — sem filtro (padrão) recebe todos

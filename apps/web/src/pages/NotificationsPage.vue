@@ -17,6 +17,13 @@ const form = ref({
   url: "",
   telegramBotToken: "",
   telegramChatId: "",
+  smtpHost: "",
+  smtpPort: 587,
+  smtpSecure: false,
+  smtpUser: "",
+  smtpPassword: "",
+  smtpFrom: "",
+  emailTo: "",
   events: [] as NotificationEventType[],
 });
 const submitting = ref(false);
@@ -28,6 +35,7 @@ const typeLabel: Record<NotificationChannelType, string> = {
   slack: "Slack",
   telegram: "Telegram",
   webhook: "Webhook genérico",
+  email: "Email",
 };
 
 const EVENT_TYPES = Object.keys(NOTIFICATION_EVENT_LABELS) as NotificationEventType[];
@@ -61,8 +69,9 @@ async function saveEvents(channelId: string) {
   }
 }
 
-const needsUrl = computed(() => form.value.type !== "telegram");
+const needsUrl = computed(() => form.value.type === "discord" || form.value.type === "slack" || form.value.type === "webhook");
 const needsTelegram = computed(() => form.value.type === "telegram");
+const needsEmail = computed(() => form.value.type === "email");
 
 async function loadChannels() {
   loading.value = true;
@@ -86,10 +95,31 @@ async function addChannel() {
       url: needsUrl.value ? form.value.url : undefined,
       telegramBotToken: needsTelegram.value ? form.value.telegramBotToken : undefined,
       telegramChatId: needsTelegram.value ? form.value.telegramChatId : undefined,
+      smtpHost: needsEmail.value ? form.value.smtpHost : undefined,
+      smtpPort: needsEmail.value ? form.value.smtpPort : undefined,
+      smtpSecure: needsEmail.value ? form.value.smtpSecure : undefined,
+      smtpUser: needsEmail.value && form.value.smtpUser ? form.value.smtpUser : undefined,
+      smtpPassword: needsEmail.value && form.value.smtpPassword ? form.value.smtpPassword : undefined,
+      smtpFrom: needsEmail.value ? form.value.smtpFrom : undefined,
+      emailTo: needsEmail.value ? form.value.emailTo : undefined,
       events: form.value.events.length > 0 ? form.value.events : null,
     });
     channels.value.push(res.channel);
-    form.value = { name: "", type: "discord", url: "", telegramBotToken: "", telegramChatId: "", events: [] };
+    form.value = {
+      name: "",
+      type: "discord",
+      url: "",
+      telegramBotToken: "",
+      telegramChatId: "",
+      smtpHost: "",
+      smtpPort: 587,
+      smtpSecure: false,
+      smtpUser: "",
+      smtpPassword: "",
+      smtpFrom: "",
+      emailTo: "",
+      events: [],
+    };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar canal";
   } finally {
@@ -232,6 +262,7 @@ onMounted(loadChannels);
                 <option value="slack">Slack</option>
                 <option value="telegram">Telegram</option>
                 <option value="webhook">Webhook genérico</option>
+                <option value="email">Email</option>
               </select>
             </div>
           </div>
@@ -245,7 +276,7 @@ onMounted(loadChannels);
               required
             />
           </div>
-          <div v-else class="form-row mb-16">
+          <div v-else-if="needsTelegram" class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
               <label for="notif-bot-token">Bot Token</label>
               <input id="notif-bot-token" v-model="form.telegramBotToken" class="form-control mono" placeholder="123456:ABC-..." required />
@@ -255,6 +286,45 @@ onMounted(loadChannels);
               <input id="notif-chat-id" v-model="form.telegramChatId" class="form-control mono" placeholder="-100123456789" required />
             </div>
           </div>
+          <template v-else-if="needsEmail">
+            <p class="hint mb-16">Qualquer servidor SMTP funciona — Gmail, SES, SendGrid, Postfix próprio, etc.</p>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-smtp-host">Servidor SMTP</label>
+                <input id="notif-smtp-host" v-model="form.smtpHost" class="form-control mono" placeholder="smtp.exemplo.com" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-smtp-port">Porta</label>
+                <input id="notif-smtp-port" v-model.number="form.smtpPort" type="number" class="form-control" placeholder="587" required />
+              </div>
+            </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-smtp-user">Usuário (opcional)</label>
+                <input id="notif-smtp-user" v-model="form.smtpUser" class="form-control mono" placeholder="usuario@exemplo.com" />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-smtp-password">Senha (opcional)</label>
+                <input id="notif-smtp-password" v-model="form.smtpPassword" type="password" class="form-control mono" autocomplete="new-password" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label style="display: inline-flex; align-items: center; gap: 6px">
+                <input type="checkbox" v-model="form.smtpSecure" />
+                Conexão TLS direta (porta 465) — deixe desmarcado pra STARTTLS (587, o mais comum)
+              </label>
+            </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-smtp-from">Remetente (De)</label>
+                <input id="notif-smtp-from" v-model="form.smtpFrom" type="email" class="form-control mono" placeholder="alertas@exemplo.com" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="notif-email-to">Destinatário (Para)</label>
+                <input id="notif-email-to" v-model="form.emailTo" type="email" class="form-control mono" placeholder="voce@exemplo.com" required />
+              </div>
+            </div>
+          </template>
           <div class="form-group">
             <label>Eventos (nenhum marcado = todos)</label>
             <div style="display: flex; flex-wrap: wrap; gap: 12px">

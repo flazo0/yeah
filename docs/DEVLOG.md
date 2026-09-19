@@ -191,3 +191,14 @@ Até aqui a validação era só `bun run typecheck` + teste manual (rig SSH+Dock
 
 123 testes, 0 falhas, roda em ~1.2s.
 
+
+## Notificações por email (SMTP)
+
+Pedido direto do usuário: alerta por email era o que mais fazia falta na lista de canais. Implementado como um canal novo (`email`) no mesmo esquema já existente (Discord/Slack/Telegram/webhook), não como sistema separado:
+
+- **SMTP genérico**, não uma API proprietária — funciona com Gmail, SES, SendGrid, Postfix próprio, qualquer coisa que fale SMTP, igual o Coolify faz. Usa `nodemailer` (única dependência nova do projeto que não tem alternativa nativa do Bun — não existe cliente SMTP built-in).
+- Campos novos em `notification_channels`: `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password`, `smtp_from`, `email_to` — mesma ressalva de segurança já existente pra `servers.private_key` (senha em texto puro, TODO de criptografia em repouso).
+- **Email com cara de produto, não texto cru do SMTP**: HTML com faixa de cor por nível (info/aviso/erro), badge, título, corpo — mais fallback em texto puro pros clientes que não renderizam HTML. Título/corpo passam por `escapeHtml` antes de entrar no template (o conteúdo pode ser nome de repo, mensagem de erro etc. — nunca confiável o suficiente pra injetar direto no HTML).
+- **Achado real testando contra a API de verdade**: a validação `format: "email"` do Elysia pro campo `smtpFrom` rejeitava o formato `"Nome <email@dominio.com>"` — comum e válido pra cabeçalho De, só não é um endereço de email "puro". Corrigido pra validação solta (`minLength: 1`) tanto em `smtpFrom` quanto `emailTo`, deixando o SMTP de verdade validar o endereço na hora de enviar.
+- **Testado de ponta a ponta duas vezes**: primeiro isolado (`sendNotification` direto, conta de teste descartável do Ethereal, confirmando negociação STARTTLS + auth + entrega), depois através da API de verdade rodando local (criar canal → `POST .../test` → email aceito pelo servidor SMTP) — achando o bug de validação nesse segundo teste, que o primeiro (chamada direta, sem passar pela validação do Elysia) não pegaria.
+

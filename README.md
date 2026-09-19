@@ -16,7 +16,7 @@ A maioria das plataformas self-hosted ou consome muita máquina (agente pesado, 
 - **Backup agendado** (cron) com retenção configurável, local ou em qualquer S3-compatível (AWS, MinIO, R2, Spaces)
 - **HTTPS automático**: proxy reverso Traefik por servidor, domínio wildcard, certificado Let's Encrypt — sem publicar porta manualmente
 - **Monitoramento de servidor**: CPU/RAM/disco ao vivo (sem agente, só SSH), com alerta na transição pro limiar
-- **Notificações**: Discord, Slack, Telegram, webhook genérico — deploy, backup, servidor caiu, uso de recursos
+- **Notificações**: Discord, Slack, Telegram, Email (SMTP — qualquer provedor), webhook genérico — deploy, backup, servidor caiu, uso de recursos, filtro por tipo de evento
 - **Tela de atualizações**: versão da plataforma e das imagens Docker em uso vs. a mais recente — checagem manual, nada automático
 - **Projetos organizados por time**: `Team → Project → Environment → Recurso` — mas a instância é **single-admin**: `/register` só funciona uma vez, sem convite nem forma de outra pessoa ganhar login nela
 - **A própria máquina já entra como servidor**: `install.sh` gera e autoriza uma chave SSH pra ela mesma, então dá pra fazer o primeiro deploy sem cadastrar servidor nenhum manualmente — igual o "localhost" do Coolify

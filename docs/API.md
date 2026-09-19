@@ -62,10 +62,12 @@ CPU/RAM/disco (`cpuPercent`/`memPercent`/`diskPercent`/`metricsCheckedAt` no `Se
 | Método | Rota | Body | Descrição |
 |---|---|---|---|
 | GET | `/teams/:teamId/notifications` | — | Lista canais do time |
-| POST | `/teams/:teamId/notifications` | `{ name, type: discord\|slack\|telegram\|webhook, url?, telegramBotToken?, telegramChatId?, events? }` | Cria canal. `url` pra discord/slack/webhook; `telegramBotToken`+`telegramChatId` pra telegram. `events` é uma lista de tipos (ver abaixo) — omitido/`null` = recebe todos |
-| PUT | `/teams/:teamId/notifications/:channelId` | `{ enabled?, events? }` | Ativa/pausa e/ou troca o filtro de eventos, sem apagar |
+| POST | `/teams/:teamId/notifications` | `{ name, type: discord\|slack\|telegram\|webhook\|email, url?, telegramBotToken?, telegramChatId?, smtpHost?, smtpPort?, smtpSecure?, smtpUser?, smtpPassword?, smtpFrom?, emailTo?, events? }` | Cria canal. `url` pra discord/slack/webhook; `telegramBotToken`+`telegramChatId` pra telegram; `smtpHost`+`smtpPort`+`smtpFrom`+`emailTo` (obrigatórios) e `smtpUser`+`smtpPassword`+`smtpSecure` (opcionais) pra email — qualquer servidor SMTP, sem API proprietária. `smtpFrom`/`emailTo` aceitam tanto `email@dominio.com` quanto `"Nome <email@dominio.com>"`. `events` é uma lista de tipos (ver abaixo) — omitido/`null` = recebe todos |
+| PUT | `/teams/:teamId/notifications/:channelId` | `{ enabled?, events?, smtpHost?, smtpPort?, smtpSecure?, smtpUser?, smtpPassword?, smtpFrom?, emailTo? }` | Ativa/pausa, troca o filtro de eventos e/ou atualiza a config SMTP, sem apagar |
 | POST | `/teams/:teamId/notifications/:channelId/test` | — | Envia uma mensagem de teste, retorna `{ ok }` |
 | DELETE | `/teams/:teamId/notifications/:channelId` | — | Remove o canal |
+
+`telegramBotToken` e `smtpPassword` são segredos — nunca voltam no corpo da resposta (`GET`/`POST`/`PUT` devolvem os outros campos normalmente).
 
 Tipos de evento válidos em `events`: `deploy.success`, `deploy.failed`, `backup.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disco cruzou o limiar), `tls.expiring` (certificado de um domínio em uso expira em 14 dias ou menos).
 
