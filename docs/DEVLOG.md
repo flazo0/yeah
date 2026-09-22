@@ -242,3 +242,21 @@ Solução: cada deploy passou a resolver `git rev-parse HEAD` (via SSH, depois d
 
 Testado de ponta a ponta pela API de verdade: forcei duas linhas de deploy "success" com commit falso via SQL, chamei o rollback pela UI, confirmei que a linha nova nasce com o `commitSha` certo, entra na fila, e o worker de verdade tenta a conexão SSH real com ele — falhando só porque o servidor de teste desse ambiente de dev é um SSH fake inalcançável (mesma falha que um deploy normal teria aqui). Testado também que a rota rejeita rollback pra deploy que não existe (404) e pra deploy que não terminou com sucesso (400).
 
+
+## Pesquisa nova no código-fonte do Coolify + reestruturação de navegação da Application
+
+Pedido direto do usuário: analisar o Coolify de novo, dessa vez o código-fonte de verdade (`github.com/coollabsio/coolify`) e a documentação oficial, não só a instância de produção que já tinha sido explorada antes (a maior parte do que aquela pesquisa achou já tinha virado feature). Rodei uma pesquisa em paralelo (fork) enquanto confirmava com o usuário o que ele queria dizer com "aquela parada de lang" — resposta: idioma da interface (i18n), não detecção de linguagem de build. Achado que confirma isso: o Coolify tem 20 arquivos de tradução em `lang/*.json`, incluindo `pt.json` e `pt-br.json`.
+
+**O achado estrutural mais importante**: cada sub-seção de configuração de recurso no Coolify (Domains, Advanced, Environment Variables, Persistent Storage, Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Healthcheck, Rollback, Resource Limits, Resource Operations, Metrics, Analytics, Tags, Danger) é uma **rota própria do Laravel**, não uma aba em memória. Isso bate exatamente com a reclamação do usuário de que a estrutura do `yeah` tá confusa — o `ApplicationDetailPage.vue` de antes tinha `activeTab`/`activeConfigTab` como `ref`s locais: trocar de aba não mexia na URL, não dava pra compartilhar link de uma sub-seção específica, e voltar no navegador não funcionava do jeito esperado.
+
+**Reestruturação aplicada em Application** (referência pro que falta fazer em Database/Service): o antigo componente monolítico (~530 linhas, dono de tudo — log de deploy, histórico, rollback, domínio, limites, variáveis de ambiente, volumes) virou:
+- `layouts/ApplicationLayout.vue`: busca a aplicação uma vez, renderiza breadcrumb/cabeçalho/abas/sub-nav, e disponibiliza `app`, `basePath`, `error`, `reloadApp` pras rotas filhas via `provide`/`inject` (`composables/useApplicationContext.ts`).
+- Quatro páginas em `pages/application/`, cada uma só com sua própria responsabilidade e seu próprio fetch: `ApplicationDeploymentsPage`, `ApplicationGeneralPage`, `ApplicationEnvPage`, `ApplicationStoragePage`.
+- Router: `/apps/:id` redireciona pra `/apps/:id/deployments`; `/general`, `/env`, `/storage` são rotas filhas de verdade.
+
+**Detalhe não-óbvio**: o botão "Deploy" mora no cabeçalho compartilhado (visível em qualquer sub-página), mas precisa "aparecer" na página de Deployments depois de clicado — mesmo quando o usuário já tá nela (sem re-montar o componente) ou quando ele tá em outra sub-página (aí precisa navegar). Resolvido com um sinal reativo (`lastDeployment` no contexto compartilhado): a página de Deployments observa esse ref via `watch()` pra pegar o deploy novo sem remontar; quando a navegação troca de rota, o `onMounted` de sempre já busca o histórico atualizado — os dois caminhos convergem sem duplicar lógica.
+
+Testado no navegador contra a API/banco de dev reais: clique de aba muda a URL (`/general`, `/env`, `/storage`), botão voltar do navegador funciona corretamente entre sub-páginas, reload direto numa URL profunda (ex. `.../env`) renderiza a página certa sem passar pela home, e clicar em "Deploy" estando numa página de Configuração navega pra Deployments e mostra o log ao vivo.
+
+Documentação também reescrita (`docs/ROADMAP.md`) com o levantamento novo: seção dedicada de reestruturação de navegação, seção de i18n, e vários gaps que a pesquisa anterior não tinha achado (backup por aplicação como feature de primeira classe, histórico de execução de scheduled tasks, healthcheck configurável, dashboard inicial com widgets, analytics de tráfego, limpeza automática de Docker).
+
