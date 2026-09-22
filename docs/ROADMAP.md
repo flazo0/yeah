@@ -22,15 +22,15 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 - **Alerta de certificado TLS perto de expirar**: checagem diária (conexão TLS direta, sem SSH) em todo domínio de aplicação/serviço em uso — avisa se faltar 14 dias ou menos pra expirar
 - **Suíte de testes unitários** (`bun test`, zero dependência extra): cobre lógica pura que já causou bug real (comparação de versão do Docker Hub, `shellQuote`, construção do `docker run` de cada motor de banco/aplicação/serviço, JWT/HMAC do GitHub App, hash de senha, parsing de métricas) — não substitui o teste manual de fluxo completo, mas trava regressão nessas partes sem precisar de Postgres/Redis/servidor real
 - **Armazenamento persistente para aplicações**: volumes nomeados do Docker (nome + caminho no container) configuráveis na aba "Armazenamento" — sobrevivem a redeploys; Database/Service já tinham isso implícito (caminho fixo do motor/catálogo), faltava só pra Application
+- **Rollback**: cada deploy grava o commit que realmente buildou; botão "Voltar pra essa versão" no histórico cria um novo deploy fixado naquele commit em vez do HEAD da branch
 - Editor Monaco, terminal xterm.js, tema claro/escuro
 
 ## 🚧 Falta pra fechar as fases já abertas
 
 - **Build packs além de Dockerfile**: Nixpacks (detecta linguagem e builda sem Dockerfile, como o Heroku buildpack), estático (só arquivos, serve via nginx), Docker Compose (multi-container por aplicação)
 - **Preview deployments**: cada PR do GitHub vira um ambiente efêmero, com URL própria, que morre quando o PR fecha
-- **Rollback**: redeployar um build anterior com um clique (o histórico de deploys já existe — falta o botão)
 - **Scheduled tasks**: rodar comandos arbitrários dentro do container da aplicação, num cron (tipo Coolify) — hoje só bancos têm agendamento (backup)
-- **Sub-navegação de Configuração mais granular por recurso**: Application já ganhou uma terceira aba (Armazenamento, ver "✅ Já funciona"); falta Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Rollback, Resource Operations — o Coolify separa isso em itens de menu lateral próprios dentro de "Configuration" — só vale desmembrar conforme cada uma dessas features for sendo implementada de verdade, pra não criar aba vazia
+- **Sub-navegação de Configuração mais granular por recurso**: Application já ganhou uma terceira aba (Armazenamento, ver "✅ Já funciona"); falta Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations — o Coolify separa isso em itens de menu lateral próprios dentro de "Configuration" — só vale desmembrar conforme cada uma dessas features for sendo implementada de verdade, pra não criar aba vazia
 
 ## 🎯 Paridade com Coolify — o que ele tem e a gente não
 

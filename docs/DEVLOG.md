@@ -231,3 +231,14 @@ Tabela nova `application_volumes` (nome + caminho, uma linha por volume). O nome
 
 Aba nova "Armazenamento" na sub-navegação de Configuração da aplicação. Testado de ponta a ponta contra a API/banco de dev reais: criar aplicação descartável → adicionar volume → aparece na lista → remover → sumiu → excluir a aplicação (limpa os volumes junto).
 
+
+## Rollback de deploy com um clique
+
+Próximo item do roadmap de paridade com Coolify: o histórico de deploys já existia, faltava o botão de "voltar pra essa versão". A pergunta de design era como saber PRA QUAL commit voltar, já que hoje o `yeah` builda sempre a partir do HEAD da branch, sem guardar imagem nenhuma (não tem registry) — rollback de verdade só é possível se a gente souber exatamente qual commit cada deploy passado buildou.
+
+Solução: cada deploy passou a resolver `git rev-parse HEAD` (via SSH, depois do checkout, antes do build) e gravar o resultado na própria linha de `deployments` (coluna `commit_sha`). Rollback vira só reusar essa mesma coluna do outro lado: a rota `POST .../deployments/:id/rollback` cria uma linha de deploy NOVA já com `commitSha` pré-preenchido com o commit do deploy alvo, e enfileira no mesmo job/worker de sempre — zero fila nova, zero tipo de job novo. O worker olha se a linha já veio com `commitSha` setado; se sim, faz `git reset --hard <sha>` em vez de `git reset --hard origin/<branch>`. `git reset --hard` funciona igual com um SHA cru ou uma ref de branch, e funciona igual com o repo em HEAD destacado (de um rollback anterior) ou numa branch normal — não precisou de nenhum passo extra de re-attach.
+
+**Achado ao escrever o teste manual**: sem registry, "rollback" aqui significa re-clonar/re-buildar do zero a partir daquele commit específico, não reusar uma imagem já buildada — mais lento que o rollback do Coolify (que reusa a imagem), mas honesto sobre a limitação atual (registry privado com push automático já tá no roadmap de paridade) e correto pro caso de uso: o Dockerfile pode ter mudado desde então, então rebuildar do commit exato é o comportamento certo de qualquer forma.
+
+Testado de ponta a ponta pela API de verdade: forcei duas linhas de deploy "success" com commit falso via SQL, chamei o rollback pela UI, confirmei que a linha nova nasce com o `commitSha` certo, entra na fila, e o worker de verdade tenta a conexão SSH real com ele — falhando só porque o servidor de teste desse ambiente de dev é um SSH fake inalcançável (mesma falha que um deploy normal teria aqui). Testado também que a rota rejeita rollback pra deploy que não existe (404) e pra deploy que não terminou com sucesso (400).
+
