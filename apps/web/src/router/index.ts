@@ -16,8 +16,12 @@ import ApplicationDeploymentsPage from "../pages/application/ApplicationDeployme
 import ApplicationGeneralPage from "../pages/application/ApplicationGeneralPage.vue";
 import ApplicationEnvPage from "../pages/application/ApplicationEnvPage.vue";
 import ApplicationStoragePage from "../pages/application/ApplicationStoragePage.vue";
-import DatabaseDetailPage from "../pages/DatabaseDetailPage.vue";
-import ServiceDetailPage from "../pages/ServiceDetailPage.vue";
+import DatabaseLayout from "../layouts/DatabaseLayout.vue";
+import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
+import DatabaseGeneralPage from "../pages/database/DatabaseGeneralPage.vue";
+import ServiceLayout from "../layouts/ServiceLayout.vue";
+import ServiceGeneralPage from "../pages/service/ServiceGeneralPage.vue";
+import ServiceEnvPage from "../pages/service/ServiceEnvPage.vue";
 
 // import.meta.env.BASE_URL comes from Vite's own `base` config (set at build time — see
 // vite.config.ts) — in production this is the random per-install panel path (see install.sh),
@@ -62,15 +66,23 @@ export const router = createRouter({
     },
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId/databases/:databaseId",
-      component: DatabaseDetailPage,
+      component: DatabaseLayout,
       meta: { requiresAuth: true },
-      props: true,
+      redirect: (to) => `${to.path}/backups`,
+      children: [
+        { path: "backups", name: "database-backups", component: DatabaseBackupsPage },
+        { path: "general", name: "database-general", component: DatabaseGeneralPage },
+      ],
     },
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId/services/:serviceId",
-      component: ServiceDetailPage,
+      component: ServiceLayout,
       meta: { requiresAuth: true },
-      props: true,
+      redirect: (to) => `${to.path}/general`,
+      children: [
+        { path: "general", name: "service-general", component: ServiceGeneralPage },
+        { path: "env", name: "service-env", component: ServiceEnvPage },
+      ],
     },
   ],
 });
