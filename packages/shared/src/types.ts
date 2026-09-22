@@ -20,6 +20,22 @@ export interface TeamDto {
   createdAt: string;
 }
 
+export interface TeamOverviewDto {
+  counts: {
+    applications: number;
+    databases: number;
+    services: number;
+    servers: number;
+  };
+  recentDeployments: Array<{
+    id: string;
+    applicationId: string;
+    applicationName: string;
+    status: DeploymentStatus;
+    createdAt: string;
+  }>;
+}
+
 export interface TeamInvitationDto {
   id: string;
   teamId: string;

@@ -1,9 +1,10 @@
 import { Elysia, t } from "elysia";
-import { eq } from "drizzle-orm";
-import { teams, teamMembers } from "@yeah/db";
-import type { TeamDto, TeamRole } from "@yeah/shared";
+import { count, desc, eq } from "drizzle-orm";
+import { applications, databases, deployments, servers, services, teams, teamMembers } from "@yeah/db";
+import type { TeamDto, TeamOverviewDto, TeamRole } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
+import { assertMember } from "../lib/access";
 import { createDefaultProject } from "../lib/projects";
 
 export const teamRoutes = new Elysia({ prefix: "/teams" })
@@ -57,7 +58,50 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
       return { team: dto };
     },
     { body: t.Object({ name: t.String({ minLength: 1 }) }) },
-  );
+  )
+  .get("/:teamId/overview", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const [[appCount], [dbCount], [svcCount], [srvCount], recentRows] = await Promise.all([
+      db.select({ value: count() }).from(applications).where(eq(applications.teamId, params.teamId)),
+      db.select({ value: count() }).from(databases).where(eq(databases.teamId, params.teamId)),
+      db.select({ value: count() }).from(services).where(eq(services.teamId, params.teamId)),
+      db.select({ value: count() }).from(servers).where(eq(servers.teamId, params.teamId)),
+      db
+        .select({ deployment: deployments, applicationName: applications.name, applicationId: applications.id })
+        .from(deployments)
+        .innerJoin(applications, eq(deployments.applicationId, applications.id))
+        .where(eq(applications.teamId, params.teamId))
+        .orderBy(desc(deployments.createdAt))
+        .limit(8),
+    ]);
+
+    const overview: TeamOverviewDto = {
+      counts: {
+        applications: appCount?.value ?? 0,
+        databases: dbCount?.value ?? 0,
+        services: svcCount?.value ?? 0,
+        servers: srvCount?.value ?? 0,
+      },
+      recentDeployments: recentRows.map((row) => ({
+        id: row.deployment.id,
+        applicationId: row.applicationId,
+        applicationName: row.applicationName,
+        status: row.deployment.status,
+        createdAt: row.deployment.createdAt.toISOString(),
+      })),
+    };
+
+    return { overview };
+  });
 
 // No team-invitation routes here on purpose: yeah is single-admin (see auth.ts's
 // hasAnyUser()/setup-status lock on /auth/register) — there's deliberately no path for a second
