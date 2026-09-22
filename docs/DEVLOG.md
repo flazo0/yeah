@@ -272,3 +272,16 @@ Mesmo mecanismo de contexto compartilhado (`provide`/`inject` via `composables/u
 
 Testado de ponta a ponta contra API/banco de dev reais: criei um banco e um serviço descartáveis, confirmei que `/databases/:id` e `/services/:id` redirecionam pro filho padrão, e que clicar nas sub-abas muda a URL e renderiza o conteúdo certo — nos dois tipos de recurso.
 
+
+## Dashboard inicial de verdade
+
+Último item da leva de achados da pesquisa nova do Coolify: hoje logar cai direto em "Times", uma lista de times sem visão geral nenhuma. Como o `yeah` é single-admin, essa lista é literalmente um card só pra quase todo mundo — puro atrito na frente do que a pessoa realmente quer ver.
+
+Pedido explícito do usuário foi "faz o essencial", então escopei pro mínimo que já entrega valor real em vez de tentar replicar os três widgets do Coolify (`ActiveDeployments`, `ServerMetricsChart`, `TrafficAnalytics`) de uma vez — o gráfico histórico depende de série temporal que ainda não existe (item separado no roadmap de Robustez), e traffic analytics é baixa prioridade.
+
+O que entrou: endpoint novo `GET /teams/:teamId/overview` (contagem de aplicações/bancos/serviços/servidores + os últimos 8 deploys cruzando todas as aplicações do time, cada contagem e o join numa query só, sem N+1) renderizado no `/dashboard` pro time principal do usuário — cards de contagem, tabela de deploys recentes, e lista de servidores com status + barras de CPU/RAM/disco (reaproveitando o mesmo `metricBarClass()` que a página de Servidores já tinha). A lista de times e o formulário de criar time continuam embaixo, intactos, pro caso raro de mais de um time.
+
+**Achado ao implementar**: o CSS `.stat-card`/`.stat-value`/`.stat-hint` já existia em `main.css` desde uma sessão bem anterior — comentado como preparado pra esse tipo de widget — mas nenhum componente usava. Primeira vez que esse CSS entra em uso de verdade.
+
+Testado contra a API/banco de dev reais: criei uma aplicação descartável, disparei um deploy (falhou por causa do servidor de teste inalcançável, esperado), e confirmei que `/teams/:id/overview` já refletia a contagem nova e o deploy na hora — tanto direto no endpoint quanto renderizado no dashboard.
+

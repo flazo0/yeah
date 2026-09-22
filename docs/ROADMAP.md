@@ -8,7 +8,7 @@ O usuário apontou (2026-09) que a estrutura de telas do `yeah` tá confusa e pe
 
 Plano de reestruturação:
 - **✅ Feito**: trocado o padrão `activeTab`/`activeConfigTab` (refs locais com `v-if`) por **rotas filhas de verdade no Vue Router** em Application (`/apps/:id/deployments|general|env|storage`), Database (`/databases/:id/backups|general`) e Service (`/services/:id/general|env`) — cada um com um componente de layout compartilhado (`*Layout.vue`) que busca o recurso uma vez e disponibiliza pras rotas filhas via `provide`/`inject` (`use*Context` em `composables/`). Testado de ponta a ponta nos três: clique de aba muda a URL, voltar/avançar do navegador funciona, reload direto numa sub-rota (ex. `/env`) renderiza certo.
-- Um **dashboard inicial de verdade** ao logar (hoje cai direto em "Times") — Coolify tem widgets tipo deployments ativos, gráfico de métricas por servidor, visão geral cross-projeto. É a peça que mais falta pra parecer um painel tipo Vercel/Render em vez de uma lista de CRUD.
+- **✅ Feito**: dashboard inicial de verdade ao logar — cards de contagem (aplicações/bancos/serviços/servidores), deploys recentes cross-projeto (`GET /teams/:teamId/overview`, novo) e lista de servidores com status/CPU/RAM/disco ao vivo, pro time principal do usuário. Lista de times continua embaixo pro caso raro de multi-time. Falta ainda: gráfico histórico de métricas (depende de série temporal — ver seção Robustez) e widget de traffic analytics (baixa prioridade, ver achado abaixo).
 - Componentes de configuração **compartilhados entre Application/Database/Service** (limites de recurso, variáveis de ambiente, tags, terminal) em vez de cada `*DetailPage.vue` reimplementar o próprio formulário — o Coolify já faz isso do lado deles (pasta `Livewire/Project/Shared/*`), e o backend do `yeah` já segue esse padrão (`resourceLimitFlags`, `volumeFlags` compartilhados em `@yeah/shared`) — só falta espelhar isso no frontend.
 - Sub-navegação de Configuração ganhando os itens reais conforme cada feature abaixo for implementada: Persistent Storage ✅, Rollback ✅, faltam Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations, Healthcheck, Analytics.
 
@@ -73,8 +73,7 @@ Levantado pesquisando o site oficial, a documentação (`coolify.io/docs`) e o c
 **Healthcheck configurável — achado novo:**
 - Componente próprio (`Shared/Healthcheck`, rota `.../healthcheck`) separado de Resource Limits/Metrics: path HTTP, intervalo, retries, timeout configuráveis por recurso. Hoje o `yeah` só depende do `--restart unless-stopped` do Docker, sem healthcheck HTTP configurável pelo usuário.
 
-**Dashboard inicial — achado novo:**
-- Coolify tem uma home de verdade com widgets (`Dashboard/ActiveDeployments`, `Dashboard/ServerMetricsChart`, `Dashboard/TrafficAnalytics`) — visão cross-projeto ao logar. O `yeah` hoje cai direto em "Times", sem visão geral nenhuma. Ver seção "Reestruturação de navegação" acima.
+**Dashboard inicial — ✅ feito (essencial)**: cards de contagem + deploys recentes + status dos servidores, ver seção "Reestruturação de navegação" acima. Falta o gráfico histórico de métricas (`ServerMetricsChart`, depende de série temporal) e traffic analytics (`TrafficAnalytics`, baixa prioridade).
 
 **Analytics de tráfego por aplicação — achado novo:**
 - Separado de CPU/RAM/disco: Coolify mostra requisições/tráfego por app (`Analytics`/`TrafficOverview`). Baixa prioridade, mas real.
