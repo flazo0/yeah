@@ -1,7 +1,17 @@
 import { Elysia, t } from "elysia";
 import { and, desc, eq } from "drizzle-orm";
-import { applications, deployments, githubInstallations, servers, type Application, type Deployment } from "@yeah/db";
-import type { ApplicationDto, DeploymentDto } from "@yeah/shared";
+import {
+  applications,
+  applicationVolumes,
+  deployments,
+  githubInstallations,
+  servers,
+  type Application,
+  type ApplicationVolume,
+  type Deployment,
+} from "@yeah/db";
+import type { ApplicationDto, ApplicationVolumeDto, DeploymentDto } from "@yeah/shared";
+import { volumeName } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -40,6 +50,16 @@ function toDeploymentDto(deployment: Deployment): DeploymentDto {
     startedAt: deployment.startedAt ? deployment.startedAt.toISOString() : null,
     finishedAt: deployment.finishedAt ? deployment.finishedAt.toISOString() : null,
     createdAt: deployment.createdAt.toISOString(),
+  };
+}
+
+function toVolumeDto(volume: ApplicationVolume): ApplicationVolumeDto {
+  return {
+    id: volume.id,
+    applicationId: volume.applicationId,
+    name: volume.name,
+    mountPath: volume.mountPath,
+    createdAt: volume.createdAt.toISOString(),
   };
 }
 
@@ -282,6 +302,113 @@ export const applicationRoutes = new Elysia({
     },
     { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
   )
+  .get("/:applicationId/volumes", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    if (!(await loadApplication(params.environmentId, params.applicationId))) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+
+    const rows = await db
+      .select()
+      .from(applicationVolumes)
+      .where(eq(applicationVolumes.applicationId, params.applicationId));
+
+    return { volumes: rows.map(toVolumeDto) };
+  })
+  .post(
+    "/:applicationId/volumes",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!(await loadApplication(params.environmentId, params.applicationId))) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      if (!body.mountPath.startsWith("/")) {
+        set.status = 400;
+        return { error: "mountPath precisa ser um caminho absoluto (começar com /)" };
+      }
+
+      const [volume] = await db
+        .insert(applicationVolumes)
+        .values({ applicationId: params.applicationId, name: body.name, mountPath: body.mountPath })
+        .returning();
+      if (!volume) {
+        set.status = 500;
+        return { error: "failed to create volume" };
+      }
+
+      return { volume: toVolumeDto(volume) };
+    },
+    { body: t.Object({ name: t.String({ minLength: 1 }), mountPath: t.String({ minLength: 1 }) }) },
+  )
+  .delete("/:applicationId/volumes/:volumeId", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const row = await loadApplication(params.environmentId, params.applicationId);
+    if (!row) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+
+    const volumeRows = await db
+      .select()
+      .from(applicationVolumes)
+      .where(and(eq(applicationVolumes.id, params.volumeId), eq(applicationVolumes.applicationId, params.applicationId)))
+      .limit(1);
+    const volume = volumeRows[0];
+    if (!volume) {
+      set.status = 404;
+      return { error: "volume not found" };
+    }
+
+    await db.delete(applicationVolumes).where(eq(applicationVolumes.id, params.volumeId));
+
+    // Same deliberate exception as the application-teardown route below: a bounded, synchronous
+    // best-effort cleanup the browser is waiting on. Fails silently if the container still has it
+    // mounted (removed for real on the next deploy, which stops passing the -v flag) or the server
+    // is unreachable — the row is already gone either way, which is what the user asked for.
+    const serverRows = await db.select().from(servers).where(eq(servers.id, row.application.serverId)).limit(1);
+    const server = serverRows[0];
+    if (server) {
+      try {
+        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+        try {
+          await execStream(conn, `docker volume rm ${shellQuote(volumeName(volume.id))} >/dev/null 2>&1 || true`, () => {});
+        } finally {
+          conn.end();
+        }
+      } catch (err) {
+        console.error(`[api] failed to remove docker volume for application volume ${volume.id}:`, err);
+      }
+    }
+
+    return { ok: true };
+  })
   .get("/:applicationId/deployments", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
@@ -381,12 +508,14 @@ export const applicationRoutes = new Elysia({
 
     const serverRows = await db.select().from(servers).where(eq(servers.id, row.application.serverId)).limit(1);
     const server = serverRows[0];
+    const volumeRows = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, row.application.id));
 
     // Deliberate exception to "the API never SSHes directly" (see servers.ts): a bounded,
     // synchronous teardown the browser is waiting on — same rationale as the backup download route.
     if (server) {
       const containerName = `yeah-app-${row.application.id}`;
       const appDir = `/opt/yeah-apps/${row.application.id}`;
+      const volumeRmCommand = volumeRows.map((v) => `docker volume rm ${shellQuote(volumeName(v.id))} >/dev/null 2>&1 || true`).join(" && ");
       try {
         const conn = await connectSsh({
           host: server.host,
@@ -397,7 +526,8 @@ export const applicationRoutes = new Elysia({
         try {
           await execStream(
             conn,
-            `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true`,
+            `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true` +
+              (volumeRmCommand ? ` && ${volumeRmCommand}` : ""),
             () => {},
           );
         } finally {

@@ -1,3 +1,5 @@
+import { shellQuote } from "./shell";
+
 export type TeamRole = "owner" | "admin" | "member";
 
 export type ServerStatus = "pending" | "connected" | "error";
@@ -109,6 +111,25 @@ export interface ApplicationDto extends ResourceLimits {
   githubRepo: string | null;
   status: ApplicationStatus;
   createdAt: string;
+}
+
+export interface ApplicationVolumeDto {
+  id: string;
+  applicationId: string;
+  name: string;
+  mountPath: string;
+  createdAt: string;
+}
+
+/** The actual docker volume name for a persistent storage row — one source of truth, id-derived so it never collides. */
+export function volumeName(volumeId: string): string {
+  return `yeah-vol-${volumeId}`;
+}
+
+/** Builds `-v` flags for every configured persistent storage mount — empty string if there are none. */
+export function volumeFlags(volumes: Array<{ id: string; mountPath: string }>): string {
+  if (volumes.length === 0) return "";
+  return volumes.map((v) => `-v ${shellQuote(volumeName(v.id))}:${shellQuote(v.mountPath)} `).join("");
 }
 
 export interface DeploymentDto {

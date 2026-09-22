@@ -1,5 +1,5 @@
 import type { Application, Server } from "@yeah/db";
-import { PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote } from "@yeah/shared";
+import { PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -15,10 +15,17 @@ export function resolveDomain(application: Application, server: Server): string 
   return `${slug}.${server.wildcardDomain}`;
 }
 
-export function buildRunCommand(application: Application, appDir: string, containerName: string, domain: string | null): string {
+export function buildRunCommand(
+  application: Application,
+  appDir: string,
+  containerName: string,
+  domain: string | null,
+  volumes: Array<{ id: string; mountPath: string }> = [],
+): string {
   const base =
     `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
-    resourceLimitFlags(application);
+    resourceLimitFlags(application) +
+    volumeFlags(volumes);
   const restart = `--restart unless-stopped ${shellQuote(containerName)}`;
 
   if (!domain) {

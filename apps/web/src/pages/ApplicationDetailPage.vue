@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ApplicationDto, ApplicationStatus, DeploymentDto, DeploymentStatus, WsServerEvent } from "@yeah/shared";
+import type { ApplicationDto, ApplicationStatus, ApplicationVolumeDto, DeploymentDto, DeploymentStatus, WsServerEvent } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import CodeEditor from "../components/CodeEditor.vue";
@@ -34,6 +34,12 @@ const limitsForm = ref<{ memoryLimitMb: number | null; cpuLimit: number | null }
 const savingLimits = ref(false);
 const limitsSaved = ref(false);
 
+const volumes = ref<ApplicationVolumeDto[]>([]);
+const newVolumeName = ref("");
+const newVolumeMountPath = ref("");
+const addingVolume = ref(false);
+const deletingVolumeId = ref<string | null>(null);
+
 const currentDeploymentId = ref<string | null>(null);
 const currentLog = ref("");
 const currentStatus = ref<DeploymentStatus | null>(null);
@@ -55,7 +61,7 @@ const deploymentBadge: Record<DeploymentStatus, string> = {
 const canDeploy = computed(() => currentStatus.value !== "queued" && currentStatus.value !== "running");
 
 const activeTab = ref<"deployments" | "config">("deployments");
-const activeConfigTab = ref<"general" | "env">("general");
+const activeConfigTab = ref<"general" | "env" | "storage">("general");
 
 const confirmingDelete = ref(false);
 const deleting = ref(false);
@@ -83,15 +89,17 @@ async function deleteApplication() {
 async function load() {
   loading.value = true;
   try {
-    const [appRes, historyRes] = await Promise.all([
+    const [appRes, historyRes, volumesRes] = await Promise.all([
       api.get<{ application: ApplicationDto }>(basePath),
       api.get<{ deployments: DeploymentDto[] }>(`${basePath}/deployments`),
+      api.get<{ volumes: ApplicationVolumeDto[] }>(`${basePath}/volumes`),
     ]);
     app.value = appRes.application;
     envContent.value = appRes.application.envContent;
     domainForm.value = appRes.application.domain ?? "";
     limitsForm.value = { memoryLimitMb: appRes.application.memoryLimitMb, cpuLimit: appRes.application.cpuLimit };
     history.value = historyRes.deployments;
+    volumes.value = volumesRes.volumes;
     const latest = historyRes.deployments[0];
     if (latest) {
       currentDeploymentId.value = latest.id;
@@ -102,6 +110,38 @@ async function load() {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar aplicação";
   } finally {
     loading.value = false;
+  }
+}
+
+async function addVolume() {
+  if (!newVolumeName.value.trim() || !newVolumeMountPath.value.trim()) return;
+  addingVolume.value = true;
+  error.value = "";
+  try {
+    const res = await api.post<{ volume: ApplicationVolumeDto }>(`${basePath}/volumes`, {
+      name: newVolumeName.value.trim(),
+      mountPath: newVolumeMountPath.value.trim(),
+    });
+    volumes.value = [...volumes.value, res.volume];
+    newVolumeName.value = "";
+    newVolumeMountPath.value = "";
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao adicionar armazenamento";
+  } finally {
+    addingVolume.value = false;
+  }
+}
+
+async function deleteVolume(volumeId: string) {
+  deletingVolumeId.value = volumeId;
+  error.value = "";
+  try {
+    await api.delete(`${basePath}/volumes/${volumeId}`);
+    volumes.value = volumes.value.filter((v) => v.id !== volumeId);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao remover armazenamento";
+  } finally {
+    deletingVolumeId.value = null;
   }
 }
 
@@ -297,6 +337,9 @@ onUnmounted(() => {
         <button type="button" class="detail-subnav-item" :class="{ active: activeConfigTab === 'env' }" @click="activeConfigTab = 'env'">
           Variáveis de ambiente
         </button>
+        <button type="button" class="detail-subnav-item" :class="{ active: activeConfigTab === 'storage' }" @click="activeConfigTab = 'storage'">
+          Armazenamento
+        </button>
       </nav>
 
       <div class="card" v-if="activeConfigTab === 'general'" style="margin-bottom: 0">
@@ -374,7 +417,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="card" v-else style="margin-bottom: 0">
+      <div class="card" v-else-if="activeConfigTab === 'env'" style="margin-bottom: 0">
         <div class="card-header">
           <span class="material-symbols-outlined" style="font-size: 18px">key</span>
           Variáveis de ambiente
@@ -387,6 +430,68 @@ onUnmounted(() => {
               {{ savingEnv ? "salvando..." : "Salvar variáveis" }}
             </button>
             <span v-if="envSaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" v-else style="margin-bottom: 0">
+        <div class="card-header">
+          <span class="material-symbols-outlined" style="font-size: 18px">hard_drive</span>
+          Armazenamento persistente
+        </div>
+        <div class="card-body">
+          <p class="hint mb-16">
+            Volumes nomeados do Docker montados no container — sobrevivem a redeploys. Aplica no próximo deploy.
+          </p>
+          <div v-if="volumes.length === 0" class="empty-state">Nenhum volume configurado.</div>
+          <div v-else class="table-wrap mb-16">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Caminho no container</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="volume in volumes" :key="volume.id">
+                  <td>{{ volume.name }}</td>
+                  <td class="mono">{{ volume.mountPath }}</td>
+                  <td>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      style="color: var(--bad)"
+                      :disabled="deletingVolumeId === volume.id"
+                      @click="deleteVolume(volume.id)"
+                    >
+                      {{ deletingVolumeId === volume.id ? "removendo..." : "Remover" }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="app-volume-name">Nome</label>
+              <input id="app-volume-name" v-model="newVolumeName" class="form-control" placeholder="uploads" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="app-volume-path">Caminho no container</label>
+              <input id="app-volume-path" v-model="newVolumeMountPath" class="form-control mono" placeholder="/app/uploads" />
+            </div>
+          </div>
+          <div class="btn-row">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              :disabled="addingVolume || !newVolumeName.trim() || !newVolumeMountPath.trim()"
+              @click="addVolume"
+            >
+              <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+              {{ addingVolume ? "adicionando..." : "Adicionar volume" }}
+            </button>
           </div>
         </div>
       </div>

@@ -11,3 +11,4 @@ export * from "./storages";
 export * from "./github";
 export * from "./notifications";
 export * from "./services";
+export * from "./volumes";

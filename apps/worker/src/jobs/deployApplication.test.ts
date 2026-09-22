@@ -121,4 +121,20 @@ describe("buildRunCommand", () => {
     expect(cmd).toContain("--name 'yeah-app-1'");
     expect(cmd).toContain("--env-file '/opt/yeah-apps/app-1/.env'");
   });
+
+  test("mounts a -v flag per configured persistent volume, named after the row id", () => {
+    const app = makeApplication();
+    const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", null, [
+      { id: "vol-1", mountPath: "/app/uploads" },
+      { id: "vol-2", mountPath: "/app/cache" },
+    ]);
+    expect(cmd).toContain("-v 'yeah-vol-vol-1':'/app/uploads'");
+    expect(cmd).toContain("-v 'yeah-vol-vol-2':'/app/cache'");
+  });
+
+  test("omits -v flags entirely when there are no volumes", () => {
+    const app = makeApplication();
+    const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", null, []);
+    expect(cmd).not.toContain("-v ");
+  });
 });

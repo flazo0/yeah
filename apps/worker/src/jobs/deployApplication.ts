@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { applications, deployments, servers, type Application } from "@yeah/db";
+import { applications, applicationVolumes, deployments, servers, type Application } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
@@ -61,6 +61,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     const repoDir = `${appDir}/repo`;
     const containerName = `yeah-app-${application.id}`;
     const domain = resolveDomain(application, server);
+    const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, application.id));
 
     // A GitHub App installation token is only valid for an hour, so it's minted fresh on every
     // deploy rather than stored — this also means access is revoked instantly if the App is uninstalled.
@@ -92,7 +93,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     };
     const runStepDef: Step = {
       label: domain ? `subindo o container (https://${domain})` : "subindo o container",
-      command: buildRunCommand(application, appDir, containerName, domain),
+      command: buildRunCommand(application, appDir, containerName, domain, volumes),
     };
 
     let conn: Client | null = null;
