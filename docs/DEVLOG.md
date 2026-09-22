@@ -319,3 +319,16 @@ Replicado com a nossa cara: `TeamSwitcher.vue` novo — substitui o nome do time
 
 Testado de ponta a ponta contra API/banco de dev reais: criei um time novo pelo switcher (formulário inline, disparo de evento real via JS pra contornar a instabilidade do clique simulado), confirmei que navega pro time novo com o switcher mostrando ele como atual, e limpei depois.
 
+
+## Ícones demorando (achado: fonte de 4MB)
+
+Usuário reportou: ícones demoram muito pra aparecer, precisa atualizar a página duas vezes pra ficar certo. Achado: `MaterialSymbolsOutlined.woff2` (usado em praticamente toda tela, desde o sidebar) pesava **3.98 MB** — o arquivo variável completo do Google, com 4 eixos (FILL/wght/GRAD/opsz) multiplicados por ~6600 ícones do conjunto inteiro. Combinado com `font-display: block` (janela de ~3s invisível antes do fallback), num cache frio o download de 4MB frequentemente não termina a tempo — daí o "preciso atualizar 2x": só funcionava porque na segunda vez o arquivo já tava no cache do navegador.
+
+O CSS (`.material-symbols-outlined`) já fixa todo ícone do app numa única variação (`FILL 0, wght 400, GRAD 0, opsz 24`) — os eixos variáveis nunca são usados de verdade em lugar nenhum. Re-gerei o arquivo como uma instância estática nessa variação exata (`fontTools.varLib.instancer MaterialSymbolsOutlined.woff2 FILL=0 wght=400 GRAD=0 opsz=24`), mantendo o conjunto de ícones inteiro (sem subsetting por nome) — **386 KB**, renderização idêntica, e sem precisar mexer de novo toda vez que alguém adicionar um ícone novo num template.
+
+**Tentei subsetting primeiro** (cortar pra só os ~48 ícones que o app usa hoje, o que teoricamente chegaria a uns 60-100 KB) — não deu certo de forma limpa: essa fonte usa um mecanismo de substituição contextual encadeada (`rlig`/`rclt`) em vez de uma tabela de ligadura simples, e o fechamento de closure do `fonttools` ou cortava ícones que deveriam ter sobrevivido, ou puxava de volta 90% da fonte inteira tentando preservar as regras. Instanciar sozinho (sem subsetting) já resolveu o problema real (tamanho) sem esse risco — trade-off consciente: mantém a fonte inteira "future-proof" em vez de mais 100-200 KB de economia com uma etapa de build frágil.
+
+De brinde, achei e corrigi duas imprecisões no CSS enquanto investigava: `font-feature-settings: "liga"` (a fonte só declara `"rlig"` — sempre foi um no-op silencioso, só não quebrava nada porque `rlig` já vem ligado por padrão no navegador) e `font-weight: 100 700` no `@font-face` (sobra da fonte variável, sem sentido numa instância estática).
+
+Testado no navegador: `curl` confirma os 386 KB servidos, e todo ícone testado (sidebar, dashboard, notificações) renderiza igual, sem glifo quebrado ou faltando.
+
