@@ -220,3 +220,14 @@ Achado tentando subir o stack local (`bun run dev`) só pra testar visualmente o
 
 Corrigido invertendo a ordem: `bun run --cwd apps/api dev` (`--cwd` depois do `run`) funciona certinho. Confirmado subindo o stack completo (api:3000, worker, ws:3001, web:5174) com sucesso.
 
+**Segundo bug atrás do primeiro**: consertar a ordem fez os scripts rodarem de verdade pela primeira vez — o que expôs um segundo problema que o primeiro bug vinha escondendo. Rodando de verdade, `bun run dev`/`db:migrate`/etc. quebravam com `DATABASE_URL is not set`: o carregamento automático de `.env` do Bun só olha o cwd do próprio processo, e `--cwd apps/api` muda esse cwd pra dentro do subpacote — o `.env` da raiz (o único que existe no projeto) nunca era lido. Corrigido adicionando `--env-file=../../.env` (relativo a cada subpacote — `apps/*` e `packages/db` ficam exatamente dois níveis abaixo da raiz) em cada `bun run --cwd`. Testado de ponta a ponta: `bun run db:migrate` aplicando migração de verdade e `bun run dev` subindo os quatro processos com `DATABASE_URL`/`REDIS_URL` reais, sem nenhuma variável de ambiente setada manualmente fora do `.env`.
+
+
+## Armazenamento persistente pra aplicações
+
+Coolify tem uma aba "Persistent Storage" — volume nomeado do Docker + caminho no container, sobrevive a redeploy. `Database` e `Service` já tinham isso de graça (caminho fixo do motor de banco ou do catálogo de serviços), mas `Application` (deploy via Dockerfile) não tinha nenhum jeito de persistir nada — um gap real, e também a primeira feature de verdade pra preencher a sub-navegação de Configuração mais granular que o roadmap já registrava como pendente.
+
+Tabela nova `application_volumes` (nome + caminho, uma linha por volume). O nome do volume Docker de verdade nunca é guardado — é derivado do id da linha (`yeah-vol-<id>`, em `volumeFlags()` no `@yeah/shared`), uma fonte de verdade só. Rotas `GET`/`POST`/`DELETE` em `/applications/:id/volumes`; `deployApplication` busca os volumes da aplicação e passa pro `buildRunCommand`, que já tinha o padrão de `resourceLimitFlags` pra seguir. Remover um volume (ou a aplicação inteira) tenta remover o volume Docker de verdade via SSH síncrona, mesma exceção deliberada já usada pro teardown do container — falha em silêncio se o container ainda tiver montado (remove de verdade no próximo deploy) ou o servidor estiver fora do ar.
+
+Aba nova "Armazenamento" na sub-navegação de Configuração da aplicação. Testado de ponta a ponta contra a API/banco de dev reais: criar aplicação descartável → adicionar volume → aparece na lista → remover → sumiu → excluir a aplicação (limpa os volumes junto).
+
