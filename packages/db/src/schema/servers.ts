@@ -1,4 +1,4 @@
-import { integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
 
 export const serverStatusEnum = pgEnum("server_status", ["pending", "connected", "error"]);
@@ -29,6 +29,10 @@ export const servers = pgTable("servers", {
   memPercent: real("mem_percent"),
   diskPercent: real("disk_percent"),
   metricsCheckedAt: timestamp("metrics_checked_at", { withTimezone: true }),
+  // Set only on the one server install.sh auto-registers (the machine yeah itself runs on) — the
+  // Updates page's "atualizar plataforma"/"atualizar sistema" buttons target this row specifically,
+  // never an arbitrary managed server, so there's no ambiguity about which host gets touched.
+  isPlatformHost: boolean("is_platform_host").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

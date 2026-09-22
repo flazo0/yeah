@@ -20,7 +20,7 @@ export async function createLocalhostServerIfConfigured(teamId: string): Promise
 
   const [server] = await db
     .insert(servers)
-    .values({ teamId, name: "Servidor local", host, port, sshUser, privateKey })
+    .values({ teamId, name: "Servidor local", host, port, sshUser, privateKey, isPlatformHost: true })
     .returning();
   if (!server) return;
 

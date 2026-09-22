@@ -2,6 +2,7 @@ import {
   createApplicationDeployQueue,
   createDatabaseBackupQueue,
   createDatabaseProvisionQueue,
+  createPlatformOperationQueue,
   createProxyProvisionQueue,
   createRedisConnection,
   createServerCheckQueue,
@@ -21,3 +22,4 @@ export const databaseProvisionQueue = createDatabaseProvisionQueue(connection);
 export const databaseBackupQueue = createDatabaseBackupQueue(connection);
 export const proxyProvisionQueue = createProxyProvisionQueue(connection);
 export const serviceProvisionQueue = createServiceProvisionQueue(connection);
+export const platformOperationQueue = createPlatformOperationQueue(connection);

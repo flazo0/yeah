@@ -2,6 +2,8 @@ import {
   createApplicationDeployWorker,
   createDatabaseBackupWorker,
   createDatabaseProvisionWorker,
+  createPlatformOperationQueue,
+  createPlatformOperationWorker,
   createProxyProvisionWorker,
   createRedisConnection,
   createServerCheckWorker,
@@ -19,6 +21,7 @@ import { makeProvisionDatabaseProcessor } from "./jobs/provisionDatabase";
 import { makeBackupDatabaseProcessor } from "./jobs/backupDatabase";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
 import { makeProvisionServiceProcessor } from "./jobs/provisionService";
+import { makePlatformOperationProcessor } from "./jobs/platformOperation";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
 import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
 
@@ -44,6 +47,9 @@ const metricsPublishConnection = createRedisConnection(redisUrl);
 const metricsSchedulerConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
 const tlsSchedulerConnection = createRedisConnection(redisUrl);
+const platformOperationJobConnection = createRedisConnection(redisUrl);
+const platformOperationPublishConnection = createRedisConnection(redisUrl);
+const platformOperationSelfQueueConnection = createRedisConnection(redisUrl);
 
 const serverCheckWorker = createServerCheckWorker(jobConnection, makeCheckServerProcessor(publishConnection));
 serverCheckWorker.on("completed", (job) => console.log(`[worker] server-check ${job.id} completed`));
@@ -90,6 +96,13 @@ tlsWorker.on("failed", (job, err) => console.error(`[worker] tls-check ${job?.id
 const tlsSchedulerQueue = createTlsCheckQueue(tlsSchedulerConnection);
 await ensureTlsCheckScheduler(tlsSchedulerQueue);
 
+const platformOperationSelfQueue = createPlatformOperationQueue(platformOperationSelfQueueConnection);
+const platformOperationWorker = createPlatformOperationWorker(
+  platformOperationJobConnection,
+  makePlatformOperationProcessor(platformOperationPublishConnection, platformOperationSelfQueue),
+);
+platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
+
 console.log(
-  "[worker] listening for server-check, application-deploy, database-provision, database-backup, proxy-provision, service-provision, server-metrics and tls-check jobs",
+  "[worker] listening for server-check, application-deploy, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
 );

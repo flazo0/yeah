@@ -1,9 +1,14 @@
-import { Elysia } from "elysia";
-import { eq } from "drizzle-orm";
-import { databases, services } from "@yeah/db";
+import { Elysia, t } from "elysia";
+import { desc, eq } from "drizzle-orm";
+import { databases, platformOperations, services, type PlatformOperation } from "@yeah/db";
+import type { ImageUpdateResourceDto, PlatformOperationDto, SystemImageUpdateDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+import { platformOperationQueue, databaseProvisionQueue, serviceProvisionQueue } from "../lib/queue";
+import { compareVersionParts, parseVersionTag, type ParsedVersionTag } from "./updates.pure";
+
+export { compareVersionParts, parseVersionTag } from "./updates.pure";
 
 const GITHUB_REPO = "flazo0/yeah";
 const KNOWN_SYSTEM_IMAGES = ["traefik:v2.11"];
@@ -44,27 +49,6 @@ interface ImageUpdateInfo {
   currentTag: string;
   latestTag: string | null;
   updateAvailable: boolean | null;
-}
-
-interface ParsedVersionTag {
-  hasV: boolean;
-  parts: number[];
-  suffix: string;
-}
-
-/** "16-alpine" → {parts:[16], suffix:"-alpine"}. "v2.11" → {hasV:true, parts:[2,11], suffix:""}. */
-export function parseVersionTag(tag: string): ParsedVersionTag | null {
-  const match = /^(v)?(\d+(?:\.\d+){0,3})(.*)$/.exec(tag);
-  if (!match) return null;
-  return { hasV: Boolean(match[1]), parts: match[2]!.split(".").map(Number), suffix: match[3] ?? "" };
-}
-
-export function compareVersionParts(a: number[], b: number[]): number {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const diff = (a[i] ?? 0) - (b[i] ?? 0);
-    if (diff !== 0) return diff;
-  }
-  return 0;
 }
 
 /**
@@ -112,6 +96,33 @@ async function checkImageUpdates(images: string[]): Promise<ImageUpdateInfo[]> {
   );
 }
 
+function toPlatformOperationDto(op: PlatformOperation): PlatformOperationDto {
+  return {
+    id: op.id,
+    kind: op.kind,
+    status: op.status,
+    log: op.log,
+    startedAt: op.startedAt ? op.startedAt.toISOString() : null,
+    finishedAt: op.finishedAt ? op.finishedAt.toISOString() : null,
+    createdAt: op.createdAt.toISOString(),
+  };
+}
+
+async function startPlatformOperation(kind: "platform_update" | "system_update"): Promise<PlatformOperationDto | null> {
+  // One at a time, whichever kind — both touch the same host, running two at once would race.
+  const inFlight = await db
+    .select()
+    .from(platformOperations)
+    .where(eq(platformOperations.status, "running"))
+    .limit(1);
+  if (inFlight[0]) return null;
+
+  const [operation] = await db.insert(platformOperations).values({ kind, status: "queued" }).returning();
+  if (!operation) return null;
+  await platformOperationQueue.add("platform-operation", { operationId: operation.id });
+  return toPlatformOperationDto(operation);
+}
+
 export const updateRoutes = new Elysia()
   .get("/updates/platform", async ({ cookie, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
@@ -120,6 +131,47 @@ export const updateRoutes = new Elysia()
       return { error: "unauthorized" };
     }
     return checkPlatformUpdate();
+  })
+  .post("/updates/platform/run", async ({ cookie, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    const operation = await startPlatformOperation("platform_update");
+    if (!operation) {
+      set.status = 409;
+      return { error: "já tem uma atualização rodando" };
+    }
+    return { operation };
+  })
+  .post("/updates/system/run", async ({ cookie, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    const operation = await startPlatformOperation("system_update");
+    if (!operation) {
+      set.status = 409;
+      return { error: "já tem uma atualização rodando" };
+    }
+    return { operation };
+  })
+  .get("/updates/operations", async ({ cookie, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    const [platformRows, systemRows] = await Promise.all([
+      db.select().from(platformOperations).where(eq(platformOperations.kind, "platform_update")).orderBy(desc(platformOperations.createdAt)).limit(1),
+      db.select().from(platformOperations).where(eq(platformOperations.kind, "system_update")).orderBy(desc(platformOperations.createdAt)).limit(1),
+    ]);
+    return {
+      platformUpdate: platformRows[0] ? toPlatformOperationDto(platformRows[0]) : null,
+      systemUpdate: systemRows[0] ? toPlatformOperationDto(systemRows[0]) : null,
+    };
   })
   .get("/teams/:teamId/updates/images", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
@@ -132,13 +184,84 @@ export const updateRoutes = new Elysia()
       return { error: "forbidden" };
     }
 
-    const dbRows = await db.select({ image: databases.image }).from(databases).where(eq(databases.teamId, params.teamId));
-    const svcRows = await db.select({ image: services.image }).from(services).where(eq(services.teamId, params.teamId));
+    const dbRows = await db
+      .select({ id: databases.id, name: databases.name, image: databases.image })
+      .from(databases)
+      .where(eq(databases.teamId, params.teamId));
+    const svcRows = await db
+      .select({ id: services.id, name: services.name, image: services.image })
+      .from(services)
+      .where(eq(services.teamId, params.teamId));
 
     const allImages = [...dbRows.map((r) => r.image), ...svcRows.map((r) => r.image), ...KNOWN_SYSTEM_IMAGES].filter(
       (image, index, arr) => arr.indexOf(image) === index,
     );
+    const checked = await checkImageUpdates(allImages);
+    const byImage = new Map(checked.map((c) => [c.image, c]));
 
-    const images = await checkImageUpdates(allImages);
-    return { images };
-  });
+    const images: ImageUpdateResourceDto[] = [
+      ...dbRows.map((r) => {
+        const info = byImage.get(r.image)!;
+        return { resourceType: "database" as const, resourceId: r.id, resourceName: r.name, image: r.image, currentTag: info.currentTag, latestTag: info.latestTag, updateAvailable: info.updateAvailable };
+      }),
+      ...svcRows.map((r) => {
+        const info = byImage.get(r.image)!;
+        return { resourceType: "service" as const, resourceId: r.id, resourceName: r.name, image: r.image, currentTag: info.currentTag, latestTag: info.latestTag, updateAvailable: info.updateAvailable };
+      }),
+    ];
+    const system: SystemImageUpdateDto[] = KNOWN_SYSTEM_IMAGES.map((image) => {
+      const info = byImage.get(image)!;
+      return { image, currentTag: info.currentTag, latestTag: info.latestTag, updateAvailable: info.updateAvailable };
+    });
+
+    return { images, system };
+  })
+  .post(
+    "/teams/:teamId/updates/images/apply",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      if (body.resourceType === "database") {
+        const rows = await db.select().from(databases).where(eq(databases.id, body.resourceId)).limit(1);
+        const database = rows[0];
+        if (!database || database.teamId !== params.teamId) {
+          set.status = 404;
+          return { error: "database not found" };
+        }
+        const [repo] = database.image.split(":");
+        const latest = await latestDockerHubTag(repo && !repo.includes("/") ? `library/${repo}` : (repo ?? ""), database.image.split(":")[1] ?? "latest");
+        if (!latest) {
+          set.status = 400;
+          return { error: "não foi possível checar a tag mais recente" };
+        }
+        await db.update(databases).set({ image: `${repo}:${latest}`, status: "provisioning" }).where(eq(databases.id, database.id));
+        await databaseProvisionQueue.add("provision", { databaseId: database.id });
+        return { ok: true };
+      }
+
+      const rows = await db.select().from(services).where(eq(services.id, body.resourceId)).limit(1);
+      const service = rows[0];
+      if (!service || service.teamId !== params.teamId) {
+        set.status = 404;
+        return { error: "service not found" };
+      }
+      const [repo] = service.image.split(":");
+      const latest = await latestDockerHubTag(repo && !repo.includes("/") ? `library/${repo}` : (repo ?? ""), service.image.split(":")[1] ?? "latest");
+      if (!latest) {
+        set.status = 400;
+        return { error: "não foi possível checar a tag mais recente" };
+      }
+      await db.update(services).set({ image: `${repo}:${latest}`, status: "provisioning" }).where(eq(services.id, service.id));
+      await serviceProvisionQueue.add("provision", { serviceId: service.id });
+      return { ok: true };
+    },
+    { body: t.Object({ resourceType: t.Union([t.Literal("database"), t.Literal("service")]), resourceId: t.String({ minLength: 1 }) }) },
+  );

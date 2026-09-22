@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { compareVersionParts, parseVersionTag } from "./updates";
+import { compareVersionParts, parseVersionTag } from "./updates.pure";
 
 describe("parseVersionTag", () => {
   test("parses a bare version", () => {

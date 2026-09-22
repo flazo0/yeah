@@ -99,6 +99,13 @@
       "when": 1790088499721,
       "tag": "0013_woozy_ronan",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790094481193,
+      "tag": "0014_right_gauntlet",
+      "breakpoints": true
     }
   ]
 }

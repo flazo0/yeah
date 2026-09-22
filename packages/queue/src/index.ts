@@ -10,6 +10,7 @@ export const PROXY_PROVISION_QUEUE = "proxy-provision";
 export const SERVICE_PROVISION_QUEUE = "service-provision";
 export const SERVER_METRICS_QUEUE = "server-metrics";
 export const TLS_CHECK_QUEUE = "tls-check";
+export const PLATFORM_OPERATION_QUEUE = "platform-operation";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -40,6 +41,10 @@ export interface ProxyProvisionJobData {
 
 export interface ServiceProvisionJobData {
   serviceId: string;
+}
+
+export interface PlatformOperationJobData {
+  operationId: string;
 }
 
 /** Tick job, no per-run data — it just re-checks every connected server each time it fires. */
@@ -133,6 +138,17 @@ export function createServerMetricsWorker(
 /** Called once at worker boot — idempotent (upsert), so restarting the worker never double-schedules it. */
 export async function ensureServerMetricsScheduler(queue: Queue<ServerMetricsJobData>, everyMs = 60_000): Promise<void> {
   await queue.upsertJobScheduler(SERVER_METRICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createPlatformOperationQueue(connection: Redis): Queue<PlatformOperationJobData> {
+  return new Queue<PlatformOperationJobData>(PLATFORM_OPERATION_QUEUE, { connection });
+}
+
+export function createPlatformOperationWorker(
+  connection: Redis,
+  processor: Processor<PlatformOperationJobData>,
+): Worker<PlatformOperationJobData> {
+  return new Worker<PlatformOperationJobData>(PLATFORM_OPERATION_QUEUE, processor, { connection });
 }
 
 export function createTlsCheckQueue(connection: Redis): Queue<TlsCheckJobData> {

@@ -309,6 +309,38 @@ export interface NotificationChannelDto {
   createdAt: string;
 }
 
+export type PlatformOperationKind = "platform_update" | "system_update";
+export type PlatformOperationStatus = "queued" | "running" | "success" | "failed";
+
+export interface PlatformOperationDto {
+  id: string;
+  kind: PlatformOperationKind;
+  status: PlatformOperationStatus;
+  log: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
+/** One row per database/service actually using an image — the "atualizar"/"atualizar tudo"
+ * buttons act on these directly instead of a deduped-by-image-string list. */
+export interface ImageUpdateResourceDto {
+  resourceType: "database" | "service";
+  resourceId: string;
+  resourceName: string;
+  image: string;
+  currentTag: string;
+  latestTag: string | null;
+  updateAvailable: boolean | null;
+}
+
+export interface SystemImageUpdateDto {
+  image: string;
+  currentTag: string;
+  latestTag: string | null;
+  updateAvailable: boolean | null;
+}
+
 /** Messages broadcast over the dedicated `ws` service, fanned out via Redis pub/sub. */
 export type WsServerEvent =
   | { type: "server.status"; serverId: string; status: ServerStatus; dockerVersion?: string }
@@ -318,4 +350,6 @@ export type WsServerEvent =
   | { type: "deployment.log"; deploymentId: string; line: string }
   | { type: "deployment.status"; deploymentId: string; status: DeploymentStatus }
   | { type: "database.status"; databaseId: string; status: DatabaseStatus }
-  | { type: "backup.status"; executionId: string; scheduleId: string; status: BackupExecutionStatus };
+  | { type: "backup.status"; executionId: string; scheduleId: string; status: BackupExecutionStatus }
+  | { type: "platform-operation.log"; operationId: string; line: string }
+  | { type: "platform-operation.status"; operationId: string; status: PlatformOperationStatus };

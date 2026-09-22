@@ -42,6 +42,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     memPercent: null,
     diskPercent: null,
     metricsCheckedAt: null,
+    isPlatformHost: false,
     createdAt: new Date(),
     ...overrides,
   };
