@@ -578,9 +578,11 @@ a:hover {
   display: flex;
   align-items: center;
   gap: 6px;
+  text-decoration: none;
 }
 .detail-tab:hover {
   color: var(--ink);
+  text-decoration: none;
 }
 .detail-tab.active {
   color: var(--ink);
@@ -604,6 +606,7 @@ a:hover {
   gap: 2px;
 }
 .detail-subnav-item {
+  display: block;
   background: none;
   border: none;
   text-align: left;
@@ -614,10 +617,12 @@ a:hover {
   color: var(--ink-dim);
   border-radius: var(--radius);
   cursor: pointer;
+  text-decoration: none;
 }
 .detail-subnav-item:hover {
   background: var(--surface-2);
   color: var(--ink);
+  text-decoration: none;
 }
 .detail-subnav-item.active {
   background: var(--accent-wash);

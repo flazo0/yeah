@@ -11,7 +11,11 @@ import StoragesPage from "../pages/StoragesPage.vue";
 import GithubPage from "../pages/GithubPage.vue";
 import NotificationsPage from "../pages/NotificationsPage.vue";
 import UpdatesPage from "../pages/UpdatesPage.vue";
-import ApplicationDetailPage from "../pages/ApplicationDetailPage.vue";
+import ApplicationLayout from "../layouts/ApplicationLayout.vue";
+import ApplicationDeploymentsPage from "../pages/application/ApplicationDeploymentsPage.vue";
+import ApplicationGeneralPage from "../pages/application/ApplicationGeneralPage.vue";
+import ApplicationEnvPage from "../pages/application/ApplicationEnvPage.vue";
+import ApplicationStoragePage from "../pages/application/ApplicationStoragePage.vue";
 import DatabaseDetailPage from "../pages/DatabaseDetailPage.vue";
 import ServiceDetailPage from "../pages/ServiceDetailPage.vue";
 
@@ -46,9 +50,15 @@ export const router = createRouter({
     },
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId/apps/:applicationId",
-      component: ApplicationDetailPage,
+      component: ApplicationLayout,
       meta: { requiresAuth: true },
-      props: true,
+      redirect: (to) => `${to.path}/deployments`,
+      children: [
+        { path: "deployments", name: "app-deployments", component: ApplicationDeploymentsPage },
+        { path: "general", name: "app-general", component: ApplicationGeneralPage },
+        { path: "env", name: "app-env", component: ApplicationEnvPage },
+        { path: "storage", name: "app-storage", component: ApplicationStoragePage },
+      ],
     },
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId/databases/:databaseId",
