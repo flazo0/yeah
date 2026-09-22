@@ -7,13 +7,13 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -n api,worker,ws,web -c blue,magenta,yellow,green \"bun run --cwd apps/api dev\" \"bun run --cwd apps/worker dev\" \"bun run --cwd apps/ws dev\" \"bun run --cwd apps/web dev\"",
+    "dev": "concurrently -n api,worker,ws,web -c blue,magenta,yellow,green \"bun run --cwd apps/api --env-file=../../.env dev\" \"bun run --cwd apps/worker --env-file=../../.env dev\" \"bun run --cwd apps/ws --env-file=../../.env dev\" \"bun run --cwd apps/web --env-file=../../.env dev\"",
     "dev:infra": "docker compose -f docker-compose.dev.yml up -d",
     "dev:infra:down": "docker compose -f docker-compose.dev.yml down",
-    "db:generate": "bun run --cwd packages/db db:generate",
-    "db:migrate": "bun run --cwd packages/db db:migrate",
-    "db:push": "bun run --cwd packages/db db:push",
-    "db:studio": "bun run --cwd packages/db db:studio",
+    "db:generate": "bun run --cwd packages/db --env-file=../../.env db:generate",
+    "db:migrate": "bun run --cwd packages/db --env-file=../../.env db:migrate",
+    "db:push": "bun run --cwd packages/db --env-file=../../.env db:push",
+    "db:studio": "bun run --cwd packages/db --env-file=../../.env db:studio",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun test"
   },
