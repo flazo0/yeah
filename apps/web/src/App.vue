@@ -5,11 +5,18 @@ import { useAuthStore } from "./stores/auth";
 import { isDark, toggleTheme } from "./lib/theme";
 import Logo from "./components/Logo.vue";
 import AccountMenu from "./components/AccountMenu.vue";
+import TeamSwitcher from "./components/TeamSwitcher.vue";
 
 const auth = useAuthStore();
 const route = useRoute();
 
 const teamId = computed(() => (typeof route.params.teamId === "string" ? route.params.teamId : null));
+// The topbar switcher needs a team to show even on /dashboard, which has no :teamId in its URL —
+// falls back to the user's first (for single-admin, only) team.
+const currentTeamName = computed(() => {
+  const team = teamId.value ? auth.teams.find((t) => t.id === teamId.value) : auth.teams[0];
+  return team?.name ?? "Time";
+});
 const projectId = computed(() => (typeof route.params.projectId === "string" ? route.params.projectId : null));
 const environmentId = computed(() =>
   typeof route.params.environmentId === "string" ? route.params.environmentId : null,
@@ -22,21 +29,21 @@ const isGithubRoute = computed(() => Boolean(teamId.value) && route.path === `/t
 const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
 const isUpdatesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/updates`);
 
+// Rendered after the TeamSwitcher segment — just the section trail, the team name itself is the
+// switcher now, not a plain string in this list.
 const breadcrumb = computed(() => {
-  if (!teamId.value) return ["Times"];
-  const team = auth.teams.find((t) => t.id === teamId.value);
-  const base = ["Times", team?.name ?? "Time"];
-  if (isServersRoute.value) return [...base, "Servidores"];
-  if (isStoragesRoute.value) return [...base, "Armazenamento"];
-  if (isGithubRoute.value) return [...base, "GitHub"];
-  if (isNotificationsRoute.value) return [...base, "Notificações"];
-  if (isUpdatesRoute.value) return [...base, "Atualizações"];
-  if (!projectId.value) return [...base, "Projetos"];
-  if (!environmentId.value) return [...base, "Projetos", "Ambientes"];
-  if (route.params.applicationId) return [...base, "Projetos", "Ambiente", "Aplicação"];
-  if (route.params.databaseId) return [...base, "Projetos", "Ambiente", "Banco de dados"];
-  if (route.params.serviceId) return [...base, "Projetos", "Ambiente", "Serviço"];
-  return [...base, "Projetos", "Recursos"];
+  if (!teamId.value) return [];
+  if (isServersRoute.value) return ["Servidores"];
+  if (isStoragesRoute.value) return ["Armazenamento"];
+  if (isGithubRoute.value) return ["GitHub"];
+  if (isNotificationsRoute.value) return ["Notificações"];
+  if (isUpdatesRoute.value) return ["Atualizações"];
+  if (!projectId.value) return ["Projetos"];
+  if (!environmentId.value) return ["Projetos", "Ambientes"];
+  if (route.params.applicationId) return ["Projetos", "Ambiente", "Aplicação"];
+  if (route.params.databaseId) return ["Projetos", "Ambiente", "Banco de dados"];
+  if (route.params.serviceId) return ["Projetos", "Ambiente", "Serviço"];
+  return ["Projetos", "Recursos"];
 });
 </script>
 
@@ -48,65 +55,42 @@ const breadcrumb = computed(() => {
         <RouterLink to="/dashboard"><Logo :height="30" /></RouterLink>
       </div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section">Operação</div>
         <RouterLink to="/dashboard" class="sidebar-link" :class="{ active: route.path === '/dashboard' }">
           <span class="material-symbols-outlined">space_dashboard</span>
-          Times
+          Dashboard
         </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}`"
-          class="sidebar-link"
-          :class="{ active: isProjectsRoute }"
-        >
-          <span class="material-symbols-outlined">layers</span>
-          Projetos
-        </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}/servers`"
-          class="sidebar-link"
-          :class="{ active: isServersRoute }"
-        >
-          <span class="material-symbols-outlined">dns</span>
-          Servidores
-        </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}/storages`"
-          class="sidebar-link"
-          :class="{ active: isStoragesRoute }"
-        >
-          <span class="material-symbols-outlined">cloud</span>
-          Armazenamento
-        </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}/github`"
-          class="sidebar-link"
-          :class="{ active: isGithubRoute }"
-        >
-          <span class="material-symbols-outlined">hub</span>
-          GitHub
-        </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}/notifications`"
-          class="sidebar-link"
-          :class="{ active: isNotificationsRoute }"
-        >
-          <span class="material-symbols-outlined">notifications</span>
-          Notificações
-        </RouterLink>
-        <RouterLink
-          v-if="teamId"
-          :to="`/teams/${teamId}/updates`"
-          class="sidebar-link"
-          :class="{ active: isUpdatesRoute }"
-        >
-          <span class="material-symbols-outlined">deployed_code_update</span>
-          Atualizações
-        </RouterLink>
+
+        <template v-if="teamId">
+          <div class="sidebar-section">Infraestrutura</div>
+          <RouterLink :to="`/teams/${teamId}`" class="sidebar-link" :class="{ active: isProjectsRoute }">
+            <span class="material-symbols-outlined">layers</span>
+            Projetos
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/servers`" class="sidebar-link" :class="{ active: isServersRoute }">
+            <span class="material-symbols-outlined">dns</span>
+            Servidores
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
+            <span class="material-symbols-outlined">cloud</span>
+            Armazenamento
+          </RouterLink>
+
+          <div class="sidebar-section">Integrações</div>
+          <RouterLink :to="`/teams/${teamId}/github`" class="sidebar-link" :class="{ active: isGithubRoute }">
+            <span class="material-symbols-outlined">hub</span>
+            GitHub
+          </RouterLink>
+
+          <div class="sidebar-section">Sistema</div>
+          <RouterLink :to="`/teams/${teamId}/notifications`" class="sidebar-link" :class="{ active: isNotificationsRoute }">
+            <span class="material-symbols-outlined">notifications</span>
+            Notificações
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
+            <span class="material-symbols-outlined">deployed_code_update</span>
+            Atualizações
+          </RouterLink>
+        </template>
       </nav>
       <div class="sidebar-footer">
         <div>{{ auth.user.name || auth.user.email }}</div>
@@ -122,8 +106,9 @@ const breadcrumb = computed(() => {
     <div class="main">
       <header v-if="auth.user" class="topbar">
         <div class="topbar-title">
+          <TeamSwitcher v-if="auth.teams.length > 0" :current-name="currentTeamName" />
           <template v-for="(crumb, i) in breadcrumb" :key="`${crumb}-${i}`">
-            <span v-if="i > 0" class="crumb-sep">&gt;</span>
+            <span class="crumb-sep">&gt;</span>
             <span class="crumb-item">{{ crumb }}</span>
           </template>
         </div>

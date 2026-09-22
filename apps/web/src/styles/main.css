@@ -322,6 +322,23 @@ a:hover {
   font-weight: 600;
   color: var(--ink);
 }
+.crumb-dropdown {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  margin: -2px -4px;
+  border-radius: 4px;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.crumb-dropdown:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
 
 .topbar-user {
   display: flex;
@@ -432,6 +449,21 @@ a:hover {
 }
 .account-menu-item.danger {
   color: var(--bad);
+}
+.account-menu-item.active {
+  background: var(--accent-wash);
+  color: var(--accent);
+}
+.account-menu-create-form {
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+}
+.account-menu-create-form .form-control {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-size: 13px;
 }
 
 /* ===================== Page structure ===================== */
