@@ -40,6 +40,8 @@ const newVolumeMountPath = ref("");
 const addingVolume = ref(false);
 const deletingVolumeId = ref<string | null>(null);
 
+const rollingBackId = ref<string | null>(null);
+
 const currentDeploymentId = ref<string | null>(null);
 const currentLog = ref("");
 const currentStatus = ref<DeploymentStatus | null>(null);
@@ -218,6 +220,23 @@ function selectDeployment(deployment: DeploymentDto) {
   currentStatus.value = deployment.status;
 }
 
+async function rollback(deployment: DeploymentDto) {
+  rollingBackId.value = deployment.id;
+  error.value = "";
+  try {
+    const res = await api.post<{ deployment: DeploymentDto }>(`${basePath}/deployments/${deployment.id}/rollback`, {});
+    currentDeploymentId.value = res.deployment.id;
+    currentLog.value = "";
+    currentStatus.value = res.deployment.status;
+    history.value = [res.deployment, ...history.value];
+    if (app.value) app.value.status = "deploying";
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao voltar pra essa versão";
+  } finally {
+    rollingBackId.value = null;
+  }
+}
+
 let unsubscribe: (() => void) | undefined;
 
 onMounted(() => {
@@ -309,6 +328,7 @@ onUnmounted(() => {
             <thead>
               <tr>
                 <th>Quando</th>
+                <th>Commit</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -316,10 +336,20 @@ onUnmounted(() => {
             <tbody>
               <tr v-for="deployment in history" :key="deployment.id">
                 <td>{{ new Date(deployment.createdAt).toLocaleString("pt-BR") }}</td>
+                <td class="mono">{{ deployment.commitSha ? deployment.commitSha.slice(0, 7) : "—" }}</td>
                 <td><span class="badge" :class="deploymentBadge[deployment.status]">{{ deployment.status }}</span></td>
-                <td>
+                <td class="btn-row" style="justify-content: flex-end">
                   <button type="button" class="btn btn-secondary btn-sm" @click="selectDeployment(deployment)">
                     Ver log
+                  </button>
+                  <button
+                    v-if="deployment.status === 'success'"
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    :disabled="!canDeploy || rollingBackId === deployment.id"
+                    @click="rollback(deployment)"
+                  >
+                    {{ rollingBackId === deployment.id ? "voltando..." : "Voltar pra essa versão" }}
                   </button>
                 </td>
               </tr>

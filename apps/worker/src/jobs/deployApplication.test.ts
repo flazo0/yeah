@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Application, Server } from "@yeah/db";
-import { buildRunCommand, resolveDomain } from "./deployApplication.commands";
+import { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
 
 function makeApplication(overrides: Partial<Application> = {}): Application {
   return {
@@ -136,5 +136,27 @@ describe("buildRunCommand", () => {
     const app = makeApplication();
     const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", null, []);
     expect(cmd).not.toContain("-v ");
+  });
+});
+
+describe("buildCloneOrPullCommand", () => {
+  test("resets to the branch's origin HEAD for a normal deploy (no target commit)", () => {
+    const cmd = buildCloneOrPullCommand("/opt/yeah-apps/app-1", "https://github.com/example/repo", "main", null);
+    expect(cmd).toContain("git fetch origin 'main'");
+    expect(cmd).toContain("git reset --hard 'origin/main'");
+    expect(cmd).toContain("git clone --branch 'main' --single-branch");
+  });
+
+  test("resets to the exact commit for a rollback, both on the fetch path and the fresh-clone path", () => {
+    const sha = "abc123def456";
+    const cmd = buildCloneOrPullCommand("/opt/yeah-apps/app-1", "https://github.com/example/repo", "main", sha);
+    expect(cmd).not.toContain("origin/main");
+    const resetCount = cmd.split(`git reset --hard '${sha}'`).length - 1;
+    expect(resetCount).toBe(2);
+  });
+
+  test("quotes the clone URL and branch safely", () => {
+    const cmd = buildCloneOrPullCommand("/opt/yeah-apps/app-1", "https://x:token@github.com/example/repo", "main", null);
+    expect(cmd).toContain("git remote set-url origin 'https://x:token@github.com/example/repo'");
   });
 });

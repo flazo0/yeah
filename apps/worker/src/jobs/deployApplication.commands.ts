@@ -15,6 +15,22 @@ export function resolveDomain(application: Application, server: Server): string 
   return `${slug}.${server.wildcardDomain}`;
 }
 
+/**
+ * Clones (first deploy) or fetches+resets (every deploy after) the app's repo. `targetCommitSha`
+ * is null for a normal deploy (reset to the branch's current HEAD) or set for a rollback (reset to
+ * that exact commit instead) — `git reset --hard` accepts either a ref or a raw SHA and works
+ * identically whether the repo is currently on a branch or in detached HEAD from a prior rollback,
+ * so no separate checkout/re-attach step is needed either way.
+ */
+export function buildCloneOrPullCommand(appDir: string, cloneUrl: string, branch: string, targetCommitSha: string | null): string {
+  const ref = targetCommitSha ?? `origin/${branch}`;
+  return (
+    `cd ${shellQuote(appDir)} && ` +
+    `(test -d repo/.git && (cd repo && git remote set-url origin ${shellQuote(cloneUrl)} && git fetch origin ${shellQuote(branch)} && git reset --hard ${shellQuote(ref)}) ` +
+    `|| (git clone --branch ${shellQuote(branch)} --single-branch ${shellQuote(cloneUrl)} repo && cd repo && git reset --hard ${shellQuote(ref)}))`
+  );
+}
+
 export function buildRunCommand(
   application: Application,
   appDir: string,

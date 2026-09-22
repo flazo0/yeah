@@ -47,6 +47,7 @@ function toDeploymentDto(deployment: Deployment): DeploymentDto {
     applicationId: deployment.applicationId,
     status: deployment.status,
     log: deployment.log,
+    commitSha: deployment.commitSha,
     startedAt: deployment.startedAt ? deployment.startedAt.toISOString() : null,
     finishedAt: deployment.finishedAt ? deployment.finishedAt.toISOString() : null,
     createdAt: deployment.createdAt.toISOString(),
@@ -479,6 +480,51 @@ export const applicationRoutes = new Elysia({
     const [deployment] = await db
       .insert(deployments)
       .values({ applicationId: params.applicationId, status: "queued" })
+      .returning();
+    if (!deployment) {
+      set.status = 500;
+      return { error: "failed to create deployment" };
+    }
+
+    await applicationDeployQueue.add("deploy", { deploymentId: deployment.id });
+
+    return { deployment: toDeploymentDto(deployment) };
+  })
+  .post("/:applicationId/deployments/:deploymentId/rollback", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    if (!(await loadApplication(params.environmentId, params.applicationId))) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+
+    const targetRows = await db
+      .select()
+      .from(deployments)
+      .where(and(eq(deployments.id, params.deploymentId), eq(deployments.applicationId, params.applicationId)))
+      .limit(1);
+    const target = targetRows[0];
+    if (!target) {
+      set.status = 404;
+      return { error: "deployment not found" };
+    }
+    if (target.status !== "success" || !target.commitSha) {
+      set.status = 400;
+      return { error: "só dá pra voltar pra um deploy que terminou com sucesso" };
+    }
+
+    // Pre-filling commitSha is the entire rollback mechanism — the worker checks this field before
+    // pulling the branch and, if set, checks out that exact commit instead. See deployApplication.ts.
+    const [deployment] = await db
+      .insert(deployments)
+      .values({ applicationId: params.applicationId, status: "queued", commitSha: target.commitSha })
       .returning();
     if (!deployment) {
       set.status = 500;

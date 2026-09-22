@@ -8,9 +8,9 @@ import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
-import { buildRunCommand, resolveDomain } from "./deployApplication.commands";
+import { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
 
-export { buildRunCommand, resolveDomain } from "./deployApplication.commands";
+export { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
 
 interface Step {
   label: string;
@@ -73,14 +73,17 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       cloneUrl = cloneUrlForRepo(token, application.githubRepo);
     }
 
+    // A non-null commitSha at this point means this deployment was created as a rollback (see the
+    // POST .../rollback route) — the row was pre-filled with a past deployment's resolved commit,
+    // and checking that out instead of the branch HEAD is the entire rollback mechanism.
+    const rollbackTarget = deployment.commitSha;
     const cloneOrPullStep: Step = {
-      label: `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
-      command:
-        `cd ${shellQuote(appDir)} && ` +
-        // `set-url` before fetching re-authenticates every deploy — an installation token embedded
-        // in a clone from an hour ago would otherwise make the next incremental pull fail.
-        `(test -d repo/.git && (cd repo && git remote set-url origin ${shellQuote(cloneUrl)} && git fetch origin ${shellQuote(application.branch)} && git reset --hard origin/${shellQuote(application.branch)}) ` +
-        `|| git clone --branch ${shellQuote(application.branch)} --single-branch ${shellQuote(cloneUrl)} repo)`,
+      label: rollbackTarget
+        ? `voltando pro commit ${rollbackTarget.slice(0, 7)}`
+        : `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
+      // `set-url` before fetching re-authenticates every deploy — an installation token embedded
+      // in a clone from an hour ago would otherwise make the next incremental pull fail.
+      command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget),
     };
     const buildStep: Step = {
       label: "construindo a imagem",
@@ -113,6 +116,17 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await writeRemoteFile(conn, `${appDir}/.env`, application.envContent);
 
       await runStep(conn, cloneOrPullStep, appendAndPublish);
+
+      let resolvedCommitSha = "";
+      await execStream(conn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {
+        if (stream === "stdout") resolvedCommitSha += chunk;
+      });
+      resolvedCommitSha = resolvedCommitSha.trim();
+      if (resolvedCommitSha) {
+        await appendAndPublish(`\x1b[90m# commit ${resolvedCommitSha.slice(0, 7)}\x1b[0m\n`);
+        await db.update(deployments).set({ commitSha: resolvedCommitSha }).where(eq(deployments.id, deploymentId));
+      }
+
       await runStep(conn, buildStep, appendAndPublish);
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);

@@ -137,6 +137,7 @@ export interface DeploymentDto {
   applicationId: string;
   status: DeploymentStatus;
   log: string;
+  commitSha: string | null;
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
