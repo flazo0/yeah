@@ -260,3 +260,15 @@ Testado no navegador contra a API/banco de dev reais: clique de aba muda a URL (
 
 Documentação também reescrita (`docs/ROADMAP.md`) com o levantamento novo: seção dedicada de reestruturação de navegação, seção de i18n, e vários gaps que a pesquisa anterior não tinha achado (backup por aplicação como feature de primeira classe, histórico de execução de scheduled tasks, healthcheck configurável, dashboard inicial com widgets, analytics de tráfego, limpeza automática de Docker).
 
+
+## Reestruturação de navegação — Database e Service
+
+Repetiu o mesmo padrão da Application (ver entrada anterior) pros outros dois tipos de recurso, fechando a reestruturação de navegação inteira:
+
+- **Database**: `DatabaseLayout.vue` + `pages/database/{DatabaseBackupsPage,DatabaseGeneralPage}.vue`. Rotas `/databases/:id/backups` (padrão) e `/general`. A sub-navegação de Configuration hoje só tem "Geral" — fica como um link único por enquanto, cresce quando Advanced/Webhooks/etc. forem implementados de verdade (já documentado no roadmap pra não criar aba vazia antes da hora).
+- **Service**: `ServiceLayout.vue` + `pages/service/{ServiceGeneralPage,ServiceEnvPage}.vue`. Rotas `/services/:id/general` (padrão) e `/env`. Service nunca teve um top-level tab (não tem histórico de deploy) — só o `detail-layout` com sub-nav direto, então o layout ficou mais simples que o de Application.
+
+Mesmo mecanismo de contexto compartilhado (`provide`/`inject` via `composables/use{Database,Service}Context.ts`) que a Application já usava — nenhuma ideia nova aqui, só replicação do padrão já validado.
+
+Testado de ponta a ponta contra API/banco de dev reais: criei um banco e um serviço descartáveis, confirmei que `/databases/:id` e `/services/:id` redirecionam pro filho padrão, e que clicar nas sub-abas muda a URL e renderiza o conteúdo certo — nos dois tipos de recurso.
+
