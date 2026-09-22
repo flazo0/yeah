@@ -22,6 +22,11 @@
     <meta name="theme-color" content="#000000" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preload" href="/fonts/GoogleSansCode-Variable.ttf" as="font" type="font/ttf" crossorigin />
+    <!-- material-symbols-outlined is used on nearly every page (sidebar, buttons, badges) from the
+         very first paint, so it's worth the same treatment — the browser only discovers a @font-face
+         needs fetching once CSS is parsed AND a matching element is about to lay out; preloading
+         starts the fetch immediately instead, in parallel with everything else. -->
+    <link rel="preload" href="/fonts/MaterialSymbolsOutlined.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Open Graph / previews de compartilhamento (auto-hospedado, sem chamar serviço externo) -->
     <meta property="og:type" content="website" />

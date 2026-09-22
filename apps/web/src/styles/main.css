@@ -11,7 +11,15 @@
 @font-face {
   font-family: "Material Symbols Outlined";
   src: url("/fonts/MaterialSymbolsOutlined.woff2") format("woff2");
-  font-weight: 100 700;
+  /* A static instance pinned to the one variation this app ever renders (FILL 0, wght 400, GRAD 0,
+     opsz 24 — see .material-symbols-outlined below), not the original variable font. Google ships
+     Material Symbols as a 4-axis variable font covering every weight/fill/grade/size combination
+     at once, which made the file ~4MB — the actual reason icons were slow on a cold cache and
+     needed a reload or two before font-display's block period had a chance to finish. Re-baking:
+     `fontTools.varLib.instancer MaterialSymbolsOutlined.woff2 FILL=0 wght=400 GRAD=0 opsz=24 -o ...`
+     shrinks it to ~380KB (full icon set, no re-subsetting needed when someone adds a new icon name)
+     with identical rendering, since nothing in this app ever varies those axes anyway. */
+  font-weight: 400;
   font-style: normal;
   font-display: block;
 }
@@ -153,8 +161,11 @@ a:hover {
   white-space: nowrap;
   word-wrap: normal;
   direction: ltr;
-  -webkit-font-feature-settings: "liga";
-  font-feature-settings: "liga";
+  /* Google's own Material Symbols CSS asks for "liga", but this font only declares the "rlig"
+     (required ligatures) feature — browsers enable rlig by default regardless, so "liga" was
+     always a silent no-op here; naming the feature the font actually has for accuracy. */
+  -webkit-font-feature-settings: "rlig";
+  font-feature-settings: "rlig";
   -webkit-font-smoothing: antialiased;
   font-variation-settings:
     "FILL" 0,
