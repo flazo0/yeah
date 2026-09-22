@@ -285,3 +285,20 @@ O que entrou: endpoint novo `GET /teams/:teamId/overview` (contagem de aplicaç�
 
 Testado contra a API/banco de dev reais: criei uma aplicação descartável, disparei um deploy (falhou por causa do servidor de teste inalcançável, esperado), e confirmei que `/teams/:id/overview` já refletia a contagem nova e o deploy na hora — tanto direto no endpoint quanto renderizado no dashboard.
 
+
+## Botões de verdade na tela de Atualizações
+
+Pedido direto do usuário: a tela de Atualizações só dizia o que tava desatualizado, nunca fazia nada — tinha que ter botão pra atualizar a plataforma, os pacotes do sistema, e as imagens Docker, ou tudo de uma vez.
+
+**O caso difícil foi "atualizar a plataforma"**: o comando (`git pull` + `docker compose up -d --build` + migrations) recria os próprios containers `api`/`worker` que estão rodando o job que dispara esse comando — incluindo o worker que segura a conexão SSH. Uma execução síncrona normal teria a conexão morta no meio, com o `docker compose` possivelmente interrompido antes de terminar. Solução: o comando roda destacado no host (`nohup ... & disown`, saída redirecionada pra um arquivo de log) e retorna quase na hora; um job de poll separado — reenfileirado com delay via BullMQ, cujo estado mora no Redis, independente de qualquer processo de worker específico — reconecta do zero a cada tick pra ler o crescimento do arquivo de log e checar um marcador de conclusão. Isso sobrevive exatamente ao restart do worker que ele mesmo tá esperando acontecer.
+
+**"Atualizar sistema"** (apt-get update/upgrade) é o caso fácil — não mexe nos containers do yeah, então roda síncrono numa exec SSH só, igual um deploy de aplicação.
+
+**Atualizar imagem** por recurso (ou "Atualizar tudo") reusa exatamente o mecanismo que a rota de limites de recurso já usava pra aplicar mudança: bumpa a tag da imagem no banco e reenfileira o job de provisionamento (idempotente, já recria o container do jeito certo). A rota `GET .../updates/images` mudou de "uma linha por imagem única" pra "uma linha por recurso" — cada linha vira uma ação de verdade em vez de só um dado exibido.
+
+Tabela nova `platform_operations` (`kind`: `platform_update`|`system_update`, sem `teamId` — é uma instância só, não faz sentido escopar por time) e coluna nova `servers.is_platform_host`, setada `true` só pelo `createLocalhostServerIfConfigured` — os dois botões atuam sempre nesse servidor específico, nunca num servidor gerenciado qualquer, sem ambiguidade possível.
+
+**Achado real ao ligar tudo isso**: `updates.ts` passou a importar `../lib/queue` (pra enfileirar as operações novas) — e `updates.test.ts` importa funções puras direto de `updates.ts`, então esse import novo fez os testes começarem a instanciar conexões reais de BullMQ/ioredis (com o `REDIS_URL` falso de teste) só de carregar o módulo. A conexão falha de verdade (porta fechada), e o erro assíncrono estourava mais tarde na suíte, depois de outro teste já ter mexido em `console.error` sem restaurar — exatamente a classe de bug "`console.error is not a function`" já documentada aqui antes, só que numa superfície nova. Corrigido com o mesmo padrão já usado nos jobs do worker: lógica pura isolada em arquivo próprio sem import pesado (`updates.pure.ts` pras funções de versão, `platformOperation.commands.ts` pros comandos SSH), então o teste importa só a parte pura.
+
+Testado de ponta a ponta contra API/worker/banco de dev reais: os dois tipos de operação tentam conectar SSH no host da plataforma, falham direito com mensagem clara quando não tem nenhum configurado (estado esperado desse ambiente de dev), o log persiste e atualiza ao vivo via WS, e o guard de "só uma operação por vez" rejeita corretamente uma segunda tentativa enquanto a primeira roda. Atualização de imagem testada com um banco descartável: tag trocada, provisionamento disparado de novo (falhando só no servidor de teste inalcançável, igual todo outro job nesse ambiente).
+
