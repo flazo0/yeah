@@ -2,6 +2,23 @@
 
 Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `docs/DEVLOG.md`) e o que falta, incluindo paridade com o Coolify e itens de robustez que todo PaaS de produção precisa.
 
+## 🧭 Reestruturação de navegação — prioridade alta, em andamento
+
+O usuário apontou (2026-09) que a estrutura de telas do `yeah` tá confusa e pediu pra puxar mais pro estilo Coolify/Vercel/Render em vez do design atual. Levantamento no código-fonte real do Coolify (`github.com/coollabsio/coolify`, não só a doc) confirmou o porquê: cada sub-seção de configuração de recurso lá é uma **rota própria do Laravel** (`/application/{id}/domains`, `.../advanced`, `.../environment-variables`, `.../persistent-storage`, `.../source`, `.../servers`, `.../scheduled-tasks`, `.../webhooks`, `.../preview-deployments`, `.../healthcheck`, `.../rollback`, `.../resource-limits`, `.../resource-operations`, `.../metrics`, `.../analytics`, `.../tags`, `.../danger`, mais `.../deployment`, `.../logs`, `.../terminal` no nível do recurso) — não é um `activeTab` em memória like o `yeah` faz hoje em `ApplicationDetailPage.vue`. Isso significa: cada aba é **bookmarkável, compartilhável e funciona com voltar/avançar do navegador** — coisa que hoje não temos.
+
+Plano de reestruturação:
+- Trocar o padrão `activeTab`/`activeConfigTab` (refs locais com `v-if`) por **rotas filhas de verdade no Vue Router** (`/apps/:id/domains`, `/apps/:id/env`, `/apps/:id/storage`, `/apps/:id/deployments`, etc.), com um componente de layout compartilhado (breadcrumb + tabs + `<router-view>`) — mesmo padrão em Application/Database/Service.
+- Um **dashboard inicial de verdade** ao logar (hoje cai direto em "Times") — Coolify tem widgets tipo deployments ativos, gráfico de métricas por servidor, visão geral cross-projeto. É a peça que mais falta pra parecer um painel tipo Vercel/Render em vez de uma lista de CRUD.
+- Componentes de configuração **compartilhados entre Application/Database/Service** (limites de recurso, variáveis de ambiente, tags, terminal) em vez de cada `*DetailPage.vue` reimplementar o próprio formulário — o Coolify já faz isso do lado deles (pasta `Livewire/Project/Shared/*`), e o backend do `yeah` já segue esse padrão (`resourceLimitFlags`, `volumeFlags` compartilhados em `@yeah/shared`) — só falta espelhar isso no frontend.
+- Sub-navegação de Configuração ganhando os itens reais conforme cada feature abaixo for implementada: Persistent Storage ✅, Rollback ✅, faltam Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations, Healthcheck, Analytics.
+
+## 🌐 Internacionalização (i18n)
+
+Pedido explícito do usuário. Coolify tem isso de verdade — 20 idiomas em `lang/*.json` (incluindo `pt.json` e `pt-br.json`), arquivo chave→string, provavelmente com um seletor nas configurações de conta (não achamos o componente exato do seletor, mas a estrutura de arquivos de tradução é clara). Pra aplicar no `yeah`:
+- `vue-i18n` (ou equivalente leve) com `pt.json` como idioma padrão atual (extrair as strings hardcoded que já existem em todo componente Vue) + `en.json` traduzido.
+- Seletor de idioma na página de conta/configurações (mesmo lugar do tema claro/escuro, que já existe).
+- Trabalho grande de superfície (toda string de toda página precisa virar chave de tradução) — fazer incrementalmente por página, não tentar tudo de uma vez.
+
 ## ✅ Já funciona
 
 - Auth por sessão — **single-admin de propósito**: `/register` só funciona uma vez (primeira conta da instância), sem convite nem forma de uma segunda pessoa ganhar login. Times/papéis (`owner`/`admin`/`member`) continuam existindo como o jeito de todo recurso ser organizado, mas hoje sempre tem um usuário só
@@ -29,8 +46,7 @@ Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `do
 
 - **Build packs além de Dockerfile**: Nixpacks (detecta linguagem e builda sem Dockerfile, como o Heroku buildpack), estático (só arquivos, serve via nginx), Docker Compose (multi-container por aplicação)
 - **Preview deployments**: cada PR do GitHub vira um ambiente efêmero, com URL própria, que morre quando o PR fecha
-- **Scheduled tasks**: rodar comandos arbitrários dentro do container da aplicação, num cron (tipo Coolify) — hoje só bancos têm agendamento (backup)
-- **Sub-navegação de Configuração mais granular por recurso**: Application já ganhou uma terceira aba (Armazenamento, ver "✅ Já funciona"); falta Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations — o Coolify separa isso em itens de menu lateral próprios dentro de "Configuration" — só vale desmembrar conforme cada uma dessas features for sendo implementada de verdade, pra não criar aba vazia
+- **Scheduled tasks**: rodar comandos arbitrários dentro do container da aplicação, num cron (tipo Coolify), com histórico de execuções — hoje só bancos têm agendamento (backup)
 
 ## 🎯 Paridade com Coolify — o que ele tem e a gente não
 
@@ -48,8 +64,26 @@ Levantado pesquisando o site oficial, a documentação (`coolify.io/docs`) e o c
 - **Distinção build-time vs runtime**: uma variável só usada durante o build (ex. token de um pacote privado) não precisa vazar pro container rodando.
 
 **Backup:**
-- **Backup de volume/storage persistente, não só de banco**: hoje o `yeah` só agenda backup de `Database` — Coolify também agenda backup do volume de dados de qualquer aplicação/serviço (útil pra apps com estado que não é um banco relacional, tipo Uptime Kuma ou n8n do nosso próprio catálogo).
+- **Backup de volume/storage persistente, não só de banco**: hoje o `yeah` só agenda backup de `Database` — Coolify também agenda backup do volume de dados de qualquer aplicação/serviço (útil pra apps com estado que não é um banco relacional, tipo Uptime Kuma ou n8n do nosso próprio catálogo). Confirmado no código-fonte real: existe uma pasta `Application/Backup/*` própria, com rotas `/application/{id}/backups` — é uma feature de primeira classe pra Application, não só um "extra" de storage.
 - **Compressão paralela no backup**: Coolify usa gzip paralelo (múltiplos cores) pra acelerar backups grandes — vale a pena se algum dump ficar lento em produção.
+
+**Scheduled tasks — achado novo:**
+- **Histórico de execuções do cron**, não só o agendamento em si: Coolify tem uma sub-tela `ScheduledTask/Executions` — status, log e duração de cada rodada passada. O item "Scheduled tasks" já citado no roadmap devia incluir isso desde o início, não é um extra separado.
+
+**Healthcheck configurável — achado novo:**
+- Componente próprio (`Shared/Healthcheck`, rota `.../healthcheck`) separado de Resource Limits/Metrics: path HTTP, intervalo, retries, timeout configuráveis por recurso. Hoje o `yeah` só depende do `--restart unless-stopped` do Docker, sem healthcheck HTTP configurável pelo usuário.
+
+**Dashboard inicial — achado novo:**
+- Coolify tem uma home de verdade com widgets (`Dashboard/ActiveDeployments`, `Dashboard/ServerMetricsChart`, `Dashboard/TrafficAnalytics`) — visão cross-projeto ao logar. O `yeah` hoje cai direto em "Times", sem visão geral nenhuma. Ver seção "Reestruturação de navegação" acima.
+
+**Analytics de tráfego por aplicação — achado novo:**
+- Separado de CPU/RAM/disco: Coolify mostra requisições/tráfego por app (`Analytics`/`TrafficOverview`). Baixa prioridade, mas real.
+
+**Limpeza automática de Docker no servidor — achado novo:**
+- `Server/DockerCleanup` agendado (`docker system prune` periódico) — barato de implementar (SSH + cron via BullMQ, mesmo padrão de tudo que já existe), evita disco cheio de imagem/build cache órfã em produção.
+
+**CA Certificate por servidor — achado novo:**
+- Pra registry/proxy com certificado self-signed/interno. Baixa prioridade, citado só por completude.
 
 **Observabilidade — cuidado pra não copiar do jeito errado:**
 - Coolify tem um componente chamado **Sentinel**: um agente (binário Go) instalado em cada servidor gerenciado, que fica rodando e reportando métricas por push. Isso contradiz o próprio pitch "agentless" deles mesmos e é exatamente o tipo de consumo extra que o `yeah` quer evitar — **não copiar esse modelo**. Mas a métrica que ele habilita, métricas **por container** (não só CPU/RAM/disco do servidor inteiro), é um dado real que falta: dá pra conseguir isso continuando 100% agentless, rodando `docker stats --no-stream` por SSH periodicamente no mesmo job que já lê `/proc` hoje (`server-metrics`), sem instalar nada no servidor do usuário.
