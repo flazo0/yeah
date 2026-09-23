@@ -1,20 +1,7 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import {
-  DATABASE_ENGINES,
-  SERVICE_CATALOG,
-  type ApplicationDto,
-  type ApplicationStatus,
-  type DatabaseDto,
-  type DatabaseEngine,
-  type DatabaseStatus,
-  type GithubRepoDto,
-  type ServerDto,
-  type ServiceDto,
-  type ServiceStatus,
-  type WsServerEvent,
-} from "@yeah/shared";
+import type { ApplicationDto, DatabaseDto, ServerDto, ServiceDto, WsServerEvent } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import Breadcrumb from "../components/Breadcrumb.vue";
@@ -25,6 +12,20 @@ const projectId = route.params.projectId as string;
 const environmentId = route.params.environmentId as string;
 const basePath = `/teams/${teamId}/projects/${projectId}/environments/${environmentId}`;
 
+type ResourceKind = "application" | "database" | "service";
+interface Resource {
+  kind: ResourceKind;
+  id: string;
+  name: string;
+  status: string;
+  statusDot: string;
+  statusBadge: string;
+  icon: string;
+  detail: string;
+  serverName: string;
+  path: string;
+}
+
 const apps = ref<ApplicationDto[]>([]);
 const dbs = ref<DatabaseDto[]>([]);
 const svcs = ref<ServiceDto[]>([]);
@@ -32,99 +33,62 @@ const teamServers = ref<ServerDto[]>([]);
 const loading = ref(true);
 const error = ref("");
 
-const appForm = ref({
-  name: "",
-  serverId: "",
-  repoUrl: "",
-  githubRepo: "",
-  branch: "main",
-  port: 3000,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const appSourceMode = ref<"url" | "github">("url");
-const githubRepos = ref<GithubRepoDto[]>([]);
-const githubConnected = ref(false);
-
-async function loadGithub() {
-  try {
-    const res = await api.get<{ configured: boolean; installation: unknown }>(`/teams/${teamId}/github`);
-    githubConnected.value = res.configured && res.installation !== null;
-    if (githubConnected.value) {
-      const reposRes = await api.get<{ repos: GithubRepoDto[] }>(`/teams/${teamId}/github/repos`);
-      githubRepos.value = reposRes.repos;
-    }
-  } catch {
-    githubConnected.value = false;
-  }
-}
-
-function onGithubRepoChange() {
-  const repo = githubRepos.value.find((r) => r.fullName === appForm.value.githubRepo);
-  if (repo) appForm.value.branch = repo.defaultBranch;
-}
-const dbForm = ref({
-  name: "",
-  serverId: "",
-  engine: "postgresql" as DatabaseEngine,
-  username: "app",
-  databaseName: "app",
-  port: DATABASE_ENGINES.postgresql.defaultPort,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const svcForm = ref({
-  name: "",
-  serverId: "",
-  catalogKey: SERVICE_CATALOG[0]!.key,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const submittingApp = ref(false);
-const submittingDb = ref(false);
-const submittingSvc = ref(false);
-const databaseEngineOptions = Object.entries(DATABASE_ENGINES) as [DatabaseEngine, (typeof DATABASE_ENGINES)[DatabaseEngine]][];
-
-function onEngineChange() {
-  dbForm.value.port = DATABASE_ENGINES[dbForm.value.engine].defaultPort;
-}
-
-const appStatusBadge: Record<ApplicationStatus, string> = {
-  idle: "badge-neutral",
-  deploying: "badge-warn",
-  running: "badge-good",
-  error: "badge-bad",
-};
-const dbStatusBadge: Record<DatabaseStatus, string> = {
-  idle: "badge-neutral",
-  provisioning: "badge-warn",
-  running: "badge-good",
-  error: "badge-bad",
-};
-const appStatusDot: Record<ApplicationStatus, string> = {
+const statusDot: Record<string, string> = {
   idle: "status-dot-neutral",
   deploying: "status-dot-warn",
-  running: "status-dot-good",
-  error: "status-dot-bad",
-};
-const dbStatusDot: Record<DatabaseStatus, string> = {
-  idle: "status-dot-neutral",
   provisioning: "status-dot-warn",
   running: "status-dot-good",
   error: "status-dot-bad",
 };
-const svcStatusBadge: Record<ServiceStatus, string> = {
+const statusBadge: Record<string, string> = {
   idle: "badge-neutral",
+  deploying: "badge-warn",
   provisioning: "badge-warn",
   running: "badge-good",
   error: "badge-bad",
 };
-const svcStatusDot: Record<ServiceStatus, string> = {
-  idle: "status-dot-neutral",
-  provisioning: "status-dot-warn",
-  running: "status-dot-good",
-  error: "status-dot-bad",
-};
+
+const resources = computed<Resource[]>(() => {
+  const list: Resource[] = [
+    ...apps.value.map((app) => ({
+      kind: "application" as const,
+      id: app.id,
+      name: app.name,
+      status: app.status,
+      statusDot: statusDot[app.status] ?? "status-dot-neutral",
+      statusBadge: statusBadge[app.status] ?? "badge-neutral",
+      icon: "deployed_code",
+      detail: `${app.repoUrl} (${app.branch})`,
+      serverName: app.serverName,
+      path: `${basePath}/apps/${app.id}`,
+    })),
+    ...dbs.value.map((item) => ({
+      kind: "database" as const,
+      id: item.id,
+      name: item.name,
+      status: item.status,
+      statusDot: statusDot[item.status] ?? "status-dot-neutral",
+      statusBadge: statusBadge[item.status] ?? "badge-neutral",
+      icon: "database",
+      detail: `${item.engine} · ${item.image}`,
+      serverName: item.serverName,
+      path: `${basePath}/databases/${item.id}`,
+    })),
+    ...svcs.value.map((item) => ({
+      kind: "service" as const,
+      id: item.id,
+      name: item.name,
+      status: item.status,
+      statusDot: statusDot[item.status] ?? "status-dot-neutral",
+      statusBadge: statusBadge[item.status] ?? "badge-neutral",
+      icon: "widgets",
+      detail: `${item.catalogKey} · ${item.image}`,
+      serverName: item.serverName,
+      path: `${basePath}/services/${item.id}`,
+    })),
+  ];
+  return list.sort((a, b) => a.name.localeCompare(b.name));
+});
 
 async function load() {
   loading.value = true;
@@ -139,97 +103,10 @@ async function load() {
     dbs.value = dbsRes.databases;
     svcs.value = svcsRes.services;
     teamServers.value = serversRes.servers;
-    if (teamServers.value[0]) {
-      if (!appForm.value.serverId) appForm.value.serverId = teamServers.value[0].id;
-      if (!dbForm.value.serverId) dbForm.value.serverId = teamServers.value[0].id;
-      if (!svcForm.value.serverId) svcForm.value.serverId = teamServers.value[0].id;
-    }
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar o ambiente";
   } finally {
     loading.value = false;
-  }
-}
-
-async function createApp() {
-  submittingApp.value = true;
-  error.value = "";
-  try {
-    const payload =
-      appSourceMode.value === "github"
-        ? { name: appForm.value.name, serverId: appForm.value.serverId, githubRepo: appForm.value.githubRepo, branch: appForm.value.branch, port: appForm.value.port }
-        : { name: appForm.value.name, serverId: appForm.value.serverId, repoUrl: appForm.value.repoUrl, branch: appForm.value.branch, port: appForm.value.port };
-    const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, {
-      ...payload,
-      memoryLimitMb: appForm.value.memoryLimitMb || null,
-      cpuLimit: appForm.value.cpuLimit || null,
-    });
-    apps.value.push(res.application);
-    appForm.value = {
-      name: "",
-      serverId: appForm.value.serverId,
-      repoUrl: "",
-      githubRepo: "",
-      branch: "main",
-      port: 3000,
-      memoryLimitMb: null,
-      cpuLimit: null,
-    };
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar aplicação";
-  } finally {
-    submittingApp.value = false;
-  }
-}
-
-async function createDb() {
-  submittingDb.value = true;
-  error.value = "";
-  try {
-    const res = await api.post<{ database: DatabaseDto }>(`${basePath}/databases`, {
-      ...dbForm.value,
-      memoryLimitMb: dbForm.value.memoryLimitMb || null,
-      cpuLimit: dbForm.value.cpuLimit || null,
-    });
-    dbs.value.push(res.database);
-    dbForm.value = {
-      name: "",
-      serverId: dbForm.value.serverId,
-      engine: "postgresql",
-      username: "app",
-      databaseName: "app",
-      port: DATABASE_ENGINES.postgresql.defaultPort,
-      memoryLimitMb: null,
-      cpuLimit: null,
-    };
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar banco de dados";
-  } finally {
-    submittingDb.value = false;
-  }
-}
-
-async function createService() {
-  submittingSvc.value = true;
-  error.value = "";
-  try {
-    const res = await api.post<{ service: ServiceDto }>(`${basePath}/services`, {
-      ...svcForm.value,
-      memoryLimitMb: svcForm.value.memoryLimitMb || null,
-      cpuLimit: svcForm.value.cpuLimit || null,
-    });
-    svcs.value.push(res.service);
-    svcForm.value = {
-      name: "",
-      serverId: svcForm.value.serverId,
-      catalogKey: SERVICE_CATALOG[0]!.key,
-      memoryLimitMb: null,
-      cpuLimit: null,
-    };
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar serviço";
-  } finally {
-    submittingSvc.value = false;
   }
 }
 
@@ -245,48 +122,26 @@ function armDelete(id: string) {
   }, 3000);
 }
 
-async function deleteApp(app: ApplicationDto) {
-  if (pendingDeleteId.value !== app.id) {
-    armDelete(app.id);
+async function deleteResource(resource: Resource) {
+  if (pendingDeleteId.value !== resource.id) {
+    armDelete(resource.id);
     return;
   }
   pendingDeleteId.value = null;
   clearTimeout(pendingDeleteTimer);
   try {
-    await api.delete(`${basePath}/applications/${app.id}`);
-    apps.value = apps.value.filter((a) => a.id !== app.id);
+    if (resource.kind === "application") {
+      await api.delete(`${basePath}/applications/${resource.id}`);
+      apps.value = apps.value.filter((a) => a.id !== resource.id);
+    } else if (resource.kind === "database") {
+      await api.delete(`${basePath}/databases/${resource.id}`);
+      dbs.value = dbs.value.filter((d) => d.id !== resource.id);
+    } else {
+      await api.delete(`${basePath}/services/${resource.id}`);
+      svcs.value = svcs.value.filter((s) => s.id !== resource.id);
+    }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir aplicação";
-  }
-}
-
-async function deleteDb(item: DatabaseDto) {
-  if (pendingDeleteId.value !== item.id) {
-    armDelete(item.id);
-    return;
-  }
-  pendingDeleteId.value = null;
-  clearTimeout(pendingDeleteTimer);
-  try {
-    await api.delete(`${basePath}/databases/${item.id}`);
-    dbs.value = dbs.value.filter((d) => d.id !== item.id);
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir banco de dados";
-  }
-}
-
-async function deleteService(item: ServiceDto) {
-  if (pendingDeleteId.value !== item.id) {
-    armDelete(item.id);
-    return;
-  }
-  pendingDeleteId.value = null;
-  clearTimeout(pendingDeleteTimer);
-  try {
-    await api.delete(`${basePath}/services/${item.id}`);
-    svcs.value = svcs.value.filter((s) => s.id !== item.id);
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir serviço";
+    error.value = err instanceof ApiError ? err.message : "falha ao excluir recurso";
   }
 }
 
@@ -294,7 +149,6 @@ let unsubscribe: (() => void) | undefined;
 
 onMounted(() => {
   load();
-  loadGithub();
   unsubscribe = wsClient.on((event: WsServerEvent) => {
     if (event.type === "database.status") {
       const database = dbs.value.find((d) => d.id === event.databaseId);
@@ -320,116 +174,15 @@ onUnmounted(() => {
         <h1>Recursos</h1>
         <p>Aplicações, bancos de dados e serviços deste ambiente.</p>
       </div>
+      <RouterLink v-if="teamServers.length > 0" :to="`${basePath}/new`" class="btn">
+        <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+        Novo recurso
+      </RouterLink>
     </div>
 
     <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
 
-    <div class="card mb-16">
-      <div class="card-header">
-        <span class="material-symbols-outlined" style="font-size: 18px">deployed_code</span>
-        Aplicações
-      </div>
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
-      <div v-else-if="apps.length === 0" class="card-body">
-        <div class="empty-state">Nenhuma aplicação ainda.</div>
-      </div>
-      <div v-else class="card-body">
-        <div class="resource-cards">
-          <div v-for="app in apps" :key="app.id" class="resource-card-wrap">
-            <RouterLink :to="`${basePath}/apps/${app.id}`" class="resource-card">
-              <div class="name">
-                <span class="status-dot" :class="appStatusDot[app.status]"></span>
-                {{ app.name }}
-                <span class="badge" :class="appStatusBadge[app.status]" style="margin-left: auto">{{ app.status }}</span>
-              </div>
-              <div class="desc mono">{{ app.repoUrl }} ({{ app.branch }})</div>
-              <div class="desc">{{ app.serverName }}</div>
-            </RouterLink>
-            <button
-              type="button"
-              class="resource-card-delete"
-              :class="{ confirming: pendingDeleteId === app.id }"
-              :title="pendingDeleteId === app.id ? 'Clique de novo pra confirmar' : 'Excluir'"
-              @click="deleteApp(app)"
-            >
-              <span class="material-symbols-outlined">{{ pendingDeleteId === app.id ? "warning" : "delete" }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-16">
-      <div class="card-header">
-        <span class="material-symbols-outlined" style="font-size: 18px">database</span>
-        Bancos de dados
-      </div>
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
-      <div v-else-if="dbs.length === 0" class="card-body">
-        <div class="empty-state">Nenhum banco de dados ainda.</div>
-      </div>
-      <div v-else class="card-body">
-        <div class="resource-cards">
-          <div v-for="item in dbs" :key="item.id" class="resource-card-wrap">
-            <RouterLink :to="`${basePath}/databases/${item.id}`" class="resource-card">
-              <div class="name">
-                <span class="status-dot" :class="dbStatusDot[item.status]"></span>
-                {{ item.name }}
-                <span class="badge" :class="dbStatusBadge[item.status]" style="margin-left: auto">{{ item.status }}</span>
-              </div>
-              <div class="desc mono">{{ item.engine }} · {{ item.image }}</div>
-              <div class="desc">{{ item.serverName }}</div>
-            </RouterLink>
-            <button
-              type="button"
-              class="resource-card-delete"
-              :class="{ confirming: pendingDeleteId === item.id }"
-              :title="pendingDeleteId === item.id ? 'Clique de novo pra confirmar' : 'Excluir'"
-              @click="deleteDb(item)"
-            >
-              <span class="material-symbols-outlined">{{ pendingDeleteId === item.id ? "warning" : "delete" }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card mb-16">
-      <div class="card-header">
-        <span class="material-symbols-outlined" style="font-size: 18px">widgets</span>
-        Serviços
-      </div>
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
-      <div v-else-if="svcs.length === 0" class="card-body">
-        <div class="empty-state">Nenhum serviço ainda.</div>
-      </div>
-      <div v-else class="card-body">
-        <div class="resource-cards">
-          <div v-for="item in svcs" :key="item.id" class="resource-card-wrap">
-            <RouterLink :to="`${basePath}/services/${item.id}`" class="resource-card">
-              <div class="name">
-                <span class="status-dot" :class="svcStatusDot[item.status]"></span>
-                {{ item.name }}
-                <span class="badge" :class="svcStatusBadge[item.status]" style="margin-left: auto">{{ item.status }}</span>
-              </div>
-              <div class="desc mono">{{ item.catalogKey }} · {{ item.image }}</div>
-              <div class="desc">{{ item.serverName }}</div>
-            </RouterLink>
-            <button
-              type="button"
-              class="resource-card-delete"
-              :class="{ confirming: pendingDeleteId === item.id }"
-              :title="pendingDeleteId === item.id ? 'Clique de novo pra confirmar' : 'Excluir'"
-              @click="deleteService(item)"
-            >
-              <span class="material-symbols-outlined">{{ pendingDeleteId === item.id ? "warning" : "delete" }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="teamServers.length === 0" class="card">
+    <div v-if="!loading && teamServers.length === 0" class="card mb-16">
       <div class="card-body">
         <div class="empty-state">
           Você precisa de um <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">servidor conectado</RouterLink>
@@ -438,169 +191,39 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div v-else class="grid grid-3">
-      <div class="card" style="margin-bottom: 0">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          Nova aplicação
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="createApp">
-            <div class="form-group">
-              <label for="app-name">Nome</label>
-              <input id="app-name" v-model="appForm.name" class="form-control" placeholder="minha-api" required />
-            </div>
-            <div class="form-group">
-              <label for="app-server">Servidor</label>
-              <select id="app-server" v-model="appForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-branch">Branch</label>
-                <input id="app-branch" v-model="appForm.branch" class="form-control" placeholder="main" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-port">Porta</label>
-                <input id="app-port" v-model.number="appForm.port" type="number" class="form-control" />
-              </div>
-            </div>
-            <div v-if="githubConnected" class="form-group">
-              <div class="btn-row mb-16">
-                <button type="button" class="btn btn-secondary btn-sm" :class="{ active: appSourceMode === 'url' }" @click="appSourceMode = 'url'">
-                  URL manual
-                </button>
-                <button type="button" class="btn btn-secondary btn-sm" :class="{ active: appSourceMode === 'github' }" @click="appSourceMode = 'github'">
-                  <span class="material-symbols-outlined" style="font-size: 16px">hub</span>
-                  Repositório do GitHub
-                </button>
-              </div>
-            </div>
-            <div v-if="appSourceMode === 'github' && githubConnected" class="form-group">
-              <label for="app-github-repo">Repositório</label>
-              <select id="app-github-repo" v-model="appForm.githubRepo" class="form-control" required @change="onGithubRepoChange">
-                <option value="" disabled>selecione...</option>
-                <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">
-                  {{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}
-                </option>
-              </select>
-            </div>
-            <div v-else class="form-group">
-              <label for="app-repo">URL do repositório</label>
-              <input id="app-repo" v-model="appForm.repoUrl" class="form-control" placeholder="https://github.com/..." required />
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-mem">Limite de memória (MB)</label>
-                <input id="app-mem" v-model.number="appForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-cpu">Limite de CPU (cores)</label>
-                <input id="app-cpu" v-model.number="appForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
-              </div>
-            </div>
-            <button type="submit" class="btn" :disabled="submittingApp">
-              {{ submittingApp ? "criando..." : "Criar aplicação" }}
-            </button>
-          </form>
+    <div class="card">
+      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
+      <div v-else-if="resources.length === 0" class="card-body">
+        <div class="empty-state">
+          Nenhum recurso ainda.
+          <template v-if="teamServers.length > 0">
+            <RouterLink :to="`${basePath}/new`" class="label-link">Crie o primeiro</RouterLink>.
+          </template>
         </div>
       </div>
-
-      <div class="card" style="margin-bottom: 0">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          Novo banco de dados
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="createDb">
-            <div class="form-group">
-              <label for="db-name">Nome</label>
-              <input id="db-name" v-model="dbForm.name" class="form-control" placeholder="meu-postgres" required />
-            </div>
-            <div class="form-group">
-              <label for="db-server">Servidor</label>
-              <select id="db-server" v-model="dbForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="db-engine">Motor</label>
-              <select id="db-engine" v-model="dbForm.engine" class="form-control" @change="onEngineChange">
-                <option v-for="[value, info] in databaseEngineOptions" :key="value" :value="value">{{ info.label }}</option>
-              </select>
-            </div>
-            <div class="form-row mb-16">
-              <div v-if="DATABASE_ENGINES[dbForm.engine].hasUsername" class="form-group" style="margin-bottom: 0">
-                <label for="db-username">Usuário</label>
-                <input id="db-username" v-model="dbForm.username" class="form-control" />
+      <div v-else class="card-body">
+        <div class="resource-cards">
+          <div v-for="item in resources" :key="item.id" class="resource-card-wrap">
+            <RouterLink :to="item.path" class="resource-card">
+              <div class="name">
+                <span class="status-dot" :class="item.statusDot"></span>
+                <span class="material-symbols-outlined" style="font-size: 16px">{{ item.icon }}</span>
+                {{ item.name }}
+                <span class="badge" :class="item.statusBadge" style="margin-left: auto">{{ item.status }}</span>
               </div>
-              <div v-if="DATABASE_ENGINES[dbForm.engine].hasDatabaseName" class="form-group" style="margin-bottom: 0">
-                <label for="db-database">Database</label>
-                <input id="db-database" v-model="dbForm.databaseName" class="form-control" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-port">Porta</label>
-                <input id="db-port" v-model.number="dbForm.port" type="number" class="form-control" />
-              </div>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-mem">Limite de memória (MB)</label>
-                <input id="db-mem" v-model.number="dbForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-cpu">Limite de CPU (cores)</label>
-                <input id="db-cpu" v-model.number="dbForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
-              </div>
-            </div>
-            <button type="submit" class="btn" :disabled="submittingDb">
-              {{ submittingDb ? "criando..." : "Criar banco de dados" }}
+              <div class="desc mono">{{ item.detail }}</div>
+              <div class="desc">{{ item.serverName }}</div>
+            </RouterLink>
+            <button
+              type="button"
+              class="resource-card-delete"
+              :class="{ confirming: pendingDeleteId === item.id }"
+              :title="pendingDeleteId === item.id ? 'Clique de novo pra confirmar' : 'Excluir'"
+              @click="deleteResource(item)"
+            >
+              <span class="material-symbols-outlined">{{ pendingDeleteId === item.id ? "warning" : "delete" }}</span>
             </button>
-          </form>
-        </div>
-      </div>
-
-      <div class="card" style="margin-bottom: 0">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          Novo serviço
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="createService">
-            <div class="form-group">
-              <label for="svc-name">Nome</label>
-              <input id="svc-name" v-model="svcForm.name" class="form-control" placeholder="meu-uptime-kuma" required />
-            </div>
-            <div class="form-group">
-              <label for="svc-server">Servidor</label>
-              <select id="svc-server" v-model="svcForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="svc-catalog">Serviço</label>
-              <select id="svc-catalog" v-model="svcForm.catalogKey" class="form-control">
-                <option v-for="entry in SERVICE_CATALOG" :key="entry.key" :value="entry.key">{{ entry.name }}</option>
-              </select>
-              <p class="hint" style="margin-top: 6px">
-                {{ SERVICE_CATALOG.find((e) => e.key === svcForm.catalogKey)?.description }}
-              </p>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="svc-mem">Limite de memória (MB)</label>
-                <input id="svc-mem" v-model.number="svcForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="svc-cpu">Limite de CPU (cores)</label>
-                <input id="svc-cpu" v-model.number="svcForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
-              </div>
-            </div>
-            <button type="submit" class="btn" :disabled="submittingSvc">
-              {{ submittingSvc ? "criando..." : "Criar serviço" }}
-            </button>
-          </form>
+          </div>
         </div>
       </div>
     </div>

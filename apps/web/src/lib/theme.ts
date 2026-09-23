@@ -2,7 +2,7 @@ import { ref } from "vue";
 
 const STORAGE_KEY = "yeah:theme";
 
-export const isDark = ref(false);
+export const isDark = ref(true);
 
 function persist(dark: boolean) {
   try {
@@ -29,7 +29,9 @@ export function initTheme() {
   } catch {
     // ignore
   }
-  const dark = stored ? stored === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  // Coolify (and most self-hosted infra dashboards) default to dark on first visit — the toggle
+  // still works and whatever's chosen there is what persists from then on.
+  const dark = stored ? stored === "dark" : true;
   document.documentElement.classList.toggle("dark", dark);
   isDark.value = dark;
 }

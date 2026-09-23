@@ -81,13 +81,16 @@
   --red-800: #fecaca;
   --red-900: #fee2e2;
 
-  --bg: #000000;
-  --surface: #0a0a0a;
-  --surface-2: #161616;
-  --border: #262626;
-  --border-thin: #1c1c1c;
+  /* Layered near-black instead of pure #000 — closer to Coolify's "Graphite" surface system
+     (content canvas → chrome → card → hover), which reads softer and gives more depth than one
+     flat black. */
+  --bg: #19191b;
+  --surface: #212124;
+  --surface-2: #2a2a2e;
+  --border: #35353a;
+  --border-thin: #2a2a2e;
   --ink: #f5f5f5;
-  --ink-dim: #8a8a90;
+  --ink-dim: #9a9aa0;
   --accent: var(--red-600);
   --accent-strong: var(--red-700);
   --accent-wash: var(--red-100);
@@ -799,6 +802,48 @@ a:hover {
   border-color: var(--bad);
   color: var(--bad);
   background: var(--surface);
+}
+
+.resource-kind-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.resource-kind-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+}
+.resource-kind-tile:hover {
+  border-color: var(--accent);
+}
+.resource-kind-tile.active {
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+.resource-kind-tile .material-symbols-outlined {
+  font-size: 22px;
+  color: var(--ink-dim);
+  flex-shrink: 0;
+}
+.resource-kind-tile.active .material-symbols-outlined {
+  color: var(--accent);
+}
+.resource-kind-tile .name {
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.resource-kind-tile .desc {
+  font-size: 13px;
+  color: var(--ink-dim);
 }
 
 .status-dot {

@@ -6,6 +6,7 @@ import DashboardPage from "../pages/DashboardPage.vue";
 import ProjectsPage from "../pages/ProjectsPage.vue";
 import ProjectPage from "../pages/ProjectPage.vue";
 import EnvironmentPage from "../pages/EnvironmentPage.vue";
+import ResourceNewPage from "../pages/ResourceNewPage.vue";
 import ServersPage from "../pages/ServersPage.vue";
 import StoragesPage from "../pages/StoragesPage.vue";
 import GithubPage from "../pages/GithubPage.vue";
@@ -49,6 +50,12 @@ export const router = createRouter({
     {
       path: "/teams/:teamId/projects/:projectId/environments/:environmentId",
       component: EnvironmentPage,
+      meta: { requiresAuth: true },
+      props: true,
+    },
+    {
+      path: "/teams/:teamId/projects/:projectId/environments/:environmentId/new",
+      component: ResourceNewPage,
       meta: { requiresAuth: true },
       props: true,
     },
