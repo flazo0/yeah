@@ -332,3 +332,16 @@ De brinde, achei e corrigi duas imprecisões no CSS enquanto investigava: `font-
 
 Testado no navegador: `curl` confirma os 386 KB servidos, e todo ícone testado (sidebar, dashboard, notificações) renderiza igual, sem glifo quebrado ou faltando.
 
+
+## Tema escuro como padrão + grade de recursos unificada
+
+Continuação direta do pedido do usuário de aproximar o `yeah` do Coolify — duas mudanças menores, mas de alto impacto visual imediato.
+
+**Tema escuro por padrão**: `theme.ts` decidia o tema inicial olhando `prefers-color-scheme` do SO quando não havia preferência salva. Painéis self-hosted (Coolify incluso) quase sempre abrem escuro por padrão — trocado pra isso: sem `localStorage` salvo, abre escuro; o toggle continua funcionando normal e o que for escolhido ali passa a persistir do mesmo jeito de antes. Aproveitei pra recalibrar a paleta `.dark` — era preto puro numa escala só (`--bg: #000`, `--surface: #0a0a0a`, `--surface-2: #161616`), virou um sistema de 3 camadas mais claras e escalonadas (`--bg: #19191b`, `--surface: #212124`, `--surface-2: #2a2a2e`), inspirado no design token real do Coolify (`--color-app`/`--color-panel`/`--color-surface`/`--color-raised`, todos valores OKLCH próximos entre si) — sidebar, topbar e card agora se distinguem por camada em vez de tudo se misturar num preto só.
+
+**Grade de recursos unificada**: `EnvironmentPage.vue` renderizava três seções (`Aplicações`/`Bancos de dados`/`Serviços`), cada uma com sua própria grade, mais três formulários de criação completos sempre visíveis numa `grid-3` no rodapé — um layout de admin-CRUD clássico, bem diferente do Coolify real, que trata "criar recurso" como um fluxo à parte (catálogo pesquisável dividido em Applications/Databases/Services) em vez de formulários permanentes na tela principal. Reestruturado: a página agora mostra uma única grade mista (`resources` computed, junta os três tipos, ordena por nome), e o botão "Novo recurso" no cabeçalho leva pra `ResourceNewPage.vue` (rota nova `.../environments/:id/new`) — um seletor de 3 categorias em cima (mesmo visual de card usado nos outros lugares, `.resource-kind-tile`, ativo destacado com borda accent) que revela o formulário certo embaixo ao escolher. Os três formulários em si são os mesmos de antes, só movidos pra lá.
+
+`DATABASE_ENGINES` (em `packages/shared/src/types.ts`) não tem campo `icon` por engine, diferente do `SERVICE_CATALOG` — não criei um agora (ícone genérico `database` pra todos os motores no seletor) pra não inventar taxonomia nova sem necessidade real; fica como gap pequeno pra revisitar se algum dia a grade precisar diferenciar visualmente os motores.
+
+Testado de ponta a ponta contra API/banco de dev reais: criei um banco de dados pelo fluxo novo (`/new` → tile "Banco de dados" → formulário → `POST`), confirmei o redirect pra página de detalhe do recurso criado, voltei pra `EnvironmentPage.vue` e vi ele aparecer na grade unificada com ícone/status/badge corretos, apaguei via API de teste (o botão de excluir por hover do card teve o mesmo problema de clique simulado já documentado antes com o Claude in Chrome — contornado resolvendo o elemento certo via `find` em vez de coordenada). Confirmei visualmente o tema escuro padrão limpando `localStorage` e recarregando. `bun test` (139 testes) e `vue-tsc --noEmit` passando depois de tudo.
+
