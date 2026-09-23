@@ -1968,3 +1968,45 @@ input:-webkit-autofill:focus {
     padding: 10px;
   }
 }
+
+/* Project card quick actions (visible on hover/focus, always on touch screens) */
+.project-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.project-card-actions {
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.project-card:hover .project-card-actions,
+.project-card:focus-within .project-card-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .project-card-actions {
+    opacity: 1;
+  }
+}
+.card-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.card-icon-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.card-icon-btn .material-symbols-outlined {
+  font-size: 18px;
+}

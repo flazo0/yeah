@@ -3,6 +3,7 @@ import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import type { EnvironmentDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
+import PageState from "../components/PageState.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -59,7 +60,7 @@ onMounted(load);
       </div>
     </div>
 
-    <div v-if="loading" class="card"><div class="card-body"><div class="empty-state">carregando...</div></div></div>
+    <div v-if="loading" class="card"><div class="card-body"><PageState loading /></div></div>
     <div v-else-if="environments.length === 0" class="card mb-16">
       <div class="card-body">
         <div class="empty-state">

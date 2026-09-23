@@ -419,3 +419,18 @@ Fechei a maior parte da Fase 1 que tinha ficado pra trás depois da base respons
 **Não testado**: fluxo real de conexão do GitHub App (dev sem App), criar aplicação pelo modal do catálogo, o atalho `/` de foco na busca, a tela a 768px, e a aba Recursos/Permissões da fonte (sem instalação pra abrir). **Pendências da Fase 1** (no roadmap): migrar `PageState`/`StatusBadge` pras telas antigas (Dashboard, Notificações, Armazenamento, Atualizações, deploys), sidebar completa (Terminal, Destinations, Shared Variables, Keys & Tokens, Tags — dependem de features de fases futuras), e o gráfico histórico no dashboard (depende da série temporal da Fase 5).
 
 **Efeito colateral**: quase todo o tempo de teste esbarrou em aba de navegador em segundo plano (`visibilityState: hidden`), que estrangula `setTimeout` e faz screenshots estourarem timeout — scripts longos precisam rodar em segundo plano com a aba trazida pra frente por um screenshot.
+
+
+## Fase 1: fechamento
+
+Fechei os itens que ficaram abertos na Fase 1 — o roadmap não tem mais caixa desmarcada nela.
+
+**Estados e status padronizados.** `StatusBadge` ganhou um segundo modo (`kind="job"`): pra deploy, backup e operação da plataforma, `running` é "em andamento" (amarelo) e `queued` é "esperando" (cinza); pra recurso/servidor, `running`/`connected` é verde. Foi o ponto que quase quebrou a migração — uma tabela única de cores teria pintado todo deploy em andamento de verde. Dashboard, aba de deploys, backups e Atualizações trocaram os mapas locais por ele; todas as telas (Notificações, Armazenamento, Projeto, Atualizações e os quatro layouts + `ResourceTable`) passaram a usar `PageState` no carregando.
+
+**Descrição do time** (coluna `teams.description`, migration `0016`, campo na página Time). **Cards de projeto** ganharam "+" (vai direto pro catálogo do ambiente se o projeto tem um só; senão pra tela de ambientes) e engrenagem, visíveis no hover — e sempre visíveis em tela de toque (`@media (hover: none)`). Não fiz botão "Settings" de ambiente (não existe nada pra configurar num ambiente ainda) nem logos reais das tecnologias (ficaram os ícones genéricos).
+
+**Movido de fase, não largado**: a sidebar completa depende de features que não existem (Terminal, Destinations, Shared Variables, Keys & Tokens, Tags) — cada uma entra na sidebar junto da própria feature em vez de virar link pra página vazia; o gráfico histórico do dashboard passou pro item de série temporal da Fase 5.
+
+**Testado contra API/banco de dev reais**: "+" do card levou pro `/new` do ambiente; a tecla `/` focou a busca da lista; criar aplicação pelo modal do catálogo (nome + URL) abriu a tela da aplicação com o shell e as duas abas, e excluir pelo botão do shell voltou pra lista; a descrição do time gravou e limpou pela tela (a API também respondeu certo direto); Dashboard, Atualizações, Notificações, Armazenamento e Projeto renderizam com o `StatusBadge`/`PageState` novos. Varredura de overflow horizontal a **768px** em 12 telas: nenhuma estoura (a 390px já tinha sido feita). `vue-tsc`, `tsc` e 138 testes passam.
+
+**Falhas do meu teste, não do app**: dois resultados "errados" na primeira rodada (aplicação não criada, descrição `null`) eram o script de teste lendo o estado antes da aba em segundo plano terminar — refeitos passo a passo, deram certo. Ainda não olhei visualmente a tela de servidores a 768px (o iframe estava carregando no screenshot); só a varredura de overflow cobre esse tamanho.

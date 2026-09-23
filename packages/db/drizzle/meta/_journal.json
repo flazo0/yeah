@@ -113,6 +113,13 @@
       "when": 1790188368740,
       "tag": "0015_encrypt_secret_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790191449423,
+      "tag": "0016_team_description",
+      "breakpoints": true
     }
   ]
 }

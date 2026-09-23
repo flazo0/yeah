@@ -1,4 +1,4 @@
-import { boolean, pgEnum, pgTable, primaryKey, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, pgEnum, pgTable, primaryKey, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
 export const teamRoleEnum = pgEnum("team_role", ["owner", "admin", "member"]);
@@ -6,6 +6,7 @@ export const teamRoleEnum = pgEnum("team_role", ["owner", "admin", "member"]);
 export const teams = pgTable("teams", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
   personal: boolean("personal").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

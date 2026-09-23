@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onUnmounted, provide, ref } from "vue";
+import PageState from "../components/PageState.vue";
 import { useRoute } from "vue-router";
 import type { ServerDto, WsServerEvent } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
@@ -61,7 +62,7 @@ const tabs = [
 </script>
 
 <template>
-  <div v-if="loading" class="empty-state"><span class="spinner"></span> carregando...</div>
+  <PageState v-if="loading" loading />
   <div v-else-if="!server" class="empty-state">Servidor não encontrado.</div>
   <div v-else>
     <nav class="breadcrumb">

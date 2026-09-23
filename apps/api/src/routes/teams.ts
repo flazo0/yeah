@@ -24,6 +24,7 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
     const result: TeamDto[] = rows.map((row) => ({
       id: row.team.id,
       name: row.team.name,
+      description: row.team.description,
       personal: row.team.personal,
       role: row.role as TeamRole,
       createdAt: row.team.createdAt.toISOString(),
@@ -51,6 +52,7 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
       const dto: TeamDto = {
         id: team.id,
         name: team.name,
+        description: team.description,
         personal: team.personal,
         role: "owner",
         createdAt: team.createdAt.toISOString(),
@@ -77,7 +79,12 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
         set.status = 400;
         return { error: "o nome não pode ficar vazio" };
       }
-      const [team] = await db.update(teams).set({ name }).where(eq(teams.id, params.teamId)).returning();
+      const description = body.description === undefined ? undefined : body.description.trim() || null;
+      const [team] = await db
+        .update(teams)
+        .set(description === undefined ? { name } : { name, description })
+        .where(eq(teams.id, params.teamId))
+        .returning();
       if (!team) {
         set.status = 404;
         return { error: "team not found" };
@@ -90,13 +97,14 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
       const dto: TeamDto = {
         id: team.id,
         name: team.name,
+        description: team.description,
         personal: team.personal,
         role: (member?.role ?? "owner") as TeamRole,
         createdAt: team.createdAt.toISOString(),
       };
       return { team: dto };
     },
-    { body: t.Object({ name: t.String({ minLength: 1, maxLength: 255 }) }) },
+    { body: t.Object({ name: t.String({ minLength: 1, maxLength: 255 }), description: t.Optional(t.String({ maxLength: 1000 })) }) },
   )
   .get("/:teamId/overview", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

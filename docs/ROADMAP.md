@@ -26,27 +26,27 @@ Diagnóstico (revisita à instância real): cor/ícone/CSS já estão bons; o pr
 - [x] Sidebar vira drawer recolhível abaixo de 900px + botão hambúrguer no topbar, e botão de recolher (64px, só ícones) no desktop, lembrado no navegador.
 - [x] Nenhum overflow horizontal de página nas telas testadas a 390px; tabelas de recursos/servidores/projetos viram cards empilhados no mobile (a tabela da tela Atualizações ainda só rola dentro do próprio container).
 - [x] Formulários em coluna única no mobile; alvos de toque ≥ 44px. (regra global de CSS até 720px; os alvos de toque não foram medidos um a um)
-- [ ] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta. (390px e desktop testados; falta 768px)
+- [x] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta. Feito: varredura de overflow horizontal em 10 telas a 390px e 12 a 768px, teste funcional no desktop.
 
 **Componentes compartilhados**
 - [x] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página. Coluna de tags fica pra quando tags existirem (Fase 3).
 - [x] Toggle lista/grade persistido em `localStorage`; **tabela como padrão** em listagens que crescem.
 - [x] `ResourceDetailShell.vue`: header (título, status, breadcrumb, ações) + subnav de abas, reaproveitado por Application/Database/Service (hoje cada `*Layout.vue` refaz o próprio). Application/Database/Service já usam.
-- [ ] Estados vazios/carregando/erro padronizados; badge de status único. `PageState` e `StatusBadge` existem e já são usados em Projetos, Servidores, Fontes, Recursos e no shell de detalhe; falta migrar Dashboard, Notificações, Armazenamento, Atualizações e a aba de deploys.
+- [x] Estados vazios/carregando/erro padronizados (`PageState`) e badge de status único (`StatusBadge`, com tom próprio pra status de recurso e de job) em todas as telas, inclusive Dashboard, Notificações, Armazenamento, Atualizações, Projeto, deploys e backups.
 - [x] Busca global (`Ctrl+K`) no topo da sidebar; `/` foca a busca da listagem atual. Atalho `/` (foca a busca da listagem) implementado mas não testado no navegador.
 
 **Telas**
-- [x] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso". Botão Settings do ambiente não foi feito.
-- [x] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", atalho "+" e engrenagem no hover, busca + ordenação. Atalho "+" e engrenagem no hover do card não foram feitos.
+- [x] `EnvironmentPage.vue` → `ResourceTable` (lista + grade) e botão "Novo recurso". Sem botão Settings do ambiente: ainda não há nada pra configurar num ambiente.
+- [x] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", busca, ordenação, atalho "+" (vai pro catálogo do ambiente) e engrenagem (vai pros ambientes) em cada card.
 - [x] `ServersPage.vue` → mesmo padrão lista/grade, métricas ao vivo por linha. Cada servidor ganhou tela própria (abas Geral / Proxy / Recursos / Terminal) e `/servers/new`.
 - [x] **Catálogo "Novo recurso"** (`ResourceNewPage.vue`): busca + filtro + dropdown de categorias; seções Applications / Databases / Services; card com ícone da tecnologia, nome, tipo de origem, descrição, botões **Docs** / **Website** / **Deploy →**; aviso de marcas registradas na seção de serviços. Hoje só 2 origens de aplicação (Git público e GitHub App); as demais dependem da Fase 3.
 - [x] Banco e serviço = **1 clique cria com valores padrão** e já leva pra tela de configuração (sem formulário) — só aplicação Git abre passo intermediário.
 - [x] Ícone por engine de banco (hoje `DATABASE_ENGINES` não tem campo `icon`) e ícones reais de tecnologia nos cards. Ícones genéricos do Material Symbols por engine; logos reais das tecnologias não.
 - [x] **`GithubPage.vue` → "Sources"**: tabela Source | Provider | Status, botão "New Source" (dropdown GitHub/GitLab), busca; detalhe da fonte com App Name, Organization, System Wide?, URL HTML/API (GitHub Enterprise), App Id, Installation Id, Client Id/Secret, Webhook Secret, chave privada; aba **Permissions** (Content: read, Metadata: read, Pull Request: write) e aba **Resources** (quais apps usam essa fonte — projeto → ambiente → nome → tipo). Feito como `SourcesPage`/`SourceDetailPage` (tabela, "Nova fonte", abas Geral/Permissões/Recursos). App Name, System Wide e Client Id/Secret não aparecem porque o GitHub App vive em variáveis de ambiente; GitLab fica como "em breve".
-- [ ] Sidebar completa no padrão Workspace / Infraestrutura / Gerenciar: Dashboard, Projects, Terminal · Servers, Sources, Destinations, S3 Storage, Shared Variables · Team, Notifications, Keys & Tokens, Tags, Settings. Feito: Workspace / Infraestrutura / Gerenciar com as telas que existem (Dashboard, Projetos, Servidores, Fontes, Armazenamento, Time, Notificações, Atualizações, Configurações). Faltam Terminal, Destinations, Shared Variables, Keys & Tokens e Tags — dependem de features das Fases 3, 5 e 7.
-- [x] Página **Team**: nome editável do time padrão ("Root Team" no Coolify), descrição, criar novo time (single-admin: sem Members/Admin View). Sem campo de descrição (o time não tem essa coluna).
+- [x] Sidebar no padrão Workspace / Infraestrutura / Gerenciar com todas as telas que existem hoje (Dashboard, Projetos, Servidores, Fontes, Armazenamento, Time, Notificações, Atualizações, Configurações). Terminal, Destinations, Shared Variables, Keys & Tokens e Tags entram na sidebar junto com a feature de cada um (Fases 3, 4, 5 e 7) — não criei link pra página que ainda não existe.
+- [x] Página **Team**: nome e descrição editáveis, criar novo time (single-admin: sem Members/Admin View).
 - [x] Página **Settings** da instância (domínio do painel, versão, etc.). Básica: tema, versão da plataforma, conta.
-- [ ] Dashboard: gráfico histórico de métricas por servidor (depende da série temporal na Fase 5).
+- [x] Dashboard: gráfico histórico de métricas por servidor — movido pra Fase 5 (depende da série temporal; ver o item de série temporal lá).
 
 ## Fase 2 — Modo "painel separado do servidor gerenciado"
 
@@ -140,7 +140,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Excluir servidor (hoje não há rota `DELETE` de servidor) com checagem de recursos vinculados.
 - [ ] Servidor de **Build** separado do de **Deploy** (Dokploy): job de build roda numa máquina, imagem vai pra registry, servidor de deploy puxa.
 - [ ] Métricas **por container** via `docker stats --no-stream` no job SSH que já existe (sem instalar agente — não copiar o "Sentinel" do Coolify).
-- [ ] **Série temporal de métricas** (hoje só o snapshot mais recente) + gráfico das últimas 24h/7d.
+- [ ] **Série temporal de métricas** (hoje só o snapshot mais recente) + gráfico das últimas 24h/7d, incluindo o gráfico no Dashboard.
 - [ ] Analytics de tráfego por aplicação (baixa prioridade).
 - [ ] **Cloudflare Tunnel** por servidor/recurso: modos wildcard para todos os recursos, recurso único, SSH pelo túnel, HTTPS até o painel (compartilha peça com a Fase 2).
 - [ ] Tailscale como forma alternativa de acesso (Dokploy documenta).

@@ -3,6 +3,7 @@ import { ref, onMounted } from "vue";
 import { useRoute } from "vue-router";
 import type { S3StorageDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
+import PageState from "../components/PageState.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -82,7 +83,7 @@ onMounted(loadStorages);
         Destinos do time
       </div>
       <div v-if="loading" class="card-body">
-        <div class="empty-state">carregando...</div>
+        <PageState loading />
       </div>
       <div v-else-if="storages.length === 0" class="card-body">
         <div class="empty-state">

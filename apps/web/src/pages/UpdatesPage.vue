@@ -5,6 +5,8 @@ import type { ImageUpdateResourceDto, PlatformOperationDto, PlatformOperationSta
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import DeployLogTerminal from "../components/DeployLogTerminal.vue";
+import StatusBadge from "../components/StatusBadge.vue";
+import PageState from "../components/PageState.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -28,13 +30,6 @@ const confirmingPlatform = ref(false);
 const confirmingSystem = ref(false);
 let confirmPlatformTimer: ReturnType<typeof setTimeout> | undefined;
 let confirmSystemTimer: ReturnType<typeof setTimeout> | undefined;
-
-const opBadge: Record<PlatformOperationStatus, string> = {
-  queued: "badge-neutral",
-  running: "badge-warn",
-  success: "badge-good",
-  failed: "badge-bad",
-};
 
 function opRunning(op: PlatformOperationDto | null): boolean {
   return op?.status === "queued" || op?.status === "running";
@@ -171,7 +166,7 @@ onUnmounted(() => {
         <span class="material-symbols-outlined" style="font-size: 18px">deployed_code_update</span>
         Plataforma (yeah)
       </div>
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
+      <div v-if="loading" class="card-body"><PageState loading /></div>
       <div v-else-if="!platform || platform.currentCommit === null" class="card-body">
         <div class="empty-state">
           Sem versão rastreável aqui (rodando fora de um container de produção — normal em desenvolvimento local).
@@ -208,7 +203,7 @@ onUnmounted(() => {
         </p>
         <div v-if="platformOp" class="mt-16" style="margin-top: 12px">
           <div class="btn-row mb-16" style="margin-bottom: 8px">
-            <span class="badge" :class="opBadge[platformOp.status]">{{ platformOp.status }}</span>
+            <StatusBadge :status="platformOp.status" kind="job" />
           </div>
           <DeployLogTerminal :log="platformOp.log" />
         </div>
@@ -230,7 +225,7 @@ onUnmounted(() => {
             <span class="material-symbols-outlined" style="font-size: 18px">terminal</span>
             {{ opRunning(systemOp) ? "atualizando..." : confirmingSystem ? "Confirmar atualização?" : "Atualizar sistema" }}
           </button>
-          <span v-if="systemOp" class="badge" :class="opBadge[systemOp.status]" style="align-self: center">{{ systemOp.status }}</span>
+          <StatusBadge v-if="systemOp" :status="systemOp.status" kind="job" style="align-self: center" />
         </div>
         <div v-if="systemOp" class="mt-16" style="margin-top: 12px">
           <DeployLogTerminal :log="systemOp.log" />
@@ -252,7 +247,7 @@ onUnmounted(() => {
           {{ applyingAll ? "atualizando tudo..." : "Atualizar tudo" }}
         </button>
       </div>
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
+      <div v-if="loading" class="card-body"><PageState loading /></div>
       <div v-else-if="images.length === 0" class="card-body">
         <div class="empty-state">Nenhum banco ou serviço criado ainda pra checar.</div>
       </div>

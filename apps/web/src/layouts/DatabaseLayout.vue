@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, provide, ref } from "vue";
+import PageState from "../components/PageState.vue";
 import { useRoute, useRouter } from "vue-router";
 import type { DatabaseDto, DatabaseStatus, WsServerEvent } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
@@ -75,7 +76,7 @@ const subnav = computed(() => [{ to: `${routeBase}/general`, label: "Geral", act
 </script>
 
 <template>
-  <div v-if="loading" class="empty-state"><span class="spinner"></span> carregando...</div>
+  <PageState v-if="loading" loading />
   <div v-else-if="!database" class="empty-state">Banco de dados não encontrado.</div>
   <ResourceDetailShell
     v-else

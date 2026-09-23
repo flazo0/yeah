@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, provide, ref } from "vue";
+import PageState from "../components/PageState.vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApplicationDto, ApplicationStatus, DeploymentDto } from "@yeah/shared";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
@@ -84,7 +85,7 @@ const subnav = computed(() => [
 </script>
 
 <template>
-  <div v-if="loading" class="empty-state"><span class="spinner"></span> carregando...</div>
+  <PageState v-if="loading" loading />
   <div v-else-if="!app" class="empty-state">Aplicação não encontrada.</div>
   <ResourceDetailShell
     v-else

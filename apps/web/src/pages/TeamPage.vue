@@ -12,8 +12,12 @@ const teamId = route.params.teamId as string;
 
 const team = computed(() => auth.teams.find((t) => t.id === teamId) ?? null);
 const name = ref(team.value?.name ?? "");
-watch(team, (t) => {
-  if (t && !name.value) name.value = t.name;
+const description = ref(team.value?.description ?? "");
+watch(team, (t, previous) => {
+  if (t && !previous) {
+    name.value = t.name;
+    description.value = t.description ?? "";
+  }
 });
 
 const saving = ref(false);
@@ -30,7 +34,7 @@ async function save() {
   saved.value = false;
   error.value = "";
   try {
-    await auth.renameTeam(teamId, name.value.trim());
+    await auth.updateTeam(teamId, { name: name.value.trim(), description: description.value });
     saved.value = true;
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao salvar";
@@ -83,12 +87,16 @@ async function createTeam() {
             <label for="team-name">Nome</label>
             <input id="team-name" v-model="name" class="form-control" required maxlength="255" />
           </div>
+          <div class="form-group">
+            <label for="team-description">Descrição</label>
+            <textarea id="team-description" v-model="description" class="form-control" maxlength="1000" placeholder="Pra que serve esse time (opcional)"></textarea>
+          </div>
           <dl class="kv-list mb-16">
             <div><dt>Seu papel</dt><dd>{{ team.role }}</dd></div>
             <div><dt>Criado em</dt><dd>{{ new Date(team.createdAt).toLocaleDateString("pt-BR") }}</dd></div>
           </dl>
           <div class="btn-row">
-            <button type="submit" class="btn" :disabled="saving || name.trim() === team.name">
+            <button type="submit" class="btn" :disabled="saving || (name.trim() === team.name && description.trim() === (team.description ?? ''))">
               {{ saving ? "salvando..." : "Salvar" }}
             </button>
             <span v-if="saved" class="muted" style="align-self: center">salvo</span>

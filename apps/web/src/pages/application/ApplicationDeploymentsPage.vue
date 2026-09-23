@@ -5,6 +5,7 @@ import { api, ApiError, postConfirmingOverload } from "../../lib/api";
 import { wsClient } from "../../lib/ws";
 import DeployLogTerminal from "../../components/DeployLogTerminal.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import StatusBadge from "../../components/StatusBadge.vue";
 
 const { app, basePath, error, lastDeployment } = useApplicationContext();
 
@@ -13,13 +14,6 @@ const currentDeploymentId = ref<string | null>(null);
 const currentLog = ref("");
 const currentStatus = ref<DeploymentStatus | null>(null);
 const rollingBackId = ref<string | null>(null);
-
-const deploymentBadge: Record<DeploymentStatus, string> = {
-  queued: "badge-neutral",
-  running: "badge-warn",
-  success: "badge-good",
-  failed: "badge-bad",
-};
 
 const canDeploy = () => currentStatus.value !== "queued" && currentStatus.value !== "running";
 
@@ -101,9 +95,7 @@ onUnmounted(() => {
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">terminal</span>
       Log do deploy
-      <span v-if="currentStatus" class="badge" :class="deploymentBadge[currentStatus]" style="margin-left: auto">
-        {{ currentStatus }}
-      </span>
+      <StatusBadge v-if="currentStatus" :status="currentStatus" kind="job" style="margin-left: auto" />
     </div>
     <DeployLogTerminal :log="currentLog" />
   </div>
@@ -130,7 +122,7 @@ onUnmounted(() => {
           <tr v-for="deployment in history" :key="deployment.id">
             <td>{{ new Date(deployment.createdAt).toLocaleString("pt-BR") }}</td>
             <td class="mono">{{ deployment.commitSha ? deployment.commitSha.slice(0, 7) : "—" }}</td>
-            <td><span class="badge" :class="deploymentBadge[deployment.status]">{{ deployment.status }}</span></td>
+            <td><StatusBadge :status="deployment.status" kind="job" /></td>
             <td class="btn-row" style="justify-content: flex-end">
               <button type="button" class="btn btn-secondary btn-sm" @click="selectDeployment(deployment)">
                 Ver log

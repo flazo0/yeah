@@ -5,6 +5,7 @@ import type { BackupExecutionDto, BackupExecutionStatus, BackupScheduleDto, S3St
 import { api, ApiError } from "../../lib/api";
 import { wsClient } from "../../lib/ws";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
+import StatusBadge from "../../components/StatusBadge.vue";
 
 const { basePath, error } = useDatabaseContext();
 const route = useRoute();
@@ -36,13 +37,6 @@ const editForm = ref({
   storageId: "" as string | "",
 });
 const savingSchedule = ref(false);
-
-const executionBadge: Record<BackupExecutionStatus, string> = {
-  queued: "badge-neutral",
-  running: "badge-warn",
-  success: "badge-good",
-  failed: "badge-bad",
-};
 
 function formatSize(bytes: number | null): string {
   if (!bytes) return "-";
@@ -302,7 +296,7 @@ onUnmounted(() => {
           <tbody>
             <tr v-for="execution in executions" :key="execution.id">
               <td>{{ new Date(execution.createdAt).toLocaleString("pt-BR") }}</td>
-              <td><span class="badge" :class="executionBadge[execution.status]">{{ execution.status }}</span></td>
+              <td><StatusBadge :status="execution.status" kind="job" /></td>
               <td class="mono">{{ formatSize(execution.sizeBytes) }}</td>
               <td class="btn-row">
                 <a

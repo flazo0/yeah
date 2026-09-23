@@ -61,8 +61,8 @@ export const useAuthStore = defineStore("auth", {
       this.teams.push(team);
       return team;
     },
-    async renameTeam(teamId: string, name: string) {
-      const { team } = await api.put<{ team: TeamDto }>(`/teams/${teamId}`, { name });
+    async updateTeam(teamId: string, data: { name: string; description?: string }) {
+      const { team } = await api.put<{ team: TeamDto }>(`/teams/${teamId}`, data);
       const index = this.teams.findIndex((t) => t.id === teamId);
       if (index !== -1) this.teams[index] = team;
       return team;

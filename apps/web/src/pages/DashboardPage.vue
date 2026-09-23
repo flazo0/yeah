@@ -3,6 +3,7 @@ import { computed, ref, watch } from "vue";
 import type { DeploymentStatus, ProjectDto, ServerDto, TeamOverviewDto } from "@yeah/shared";
 import { useAuthStore } from "../stores/auth";
 import { api } from "../lib/api";
+import StatusBadge from "../components/StatusBadge.vue";
 
 const auth = useAuthStore();
 
@@ -14,18 +15,6 @@ const overview = ref<TeamOverviewDto | null>(null);
 const servers = ref<ServerDto[]>([]);
 const projects = ref<ProjectDto[]>([]);
 const loadingOverview = ref(false);
-
-const deploymentBadge: Record<DeploymentStatus, string> = {
-  queued: "badge-neutral",
-  running: "badge-warn",
-  success: "badge-good",
-  failed: "badge-bad",
-};
-const serverStatusBadge: Record<ServerDto["status"], string> = {
-  connected: "badge-good",
-  pending: "badge-warn",
-  error: "badge-bad",
-};
 
 function metricBarClass(value: number | null, threshold: number): string {
   if (value === null) return "metric-bar-fill-neutral";
@@ -120,7 +109,7 @@ watch(
               <tr v-for="deployment in overview.recentDeployments" :key="deployment.id">
                 <td>{{ deployment.applicationName }}</td>
                 <td>{{ new Date(deployment.createdAt).toLocaleString("pt-BR") }}</td>
-                <td><span class="badge" :class="deploymentBadge[deployment.status]">{{ deployment.status }}</span></td>
+                <td><StatusBadge :status="deployment.status" kind="job" /></td>
               </tr>
             </tbody>
           </table>
@@ -165,7 +154,7 @@ watch(
         <div v-for="server in servers" :key="server.id" class="resource-card">
           <div class="btn-row mb-16" style="justify-content: space-between; margin-bottom: 8px">
             <strong>{{ server.name }}</strong>
-            <span class="badge" :class="serverStatusBadge[server.status]">{{ server.status }}</span>
+            <StatusBadge :status="server.status" />
           </div>
           <div v-if="server.metricsCheckedAt" class="grid grid-3">
             <div>

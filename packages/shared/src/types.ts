@@ -15,6 +15,7 @@ export interface SafeUser {
 export interface TeamDto {
   id: string;
   name: string;
+  description: string | null;
   personal: boolean;
   role: TeamRole;
   createdAt: string;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import PageState from "./PageState.vue";
 import StatusBadge from "./StatusBadge.vue";
 import { statusTone } from "../lib/status";
 import ViewToggle from "./ViewToggle.vue";
@@ -109,7 +110,7 @@ function domainHref(domain: string): string {
       <ViewToggle v-model="view" storage-key="yeah:resource-view" />
     </div>
 
-    <div v-if="loading" class="empty-state">carregando...</div>
+    <PageState v-if="loading" loading />
     <div v-else-if="items.length === 0" class="empty-state"><slot name="empty">Nenhum recurso ainda.</slot></div>
     <div v-else-if="filtered.length === 0" class="empty-state">
       Nenhum recurso bate com os filtros.

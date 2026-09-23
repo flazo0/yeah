@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from "vue";
 import { useRoute } from "vue-router";
 import { NOTIFICATION_EVENT_LABELS, type NotificationChannelDto, type NotificationChannelType, type NotificationEventType } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
+import PageState from "../components/PageState.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -171,7 +172,7 @@ onMounted(loadChannels);
         Canais do time
       </div>
       <div v-if="loading" class="card-body">
-        <div class="empty-state">carregando...</div>
+        <PageState loading />
       </div>
       <div v-else-if="channels.length === 0" class="card-body">
         <div class="empty-state">

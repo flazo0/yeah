@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { statusTone } from "../lib/status";
+import { statusTone, type StatusKind } from "../lib/status";
 
-const props = defineProps<{ status: string; dot?: boolean }>();
-const tone = computed(() => statusTone(props.status));
+const props = defineProps<{ status: string; dot?: boolean; kind?: StatusKind }>();
+const tone = computed(() => statusTone(props.status, props.kind));
 </script>
 
 <template>

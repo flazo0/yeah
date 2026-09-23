@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ProjectDto } from "@yeah/shared";
+import type { EnvironmentDto, ProjectDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
 import ViewToggle from "../components/ViewToggle.vue";
@@ -71,6 +71,18 @@ async function createProject() {
   }
 }
 
+// Quick add: straight to the new-resource catalog when the project has a single environment,
+// otherwise to the project page so the environment can be picked.
+async function quickAdd(project: ProjectDto) {
+  try {
+    const res = await api.get<{ environments: EnvironmentDto[] }>(`/teams/${teamId}/projects/${project.id}/environments`);
+    const only = res.environments.length === 1 ? res.environments[0] : undefined;
+    router.push(only ? `/teams/${teamId}/projects/${project.id}/environments/${only.id}/new` : `/teams/${teamId}/projects/${project.id}`);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao abrir o projeto";
+  }
+}
+
 function open(project: ProjectDto) {
   router.push(`/teams/${teamId}/projects/${project.id}`);
 }
@@ -119,6 +131,14 @@ onMounted(load);
           </div>
           <div class="project-card-foot">
             <span class="muted">{{ summary(project) }}</span>
+            <span class="project-card-actions">
+              <button type="button" class="card-icon-btn" title="Adicionar recurso" aria-label="Adicionar recurso" @click.stop="quickAdd(project)">
+                <span class="material-symbols-outlined">add</span>
+              </button>
+              <button type="button" class="card-icon-btn" title="Ambientes do projeto" aria-label="Ambientes do projeto" @click.stop="open(project)">
+                <span class="material-symbols-outlined">settings</span>
+              </button>
+            </span>
           </div>
         </div>
       </div>
