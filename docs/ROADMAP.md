@@ -1,181 +1,237 @@
 # Roadmap
 
-Estado real do projeto — o que já funciona (testado de ponta a ponta, ver `docs/DEVLOG.md`) e o que falta, incluindo paridade com o Coolify e o Dokploy (as duas referências diretas do usuário pra essa fase) e itens de robustez que todo PaaS de produção precisa.
+Só o que **falta desenvolver**, por fases, com checkbox em tudo — marcar `[x]` quando terminar (testado de ponta a ponta, ver `docs/DEVLOG.md`). O que já funciona hoje está no `README.md` e no `docs/DEVLOG.md`; não é repetido aqui.
 
-**2026-09**: pesquisa grande nova nessa revisão — documentação oficial do Coolify e do Dokploy, código-fonte de ambos clonado localmente (`./coolify`, `./dokploy`, os dois gitignored, não vão pro repo público), e uma revisita à instância real de produção do usuário rodando Coolify. Notas cruas ficam em `docs/coolify-research.md` e `docs/dokploy-research.md` (gitignored — contêm nome de instância/projeto real); aqui só entra a versão sanitizada e acionável.
+Fontes: pesquisa em documentação e código-fonte do Coolify e do Dokploy (clones locais gitignored), revisita à instância real de produção do usuário e auditoria do nosso próprio código. Notas cruas (com nome de instância real) ficam em `docs/coolify-research.md` e `docs/dokploy-research.md` — gitignored, não vão pro repo público. Aqui só entra a versão sanitizada.
 
-## 🏗️ Arquitetura: rodar o painel separado do servidor gerenciado
+Ordem das fases = ordem de prioridade sugerida (estrutural antes de superficial). Dentro de cada fase, de cima pra baixo.
 
-Pedido explícito do usuário: poder instalar o `yeah` num ambiente local ou servidor barato à parte, sem gastar recurso da VPS de produção só pra rodar o painel — e quando abrir o painel, ele já conecta na VPS remotamente pra gerenciar ela.
+---
 
-**Isso já é o modelo de arquitetura que Coolify e Dokploy usam de verdade, e o `yeah` já tá 90% lá sem saber**:
-- O `yeah` já é 100% agentless-via-SSH — o `worker` é o único processo que fala SSH, e ele já trata "servidor onde o container de app vai rodar" como algo sempre remoto, nunca assume acesso a um socket Docker local. Isso é confirmado olhando `apps/worker/src/jobs/*.ts` — todo comando (deploy, provisionamento, backup, métrica) já vai por `ssh2` contra host/porta/chave de um `Server` do banco, mesmo quando esse `Server` é o "Servidor local" que o `install.sh` registra automaticamente.
-- `apps/api/src/lib/localhostServer.ts` **já é condicional**: só cria o "Servidor local" (`isPlatformHost: true`) se `LOCALHOST_SSH_PRIVATE_KEY_BASE64` estiver setado no ambiente. Sem essa env var, nada acontece — o painel sobe sem nenhum servidor de deploy próprio, exatamente o estado inicial que esse pedido precisa.
-- **A lacuna real é só o `install.sh`**: hoje ele **sempre** gera a chave SSH e escreve as três env vars (`LOCALHOST_SSH_*`), então o host onde `install.sh` roda vira automaticamente um alvo de deploy — não tem flag pra pular isso. Confirmado também que Coolify (v4, hoje em produção) faz exatamente a mesma coisa por padrão: `scripts/install.sh` gera chave e registra o `host.docker.internal` como servidor `id=0` fixo/irremovível (`app/Models/Server.php`, `isLocalhost()`) — ou seja, nem o Coolify real tem um "modo controle-only" de primeira classe, só dá pra simplesmente nunca fazer deploy nesse servidor `id=0`, sem apagar ele. **Dokploy já vai além**: os docs oficiais documentam de verdade um modo "UI only" — instalação separada dos servidores gerenciados, ~250MB de RAM só pra rodar o painel — como um modo suportado, não um hack.
+## Fase 0 — Segurança e fundação
 
-**Plano concreto**:
-1. `install.sh` ganha um modo (`--control-plane-only` ou pergunta interativa "vai gerenciar só servidores remotos?") que pula o `ssh-keygen` + as três env vars `LOCALHOST_SSH_*` — painel sobe limpo, primeiro servidor é adicionado manualmente pela UI (fluxo que já existe, `ServersPage.vue`).
-2. Documentar esse modo no `README.md`/`docs/ARCHITECTURE.md`: rodar `docker-compose.prod.yml` numa máquina qualquer com saída de rede (PC de casa, VPS de $4/mês, Raspberry Pi) e adicionar a VPS de produção real como servidor remoto via SSH — sem nenhuma mudança de código, só de topologia de instalação.
-3. **Sem problema de NAT/firewall a resolver** (diferente do que o próprio Coolify precisou resolver pra v5 — ver nota abaixo): a conexão sempre parte do painel *pra* a VPS gerenciada, e essa VPS quase sempre tem IP público + porta SSH aberta (é uma VPS de produção). O painel só precisa de saída de rede, que qualquer máquina com internet já tem.
-4. **Achado da arqueologia de código do Coolify, vale registrar por completude**: o time do Coolify tá numa reescrita v5 (`docs/v5/architecture/adr/` no repo deles) que separa o controle em 3 peças — control plane (Laravel), um broker (**Flux**) e um agente leve por host (**coold**) que disca *pra fora* via gRPC. O motivo declarado (ADR 0001) é gerenciar hosts **atrás de NAT/firewall restritivo**, sem IP público — problema que exige inverter a direção da conexão (o host chama o painel, não o contrário), o que por sua vez exige instalar um agente por host. **Isso não é o nosso caso**: a gente quer o contrário (painel remoto → VPS com IP público), que já funciona com SSH normal, sem precisar copiar esse modelo de agente. Only atentar: se um dia quisermos suportar gerenciar um servidor **sem** IP público (ex. um Raspberry Pi atrás de CGNAT), aí sim esse problema vira real e a solução do Coolify v5 vira referência.
-5. **Cloudflare Tunnel pro painel em si** (não só pros apps deployados — ver também na seção de paridade com Coolify abaixo): se o painel roda numa máquina de casa sem IP público/fixo, dá pra expor ele via túnel Cloudflare em vez de abrir porta — resolve o "como eu acesso meu painel de qualquer lugar" sem VPN nem port-forward. Faz sentido implementar o suporte a Cloudflare Tunnel pensando nos dois casos ao mesmo tempo (expor um app deployado E expor o painel), é a mesma peça de infraestrutura.
+- [ ] Criptografar `servers.private_key` em repouso (hoje texto puro, `TODO(security)` em `packages/db/src/schema/servers.ts`). Referência: envelope AES-256-GCM do Dokploy — chave derivada via HMAC-SHA256 de uma `ENCRYPTION_KEY` dedicada, prefixo versionado `enc:v1:`, suporte a múltiplas chaves pra rotação.
+- [ ] Criptografar `databases.password` e demais segredos guardados (tokens/chaves do GitHub App, credenciais S3, senha SMTP, webhook secret) com o mesmo mecanismo — nem o Coolify criptografa `client_secret`/`webhook_secret` do GitHub App, não repetir essa lacuna.
+- [ ] Migration que re-cifra os valores já existentes + geração/exibição de `ENCRYPTION_KEY` no `install.sh`.
+- [ ] Assinar/expirar o `state` do fluxo OAuth do GitHub App (hoje é o `teamId` puro).
+- [ ] Rate limiting na API (login, criação de recursos, webhooks).
+- [ ] Circuit breaker no `worker`: job que falha repetidamente não re-tenta pra sempre.
+- [ ] Checar snapshot de métricas do servidor *antes* de enfileirar deploy/provisionamento e barrar/avisar se já estiver no limite.
 
-## ⚙️ Camada de execução: Docker Engine API real via túnel SSH (avaliar)
+## Fase 1 — Reformulação de layout (mobile-first, escalável)
 
-Achado da arqueologia de código do Dokploy, relevante o bastante pra virar item de arquitetura próprio: hoje o `yeah` (igual o Coolify) constrói **comandos shell como string** (`shellQuote` em todo `apps/worker/src/jobs/*.commands.ts`) e roda via `exec` sobre a conexão SSH, parseando stdout pra saber o resultado. O Dokploy faz diferente: pra qualquer servidor com chave SSH configurada, ele abre a lib `dockerode` (cliente real da Docker Engine API) com `protocol: "ssh"` — ou seja, **túnela a API REST de verdade do Docker por cima do mesmo SSH**, em vez de gerar string de comando. Ganhos: zero risco de escaping de shell errado, respostas JSON tipadas em vez de parsear texto de stdout, streaming nativo de log/exec sem reimplementar isso na mão.
+Diagnóstico (revisita à instância real): cor/ícone/CSS já estão bons; o problema é **densidade e escalabilidade** — só temos grade de cards, que degrada com muitos recursos (cenário de microsserviços).
 
-Não é uma troca trivial (precisa confirmar que `dockerode` funciona 100% sob o runtime do Bun, e é uma reescrita de fundo de todo `apps/worker/src/jobs/*.commands.ts`) — entra como item de avaliação técnica antes de virar trabalho, não como troca imediata. Prioridade: depois de fechar a reformulação de layout e as lacunas de feature mais visíveis, porque é invisível pro usuário final apesar de ser uma melhoria estrutural real.
+**Base responsiva (afeta toda tela — fazer primeiro)**
+- [ ] Sidebar vira drawer recolhível abaixo de ~768px + botão hambúrguer no topbar; botão de recolher sidebar no desktop.
+- [ ] Nenhum overflow horizontal de página em nenhuma tela; tabelas com scroll horizontal controlado ou viram cards empilhados no mobile.
+- [ ] Formulários em coluna única no mobile; alvos de toque ≥ 44px.
+- [ ] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta.
 
-Achado relacionado, também do Dokploy: pra ganhar rolling-update e healthcheck nativos sem reescrever do zero, o Dokploy inicializa um **Docker Swarm de nó único** em cada servidor gerenciado (`docker swarm init`, sem `swarm join`/join-tokens — não é clustering real entre servidores, só ativa as primitivas de `docker service`) e sobe os containers como Swarm services em vez de `docker run` puro. Vale considerar o mesmo truque pro `yeah`: continua um servidor = uma unidade independente (sem cluster de verdade), mas ganha `UpdateConfig`/rolling update e healthcheck nativos da própria Docker API. Menor escopo que trocar pra `dockerode`, pode vir antes.
+**Componentes compartilhados**
+- [ ] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página.
+- [ ] Toggle lista/grade persistido em `localStorage`; **tabela como padrão** em listagens que crescem.
+- [ ] `ResourceDetailShell.vue`: header (título, status, breadcrumb, ações) + subnav de abas, reaproveitado por Application/Database/Service (hoje cada `*Layout.vue` refaz o próprio).
+- [ ] Estados vazios/carregando/erro padronizados; badge de status único.
+- [ ] Busca global (`Ctrl+K`) no topo da sidebar; `/` foca a busca da listagem atual.
 
-## 🖥️ Reformulação de layout — mobile-first, escalável, consistente
+**Telas**
+- [ ] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso".
+- [ ] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", atalho "+" e engrenagem no hover, busca + ordenação.
+- [ ] `ServersPage.vue` → mesmo padrão lista/grade, métricas ao vivo por linha.
+- [ ] **Catálogo "Novo recurso"** (`ResourceNewPage.vue`): busca + filtro + dropdown de categorias; seções Applications / Databases / Services; card com ícone da tecnologia, nome, tipo de origem, descrição, botões **Docs** / **Website** / **Deploy →**; aviso de marcas registradas na seção de serviços.
+- [ ] Banco e serviço = **1 clique cria com valores padrão** e já leva pra tela de configuração (sem formulário) — só aplicação Git abre passo intermediário.
+- [ ] Ícone por engine de banco (hoje `DATABASE_ENGINES` não tem campo `icon`) e ícones reais de tecnologia nos cards.
+- [ ] **`GithubPage.vue` → "Sources"**: tabela Source | Provider | Status, botão "New Source" (dropdown GitHub/GitLab), busca; detalhe da fonte com App Name, Organization, System Wide?, URL HTML/API (GitHub Enterprise), App Id, Installation Id, Client Id/Secret, Webhook Secret, chave privada; aba **Permissions** (Content: read, Metadata: read, Pull Request: write) e aba **Resources** (quais apps usam essa fonte — projeto → ambiente → nome → tipo).
+- [ ] Sidebar completa no padrão Workspace / Infraestrutura / Gerenciar: Dashboard, Projects, Terminal · Servers, Sources, Destinations, S3 Storage, Shared Variables · Team, Notifications, Keys & Tokens, Tags, Settings.
+- [ ] Página **Team**: nome editável do time padrão ("Root Team" no Coolify), descrição, criar novo time (single-admin: sem Members/Admin View).
+- [ ] Página **Settings** da instância (domínio do painel, versão, etc.).
+- [ ] Dashboard: gráfico histórico de métricas por servidor (depende da série temporal na Fase 5).
 
-O usuário foi claro: cor/ícone/CSS já tá bom, **o problema é o layout em si** — confuso, não escala bem, e precisa funcionar em qualquer tamanho de tela, com foco em suportar bem cenário de microsserviços (times com dezenas de recursos, não só 2-3 de teste).
+## Fase 2 — Modo "painel separado do servidor gerenciado"
 
-Comparando com o Coolify real (revisita à instância de produção, ver `docs/coolify-research.md` seção 6) e o Dokploy, a diferença não é estética — é **densidade de informação e escalabilidade**:
+Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar recurso da VPS de produção. **Já é ~90% possível** — o worker só fala SSH e `localhostServer.ts` só registra servidor local se `LOCALHOST_SSH_PRIVATE_KEY_BASE64` existir; a lacuna é o `install.sh`. Dokploy documenta o mesmo modo oficialmente (~250MB de RAM só-UI). Sem problema de NAT: a conexão parte do painel pra VPS com IP público.
 
-- **Grade de cards não escala.** O `yeah` hoje só tem um modo de exibição (grade de cards) pra tudo: recursos de um ambiente, projetos, servidores. Funciona bem com 2-3 itens, fica ruim rápido com 15+. O Coolify sempre oferece as duas opções — grade E **tabela** (Resource | Type | Status | Domain | Server | Tags, com busca/filtro/ordenação e paginação) — com tabela como padrão pra listagens que crescem. **Ação**: criar um componente `ResourceTable.vue` reaproveitável (colunas: ícone+nome, tipo, status, domínio, servidor, tags) e um toggle lista/grade persistido por usuário (`localStorage`, mesmo padrão simples já usado pro tema), aplicado em `EnvironmentPage.vue`, `ProjectsPage.vue` e `ServersPage.vue`.
-- **Coluna de domínio ausente.** Hoje pra saber a URL de uma aplicação é preciso entrar nela. O modo tabela do Coolify mostra isso na própria listagem — alto valor, baixo custo (já temos o dado, só falta expor).
-- **Mobile ainda não foi pensado como cenário de primeira classe.** Sidebar fixa + grade de N colunas não testado em telas estreitas. **Ação**: sidebar vira drawer/gaveta recolhível abaixo de um breakpoint (padrão comum: <768px), topbar ganha botão de menu hambúrguer, tabelas viram cards empilhados ou scroll horizontal controlado (nunca overflow da página inteira), formulários em coluna única. Testar cada tela reformulada em pelo menos 3 larguras (≈390px celular, ≈768px tablet, desktop) antes de considerar pronta — igual já é prática pra Artifacts, vale adotar aqui também.
-- **Shell de página inconsistente entre tipos de recurso.** `ApplicationLayout.vue`/`DatabaseLayout.vue`/`ServiceLayout.vue` já compartilham o padrão de rota filha (bom, já documentado na seção de navegação abaixo), mas cada um ainda define seu próprio header/subnav do zero. **Ação**: extrair um `ResourceDetailShell.vue` (ou similar) que os três reaproveitam — título, status, breadcrumb, subnav de abas — pra qualquer mudança de layout futura (ex. adicionar uma aba nova) acontecer num lugar só.
-- **Sem estado vazio/densidade pensada pra "muitos recursos".** Telas hoje assumem implicitamente poucos itens (cards grandes, bastante espaço em branco). Cenário de microsserviços real é dezenas de aplicações pequenas relacionadas — o modo tabela acima já ajuda, mas cabe também: busca com foco por atalho de teclado (Coolify usa `/`), filtro por tipo/status/servidor/tag na mesma barra.
+- [ ] `install.sh` com modo `--control-plane-only` (ou pergunta interativa) que pula `ssh-keygen` + as env vars `LOCALHOST_SSH_*`.
+- [ ] Documentar a topologia no `README.md` e `docs/ARCHITECTURE.md` (painel em PC de casa / VPS de $4 / Raspberry Pi + VPS de produção como servidor remoto).
+- [ ] Testar de ponta a ponta: painel numa máquina, deploy/backup/métricas/proxy numa VPS remota.
+- [ ] Validar que **métricas remotas funcionam** nesse modo (Dokploy lista como não suportado; o nosso lê tudo via SSH exec, deve funcionar).
+- [ ] Guia "adicionar sua primeira VPS remota" (gerar chave, autorizar no `authorized_keys`, adicionar na UI).
+- [ ] **Cloudflare Tunnel pro próprio painel** (acessar de qualquer lugar sem IP público/port-forward) — mesma peça de infra do túnel de apps (Fase 3).
+- [ ] Botão de "converter" instalação existente: remover o servidor local automático sem quebrar recursos.
+- [ ] Remover/esconder atualização de plataforma quando o painel estiver em modo separado (`is_platform_host` só no host do painel).
 
-**Como isso vai ser executado**: é um trabalho grande, tela por tela — não dá pra fazer tudo de uma vez sem quebrar o que já funciona. Ordem sugerida: (1) componente de tabela reaproveitável + toggle, aplicado primeiro em `EnvironmentPage.vue` (a tela mais citada como problema); (2) breakpoints mobile na sidebar/topbar (afeta toda tela de uma vez, alto impacto); (3) `ResourceDetailShell.vue` compartilhado; (4) replicar tabela em `ProjectsPage.vue`/`ServersPage.vue`; (5) revisar formulários (criação de recurso, configurações) em coluna única mobile. Cada etapa testada de ponta a ponta e reportada antes da próxima, igual o resto do projeto.
+## Fase 3 — Aplicações
 
-## 🧭 Reestruturação de navegação — em andamento
+**Build e origem**
+- [ ] Build pack **Nixpacks** (detecta linguagem, builda sem Dockerfile).
+- [ ] Build pack **Railpack** (alternativa mais nova que o Coolify oferece).
+- [ ] Build pack **estático** (arquivos servidos via nginx).
+- [ ] Deploy via **Docker Compose** (multi-container por aplicação).
+- [ ] Deploy via **Docker Image** de qualquer registry (sem Git).
+- [ ] Deploy via **Dockerfile colado** (sem Git).
+- [ ] Repositório **público por URL** sem credencial (hoje já há URL manual; formalizar como tipo próprio no catálogo).
+- [ ] Repositório privado via **Deploy Key** (SSH, chave por repositório).
+- [ ] Fontes **GitLab** (GitLab App), **Bitbucket** e **Gitea**.
+- [ ] Registry privado (Docker Hub privado, GHCR…) com **push automático** da imagem buildada, tag = SHA do commit — builda uma vez e reusa.
+- [ ] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push.
+- [ ] Tela de **mudanças pendentes**: contagem de campos alterados (env, domínio…) desde o último deploy, antes de aplicar.
+- [ ] Grace period de parada configurável no redeploy.
+- [ ] Custom Docker options (flags extras do `docker run`).
 
-O usuário apontou (2026-09) que a estrutura de telas do `yeah` tá confusa e pediu pra puxar mais pro estilo Coolify/Vercel/Render em vez do design atual. Levantamento no código-fonte real do Coolify confirmou o porquê: cada sub-seção de configuração de recurso lá é uma **rota própria** (`/application/{id}/domains`, `.../advanced`, `.../environment-variables`, `.../persistent-storage`, `.../source`, `.../servers`, `.../scheduled-tasks`, `.../webhooks`, `.../preview-deployments`, `.../healthcheck`, `.../rollback`, `.../resource-limits`, `.../resource-operations`, `.../metrics`, `.../analytics`, `.../tags`, `.../danger`, mais `.../deployment`, `.../logs`, `.../terminal`) — bookmarkável, compartilhável, funciona com voltar/avançar do navegador.
+**Ciclo de vida e operação**
+- [ ] Ações **iniciar / parar / reiniciar / substituir** aplicação (hoje não há rotas de start/stop/restart).
+- [ ] **Logs ao vivo do container em execução** (`docker logs -f`), aba separada de Deployments.
+- [ ] **Terminal interativo** dentro do container (WebSocket → API → SSH → `docker exec -it`) e do servidor.
+- [ ] **Healthcheck configurável** por recurso: path HTTP, intervalo, retries, timeout, start period.
+- [ ] Sub-aba **Advanced** (opções avançadas de build/runtime).
+- [ ] Sub-aba **Git Source** (trocar fonte/branch/repo depois de criado).
+- [ ] Sub-aba **Servers** (ver/trocar servidor de destino).
+- [ ] Sub-aba **Webhooks** (URL de deploy manual + segredo, além do GitHub).
+- [ ] Sub-aba **Resource Operations** (clonar, mover entre ambientes/projetos, migrar entre servidores).
+- [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
+- [ ] Sub-aba **Danger zone** (excluir com confirmação).
+- [ ] **Preview deployments**: PR do GitHub vira ambiente efêmero com URL própria, comenta no PR, morre ao fechar.
+- [ ] **Scheduled tasks**: comando arbitrário dentro do container num cron, com **histórico de execuções** (status, log, duração).
+- [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
+- [ ] Botão **Generate Domain** (FQDN automático a partir do wildcard do servidor) na aba de domínio.
+- [ ] **Múltiplos domínios** por aplicação + redirect www/não-www.
+- [ ] **Tags** em recursos (criar, atribuir, filtrar na listagem).
+- [ ] Timeout de conexão SSH configurável por servidor.
 
-Plano de reestruturação:
-- **✅ Feito**: trocado o padrão `activeTab` (refs locais com `v-if`) por **rotas filhas de verdade no Vue Router** em Application (`/apps/:id/deployments|general|env|storage`), Database (`/databases/:id/backups|general`) e Service (`/services/:id/general|env`), cada um com layout compartilhado (`*Layout.vue`) + `provide`/`inject` (`use*Context`).
-- **✅ Feito**: dashboard inicial no estilo "Root Team" do Coolify — cards de contagem, deploys recentes cross-projeto, grade de "Projetos", grade de "Servidores" com status ao vivo. Trocar/criar time saiu do corpo do dashboard, virou dropdown no topbar (`TeamSwitcher.vue`).
-- **✅ Feito**: componentes de configuração compartilhados entre Application/Database/Service (`DomainCard.vue`, `ResourceLimitsCard.vue`).
-- **✅ Feito**: sidebar reorganizada em seções (Infraestrutura / Integrações / Sistema).
-- **✅ Feito**: `EnvironmentPage.vue` unificada — grade única mista em vez de três grades + três formulários sempre visíveis; criação virou fluxo dedicado (`ResourceNewPage.vue`). **Próximo passo direto**: aplicar o modo tabela da seção de layout acima nessa mesma tela, e trocar o fluxo de criação de banco/serviço pra "1 clique = cria com padrão" em vez de formulário completo, igual o Coolify faz (ver `docs/coolify-research.md` seção 6).
-- **✅ Feito**: tema escuro como padrão, paleta escura recalibrada em camadas.
-- Sub-navegação de Configuração ganhando os itens reais conforme cada feature for implementada: Persistent Storage ✅, Rollback ✅, faltam Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations, Healthcheck, Analytics.
-- **Ainda falta**: página do GitHub (`GithubPage.vue`) reestruturada no estilo "Sources" do Coolify — ver detalhe de layout dessa tela específica em `docs/coolify-research.md` seção 1 (como ele organiza App Name/Organization/System Wide/chaves/permissões/aba de recursos vinculados).
+**Variáveis de ambiente**
+- [ ] **Shared Variables** por escopo (time / projeto / ambiente) com referência `{{project.NODE_ENV}}`.
+- [ ] Distinção **build-time vs runtime** por variável.
+- [ ] Editor de env em modo texto (`.env` colado) além de linha a linha.
 
-## 🌐 Internacionalização (i18n)
+## Fase 4 — Bancos, serviços e microsserviços
 
-Pedido explícito do usuário. Coolify tem isso de verdade — 20 idiomas em `lang/*.json`. Pra aplicar no `yeah`:
-- `vue-i18n` (ou equivalente leve) com `pt.json` como idioma padrão atual + `en.json` traduzido.
-- Seletor de idioma na página de conta/configurações (mesmo lugar do tema claro/escuro).
-- Trabalho grande de superfície — fazer incrementalmente por página.
+**Serviços / stacks**
+- [ ] Serviço = **stack Docker Compose** de vários containers como um recurso (hoje o catálogo é de container único).
+- [ ] **Serviço customizado**: colar o próprio `docker-compose.yml`.
+- [ ] Ampliar o catálogo one-click (hoje 10; Coolify tem 300+): estrutura de template em arquivo (compose + metadados + ícone), carregada de `templates/`, sem hardcode por serviço.
+- [ ] Catálogo com **busca, categorias e ícones** (usa o mesmo componente da Fase 1).
+- [ ] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): apps falam com bancos/serviços por nome interno.
+- [ ] Domínio por container dentro de uma stack compose.
+- [ ] Guia/modelo de **microsserviços**: várias apps + banco + fila no mesmo ambiente com rede compartilhada e variáveis compartilhadas.
 
-## ✅ Já funciona
+**Bancos**
+- [ ] Engines novos: **Dragonfly**, **KeyDB**, **ClickHouse**.
+- [ ] Escolha de **versão da imagem** na criação (Postgres pergunta versão antes de criar).
+- [ ] **SSL** por engine e **acesso externo** configurável (publicar porta + credenciais).
+- [ ] URL de conexão interna e externa exibida e copiável.
+- [ ] Healthcheck configurável.
 
-- Auth por sessão — single-admin de propósito (`/register` só funciona uma vez)
-- Servidores via SSH (agentless, igual Coolify e Dokploy) — o host de instalação já entra automaticamente como primeiro servidor quando configurado (ver seção de arquitetura acima pro plano de tornar isso opcional)
-- `Project → Environment → Application | Database | Service`, igual Coolify, com breadcrumb clicável
-- Deploy de aplicações (só `Dockerfile` por enquanto) com log ao vivo
-- GitHub App: conectar conta, escolher repo numa lista, auto-deploy em push
-- 5 motores de banco (Postgres, MySQL, MariaDB, Redis, MongoDB) com provisionamento e backup
-- Catálogo de serviços um-clique: Uptime Kuma, n8n, MinIO, RabbitMQ, Meilisearch, Ghost, Metabase, Portainer, Adminer, Redis Commander — qualquer imagem pública, além dos motores de banco
-- Backup agendado (cron) com 3 regras de retenção, local ou S3-compatível
-- Proxy reverso por servidor (Traefik) com domínio wildcard e HTTPS automático (Let's Encrypt)
-- Exclusão de recursos com limpeza remota (container, volume, agendamento no BullMQ)
-- Monitoramento de recursos por servidor: CPU/RAM/disco via SSH a cada 60s (sem agente)
-- Notificações: Discord, Slack, Telegram, Email (SMTP), webhook genérico — com filtro por tipo de evento
-- Tela de atualizações com botões reais: atualizar plataforma, atualizar sistema operacional, atualizar imagem por recurso (ou tudo de uma vez)
-- Limites de recurso por container (`--memory`/`--cpus`) configuráveis
-- Alerta de certificado TLS perto de expirar (checagem diária)
-- Suíte de testes unitários (`bun test`, zero dependência extra) cobrindo lógica pura crítica
-- Armazenamento persistente para aplicações (volumes nomeados)
-- Rollback: cada deploy grava o commit real, botão pra fixar deploy novo nele
-- Editor Monaco, terminal xterm.js, tema claro/escuro
+**Backup**
+- [ ] **Restore / Import Backup**: restaurar a partir de um backup existente ou de arquivo enviado (hoje não existe nenhuma rota de restore).
+- [ ] **Databases To Include** em instâncias multi-database.
+- [ ] Botões de manutenção: limpar backups com falha, limpar deletados, apagar backups + agendamento.
+- [ ] Compressão paralela (gzip multi-core).
+- [ ] **Backup de volume/storage persistente** de aplicações e serviços (não só banco).
+- [ ] Aviso explícito na UI: "volume persistente não é backup".
 
-## 🚧 Falta pra fechar as fases já abertas
+## Fase 5 — Servidores e infraestrutura
 
-- **Build packs além de Dockerfile**: Nixpacks (Coolify também tem **Railpack** como alternativa mais nova, detecta linguagem e builda sem Dockerfile), estático (só arquivos, serve via nginx), Docker Compose (multi-container por aplicação)
-- **Preview deployments**: cada PR do GitHub vira um ambiente efêmero, com URL própria, que morre quando o PR fecha
-- **Scheduled tasks**: rodar comandos arbitrários dentro do container, num cron, com **histórico de execuções** (status/log/duração de cada rodada, não só o agendamento em si)
+- [ ] Aba **Proxy** do servidor (status, logs, reiniciar, config do Traefik) com alerta quando não está rodando.
+- [ ] **Docker Cleanup** agendado (`docker system prune`) via BullMQ + SSH.
+- [ ] **Keys & Tokens**: tela de gerenciamento de chaves SSH (criar, importar, reutilizar entre servidores/fontes), separada do formulário do servidor.
+- [ ] **Log Drains**: encaminhar logs pra Loki / Axiom / New Relic / Fluent Bit.
+- [ ] **CA Certificate** por servidor (registry/proxy com certificado interno).
+- [ ] Excluir servidor (hoje não há rota `DELETE` de servidor) com checagem de recursos vinculados.
+- [ ] Servidor de **Build** separado do de **Deploy** (Dokploy): job de build roda numa máquina, imagem vai pra registry, servidor de deploy puxa.
+- [ ] Métricas **por container** via `docker stats --no-stream` no job SSH que já existe (sem instalar agente — não copiar o "Sentinel" do Coolify).
+- [ ] **Série temporal de métricas** (hoje só o snapshot mais recente) + gráfico das últimas 24h/7d.
+- [ ] Analytics de tráfego por aplicação (baixa prioridade).
+- [ ] **Cloudflare Tunnel** por servidor/recurso: modos wildcard para todos os recursos, recurso único, SSH pelo túnel, HTTPS até o painel (compartilha peça com a Fase 2).
+- [ ] Tailscale como forma alternativa de acesso (Dokploy documenta).
+- [ ] Logs estruturados (JSON) de `api`/`worker`/`ws` com nível e correlação por request/job id + retenção configurável de logs de deploy/backup.
 
-## 🎯 Paridade com Coolify — o que ele tem e a gente não
+## Fase 6 — Arquitetura de execução (avaliar antes de fazer)
 
-Coolify é Laravel 12 + Livewire + Alpine.js monolítico (PHP-FPM renderizando o dashboard no servidor, Soketi como WebSocket) — mais pesado que Bun+Vue por natureza, então parte do "menos consumo" já vem de graça da nossa arquitetura.
+Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item começa por um spike/avaliação.
 
-**Build e deploy:**
-- **Registry Docker privado com push automático**: builda uma vez, tagueia com o SHA do commit, empurra pro registry — reusa a imagem em vez de rebuildar toda vez que reinicia. O Dokploy vai além com um papel de servidor dedicado só pra build (ver seção de paridade com Dokploy).
-- **`[skip ci]`/`[skip cd]` na mensagem de commit**: pula o auto-deploy daquele push.
-- **Tela de "mudanças pendentes"**: aviso com contagem de quantos campos mudaram desde o último deploy, antes de aplicar.
-- **Grace period configurável de parada**: tempo de esperar um container terminar de responder antes de matar num redeploy.
-- **Timeout de conexão SSH configurável por servidor**.
-- **Terminal web interativo de verdade**: abrir shell interativo dentro de qualquer container rodando ou do próprio servidor, direto do navegador — hoje o `yeah` só tem xterm.js pra log de deploy, não um shell de verdade.
+- [ ] **Avaliar `dockerode` sobre túnel SSH** (Docker Engine API real) no lugar de `shellQuote` + string de comando + parse de stdout — confirmar compatibilidade com o runtime Bun antes de qualquer reescrita.
+- [ ] Se aprovado: migrar job por job (`*.commands.ts` → chamadas tipadas), mantendo testes.
+- [ ] **Avaliar Swarm de nó único por servidor** (`docker swarm init` sem `join`) pra subir apps como `docker service` e ganhar rolling update + healthcheck nativos.
+- [ ] **Traefik File Provider** pra mudar domínio/SSL de apps Dockerfile **sem redeploy** (Compose continua com labels).
+- [ ] Confirmar se hoje trocar domínio exige redeploy; se sim, corrigir.
 
-**Variáveis de ambiente:**
-- **Variáveis compartilhadas por escopo** (time/projeto/ambiente) com referência (`{{project.NODE_ENV}}`) em vez de copiar valor em cada recurso.
-- **Distinção build-time vs runtime**: variável só usada no build não precisa vazar pro container rodando.
+## Fase 7 — API, CLI e automação
 
-**Backup:**
-- **Backup de volume/storage persistente, não só de banco** — Coolify agenda backup do volume de dados de qualquer aplicação/serviço, não só `Database`.
-- **Compressão paralela** no backup (gzip multi-core).
+- [ ] **Tokens de API pessoais** com escopo (time + permissões), criados em Keys & Tokens.
+- [ ] Expiração de token com aviso antecipado.
+- [ ] API REST versionada (`/api/v1`) cobrindo aplicações, bancos, serviços, servidores, deploys, projetos, notificações, storages, tarefas agendadas.
+- [ ] Documentação OpenAPI + **Swagger UI ao vivo** (`/swagger`).
+- [ ] Allowlist de IP e rate limit documentado (headers + retry) na API.
+- [ ] **CLI oficial** (`yeah`): cliente fino sobre a API, contexto = URL + token; deploy, criar/listar recursos, backup — pensado pra CI/CD.
+- [ ] **Servidor MCP** (`/mcp`, HTTP) com Tools, Resources (read-only) e Prompts (ex.: "debugar esse deploy"), modo read-only opcional, sem contornar escopo/redação de segredos.
+- [ ] Mover recurso entre ambientes via API.
+- [ ] Toggle "MCP server" nas configurações do time.
 
-**Healthcheck configurável**: path HTTP, intervalo, retries, timeout por recurso — hoje o `yeah` só depende de `--restart unless-stopped`.
+## Fase 8 — Polimento, documentação e extras
 
-**Observabilidade:**
-- Métricas **por container** (não só por servidor inteiro) — dá pra conseguir via `docker stats --no-stream` no mesmo job SSH que já lê `/proc`, sem instalar agente (Coolify usa um agente próprio, "Sentinel" — **não copiar esse modelo**, contradiz o pitch agentless).
-- Encaminhar logs pra sink externo (Loki, Axiom, Fluent Bit) — baixa prioridade.
-- Gráfico histórico de métricas com visual dedicado (depende de série temporal, ver seção Robustez).
-- Analytics de tráfego por aplicação, separado de CPU/RAM/disco — baixa prioridade.
+- [ ] **i18n** PT/EN: `vue-i18n`, `pt.json` + `en.json`, seletor de idioma junto do tema; migrar página por página.
+- [ ] Doc **"Escalar app Node/Bun em múltiplos cores"**: `pm2-runtime -i max` (Node) e `reusePort: true` + um processo por core (Bun/Deno); avisar que sessão/cache/rate-limit vão pro Redis.
+- [ ] Doc de **troubleshooting** (502/503/504, OOM em build, firewall, Let's Encrypt, token GitHub expirado).
+- [ ] **2FA** pra conta única do admin.
+- [ ] Ícone customizado por projeto.
+- [ ] **Criar VPS de dentro do painel** (Hetzner / Vultr / DigitalOcean via API do provedor, incluindo firewall).
+- [ ] Encaminhar notificações também por outros canais conforme demanda.
 
-**Manutenção de servidor:**
-- Limpeza automática de Docker agendada (`docker system prune` periódico via SSH+cron).
-- CA Certificate por servidor (registry/proxy com certificado interno) — baixa prioridade.
+---
 
-**Rede — Cloudflare Tunnels**: expõe app (ou o próprio painel) sem IP público nem porta aberta — `cloudflared` no servidor túnela pra borda da Cloudflare. Modos: domínio wildcard pra todos os recursos, recurso único, SSH pelo túnel, ou HTTPS completo até o próprio painel. **Direta conexão com o pedido de rodar o painel fora da VPS** (ver seção de arquitetura acima) — pensar as duas coisas juntas.
+## Salvo do roadmap anterior (ainda não desenvolvido)
 
-**API e automação:**
-- **CLI oficial**: cliente fino sobre a API REST, gerencia instância remota (deploy, criar app/banco/serviço, backup) — não é ferramenta de dev local. Bom pra CI/CD.
-- **Servidor MCP** (`/mcp`, HTTP simples): expõe Tools (ações), Resources (dados read-only) e Prompts (workflows guiados tipo "debugar esse deploy que falhou") pra agente de IA operar via token de API — sem contornar permissão/escopo normal. Faz sentido pensar num `yeah` MCP mais pra frente, a API já existe.
-- **Expiração de token de API com aviso antecipado**, em vez de token eterno.
-- **Mover recurso entre ambientes via API** sem recriar do zero.
-- Rate limit documentado (headers + retry) na própria API.
+Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. Os que já estão nas fases acima aparecem com a referência; os marcados **(só aqui)** não cabem em nenhuma fase acima.
 
-**Provisionamento de servidor:**
-- **Criar VPS direto de dentro do painel** (Hetzner/Vultr/DigitalOcean via API do provedor) — feature grande, provavelmente não antes de fechar o básico, mas é a diferença mais visível pra quem nunca mexeu com VPS.
+**Navegação / layout**
+- [ ] Sub-navegação de Configuração: Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations, Healthcheck, Analytics → Fase 3.
+- [ ] Página do GitHub reestruturada no estilo "Sources" do Coolify → Fase 1.
+- [ ] Modo tabela em `EnvironmentPage.vue` e fluxo "1 clique cria" pra banco/serviço → Fase 1.
+- [ ] Gráfico histórico de métricas no dashboard e widget de traffic analytics → Fases 1 e 5.
+- [ ] Componentes compartilhados de variáveis de ambiente e tags → Fase 3.
 
-**Bancos de dados**: engines que o Coolify tem e a gente não — **Dragonfly, KeyDB, ClickHouse** (além de Postgres/MySQL/MariaDB/Redis/MongoDB que já temos). Documenta explicitamente que não faz clustering/replicação automática nem failover — mesma limitação nossa, não é lacuna.
+**Fases já abertas**
+- [ ] Build packs além de Dockerfile (Nixpacks, estático, Docker Compose) → Fase 3.
+- [ ] Preview deployments → Fase 3.
+- [ ] Scheduled tasks com histórico de execuções → Fase 3.
 
-**Guia de escalonamento multi-core pra Node.js** (knowledge base): conselho prático pra apps Node num container single-process — `pm2-runtime -i max` (cluster mode) ou, pra Bun/Deno, `reusePort: true` com um processo por core deixando o kernel balancear via `SO_REUSEPORT` (com o aviso de que sessão/cache/rate-limit precisam ir pro Redis já que workers não compartilham memória). O `yeah` não documenta nada disso hoje pros apps que hospeda, e sendo Bun-based a gente é a plataforma certa pra documentar o padrão `reusePort` — baixo custo, alto valor (um doc, não uma feature).
+**Paridade com Coolify**
+- [ ] Registry privado com push automático → Fase 3.
+- [ ] `[skip ci]` / `[skip cd]` → Fase 3.
+- [ ] Tela de mudanças pendentes → Fase 3.
+- [ ] Grace period de parada → Fase 3.
+- [ ] Timeout SSH configurável por servidor → Fase 3.
+- [ ] Terminal web interativo → Fase 3.
+- [ ] Variáveis compartilhadas por escopo e build-time vs runtime → Fase 3.
+- [ ] Backup de volume/storage persistente e compressão paralela → Fase 4.
+- [ ] Healthcheck configurável → Fase 3.
+- [ ] Métricas por container, sink externo de logs, gráfico histórico, analytics de tráfego → Fase 5.
+- [ ] Limpeza automática de Docker e CA Certificate por servidor → Fase 5.
+- [ ] Cloudflare Tunnels → Fases 2 e 5.
+- [ ] CLI oficial, servidor MCP, expiração de token, mover recurso entre ambientes, rate limit documentado → Fase 7.
+- [ ] Criar VPS pelo painel → Fase 8.
+- [ ] Engines Dragonfly / KeyDB / ClickHouse → Fase 4.
+- [ ] Guia de escalonamento multi-core Node/Bun → Fase 8.
+- [ ] Tags em recursos, ícone por projeto, 2FA → Fases 3 e 8.
+- [ ] Templates docker-compose multi-container (catálogo de 10 → 300+) → Fase 4.
 
-**UX menor, mas real:**
-- Tags em recursos pra filtrar/organizar a listagem (também citado na seção de layout acima).
-- Ícone customizado por projeto no card do dashboard.
-- 2FA — como o `yeah` é single-admin, protege a única conta que existe, não é feature multi-usuário.
+**Paridade com Dokploy**
+- [ ] Modo só-painel, `dockerode` sobre SSH, servidor de build separado, Swarm de nó único, Traefik File Provider, Swagger UI, segredos criptografados → Fases 0, 2, 5, 6, 7.
 
-**Templates docker-compose multi-container**: Coolify tem 300+ templates um-clique (catálogo nosso tem 10) — diferença de escala grande, mas builda em cima do mesmo padrão que já temos.
+**Robustez**
+- [ ] Prioridade/degradação ativa (checar métricas antes de enfileirar) → Fase 0.
+- [ ] Logs estruturados, retenção, `docker logs` ao vivo → Fases 3 e 5.
+- [ ] Circuit breaker no worker → Fase 0.
+- [ ] Histórico de métricas (série temporal) → Fase 5.
 
-**Deliberadamente sem paridade** (decisão de produto): Coolify permite multi-usuário/OIDC/SSO por time. O `yeah` não vai ter nada disso — single-admin de propósito.
+**Segurança**
+- [ ] Criptografar `servers.private_key` e `databases.password` → Fase 0.
+- [ ] Assinar/expirar `state` do OAuth do GitHub App → Fase 0.
+- [ ] Rate limiting na API → Fase 0.
 
-## 🆚 Paridade com Dokploy — segunda referência
+**Só aqui (sem fase própria)**
+- [ ] **(só aqui)** Internacionalização PT/EN — detalhada na Fase 8; mantida aqui porque foi pedido explicitamente pelo usuário e é o item mais antigo da lista.
+- [ ] **(só aqui)** Deliberadamente **sem** paridade, por decisão de produto: multiusuário, OIDC/SSO e hospedar terceiros no servidor — o `yeah` é single-admin de propósito (ver `docs/ARCHITECTURE.md`). Não é pendência, fica registrado pra ninguém abrir issue achando que é lacuna.
 
-Dokploy (Next.js + tRPC + Drizzle + Postgres, `dockerode`+`ssh2` pro transporte remoto) tem posicionamento parecido com o Coolify mas com diferenciais próprios reais (achados completos em `docs/dokploy-research.md`):
-
-- **Modo "só painel" suportado oficialmente** — já citado na seção de arquitetura, é o pedido central do usuário e o Dokploy documenta ele como modo de primeira classe (~250MB RAM), não hack.
-- **Docker Engine API real por túnel SSH** em vez de comando shell string — já citado como item de avaliação de arquitetura acima.
-- **Servidor de Build separado do servidor de Deploy** — desacopla carga de build de compilação da máquina que serve tráfego de produção. Complementa bem nosso item de "registry privado com push automático" já no roadmap.
-- **Rolling update + healthcheck nativos via Swarm de nó único por servidor** — já citado como item de avaliação de arquitetura.
-- **Segredos criptografados em repouso (AES-256-GCM, envelope versionado)** — implementação de referência concreta pro nosso próprio `TODO(security)` em `packages/db/src/schema/servers.ts` (ver seção de Segurança abaixo).
-- **API com Swagger UI ao vivo em `/swagger`** — mais fácil de explorar/testar que documentação estática. Vale considerar quando a nossa API crescer o suficiente pra justificar.
-- Traefik com File Provider pra apps Dockerfile — muda domínio/SSL **sem redeploy** (apps Compose ainda precisam redeploy, por serem baseados em label). Hoje o `yeah` não documenta se muda domínio sem redeploy — checar e, se não, é uma melhoria barata.
-- Backup só documentado pra instância em si (disaster recovery), não por banco de usuário — **nossa suíte de backup já é mais completa nessa frente**, não é lacuna nossa.
-
-## 🛡️ Robustez, monitoramento e alertas
-
-O que já saiu está em "✅ Já funciona" acima. Falta:
-
-- **Sistema de prioridade/degradação mais ativo**: monitoramento hoje só *avisa* quando CPU/RAM/disco passa do limiar, não *impede* uma ação nova — falta checar o último snapshot antes de enfileirar e barrar/avisar se o servidor já tá no limite.
-- **Logs mais robustos**: logs estruturados (JSON) dos próprios serviços (`api`/`worker`/`ws`) com nível e correlação por request/job id, retenção configurável, e ver `docker logs` ao vivo da aplicação rodando (não só do build).
-- **Circuit breaker no worker** pra jobs que falham repetidamente não ficarem re-tentando pra sempre.
-- **Histórico de métricas**: hoje só guarda o snapshot mais recente por servidor, sem série temporal — sem gráfico de "CPU nas últimas 24h".
-
-## 🔒 Segurança pré-produção
-
-- **Criptografar `servers.private_key` e `databases.password` em repouso** (hoje texto puro, ver `TODO(security)` em `packages/db/src/schema/servers.ts`) — o Dokploy tem uma implementação de referência direta e portável pra isso: envelope AES-256-GCM, chave derivada via HMAC-SHA256 de uma `ENCRYPTION_KEY` dedicada, prefixo versionado (`enc:v1:`) e suporte a múltiplas chaves pra rotação — dá pra seguir esse desenho quase 1:1 em vez de inventar um novo (ver `docs/dokploy-research.md` achado #2 pro detalhe do arquivo fonte). Achado interessante à parte: nem o Coolify criptografa tudo — o `client_secret`/`webhook_secret` do GitHub App dele ficam em texto puro (só a chave privada RSA, guardada numa tabela compartilhada de chaves, é criptografada) — ou seja, mesmo a referência que estamos seguindo tem esse ponto fraco; vale a gente fazer melhor, não replicar a mesma lacuna.
-- Assinar/expirar o `state` do fluxo OAuth do GitHub App (hoje é o `teamId` puro).
-- Rate limiting na API (login, criação de recursos).
-
-## Como isso é priorizado
-
-Sem sprint formal — os itens vão sendo puxados na ordem que faz mais sentido tecnicamente (estrutural antes de superficial, o que desbloqueia outra coisa antes do que é só nice-to-have). Ordem sugerida a partir dessa revisão: (1) reformulação de layout — é o que o usuário sinalizou como mais urgente e afeta toda tela existente; (2) modo de instalação "só painel" — desbloqueia o caso de uso que o usuário quer testar; (3) fechar as lacunas de feature mais visíveis de paridade (backup de volume, healthcheck, terminal interativo); (4) itens de arquitetura mais profundos (Docker Engine API real, Swarm de nó único) — de maior risco/esforço, menor visibilidade imediata. PRs e issues são bem-vindos pra qualquer item daqui — ver `CONTRIBUTING.md`.
+PRs e issues são bem-vindos pra qualquer item daqui — ver `CONTRIBUTING.md`.
