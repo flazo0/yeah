@@ -3,6 +3,7 @@ coolify/
 savvy/
 # Notas de pesquisa sobre a instância real de produção (domínio/contas reais) — não é pra ir num repo público.
 docs/coolify-research.md
+docs/dokploy-research.md
 .env
 .env.*
 !.env.example
@@ -19,4 +20,5 @@ apps/web/dist/
 .vscode/
 .idea/
 tmp/
+dokploy/
 coverage/
