@@ -23,20 +23,20 @@ Ordem das fases = ordem de prioridade sugerida (estrutural antes de superficial)
 Diagnóstico (revisita à instância real): cor/ícone/CSS já estão bons; o problema é **densidade e escalabilidade** — só temos grade de cards, que degrada com muitos recursos (cenário de microsserviços).
 
 **Base responsiva (afeta toda tela — fazer primeiro)**
-- [ ] Sidebar vira drawer recolhível abaixo de ~768px + botão hambúrguer no topbar; botão de recolher sidebar no desktop.
-- [ ] Nenhum overflow horizontal de página em nenhuma tela; tabelas com scroll horizontal controlado ou viram cards empilhados no mobile.
+- [x] Sidebar vira drawer recolhível abaixo de 900px + botão hambúrguer no topbar (feito). [ ] Botão de recolher sidebar no desktop (falta).
+- [x] Nenhum overflow horizontal de página em nenhuma tela testada a 390px; tabelas de recursos viram cards empilhados no mobile (tabelas de Servidores/Atualizações ainda só com scroll interno).
 - [ ] Formulários em coluna única no mobile; alvos de toque ≥ 44px.
 - [ ] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta.
 
 **Componentes compartilhados**
-- [ ] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página.
-- [ ] Toggle lista/grade persistido em `localStorage`; **tabela como padrão** em listagens que crescem.
+- [x] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página.
+- [x] Toggle lista/grade persistido em `localStorage`; **tabela como padrão** em listagens que crescem.
 - [ ] `ResourceDetailShell.vue`: header (título, status, breadcrumb, ações) + subnav de abas, reaproveitado por Application/Database/Service (hoje cada `*Layout.vue` refaz o próprio).
 - [ ] Estados vazios/carregando/erro padronizados; badge de status único.
 - [ ] Busca global (`Ctrl+K`) no topo da sidebar; `/` foca a busca da listagem atual.
 
 **Telas**
-- [ ] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso".
+- [x] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso".
 - [ ] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", atalho "+" e engrenagem no hover, busca + ordenação.
 - [ ] `ServersPage.vue` → mesmo padrão lista/grade, métricas ao vivo por linha.
 - [ ] **Catálogo "Novo recurso"** (`ResourceNewPage.vue`): busca + filtro + dropdown de categorias; seções Applications / Databases / Services; card com ícone da tecnologia, nome, tipo de origem, descrição, botões **Docs** / **Website** / **Deploy →**; aviso de marcas registradas na seção de serviços.

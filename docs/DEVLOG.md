@@ -362,3 +362,16 @@ Rodei 4 forks em paralelo (`Agent` com `subagent_type: "fork"`) pra não poluir 
 
 Reescrevi `docs/ROADMAP.md` de forma bem mais completa a partir disso: seções novas de arquitetura (painel separado + Docker Engine API), uma seção de layout dedicada respondendo diretamente à reclamação do usuário, seção de paridade com Dokploy ao lado da de paridade com Coolify já existente, e a seção de segurança atualizada com a referência concreta de criptografia. Esse turno foi só pesquisa e documentação — nenhuma mudança de código, por pedido explícito do usuário ("cria documento com tudo isso... cria um roadmap novo com tudo isso").
 
+
+
+## Fase 1 (começo): base responsiva + `ResourceTable`
+
+Primeiro pedaço da reformulação de layout do `docs/ROADMAP.md`.
+
+**Sidebar como drawer**: abaixo de 900px a sidebar antes simplesmente sumia (`display: none` a 640px) — no celular não existia navegação nenhuma. Agora vira gaveta off-canvas (`position: fixed`, `translateX(-100%)`), aberta por um botão hambúrguer novo no topbar, com backdrop clicável e fechando sozinha ao trocar de rota (`watch` em `route.fullPath`). No mobile o topbar mostra só o `TeamSwitcher` — o breadcrumb da própria página já cobre o resto e não cabia.
+
+**`ResourceTable.vue`** (novo, `components/`): listagem reaproveitável de recursos com busca, filtros (tipo/status/servidor), ordenação, paginação (10/25/50) e toggle lista/grade — a preferência de visualização e o tamanho de página persistem em `localStorage`. Lista é o padrão; colunas Recurso (ícone + nome + detalhe), Tipo, Status, **Domínio** (link clicável, já vinha no DTO de app/serviço e só faltava exibir), Servidor, excluir com o mesmo "clique duas vezes". Abaixo de 720px cada linha vira um card empilhado com rótulos por coluna (`td::before { content: attr(data-label) }`) em vez de tabela com scroll lateral. `EnvironmentPage.vue` agora só monta as linhas e delega tudo pra ele. Também: `.detail-tabs` ganhou `overflow-x: auto` (abas de recurso passavam da tela no celular).
+
+**Teste**: renderizei o app num iframe de 390px (a janela do Chrome não redimensiona o viewport via automação) com 4 recursos de teste (2 bancos, 1 app, 1 serviço, apagados depois): drawer abre/fecha, cards empilhados, busca filtra, toggle de grade persiste. Varri 12 rotas a 390px procurando overflow horizontal de página — nenhuma estoura (as tabelas de Servidores e Atualizações extrapolam só dentro do próprio `.table-wrap` com scroll, ainda a converter pro padrão de cards).
+
+**Achado à parte**: depois que `./coolify` e `./dokploy` foram clonados na raiz, `bun test` passou a varrer os testes deles (355 testes, 100+ falhando) e o número "139 testes" que eu vinha citando estava inflado por isso — o nosso é **113 testes em 12 arquivos**. `bunfig.toml` agora tem `pathIgnorePatterns` pra ignorar `coolify/`, `dokploy/` e `savvy/`.

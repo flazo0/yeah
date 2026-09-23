@@ -5,6 +5,7 @@ import type { ApplicationDto, DatabaseDto, ServerDto, ServiceDto, WsServerEvent 
 import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import Breadcrumb from "../components/Breadcrumb.vue";
+import ResourceTable, { type ResourceRow } from "../components/ResourceTable.vue";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -12,19 +13,7 @@ const projectId = route.params.projectId as string;
 const environmentId = route.params.environmentId as string;
 const basePath = `/teams/${teamId}/projects/${projectId}/environments/${environmentId}`;
 
-type ResourceKind = "application" | "database" | "service";
-interface Resource {
-  kind: ResourceKind;
-  id: string;
-  name: string;
-  status: string;
-  statusDot: string;
-  statusBadge: string;
-  icon: string;
-  detail: string;
-  serverName: string;
-  path: string;
-}
+type Resource = ResourceRow;
 
 const apps = ref<ApplicationDto[]>([]);
 const dbs = ref<DatabaseDto[]>([]);
@@ -58,6 +47,8 @@ const resources = computed<Resource[]>(() => {
       statusDot: statusDot[app.status] ?? "status-dot-neutral",
       statusBadge: statusBadge[app.status] ?? "badge-neutral",
       icon: "deployed_code",
+      typeLabel: "Aplicação",
+      domain: app.domain,
       detail: `${app.repoUrl} (${app.branch})`,
       serverName: app.serverName,
       path: `${basePath}/apps/${app.id}`,
@@ -70,6 +61,8 @@ const resources = computed<Resource[]>(() => {
       statusDot: statusDot[item.status] ?? "status-dot-neutral",
       statusBadge: statusBadge[item.status] ?? "badge-neutral",
       icon: "database",
+      typeLabel: "Banco de dados",
+      domain: null,
       detail: `${item.engine} · ${item.image}`,
       serverName: item.serverName,
       path: `${basePath}/databases/${item.id}`,
@@ -82,6 +75,8 @@ const resources = computed<Resource[]>(() => {
       statusDot: statusDot[item.status] ?? "status-dot-neutral",
       statusBadge: statusBadge[item.status] ?? "badge-neutral",
       icon: "widgets",
+      typeLabel: "Serviço",
+      domain: item.domain,
       detail: `${item.catalogKey} · ${item.image}`,
       serverName: item.serverName,
       path: `${basePath}/services/${item.id}`,
@@ -191,41 +186,13 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="card">
-      <div v-if="loading" class="card-body"><div class="empty-state">carregando...</div></div>
-      <div v-else-if="resources.length === 0" class="card-body">
-        <div class="empty-state">
-          Nenhum recurso ainda.
-          <template v-if="teamServers.length > 0">
-            <RouterLink :to="`${basePath}/new`" class="label-link">Crie o primeiro</RouterLink>.
-          </template>
-        </div>
-      </div>
-      <div v-else class="card-body">
-        <div class="resource-cards">
-          <div v-for="item in resources" :key="item.id" class="resource-card-wrap">
-            <RouterLink :to="item.path" class="resource-card">
-              <div class="name">
-                <span class="status-dot" :class="item.statusDot"></span>
-                <span class="material-symbols-outlined" style="font-size: 16px">{{ item.icon }}</span>
-                {{ item.name }}
-                <span class="badge" :class="item.statusBadge" style="margin-left: auto">{{ item.status }}</span>
-              </div>
-              <div class="desc mono">{{ item.detail }}</div>
-              <div class="desc">{{ item.serverName }}</div>
-            </RouterLink>
-            <button
-              type="button"
-              class="resource-card-delete"
-              :class="{ confirming: pendingDeleteId === item.id }"
-              :title="pendingDeleteId === item.id ? 'Clique de novo pra confirmar' : 'Excluir'"
-              @click="deleteResource(item)"
-            >
-              <span class="material-symbols-outlined">{{ pendingDeleteId === item.id ? "warning" : "delete" }}</span>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ResourceTable :items="resources" :loading="loading" :pending-delete-id="pendingDeleteId" @delete="deleteResource">
+      <template #empty>
+        Nenhum recurso ainda.
+        <template v-if="teamServers.length > 0">
+          <RouterLink :to="`${basePath}/new`" class="label-link">Crie o primeiro</RouterLink>.
+        </template>
+      </template>
+    </ResourceTable>
   </div>
 </template>

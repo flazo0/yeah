@@ -367,12 +367,75 @@ a:hover {
   margin: 0 auto;
 }
 
-@media (max-width: 640px) {
+.topbar-menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--ink);
+  cursor: pointer;
+}
+.sidebar-backdrop {
+  display: none;
+}
+
+/* Below 900px the sidebar becomes an off-canvas drawer opened from the topbar menu button. */
+@media (max-width: 900px) {
   .sidebar {
-    display: none;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(280px, 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
   }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+  }
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(0, 0, 0, 0.5);
+  }
+  .topbar-menu-btn {
+    display: inline-flex;
+  }
+  .topbar {
+    padding: 10px 12px;
+  }
+  .topbar-title {
+    min-width: 0;
+    overflow: hidden;
+    flex: 1;
+  }
+  .sidebar-link {
+    padding: 12px 20px;
+  }
+}
+@media (max-width: 640px) {
   .content {
     padding: 12px;
+  }
+  /* The page itself already shows a breadcrumb; the topbar keeps just the team switcher. */
+  .topbar-title .crumb-sep,
+  .topbar-title .crumb-item:not(.crumb-dropdown) {
+    display: none;
+  }
+  .crumb-dropdown {
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
@@ -942,6 +1005,239 @@ tr:hover td {
 .mono {
   font-family: var(--font-mono);
   font-size: 13px;
+}
+
+/* ===================== Resource table (list/grid view) ===================== */
+
+.rtable-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.rtable-search {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.rtable-search .form-control {
+  padding-left: 38px;
+}
+.rtable-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rtable-filters .form-control {
+  width: auto;
+  min-width: 0;
+}
+.view-toggle {
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin-left: auto;
+}
+.view-toggle button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 38px;
+  background: var(--surface);
+  border: none;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.view-toggle button + button {
+  border-left: 1px solid var(--border);
+}
+.view-toggle button.active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.rtable-wrap {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow-x: auto;
+}
+.rtable th {
+  background: var(--surface-2);
+  color: var(--ink-dim);
+}
+.rtable-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  min-width: 0;
+}
+.rtable-name:hover {
+  text-decoration: none;
+  color: var(--accent);
+}
+.rtable-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--ink-dim);
+}
+.rtable-icon .material-symbols-outlined {
+  font-size: 18px;
+}
+.rtable-name-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rtable-name-text small {
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+.rtable-domain a {
+  color: var(--accent);
+}
+.rtable-actions-col {
+  width: 48px;
+  text-align: right;
+}
+.rtable-delete {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink-dim);
+  cursor: pointer;
+}
+.rtable-delete .material-symbols-outlined {
+  font-size: 18px;
+}
+.rtable-delete:hover,
+.rtable-delete.confirming {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+.rtable-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  font-size: 13px;
+}
+.rtable-pager-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.rtable-pager-controls .form-control {
+  width: auto;
+}
+.rtable-link-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font: inherit;
+}
+/* Narrow screens: each table row becomes a stacked card with its own column labels. */
+@media (max-width: 720px) {
+  .rtable-wrap {
+    border: none;
+    background: none;
+    overflow: visible;
+  }
+  .rtable thead {
+    display: none;
+  }
+  .rtable,
+  .rtable tbody,
+  .rtable tr,
+  .rtable td {
+    display: block;
+    width: 100%;
+  }
+  .rtable tr {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+  }
+  .rtable td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: none;
+    font-size: 13px;
+  }
+  .rtable tr:hover td {
+    background: none;
+  }
+  .rtable td::before {
+    content: attr(data-label);
+    color: var(--ink-dim);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    flex-shrink: 0;
+  }
+  .rtable td:first-child {
+    display: block;
+    padding-right: 40px;
+  }
+  .rtable td:first-child::before {
+    display: none;
+  }
+  .rtable td.rtable-actions-col {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: auto;
+    padding: 0;
+  }
+  .rtable td.rtable-actions-col::before {
+    display: none;
+  }
+  .rtable-name-text small {
+    max-width: 60vw;
+  }
+  .view-toggle {
+    margin-left: 0;
+  }
+  .rtable-filters {
+    width: 100%;
+  }
+  .rtable-filters .form-control {
+    flex: 1 1 130px;
+  }
+}
+
+.detail-tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.detail-tab {
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* ===================== Badges ===================== */

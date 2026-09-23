@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useAuthStore } from "./stores/auth";
 import { isDark, toggleTheme } from "./lib/theme";
@@ -9,6 +9,14 @@ import TeamSwitcher from "./components/TeamSwitcher.vue";
 
 const auth = useAuthStore();
 const route = useRoute();
+
+const sidebarOpen = ref(false);
+watch(
+  () => route.fullPath,
+  () => {
+    sidebarOpen.value = false;
+  },
+);
 
 const teamId = computed(() => (typeof route.params.teamId === "string" ? route.params.teamId : null));
 // The topbar switcher needs a team to show even on /dashboard, which has no :teamId in its URL —
@@ -50,7 +58,8 @@ const breadcrumb = computed(() => {
 <template>
   <div class="ambient-glow"></div>
   <div class="layout">
-    <aside v-if="auth.user" class="sidebar">
+    <div v-if="auth.user && sidebarOpen" class="sidebar-backdrop" @click="sidebarOpen = false"></div>
+    <aside v-if="auth.user" class="sidebar" :class="{ open: sidebarOpen }">
       <div class="sidebar-brand">
         <RouterLink to="/dashboard"><Logo :height="30" /></RouterLink>
       </div>
@@ -105,6 +114,9 @@ const breadcrumb = computed(() => {
 
     <div class="main">
       <header v-if="auth.user" class="topbar">
+        <button type="button" class="topbar-menu-btn" aria-label="Abrir menu" @click="sidebarOpen = !sidebarOpen">
+          <span class="material-symbols-outlined">menu</span>
+        </button>
         <div class="topbar-title">
           <TeamSwitcher v-if="auth.teams.length > 0" :current-name="currentTeamName" />
           <template v-for="(crumb, i) in breadcrumb" :key="`${crumb}-${i}`">

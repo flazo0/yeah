@@ -1,2 +1,4 @@
 [test]
 preload = ["./test/setup.ts"]
+# coolify/ and dokploy/ are local reference clones (gitignored) with their own test suites.
+pathIgnorePatterns = ["coolify/**", "dokploy/**", "savvy/**"]
