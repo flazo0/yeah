@@ -5,6 +5,11 @@
 // Local dev sets VITE_API_URL explicitly since there's no proxy there.
 const API_URL = import.meta.env.VITE_API_URL || `${import.meta.env.BASE_URL}api`;
 
+/** Absolute or origin-relative base URL of the API, for links shown to the user (webhook URLs). */
+export function apiBaseUrl(): string {
+  return API_URL.startsWith("http") ? API_URL : `${window.location.origin}${API_URL}`;
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;

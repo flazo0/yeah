@@ -74,27 +74,27 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Repositório privado via **Deploy Key** (SSH, chave por repositório).
 - [ ] Fontes **GitLab** (GitLab App), **Bitbucket** e **Gitea**.
 - [ ] Registry privado (Docker Hub privado, GHCR…) com **push automático** da imagem buildada, tag = SHA do commit — builda uma vez e reusa.
-- [ ] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push.
+- [x] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push (também `[ci skip]`, `[no ci]`…). Coberto por teste unitário; não testado com um push real do GitHub.
 - [ ] Tela de **mudanças pendentes**: contagem de campos alterados (env, domínio…) desde o último deploy, antes de aplicar.
-- [ ] Grace period de parada configurável no redeploy.
-- [ ] Custom Docker options (flags extras do `docker run`).
+- [x] Grace period de parada configurável (`docker stop -t`) em redeploy, parar e reiniciar — aba Avançado.
+- [x] Custom Docker options (flags extras do `docker run`): cada palavra vira argumento entre aspas, nada passa por shell; `--name/-d/--rm/--env-file/--restart` são recusados.
 
 **Ciclo de vida e operação**
-- [ ] Ações **iniciar / parar / reiniciar / substituir** aplicação (hoje não há rotas de start/stop/restart).
-- [ ] **Logs ao vivo do container em execução** (`docker logs -f`), aba separada de Deployments.
+- [x] Ações **iniciar / parar / reiniciar** (job novo `application-lifecycle` no worker, status `stopped`, evento WS `application.status`) e **substituir** (= o botão Deploy, que recria o container).
+- [x] **Logs do container em execução** em aba própria (`docker logs --tail`, atualização a cada 3s com "Acompanhar"). É polling de uma leitura limitada pela API, não um stream `-f` — streaming de verdade exigiria protocolo de inscrição no WebSocket.
 - [ ] **Terminal interativo** dentro do container (WebSocket → API → SSH → `docker exec -it`) e do servidor.
-- [ ] **Healthcheck configurável** por recurso: path HTTP, intervalo, retries, timeout, start period.
-- [ ] Sub-aba **Advanced** (opções avançadas de build/runtime).
+- [x] **Healthcheck configurável** por aplicação (caminho HTTP, intervalo, timeout, tentativas, período de início): o deploy só termina com sucesso quando o container fica `healthy` e, se não ficar, falha mostrando as últimas linhas do log. Bancos e serviços ainda não têm (Fase 4).
+- [x] Sub-aba **Avançado** (healthcheck, tolerância de parada, opções extras do docker).
 - [ ] Sub-aba **Git Source** (trocar fonte/branch/repo depois de criado).
 - [ ] Sub-aba **Servers** (ver/trocar servidor de destino).
-- [ ] Sub-aba **Webhooks** (URL de deploy manual + segredo, além do GitHub).
+- [x] Sub-aba **Webhooks**: URL de deploy manual (`POST /hooks/deploy/:token`, só o hash do token é guardado e a URL aparece uma vez) + explicação do auto-deploy do GitHub e dos marcadores de skip.
 - [ ] Sub-aba **Resource Operations** (clonar, mover entre ambientes/projetos, migrar entre servidores).
 - [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
-- [ ] Sub-aba **Danger zone** (excluir com confirmação).
+- [x] Sub-aba **Zona de perigo** (excluir com confirmação).
 - [ ] **Preview deployments**: PR do GitHub vira ambiente efêmero com URL própria, comenta no PR, morre ao fechar.
 - [ ] **Scheduled tasks**: comando arbitrário dentro do container num cron, com **histórico de execuções** (status, log, duração).
 - [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
-- [ ] Botão **Generate Domain** (FQDN automático a partir do wildcard do servidor) na aba de domínio.
+- [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
 - [ ] **Múltiplos domínios** por aplicação + redirect www/não-www.
 - [ ] **Tags** em recursos (criar, atribuir, filtrar na listagem).
 - [ ] Timeout de conexão SSH configurável por servidor.

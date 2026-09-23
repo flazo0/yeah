@@ -96,7 +96,8 @@ export interface ApiErrorBody {
 }
 
 export type BuildPack = "dockerfile";
-export type ApplicationStatus = "idle" | "deploying" | "running" | "error";
+export type ApplicationStatus = "idle" | "deploying" | "running" | "stopped" | "error";
+export type ApplicationLifecycleAction = "start" | "stop" | "restart";
 export type DeploymentStatus = "queued" | "running" | "success" | "failed";
 
 /** `docker run --memory=<memoryLimitMb>m --cpus=<cpuLimit>` — null in either means unlimited. */
@@ -127,6 +128,15 @@ export interface ApplicationDto extends ResourceLimits {
   envContent: string;
   domain: string | null;
   githubRepo: string | null;
+  healthPath: string | null;
+  healthIntervalSeconds: number;
+  healthTimeoutSeconds: number;
+  healthRetries: number;
+  healthStartPeriodSeconds: number;
+  dockerOptions: string;
+  stopGraceSeconds: number;
+  /** Whether a manual-deploy webhook token exists (the token itself is never returned after generation). */
+  hasDeployToken: boolean;
   status: ApplicationStatus;
   createdAt: string;
 }
@@ -372,6 +382,7 @@ export type WsServerEvent =
   | { type: "server.proxy"; serverId: string; proxyStatus: ProxyStatus }
   | { type: "server.metrics"; serverId: string; cpuPercent: number; memPercent: number; diskPercent: number }
   | { type: "service.status"; serviceId: string; status: ServiceStatus }
+  | { type: "application.status"; applicationId: string; status: ApplicationStatus }
   | { type: "deployment.log"; deploymentId: string; line: string }
   | { type: "deployment.status"; deploymentId: string; status: DeploymentStatus }
   | { type: "database.status"; databaseId: string; status: DatabaseStatus }

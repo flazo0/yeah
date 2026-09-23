@@ -1,5 +1,6 @@
 import {
   createApplicationDeployQueue,
+  createApplicationLifecycleQueue,
   createDatabaseBackupQueue,
   createDatabaseProvisionQueue,
   createPlatformOperationQueue,
@@ -23,3 +24,4 @@ export const databaseBackupQueue = createDatabaseBackupQueue(connection);
 export const proxyProvisionQueue = createProxyProvisionQueue(connection);
 export const serviceProvisionQueue = createServiceProvisionQueue(connection);
 export const platformOperationQueue = createPlatformOperationQueue(connection);
+export const applicationLifecycleQueue = createApplicationLifecycleQueue(connection);

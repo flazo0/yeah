@@ -1,9 +1,25 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import { resourceSlug, type ServerDto } from "@yeah/shared";
+import { api } from "../../lib/api";
 import DomainCard from "../../components/DomainCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
 const { app, basePath, error } = useApplicationContext();
+const route = useRoute();
+
+const wildcard = ref<string | null>(null);
+onMounted(async () => {
+  try {
+    const res = await api.get<{ servers: ServerDto[] }>(`/teams/${route.params.teamId}/servers`);
+    wildcard.value = res.servers.find((s) => s.id === app.value?.serverId)?.wildcardDomain ?? null;
+  } catch {
+    wildcard.value = null;
+  }
+});
+const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug(app.value.name)}.${wildcard.value}` : null));
 </script>
 
 <template>
@@ -40,6 +56,7 @@ const { app, basePath, error } = useApplicationContext();
     <DomainCard
       :domain="app.domain"
       :put-url="`${basePath}/domain`"
+      :suggestion="suggestion"
       saved-message="salvo — aplica no próximo deploy"
       @saved="(domain) => (app!.domain = domain)"
       @error="(msg) => (error = msg)"

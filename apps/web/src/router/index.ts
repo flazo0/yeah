@@ -26,6 +26,10 @@ import ApplicationDeploymentsPage from "../pages/application/ApplicationDeployme
 import ApplicationGeneralPage from "../pages/application/ApplicationGeneralPage.vue";
 import ApplicationEnvPage from "../pages/application/ApplicationEnvPage.vue";
 import ApplicationStoragePage from "../pages/application/ApplicationStoragePage.vue";
+import ApplicationLogsPage from "../pages/application/ApplicationLogsPage.vue";
+import ApplicationAdvancedPage from "../pages/application/ApplicationAdvancedPage.vue";
+import ApplicationWebhooksPage from "../pages/application/ApplicationWebhooksPage.vue";
+import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
 import DatabaseGeneralPage from "../pages/database/DatabaseGeneralPage.vue";
@@ -95,6 +99,10 @@ export const router = createRouter({
         { path: "general", name: "app-general", component: ApplicationGeneralPage },
         { path: "env", name: "app-env", component: ApplicationEnvPage },
         { path: "storage", name: "app-storage", component: ApplicationStoragePage },
+        { path: "logs", name: "app-logs", component: ApplicationLogsPage },
+        { path: "advanced", name: "app-advanced", component: ApplicationAdvancedPage },
+        { path: "webhooks", name: "app-webhooks", component: ApplicationWebhooksPage },
+        { path: "danger", name: "app-danger", component: ApplicationDangerPage },
       ],
     },
     {

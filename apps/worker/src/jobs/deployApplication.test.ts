@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import type { Application, Server } from "@yeah/db";
-import { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
+import {
+  buildCloneOrPullCommand,
+  buildHealthWaitCommand,
+  buildRunCommand,
+  buildStopOldCommand,
+  healthWaitSeconds,
+  resolveDomain,
+} from "./deployApplication.commands";
 
 function makeApplication(overrides: Partial<Application> = {}): Application {
   return {
@@ -17,6 +24,14 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     domain: null,
     githubInstallationId: null,
     githubRepo: null,
+    healthPath: null,
+    healthIntervalSeconds: 30,
+    healthTimeoutSeconds: 5,
+    healthRetries: 3,
+    healthStartPeriodSeconds: 30,
+    dockerOptions: "",
+    stopGraceSeconds: 10,
+    deployTokenHash: null,
     memoryLimitMb: null,
     cpuLimit: null,
     status: "idle",
@@ -159,5 +174,55 @@ describe("buildCloneOrPullCommand", () => {
   test("quotes the clone URL and branch safely", () => {
     const cmd = buildCloneOrPullCommand("/opt/yeah-apps/app-1", "https://x:token@github.com/example/repo", "main", null);
     expect(cmd).toContain("git remote set-url origin 'https://x:token@github.com/example/repo'");
+  });
+});
+
+describe("healthcheck and docker options in buildRunCommand", () => {
+  test("no healthcheck flags without a path", () => {
+    const cmd = buildRunCommand(makeApplication(), "/a", "c", null);
+    expect(cmd).not.toContain("--health");
+  });
+
+  test("healthcheck flags carry path, port and timings", () => {
+    const app = makeApplication({ port: 8080, healthPath: "/up", healthIntervalSeconds: 10, healthTimeoutSeconds: 2, healthRetries: 5, healthStartPeriodSeconds: 45 });
+    const cmd = buildRunCommand(app, "/a", "c", null);
+    expect(cmd).toContain("http://127.0.0.1:8080/up");
+    expect(cmd).toContain("http://localhost:8080/up");
+    expect(cmd).toContain("--health-interval 10s");
+    expect(cmd).toContain("--health-timeout 2s");
+    expect(cmd).toContain("--health-retries 5");
+    expect(cmd).toContain("--health-start-period 45s");
+    expect(cmd).toContain("curl -fsS");
+    expect(cmd).toContain("wget -q -O /dev/null");
+  });
+
+  test("extra docker options are added as quoted words, never interpreted", () => {
+    const app = makeApplication({ dockerOptions: "--cap-add NET_ADMIN --label 'x=$(id)'" });
+    const cmd = buildRunCommand(app, "/a", "c", null);
+    expect(cmd).toContain("'--cap-add' 'NET_ADMIN' '--label' 'x=$(id)'");
+  });
+
+  test("options come before the trailing restart/name so they can't swallow them", () => {
+    const app = makeApplication({ dockerOptions: "--shm-size=1g" });
+    const cmd = buildRunCommand(app, "/a", "c", null);
+    expect(cmd.indexOf("'--shm-size=1g'")).toBeLessThan(cmd.indexOf("--restart unless-stopped"));
+  });
+});
+
+describe("deploy helpers", () => {
+  test("graceful stop uses the configured seconds and then removes", () => {
+    const cmd = buildStopOldCommand("yeah-app-1", 25);
+    expect(cmd).toContain("docker stop -t 25 'yeah-app-1'");
+    expect(cmd).toContain("docker rm -f 'yeah-app-1'");
+  });
+
+  test("health wait covers the start period plus every retry plus slack", () => {
+    const app = makeApplication({ healthStartPeriodSeconds: 20, healthIntervalSeconds: 10, healthRetries: 3 });
+    expect(healthWaitSeconds(app)).toBe(80);
+    expect(buildHealthWaitCommand("c", 80)).toContain("seq 1 40");
+  });
+
+  test("health wait prints container logs when it fails", () => {
+    expect(buildHealthWaitCommand("c", 10)).toContain("docker logs --tail 40 'c'");
   });
 });

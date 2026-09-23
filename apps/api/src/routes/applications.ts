@@ -10,7 +10,7 @@ import {
   type ApplicationVolume,
   type Deployment,
 } from "@yeah/db";
-import type { ApplicationDto, ApplicationVolumeDto, DeploymentDto } from "@yeah/shared";
+import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto } from "@yeah/shared";
 import { volumeName } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
@@ -18,7 +18,8 @@ import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
-import { applicationDeployQueue } from "../lib/queue";
+import { applicationDeployQueue, applicationLifecycleQueue } from "../lib/queue";
+import { generateDeployToken, hashDeployToken, validateAdvancedSettings } from "../lib/deployRules";
 
 function toApplicationDto(app: Application, serverName: string): ApplicationDto {
   return {
@@ -35,6 +36,14 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     envContent: app.envContent,
     domain: app.domain,
     githubRepo: app.githubRepo,
+    healthPath: app.healthPath,
+    healthIntervalSeconds: app.healthIntervalSeconds,
+    healthTimeoutSeconds: app.healthTimeoutSeconds,
+    healthRetries: app.healthRetries,
+    healthStartPeriodSeconds: app.healthStartPeriodSeconds,
+    dockerOptions: app.dockerOptions,
+    stopGraceSeconds: app.stopGraceSeconds,
+    hasDeployToken: Boolean(app.deployTokenHash),
     memoryLimitMb: app.memoryLimitMb,
     cpuLimit: app.cpuLimit,
     status: app.status,
@@ -304,6 +313,173 @@ export const applicationRoutes = new Elysia({
     },
     { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
   )
+  .put(
+    "/:applicationId/advanced",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const error = validateAdvancedSettings(body);
+      if (error) {
+        set.status = 400;
+        return { error };
+      }
+
+      const [updated] = await db
+        .update(applications)
+        .set({
+          healthPath: body.healthPath?.trim() || null,
+          healthIntervalSeconds: body.healthIntervalSeconds,
+          healthTimeoutSeconds: body.healthTimeoutSeconds,
+          healthRetries: body.healthRetries,
+          healthStartPeriodSeconds: body.healthStartPeriodSeconds,
+          dockerOptions: body.dockerOptions,
+          stopGraceSeconds: body.stopGraceSeconds,
+        })
+        .where(eq(applications.id, params.applicationId))
+        .returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update advanced settings" };
+      }
+      return { application: toApplicationDto(updated, row.serverName) };
+    },
+    {
+      body: t.Object({
+        healthPath: t.Optional(t.Nullable(t.String({ maxLength: 255 }))),
+        healthIntervalSeconds: t.Number(),
+        healthTimeoutSeconds: t.Number(),
+        healthRetries: t.Number(),
+        healthStartPeriodSeconds: t.Number(),
+        dockerOptions: t.String({ maxLength: 4000 }),
+        stopGraceSeconds: t.Number(),
+      }),
+    },
+  )
+  .post(
+    "/:applicationId/lifecycle",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      if (row.application.status === "deploying") {
+        set.status = 409;
+        return { error: "aguarde o deploy em andamento terminar" };
+      }
+      await applicationLifecycleQueue.add("lifecycle", { applicationId: params.applicationId, action: body.action as ApplicationLifecycleAction });
+      return { queued: true };
+    },
+    { body: t.Object({ action: t.Union([t.Literal("start"), t.Literal("stop"), t.Literal("restart")]) }) },
+  )
+  // Recent output of the running container. One of the narrow places the API opens SSH itself (like
+  // teardown on delete): a bounded, read-only `docker logs --tail`, polled by the Logs tab.
+  .get("/:applicationId/logs", async ({ cookie, params, query, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const tail = Math.min(2000, Math.max(1, Number(query.tail) || 300));
+      const [server] = await db.select().from(servers).where(eq(servers.id, row.application.serverId)).limit(1);
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
+      try {
+        conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+        let output = "";
+        const result = await execStream(conn, `docker logs --tail ${tail} --timestamps ${shellQuote(`yeah-app-${row.application.id}`)} 2>&1`, (chunk) => {
+          output += chunk;
+        });
+        if (result.exitCode !== 0) return { logs: "", running: false, message: output.trim() || "container não encontrado — faça um deploy primeiro" };
+        return { logs: output, running: true };
+      } catch (err) {
+        set.status = 502;
+        return { error: err instanceof Error ? err.message : "falha ao ler os logs" };
+      } finally {
+        conn?.end();
+      }
+    })
+  // The token is shown exactly once, here; only its hash is stored.
+  .post("/:applicationId/deploy-token", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const token = generateDeployToken();
+      await db.update(applications).set({ deployTokenHash: hashDeployToken(token) }).where(eq(applications.id, params.applicationId));
+      return { token };
+    })
+  .delete("/:applicationId/deploy-token", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      await db.update(applications).set({ deployTokenHash: null }).where(eq(applications.id, params.applicationId));
+      return { ok: true };
+    })
   .get("/:applicationId/volumes", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, provide, ref } from "vue";
+import { computed, onUnmounted, provide, ref } from "vue";
 import PageState from "../components/PageState.vue";
 import { useRoute, useRouter } from "vue-router";
-import type { ApplicationDto, ApplicationStatus, DeploymentDto } from "@yeah/shared";
+import type { ApplicationDto, ApplicationLifecycleAction, DeploymentDto, WsServerEvent } from "@yeah/shared";
+import { wsClient } from "../lib/ws";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import ResourceDetailShell from "../components/ResourceDetailShell.vue";
 import { APPLICATION_CONTEXT_KEY, type ApplicationContext } from "../composables/useApplicationContext";
@@ -70,18 +71,44 @@ async function deleteApplication() {
   }
 }
 
-const configRouteNames = ["app-general", "app-env", "app-storage"];
+const configRouteNames = ["app-general", "app-env", "app-storage", "app-advanced", "app-webhooks", "app-danger"];
 const isConfigGroup = computed(() => configRouteNames.includes(route.name as string));
 
 const tabs = computed(() => [
   { to: `${routeBase}/deployments`, label: "Deployments", icon: "rocket_launch", active: route.name === "app-deployments" },
+  { to: `${routeBase}/logs`, label: "Logs", icon: "terminal", active: route.name === "app-logs" },
   { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [
   { to: `${routeBase}/general`, label: "Geral", active: route.name === "app-general" },
   { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "app-env" },
   { to: `${routeBase}/storage`, label: "Armazenamento", active: route.name === "app-storage" },
+  { to: `${routeBase}/advanced`, label: "Avançado", active: route.name === "app-advanced" },
+  { to: `${routeBase}/webhooks`, label: "Webhooks", active: route.name === "app-webhooks" },
+  { to: `${routeBase}/danger`, label: "Zona de perigo", active: route.name === "app-danger" },
 ]);
+
+const lifecycleBusy = ref(false);
+async function lifecycle(action: ApplicationLifecycleAction) {
+  lifecycleBusy.value = true;
+  error.value = "";
+  try {
+    await api.post(`${basePath}/lifecycle`, { action });
+    // The worker announces the result over WebSocket; this is the fallback if that socket is down.
+    setTimeout(() => void reloadApp().catch(() => undefined), 6000);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao executar a ação";
+  } finally {
+    lifecycleBusy.value = false;
+  }
+}
+
+const unsubscribe = wsClient.on((event: WsServerEvent) => {
+  if (event.type === "application.status" && event.applicationId === applicationId && app.value) {
+    app.value.status = event.status;
+  }
+});
+onUnmounted(unsubscribe);
 </script>
 
 <template>
@@ -102,6 +129,20 @@ const subnav = computed(() => [
     @delete="deleteApplication"
   >
     <template #actions>
+      <button v-if="app.status === 'stopped'" type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('start')">
+        <span class="material-symbols-outlined" style="font-size: 18px">play_arrow</span>
+        Iniciar
+      </button>
+      <template v-else-if="app.status === 'running'">
+        <button type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('restart')">
+          <span class="material-symbols-outlined" style="font-size: 18px">restart_alt</span>
+          Reiniciar
+        </button>
+        <button type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('stop')">
+          <span class="material-symbols-outlined" style="font-size: 18px">stop</span>
+          Parar
+        </button>
+      </template>
       <button type="button" class="btn" :disabled="deploying" @click="deploy">
         <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
         {{ deploying ? "iniciando..." : "Deploy" }}

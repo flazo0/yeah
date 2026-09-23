@@ -13,6 +13,7 @@ const RESOURCE_TONES: Record<string, StatusTone> = {
   failed: "bad",
   idle: "neutral",
   inactive: "neutral",
+  stopped: "neutral",
 };
 
 /** Deploys, backups and platform operations: "running" means in progress, "queued" just waiting. */

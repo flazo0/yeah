@@ -4,11 +4,13 @@ import { applications, deployments, githubInstallations } from "@yeah/db";
 import { getGithubConfig, verifyWebhookSignature } from "@yeah/github";
 import { db } from "../lib/db";
 import { applicationDeployQueue } from "../lib/queue";
+import { shouldSkipDeploy } from "../lib/deployRules";
 
 interface GithubPushPayload {
   ref: string;
   repository: { full_name: string };
   installation?: { id: number };
+  head_commit?: { message?: string } | null;
 }
 
 export const githubWebhookRoutes = new Elysia().post("/webhooks/github", async ({ request, set }) => {
@@ -31,6 +33,8 @@ export const githubWebhookRoutes = new Elysia().post("/webhooks/github", async (
   const payload = JSON.parse(rawBody) as GithubPushPayload;
   const installationId = payload.installation?.id;
   if (!installationId) return { ok: true, ignored: "no installation" };
+
+  if (shouldSkipDeploy(payload.head_commit?.message)) return { ok: true, ignored: "skip marker in commit message" };
 
   const branch = payload.ref.replace("refs/heads/", "");
   if (branch === payload.ref) return { ok: true, ignored: "not a branch push" };

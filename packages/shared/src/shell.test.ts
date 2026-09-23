@@ -50,3 +50,35 @@ describe("shellQuote", () => {
     }
   });
 });
+
+import { parseDockerOptions } from "./shell";
+
+describe("parseDockerOptions", () => {
+  test("splits on whitespace and keeps quoted groups together", () => {
+    expect(parseDockerOptions(`--cap-add NET_ADMIN --shm-size=1g --label "a b=c d" --hostname 'my host'`)).toEqual({
+      ok: true,
+      args: ["--cap-add", "NET_ADMIN", "--shm-size=1g", "--label", "a b=c d", "--hostname", "my host"],
+    });
+  });
+
+  test("empty or blank input yields no args", () => {
+    expect(parseDockerOptions("")).toEqual({ ok: true, args: [] });
+    expect(parseDockerOptions("  \n ")).toEqual({ ok: true, args: [] });
+  });
+
+  test("shell metacharacters stay literal words", () => {
+    const result = parseDockerOptions("--label x=$(rm -rf /) ; echo hi");
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.args).toEqual(["--label", "x=$(rm", "-rf", "/)", ";", "echo", "hi"]);
+  });
+
+  test("rejects unterminated quotes", () => {
+    expect(parseDockerOptions(`--label "oops`).ok).toBe(false);
+  });
+
+  test("rejects flags the deploy controls, including the = form", () => {
+    for (const bad of ["--name foo", "-d", "--rm", "--env-file=/x", "--restart always", "--detach"]) {
+      expect(parseDockerOptions(bad).ok).toBe(false);
+    }
+  });
+});

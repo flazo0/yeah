@@ -1,9 +1,10 @@
 import Redis from "ioredis";
 import { Queue, Worker, type Processor } from "bullmq";
-import type { WsServerEvent } from "@yeah/shared";
+import type { ApplicationLifecycleAction, WsServerEvent } from "@yeah/shared";
 
 export const SERVER_CHECK_QUEUE = "server-check";
 export const APPLICATION_DEPLOY_QUEUE = "application-deploy";
+export const APPLICATION_LIFECYCLE_QUEUE = "application-lifecycle";
 export const DATABASE_PROVISION_QUEUE = "database-provision";
 export const DATABASE_BACKUP_QUEUE = "database-backup";
 export const PROXY_PROVISION_QUEUE = "proxy-provision";
@@ -23,6 +24,11 @@ export interface ServerCheckJobData {
 
 export interface ApplicationDeployJobData {
   deploymentId: string;
+}
+
+export interface ApplicationLifecycleJobData {
+  applicationId: string;
+  action: ApplicationLifecycleAction;
 }
 
 export interface DatabaseProvisionJobData {
@@ -78,6 +84,17 @@ export function createApplicationDeployWorker(
   processor: Processor<ApplicationDeployJobData>,
 ): Worker<ApplicationDeployJobData> {
   return new Worker<ApplicationDeployJobData>(APPLICATION_DEPLOY_QUEUE, processor, { connection });
+}
+
+export function createApplicationLifecycleQueue(connection: Redis): Queue<ApplicationLifecycleJobData> {
+  return new Queue<ApplicationLifecycleJobData>(APPLICATION_LIFECYCLE_QUEUE, { connection });
+}
+
+export function createApplicationLifecycleWorker(
+  connection: Redis,
+  processor: Processor<ApplicationLifecycleJobData>,
+): Worker<ApplicationLifecycleJobData> {
+  return new Worker<ApplicationLifecycleJobData>(APPLICATION_LIFECYCLE_QUEUE, processor, { connection });
 }
 
 export function createDatabaseProvisionQueue(connection: Redis): Queue<DatabaseProvisionJobData> {

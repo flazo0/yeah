@@ -6,6 +6,8 @@ const props = defineProps<{
   domain: string | null;
   putUrl: string;
   savedMessage: string;
+  /** Domain the server's wildcard would give this resource; enables the "Gerar domínio" button. */
+  suggestion?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -49,6 +51,10 @@ async function save() {
     <div class="form-group">
       <label for="resource-domain">Domínio customizado</label>
       <input id="resource-domain" v-model="form" class="form-control mono" placeholder="minhaapp.exemplo.com" />
+      <p v-if="suggestion" class="hint" style="margin-top: 6px">
+        O wildcard do servidor sugere <span class="mono">{{ suggestion }}</span>
+        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="form = suggestion">Gerar domínio</button>
+      </p>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" :disabled="saving" @click="save">

@@ -1,5 +1,6 @@
 import {
   createApplicationDeployWorker,
+  createApplicationLifecycleWorker,
   createDatabaseBackupWorker,
   createDatabaseProvisionWorker,
   createPlatformOperationQueue,
@@ -17,6 +18,7 @@ import {
 } from "@yeah/queue";
 import { makeCheckServerProcessor } from "./jobs/checkServer";
 import { makeDeployApplicationProcessor } from "./jobs/deployApplication";
+import { makeLifecycleApplicationProcessor } from "./jobs/lifecycleApplication";
 import { makeProvisionDatabaseProcessor } from "./jobs/provisionDatabase";
 import { makeBackupDatabaseProcessor } from "./jobs/backupDatabase";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
@@ -34,6 +36,8 @@ const jobConnection = createRedisConnection(redisUrl);
 const publishConnection = createRedisConnection(redisUrl);
 const deployJobConnection = createRedisConnection(redisUrl);
 const deployPublishConnection = createRedisConnection(redisUrl);
+const lifecycleJobConnection = createRedisConnection(redisUrl);
+const lifecyclePublishConnection = createRedisConnection(redisUrl);
 const provisionJobConnection = createRedisConnection(redisUrl);
 const provisionPublishConnection = createRedisConnection(redisUrl);
 const backupJobConnection = createRedisConnection(redisUrl);
@@ -61,6 +65,9 @@ const deployWorker = createApplicationDeployWorker(
 );
 deployWorker.on("completed", (job) => console.log(`[worker] application-deploy ${job.id} completed`));
 deployWorker.on("failed", (job, err) => console.error(`[worker] application-deploy ${job?.id} failed:`, err.message));
+
+const lifecycleWorker = createApplicationLifecycleWorker(lifecycleJobConnection, makeLifecycleApplicationProcessor(lifecyclePublishConnection));
+lifecycleWorker.on("failed", (job, err) => console.error(`[worker] application-lifecycle ${job?.id} failed:`, err.message));
 
 const provisionWorker = createDatabaseProvisionWorker(
   provisionJobConnection,
@@ -104,5 +111,5 @@ const platformOperationWorker = createPlatformOperationWorker(
 platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
 );

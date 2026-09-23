@@ -8,7 +8,14 @@ import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
-import { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
+import {
+  buildCloneOrPullCommand,
+  buildHealthWaitCommand,
+  buildRunCommand,
+  buildStopOldCommand,
+  healthWaitSeconds,
+  resolveDomain,
+} from "./deployApplication.commands";
 
 export { buildCloneOrPullCommand, buildRunCommand, resolveDomain } from "./deployApplication.commands";
 
@@ -55,6 +62,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       .set({ status: "running", startedAt: new Date() })
       .where(eq(deployments.id, deploymentId));
     await db.update(applications).set({ status: "deploying" }).where(eq(applications.id, application.id));
+    await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "deploying" });
     await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "running" });
 
     const appDir = `/opt/yeah-apps/${application.id}`;
@@ -90,8 +98,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       command: `cd ${shellQuote(repoDir)} && docker build -t ${shellQuote(containerName)} .`,
     };
     const removeOldStep: Step = {
-      label: "removendo container anterior",
-      command: `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true`,
+      label: `parando o container anterior (até ${application.stopGraceSeconds}s de tolerância)`,
+      command: buildStopOldCommand(containerName, application.stopGraceSeconds),
       allowFailure: true,
     };
     const runStepDef: Step = {
@@ -130,9 +138,20 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await runStep(conn, buildStep, appendAndPublish);
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
+      if (application.healthPath) {
+        await runStep(
+          conn,
+          {
+            label: `aguardando o healthcheck (${application.healthPath})`,
+            command: buildHealthWaitCommand(containerName, healthWaitSeconds(application)),
+          },
+          appendAndPublish,
+        );
+      }
 
       await finish(deploymentId, "success", "\n\x1b[32mDeploy concluído.\x1b[0m\n", log);
       await db.update(applications).set({ status: "running" }).where(eq(applications.id, application.id));
+      await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "running" });
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "success" });
       await notifyTeam(application.teamId, "deploy.success", `Deploy de ${application.name} concluído`, `${application.repoUrl} (${application.branch}) → ${server.name}`, "info");
     } catch (err) {
@@ -140,6 +159,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await appendAndPublish(`\n\x1b[31mFalha no deploy: ${message}\x1b[0m\n`);
       await finish(deploymentId, "failed", "", log);
       await db.update(applications).set({ status: "error" }).where(eq(applications.id, application.id));
+      await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "error" });
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "failed" });
       await notifyTeam(application.teamId, "deploy.failed", `Deploy de ${application.name} falhou`, message, "error");
     } finally {

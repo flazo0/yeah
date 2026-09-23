@@ -120,6 +120,13 @@
       "when": 1790191449423,
       "tag": "0016_team_description",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790203973803,
+      "tag": "0017_application_lifecycle_and_advanced",
+      "breakpoints": true
     }
   ]
 }
