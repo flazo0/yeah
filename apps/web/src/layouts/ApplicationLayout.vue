@@ -2,7 +2,7 @@
 import { computed, provide, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApplicationDto, ApplicationStatus, DeploymentDto } from "@yeah/shared";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import Breadcrumb from "../components/Breadcrumb.vue";
 import { APPLICATION_CONTEXT_KEY, type ApplicationContext } from "../composables/useApplicationContext";
 
@@ -53,7 +53,7 @@ async function deploy() {
   deploying.value = true;
   error.value = "";
   try {
-    const res = await api.post<{ deployment: DeploymentDto }>(`${basePath}/deploy`, {});
+    const res = await postConfirmingOverload<{ deployment: DeploymentDto }>(`${basePath}/deploy`, {});
     if (app.value) app.value.status = "deploying";
     lastDeployment.value = res.deployment;
     if (route.name !== "app-deployments") router.push(`${routeBase}/deployments`);

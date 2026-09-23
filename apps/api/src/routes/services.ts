@@ -6,6 +6,7 @@ import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
 import { serviceProvisionQueue } from "../lib/queue";
 
@@ -67,7 +68,7 @@ export const serviceRoutes = new Elysia({
   })
   .post(
     "/",
-    async ({ cookie, params, body, set }) => {
+    async ({ cookie, params, body, query, set }) => {
       const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
       if (!user) {
         set.status = 401;
@@ -97,6 +98,11 @@ export const serviceRoutes = new Elysia({
       if (!server) {
         set.status = 404;
         return { error: "server not found" };
+      }
+      const overload = overloadReason(server);
+      if (overload && query.force !== "true") {
+        set.status = 409;
+        return { error: overload, code: "server_overloaded" };
       }
 
       const [service] = await db

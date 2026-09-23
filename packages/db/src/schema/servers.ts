@@ -1,5 +1,6 @@
 import { boolean, integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
+import { encryptedText } from "../encryption";
 
 export const serverStatusEnum = pgEnum("server_status", ["pending", "connected", "error"]);
 export const proxyStatusEnum = pgEnum("proxy_status", ["inactive", "provisioning", "active", "error"]);
@@ -13,8 +14,8 @@ export const servers = pgTable("servers", {
   host: varchar("host", { length: 255 }).notNull(),
   port: integer("port").default(22).notNull(),
   sshUser: varchar("ssh_user", { length: 100 }).default("root").notNull(),
-  // TODO(security): encrypt at rest (libsodium sealed box / KMS) before any production deploy.
-  privateKey: varchar("private_key", { length: 8192 }).notNull(),
+  // Encrypted at rest (AES-256-GCM, see ../encryption.ts) — reads/writes stay plaintext to callers.
+  privateKey: encryptedText("private_key").notNull(),
   status: serverStatusEnum("status").default("pending").notNull(),
   dockerVersion: varchar("docker_version", { length: 100 }),
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

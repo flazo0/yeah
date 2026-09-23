@@ -1,4 +1,5 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
@@ -25,7 +26,7 @@ export const services = pgTable("services", {
   port: integer("port").notNull(),
   // Raw ".env" file contents, pre-filled from the catalog entry's template — same pattern as
   // Application.envContent, user-editable before/after provisioning.
-  envContent: text("env_content").default("").notNull(),
+  envContent: encryptedText("env_content").default("").notNull(),
   domain: varchar("domain", { length: 255 }),
   ...resourceLimitColumns(),
   status: serviceStatusEnum("status").default("idle").notNull(),

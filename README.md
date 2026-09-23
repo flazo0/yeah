@@ -79,7 +79,7 @@ Arquitetura completa (por que 4 processos, modelo de domínio, fluxo de deploy p
 
 ## Nota de segurança
 
-Chave privada SSH e senha de banco de dados ficam em texto puro no Postgres nesta versão — aceitável pra self-host num ambiente confiável, mas precisa de criptografia em repouso antes de expor pra usuários que você não controla. Detalhes em `docs/ARCHITECTURE.md`.
+Segredos no Postgres (chaves SSH dos servidores, senhas de banco, chave secreta S3, senha SMTP, URLs de webhook/token de notificação e o `.env` de cada recurso) são criptografados em repouso com AES-256-GCM, usando a `ENCRYPTION_KEY` do `.env` (gerada pelo `install.sh`). **Guarde essa chave**: sem ela, o que já foi gravado não pode ser lido. Pra trocar a chave, mova a atual pra `ENCRYPTION_KEY_PREVIOUS` (aceita várias, separadas por vírgula) e gere uma nova. Login, criação e webhooks têm rate limit, e o `state` da conexão com o GitHub é assinado e expira em 10 minutos. Detalhes em `docs/ARCHITECTURE.md`.
 
 ## Licença
 

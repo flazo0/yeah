@@ -106,6 +106,13 @@
       "when": 1790094481193,
       "tag": "0014_right_gauntlet",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790188368740,
+      "tag": "0015_encrypt_secret_columns",
+      "breakpoints": true
     }
   ]
 }

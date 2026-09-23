@@ -84,6 +84,7 @@ else
 
   POSTGRES_PASSWORD=$(openssl rand -hex 24)
   SESSION_SECRET=$(openssl rand -hex 32)
+  ENCRYPTION_KEY=$(openssl rand -hex 32)
 
   # Cadastra a própria máquina como o primeiro servidor de deploy, igual o Coolify faz — sem isso
   # o usuário teria que adicionar "localhost" manualmente antes de conseguir fazer o primeiro
@@ -110,6 +111,12 @@ POSTGRES_USER=yeah
 POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 POSTGRES_DB=yeah
 SESSION_SECRET=${SESSION_SECRET}
+
+# Criptografa em repouso (AES-256-GCM) as chaves SSH, senhas de banco/S3/SMTP e .env dos recursos no Postgres.
+# GUARDE ESTA CHAVE: sem ela os segredos já gravados não podem ser lidos. Pra trocar, mova o valor atual
+# pra ENCRYPTION_KEY_PREVIOUS (aceita vários, separados por vírgula) e gere uma nova aqui.
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
+ENCRYPTION_KEY_PREVIOUS=
 
 API_PORT=3000
 WS_PORT=3001

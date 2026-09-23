@@ -7,9 +7,11 @@ const API_URL = import.meta.env.VITE_API_URL || `${import.meta.env.BASE_URL}api`
 
 export class ApiError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  code?: string;
+  constructor(status: number, message: string, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -23,7 +25,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = typeof body?.error === "string" ? body.error : res.statusText;
-    throw new ApiError(res.status, message);
+    throw new ApiError(res.status, message, typeof body?.code === "string" ? body.code : undefined);
   }
   return body as T;
 }
@@ -36,3 +38,20 @@ export const api = {
     request<T>(path, { method: "PUT", body: data !== undefined ? JSON.stringify(data) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
+
+/**
+ * POST that survives the API's "server is out of disk/RAM" pre-flight (409 server_overloaded): asks
+ * the user once and, if they insist, repeats the request with ?force=true.
+ */
+export async function postConfirmingOverload<T>(path: string, data?: unknown): Promise<T> {
+  try {
+    return await api.post<T>(path, data);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "server_overloaded" && window.confirm(`${err.message}
+
+Continuar mesmo assim?`)) {
+      return api.post<T>(`${path}${path.includes("?") ? "&" : "?"}force=true`, data);
+    }
+    throw err;
+  }
+}

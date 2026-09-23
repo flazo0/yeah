@@ -1,4 +1,5 @@
 import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
@@ -26,7 +27,7 @@ export const applications = pgTable("applications", {
   buildPack: buildPackEnum("build_pack").default("dockerfile").notNull(),
   port: integer("port").default(3000).notNull(),
   // Raw ".env" file contents — written to the server as-is before build/run.
-  envContent: text("env_content").default("").notNull(),
+  envContent: encryptedText("env_content").default("").notNull(),
   // null = no domain yet, container port is published directly on the host (original behavior).
   // Set = routed through the server's Traefik proxy instead, with automatic HTTPS.
   domain: varchar("domain", { length: 255 }),

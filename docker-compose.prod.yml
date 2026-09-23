@@ -60,6 +60,10 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      # Chave dos segredos criptografados no banco (packages/db/src/encryption.ts). Instalações antigas,
+      # sem ENCRYPTION_KEY no .env, caem no SESSION_SECRET — troque depois usando ENCRYPTION_KEY_PREVIOUS.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${SESSION_SECRET}}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
       API_PORT: 3000
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       YEAH_COMMIT: ${YEAH_COMMIT:-dev}
@@ -103,6 +107,10 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
+      # Chave dos segredos criptografados no banco (packages/db/src/encryption.ts). Instalações antigas,
+      # sem ENCRYPTION_KEY no .env, caem no SESSION_SECRET — troque depois usando ENCRYPTION_KEY_PREVIOUS.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${SESSION_SECRET}}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
       GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}

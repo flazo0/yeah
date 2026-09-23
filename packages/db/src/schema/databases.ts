@@ -1,4 +1,5 @@
 import { integer, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
@@ -24,8 +25,8 @@ export const databases = pgTable("databases", {
   port: integer("port").default(5432).notNull(),
   // Redis has no login user — null for that engine, set for the others.
   username: varchar("username", { length: 255 }),
-  // TODO(security): same as servers.private_key — needs encryption at rest before production.
-  password: varchar("password", { length: 255 }).notNull(),
+  // Encrypted at rest (AES-256-GCM, see ../encryption.ts).
+  password: encryptedText("password").notNull(),
   // Redis has no named database either — null for that engine, set for the others.
   databaseName: varchar("database_name", { length: 255 }),
   ...resourceLimitColumns(),

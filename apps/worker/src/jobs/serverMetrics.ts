@@ -6,6 +6,7 @@ import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
+import { CircuitBreaker } from "../lib/circuitBreaker";
 import { crossedThreshold, METRICS_COMMAND, parseMetrics } from "./serverMetrics.commands";
 
 export { crossedThreshold, parseMetrics } from "./serverMetrics.commands";
@@ -13,6 +14,10 @@ export { crossedThreshold, parseMetrics } from "./serverMetrics.commands";
 const CPU_THRESHOLD = 90;
 const MEM_THRESHOLD = 90;
 const DISK_THRESHOLD = 85;
+
+// A dead server is polled every 60s; after 5 straight failures back off (5min, 10min... up to 30min)
+// instead of retrying and logging forever.
+const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, maxCooldownMs: 30 * 60_000 });
 
 export function makeServerMetricsProcessor(publishConnection: Redis) {
   return async function serverMetrics(_job: Job<ServerMetricsJobData>) {
@@ -23,6 +28,7 @@ export function makeServerMetricsProcessor(publishConnection: Redis) {
 }
 
 async function checkOne(server: Server, publishConnection: Redis) {
+  if (!breaker.shouldAttempt(server.id)) return;
   try {
     const conn = await connectSsh({
       host: server.host,
@@ -38,6 +44,10 @@ async function checkOne(server: Server, publishConnection: Redis) {
       });
     } finally {
       conn.end();
+    }
+
+    if (breaker.recordSuccess(server.id) === "closed") {
+      console.log(`[worker] server-metrics: ${server.name} (${server.id}) reachable again — resuming normal polling`);
     }
 
     const metrics = parseMetrics(output);
@@ -78,5 +88,8 @@ async function checkOne(server: Server, publishConnection: Redis) {
     // log and move on. This deliberately doesn't touch `servers.status`, which only reflects
     // the result of an explicit "test connection" — see docs/ARCHITECTURE.md.
     console.error(`[worker] server-metrics: failed to reach ${server.id}:`, err instanceof Error ? err.message : err);
+    if (breaker.recordFailure(server.id) === "opened") {
+      console.warn(`[worker] server-metrics: ${server.name} (${server.id}) failed 5 times in a row — backing off polling (5min, doubling up to 30min) until it answers`);
+    }
   }
 }

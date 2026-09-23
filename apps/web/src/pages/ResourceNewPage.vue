@@ -11,7 +11,7 @@ import {
   type ServerDto,
   type ServiceDto,
 } from "@yeah/shared";
-import { api, ApiError } from "../lib/api";
+import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import Breadcrumb from "../components/Breadcrumb.vue";
 
 const route = useRoute();
@@ -127,7 +127,7 @@ async function createDb() {
   submitting.value = true;
   error.value = "";
   try {
-    const res = await api.post<{ database: DatabaseDto }>(`${basePath}/databases`, {
+    const res = await postConfirmingOverload<{ database: DatabaseDto }>(`${basePath}/databases`, {
       ...dbForm.value,
       memoryLimitMb: dbForm.value.memoryLimitMb || null,
       cpuLimit: dbForm.value.cpuLimit || null,
@@ -144,7 +144,7 @@ async function createService() {
   submitting.value = true;
   error.value = "";
   try {
-    const res = await api.post<{ service: ServiceDto }>(`${basePath}/services`, {
+    const res = await postConfirmingOverload<{ service: ServiceDto }>(`${basePath}/services`, {
       ...svcForm.value,
       memoryLimitMb: svcForm.value.memoryLimitMb || null,
       cpuLimit: svcForm.value.cpuLimit || null,

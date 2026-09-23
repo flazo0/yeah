@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import type { DeploymentDto, DeploymentStatus, WsServerEvent } from "@yeah/shared";
-import { api, ApiError } from "../../lib/api";
+import { api, ApiError, postConfirmingOverload } from "../../lib/api";
 import { wsClient } from "../../lib/ws";
 import DeployLogTerminal from "../../components/DeployLogTerminal.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
@@ -48,7 +48,7 @@ async function rollback(deployment: DeploymentDto) {
   rollingBackId.value = deployment.id;
   error.value = "";
   try {
-    const res = await api.post<{ deployment: DeploymentDto }>(`${basePath}/deployments/${deployment.id}/rollback`, {});
+    const res = await postConfirmingOverload<{ deployment: DeploymentDto }>(`${basePath}/deployments/${deployment.id}/rollback`, {});
     currentDeploymentId.value = res.deployment.id;
     currentLog.value = "";
     currentStatus.value = res.deployment.status;

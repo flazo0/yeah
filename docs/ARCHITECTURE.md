@@ -141,11 +141,14 @@ Documentado com comentário no código em cada ocorrência (`servers.ts`, `datab
 - **Download de backup**: leitura síncrona e limitada via SFTP — o navegador já está esperando o arquivo, rotear por um job + endpoint de polling só adicionaria latência sem ganho nenhum.
 - **Exclusão de Application/Database/Service**: teardown do container (e volume, no caso de banco/serviço com persistência) via SSH antes de apagar a linha do Postgres. Se o SSH falhar (servidor offline, chave errada), a exclusão segue em frente mesmo assim — o cascade do Postgres cuida do resto, e não faz sentido travar o usuário só porque não conseguimos limpar o container remoto.
 
-## Segurança conhecida (pré-produção)
+## Segurança
 
-- `servers.private_key` e `databases.password` ficam em texto puro no Postgres. Aceitável pro estágio atual; precisa de criptografia em repouso (libsodium sealed box ou KMS) antes de qualquer deploy real com dados sensíveis.
-- `github/install-url`'s `state` é o `teamId` puro, sem assinatura — um TODO no código já marca isso: devia ser um token assinado e de curta duração antes de produção.
-- Nada disso é bloqueante pra self-host num ambiente confiável/interno, mas é o primeiro item de segurança a resolver antes de expor publicamente pra usuários que você não controla.
+- **Criptografia em repouso**: `servers.private_key`, `databases.password`, `s3_storages.secret_access_key`, `notification_channels.{url,telegram_bot_token,smtp_password}` e `{applications,services}.env_content` usam a coluna `encryptedText` (`packages/db/src/encryption.ts`): AES-256-GCM, IV aleatório por valor, formato `enc:v1:<base64url(iv|tag|ciphertext)>`, chave derivada por HMAC-SHA256 de `ENCRYPTION_KEY`. A criptografia é transparente pro resto do código (o tipo de coluna cifra na escrita e decifra na leitura). Valores em texto puro de antes disso continuam legíveis e são reescritos cifrados no próximo start da API (`encryptExistingSecrets`). Rotação: chaves antigas em `ENCRYPTION_KEY_PREVIOUS`. Instalações antigas sem `ENCRYPTION_KEY` caem no `SESSION_SECRET` via `docker-compose.prod.yml`.
+- **OAuth do GitHub App**: o `state` é assinado (HMAC do `SESSION_SECRET`), expira em 10 min e é amarrado ao usuário logado que iniciou a conexão (`apps/api/src/lib/oauthState.ts`).
+- **Rate limit** (em memória, por IP via `X-Real-IP` do nginx): login/registro 10 por 5 min, webhook do GitHub 600/min, demais escritas 120/min (`apps/api/src/lib/rateLimit.ts`).
+- **Pré-checagem de servidor**: deploy, rollback e criação de banco/serviço retornam 409 `server_overloaded` se a última métrica (até 10 min) mostra disco ou memória em 95%+; a UI pergunta e repete com `?force=true` se o usuário insistir.
+- **Circuit breaker** no worker pro polling de métricas: 5 falhas seguidas abrem o circuito, com espera de 5 min dobrando até 30 min.
+- Ainda falta pra expor pra usuários que você não controla: ver a Fase 0 do `docs/ROADMAP.md` (nada bloqueante pra self-host num ambiente confiável).
 
 ## Design system
 

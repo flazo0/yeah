@@ -16,6 +16,7 @@ import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
 import { applicationDeployQueue } from "../lib/queue";
 
@@ -462,7 +463,7 @@ export const applicationRoutes = new Elysia({
 
     return { deployment: toDeploymentDto(deployment) };
   })
-  .post("/:applicationId/deploy", async ({ cookie, params, set }) => {
+  .post("/:applicationId/deploy", async ({ cookie, params, query, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
       set.status = 401;
@@ -472,9 +473,16 @@ export const applicationRoutes = new Elysia({
       set.status = 403;
       return { error: "forbidden" };
     }
-    if (!(await loadApplication(params.environmentId, params.applicationId))) {
+    const found = await loadApplication(params.environmentId, params.applicationId);
+    if (!found) {
       set.status = 404;
       return { error: "application not found" };
+    }
+    const [targetServer] = await db.select().from(servers).where(eq(servers.id, found.application.serverId)).limit(1);
+    const overload = targetServer ? overloadReason(targetServer) : null;
+    if (overload && query.force !== "true") {
+      set.status = 409;
+      return { error: overload, code: "server_overloaded" };
     }
 
     const [deployment] = await db
@@ -490,7 +498,7 @@ export const applicationRoutes = new Elysia({
 
     return { deployment: toDeploymentDto(deployment) };
   })
-  .post("/:applicationId/deployments/:deploymentId/rollback", async ({ cookie, params, set }) => {
+  .post("/:applicationId/deployments/:deploymentId/rollback", async ({ cookie, params, query, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
       set.status = 401;
@@ -500,9 +508,16 @@ export const applicationRoutes = new Elysia({
       set.status = 403;
       return { error: "forbidden" };
     }
-    if (!(await loadApplication(params.environmentId, params.applicationId))) {
+    const found = await loadApplication(params.environmentId, params.applicationId);
+    if (!found) {
       set.status = 404;
       return { error: "application not found" };
+    }
+    const [targetServer] = await db.select().from(servers).where(eq(servers.id, found.application.serverId)).limit(1);
+    const overload = targetServer ? overloadReason(targetServer) : null;
+    if (overload && query.force !== "true") {
+      set.status = 409;
+      return { error: overload, code: "server_overloaded" };
     }
 
     const targetRows = await db

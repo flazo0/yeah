@@ -13,6 +13,9 @@ import { githubWebhookRoutes } from "./routes/githubWebhook";
 import { notificationRoutes } from "./routes/notifications";
 import { serviceRoutes } from "./routes/services";
 import { updateRoutes } from "./routes/updates";
+import { encryptExistingSecrets } from "@yeah/db";
+import { db } from "./lib/db";
+import { clientIp, RateLimiter, ruleFor } from "./lib/rateLimit";
 
 const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3000;
 
@@ -21,7 +24,25 @@ const webOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:5173,http://loca
   .split(",")
   .map((origin) => origin.trim());
 
+const limiter = new RateLimiter();
+
 const app = new Elysia()
+  .onRequest(({ request, server }) => {
+    const rule = ruleFor(request.method, new URL(request.url).pathname);
+    if (!rule) return;
+    const result = limiter.hit(clientIp(request.headers, server?.requestIP(request)?.address), rule);
+    if (result.allowed) return;
+    return new Response(JSON.stringify({ error: "muitas requisições — tente de novo em instantes" }), {
+      status: 429,
+      headers: {
+        "content-type": "application/json",
+        "retry-after": String(result.retryAfterSec),
+        "access-control-allow-origin": request.headers.get("origin") ?? "",
+        "access-control-allow-credentials": "true",
+        "access-control-expose-headers": "retry-after",
+      },
+    });
+  })
   .use(cors({ origin: webOrigins, credentials: true }))
   .use(healthRoutes)
   .use(authRoutes)
@@ -37,6 +58,13 @@ const app = new Elysia()
   .use(serviceRoutes)
   .use(updateRoutes)
   .listen(port);
+
+// Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.
+encryptExistingSecrets(db)
+  .then((count) => {
+    if (count > 0) console.log(`[api] encrypted ${count} plaintext secret(s) at rest`);
+  })
+  .catch((err) => console.error("[api] encrypting existing secrets failed:", err instanceof Error ? err.message : err));
 
 console.log(`[api] listening on http://localhost:${port}`);
 

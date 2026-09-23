@@ -6,6 +6,7 @@ import { getGithubConfig, getInstallation, getInstallationToken, listInstallatio
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+import { createOAuthState, verifyOAuthState } from "../lib/oauthState";
 
 function toInstallationDto(installation: GithubInstallation): GithubInstallationDto {
   return {
@@ -54,14 +55,14 @@ export const githubRoutes = new Elysia()
       return { error: "GitHub App não configurado neste servidor" };
     }
 
-    // TODO(security): `state` should be a signed, short-lived token before this goes to
-    // production — a bare teamId lets anyone who knows/guesses it attach an installation
-    // they control to that team by hitting the callback URL directly.
-    return { url: `https://github.com/apps/${config.appSlug}/installations/new?state=${params.teamId}` };
+    // Signed + 10 min expiry + bound to this user (see lib/oauthState.ts) — a bare teamId would let
+    // anyone attach an installation they control to that team by hitting the callback directly.
+    const state = createOAuthState(params.teamId, user.id);
+    return { url: `https://github.com/apps/${config.appSlug}/installations/new?state=${encodeURIComponent(state)}` };
   })
   .get(
     "/github/callback",
-    async ({ query, set }) => {
+    async ({ cookie, query, set }) => {
       const config = getGithubConfig();
       const origin = webOrigin();
       if (!config) {
@@ -69,12 +70,28 @@ export const githubRoutes = new Elysia()
         return { error: "GitHub App não configurado neste servidor" };
       }
 
-      const { installation_id: installationIdRaw, state: teamId } = query;
-      if (!installationIdRaw || !teamId) {
+      const { installation_id: installationIdRaw, state } = query;
+      if (!installationIdRaw || !state) {
         set.status = 400;
         return { error: "callback inválido — faltam installation_id ou state" };
       }
       const installationId = Number(installationIdRaw);
+      if (!Number.isInteger(installationId) || installationId <= 0) {
+        set.status = 400;
+        return { error: "callback inválido — installation_id" };
+      }
+
+      const verified = verifyOAuthState(state);
+      if (!verified) {
+        set.status = 400;
+        return { error: "state inválido ou expirado — volte pra tela do GitHub e clique em conectar de novo" };
+      }
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user || user.id !== verified.userId || !(await assertMember(verified.teamId, user.id))) {
+        set.status = 403;
+        return { error: "esta conexão foi iniciada por outra sessão — entre na conta certa e tente de novo" };
+      }
+      const teamId = verified.teamId;
 
       const info = await getInstallation(config.appId, config.privateKey, installationId);
 

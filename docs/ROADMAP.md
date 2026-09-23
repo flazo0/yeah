@@ -10,13 +10,13 @@ Ordem das fases = ordem de prioridade sugerida (estrutural antes de superficial)
 
 ## Fase 0 — Segurança e fundação
 
-- [ ] Criptografar `servers.private_key` em repouso (hoje texto puro, `TODO(security)` em `packages/db/src/schema/servers.ts`). Referência: envelope AES-256-GCM do Dokploy — chave derivada via HMAC-SHA256 de uma `ENCRYPTION_KEY` dedicada, prefixo versionado `enc:v1:`, suporte a múltiplas chaves pra rotação.
-- [ ] Criptografar `databases.password` e demais segredos guardados (tokens/chaves do GitHub App, credenciais S3, senha SMTP, webhook secret) com o mesmo mecanismo — nem o Coolify criptografa `client_secret`/`webhook_secret` do GitHub App, não repetir essa lacuna.
-- [ ] Migration que re-cifra os valores já existentes + geração/exibição de `ENCRYPTION_KEY` no `install.sh`.
-- [ ] Assinar/expirar o `state` do fluxo OAuth do GitHub App (hoje é o `teamId` puro).
-- [ ] Rate limiting na API (login, criação de recursos, webhooks).
-- [ ] Circuit breaker no `worker`: job que falha repetidamente não re-tenta pra sempre.
-- [ ] Checar snapshot de métricas do servidor *antes* de enfileirar deploy/provisionamento e barrar/avisar se já estiver no limite.
+- [x] Criptografar `servers.private_key` em repouso (hoje texto puro, `TODO(security)` em `packages/db/src/schema/servers.ts`). Referência: envelope AES-256-GCM do Dokploy — chave derivada via HMAC-SHA256 de uma `ENCRYPTION_KEY` dedicada, prefixo versionado `enc:v1:`, suporte a múltiplas chaves pra rotação.
+- [x] Criptografar `databases.password` e demais segredos guardados (chave secreta S3, senha SMTP, token do Telegram, URLs de webhook Discord/Slack, `.env` de apps e serviços) com o mesmo mecanismo — o GitHub App vive em variáveis de ambiente, não no banco — nem o Coolify criptografa `client_secret`/`webhook_secret` do GitHub App, não repetir essa lacuna.
+- [x] Migration que re-cifra os valores já existentes (no start da API) + geração de `ENCRYPTION_KEY` no `install.sh` (instalações antigas caem no `SESSION_SECRET`).
+- [x] Assinar/expirar o `state` do fluxo OAuth do GitHub App (hoje é o `teamId` puro).
+- [x] Rate limiting na API (login, criação de recursos, webhooks).
+- [x] Circuit breaker no `worker` (polling de métricas: 5 falhas seguidas → espera 5 min dobrando até 30). Jobs disparados pelo usuário não retentam (BullMQ sem `attempts`), então não precisaram.
+- [x] Checar snapshot de métricas do servidor *antes* de enfileirar deploy/provisionamento e barrar/avisar se já estiver no limite.
 
 ## Fase 1 — Reformulação de layout (mobile-first, escalável)
 
