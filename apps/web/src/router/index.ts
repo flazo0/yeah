@@ -8,10 +8,19 @@ import ProjectPage from "../pages/ProjectPage.vue";
 import EnvironmentPage from "../pages/EnvironmentPage.vue";
 import ResourceNewPage from "../pages/ResourceNewPage.vue";
 import ServersPage from "../pages/ServersPage.vue";
+import ServerNewPage from "../pages/ServerNewPage.vue";
+import ServerLayout from "../layouts/ServerLayout.vue";
+import ServerGeneralPage from "../pages/server/ServerGeneralPage.vue";
+import ServerProxyPage from "../pages/server/ServerProxyPage.vue";
+import ServerMetricsPage from "../pages/server/ServerMetricsPage.vue";
+import ServerTerminalPage from "../pages/server/ServerTerminalPage.vue";
 import StoragesPage from "../pages/StoragesPage.vue";
-import GithubPage from "../pages/GithubPage.vue";
+import SourcesPage from "../pages/SourcesPage.vue";
+import SourceDetailPage from "../pages/SourceDetailPage.vue";
 import NotificationsPage from "../pages/NotificationsPage.vue";
 import UpdatesPage from "../pages/UpdatesPage.vue";
+import TeamPage from "../pages/TeamPage.vue";
+import SettingsPage from "../pages/SettingsPage.vue";
 import ApplicationLayout from "../layouts/ApplicationLayout.vue";
 import ApplicationDeploymentsPage from "../pages/application/ApplicationDeploymentsPage.vue";
 import ApplicationGeneralPage from "../pages/application/ApplicationGeneralPage.vue";
@@ -37,9 +46,26 @@ export const router = createRouter({
     { path: "/dashboard", component: DashboardPage, meta: { requiresAuth: true } },
     { path: "/teams/:teamId", component: ProjectsPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/servers", component: ServersPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/servers/new", component: ServerNewPage, meta: { requiresAuth: true }, props: true },
+    {
+      path: "/teams/:teamId/servers/:serverId",
+      component: ServerLayout,
+      meta: { requiresAuth: true },
+      redirect: (to) => `${to.path}/general`,
+      children: [
+        { path: "general", name: "server-general", component: ServerGeneralPage },
+        { path: "proxy", name: "server-proxy", component: ServerProxyPage },
+        { path: "metrics", name: "server-metrics", component: ServerMetricsPage },
+        { path: "terminal", name: "server-terminal", component: ServerTerminalPage },
+      ],
+    },
     { path: "/teams/:teamId/storages", component: StoragesPage, meta: { requiresAuth: true }, props: true },
-    { path: "/teams/:teamId/github", component: GithubPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/sources", component: SourcesPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/sources/:sourceId", component: SourceDetailPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/github", redirect: (to) => `/teams/${to.params.teamId}/sources` },
     { path: "/teams/:teamId/notifications", component: NotificationsPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/team", component: TeamPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/settings", component: SettingsPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/updates", component: UpdatesPage, meta: { requiresAuth: true }, props: true },
     {
       path: "/teams/:teamId/projects/:projectId",

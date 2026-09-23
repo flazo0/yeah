@@ -13,6 +13,7 @@ import { githubWebhookRoutes } from "./routes/githubWebhook";
 import { notificationRoutes } from "./routes/notifications";
 import { serviceRoutes } from "./routes/services";
 import { updateRoutes } from "./routes/updates";
+import { searchRoutes } from "./routes/search";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
 import { clientIp, RateLimiter, ruleFor } from "./lib/rateLimit";
@@ -57,6 +58,7 @@ const app = new Elysia()
   .use(notificationRoutes)
   .use(serviceRoutes)
   .use(updateRoutes)
+  .use(searchRoutes)
   .listen(port);
 
 // Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.

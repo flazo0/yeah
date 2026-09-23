@@ -1,7 +1,7 @@
 import { Elysia, redirect, t } from "elysia";
-import { eq } from "drizzle-orm";
-import { githubInstallations, type GithubInstallation } from "@yeah/db";
-import type { GithubInstallationDto, GithubRepoDto } from "@yeah/shared";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { applications, environments, githubInstallations, projects, type GithubInstallation } from "@yeah/db";
+import type { GithubInstallationDto, GithubRepoDto, GithubSourceResourceDto } from "@yeah/shared";
 import { getGithubConfig, getInstallation, getInstallationToken, listInstallationRepos } from "@yeah/github";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -140,6 +140,36 @@ export const githubRoutes = new Elysia()
     const { token } = await getInstallationToken(config.appId, config.privateKey, installation.installationId);
     const repos: GithubRepoDto[] = await listInstallationRepos(token);
     return { repos };
+  })
+  // Which applications deploy from this team's GitHub source — the "blast radius" of disconnecting it.
+  .get("/teams/:teamId/github/resources", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const rows = await db
+      .select({
+        applicationId: applications.id,
+        applicationName: applications.name,
+        repo: applications.githubRepo,
+        branch: applications.branch,
+        projectId: projects.id,
+        projectName: projects.name,
+        environmentId: environments.id,
+        environmentName: environments.name,
+      })
+      .from(applications)
+      .innerJoin(environments, eq(environments.id, applications.environmentId))
+      .innerJoin(projects, eq(projects.id, environments.projectId))
+      .where(and(eq(applications.teamId, params.teamId), isNotNull(applications.githubInstallationId)));
+    const resources: GithubSourceResourceDto[] = rows.map((row) => ({ ...row, repo: row.repo ?? "" }));
+    return { resources };
   })
   .delete("/teams/:teamId/github", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

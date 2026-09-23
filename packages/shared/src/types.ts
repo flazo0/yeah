@@ -70,6 +70,7 @@ export interface ProjectDto {
   teamId: string;
   name: string;
   environmentCount: number;
+  resourceCount: number;
   createdAt: string;
 }
 
@@ -170,14 +171,18 @@ export interface DatabaseEngineInfo {
   /** Redis has no concept of a login user or a named database — just a password. */
   hasUsername: boolean;
   hasDatabaseName: boolean;
+  icon: string;
+  description: string;
+  website: string;
+  docsUrl: string;
 }
 
 export const DATABASE_ENGINES: Record<DatabaseEngine, DatabaseEngineInfo> = {
-  postgresql: { label: "PostgreSQL", defaultImage: "postgres:16-alpine", defaultPort: 5432, hasUsername: true, hasDatabaseName: true },
-  mysql: { label: "MySQL", defaultImage: "mysql:8", defaultPort: 3306, hasUsername: true, hasDatabaseName: true },
-  mariadb: { label: "MariaDB", defaultImage: "mariadb:11", defaultPort: 3306, hasUsername: true, hasDatabaseName: true },
-  redis: { label: "Redis", defaultImage: "redis:7-alpine", defaultPort: 6379, hasUsername: false, hasDatabaseName: false },
-  mongodb: { label: "MongoDB", defaultImage: "mongo:7", defaultPort: 27017, hasUsername: true, hasDatabaseName: true },
+  postgresql: { label: "PostgreSQL", defaultImage: "postgres:16-alpine", defaultPort: 5432, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional com forte suporte a SQL padrão e extensibilidade.", website: "https://www.postgresql.org", docsUrl: "https://www.postgresql.org/docs/" },
+  mysql: { label: "MySQL", defaultImage: "mysql:8", defaultPort: 3306, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional pra aplicações web e uso geral.", website: "https://www.mysql.com", docsUrl: "https://dev.mysql.com/doc/" },
+  mariadb: { label: "MariaDB", defaultImage: "mariadb:11", defaultPort: 3306, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional, substituto direto do MySQL.", website: "https://mariadb.org", docsUrl: "https://mariadb.com/kb/en/documentation/" },
+  redis: { label: "Redis", defaultImage: "redis:7-alpine", defaultPort: 6379, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Armazenamento chave-valor em memória: cache, filas e broker de mensagens.", website: "https://redis.io", docsUrl: "https://redis.io/docs/" },
+  mongodb: { label: "MongoDB", defaultImage: "mongo:7", defaultPort: 27017, hasUsername: true, hasDatabaseName: true, icon: "eco", description: "Banco de documentos NoSQL, esquema flexível.", website: "https://www.mongodb.com", docsUrl: "https://www.mongodb.com/docs/" },
 };
 
 export interface DatabaseDto extends ResourceLimits {
@@ -242,6 +247,25 @@ export interface GithubInstallationDto {
   accountLogin: string;
   accountType: string;
   createdAt: string;
+}
+
+export interface SearchResultDto {
+  kind: "project" | "server" | "application" | "database" | "service";
+  id: string;
+  name: string;
+  subtitle: string;
+  path: string;
+}
+
+export interface GithubSourceResourceDto {
+  applicationId: string;
+  applicationName: string;
+  repo: string;
+  branch: string;
+  projectId: string;
+  projectName: string;
+  environmentId: string;
+  environmentName: string;
 }
 
 export interface GithubRepoDto {

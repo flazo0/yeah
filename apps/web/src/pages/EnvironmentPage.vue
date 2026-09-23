@@ -22,21 +22,6 @@ const teamServers = ref<ServerDto[]>([]);
 const loading = ref(true);
 const error = ref("");
 
-const statusDot: Record<string, string> = {
-  idle: "status-dot-neutral",
-  deploying: "status-dot-warn",
-  provisioning: "status-dot-warn",
-  running: "status-dot-good",
-  error: "status-dot-bad",
-};
-const statusBadge: Record<string, string> = {
-  idle: "badge-neutral",
-  deploying: "badge-warn",
-  provisioning: "badge-warn",
-  running: "badge-good",
-  error: "badge-bad",
-};
-
 const resources = computed<Resource[]>(() => {
   const list: Resource[] = [
     ...apps.value.map((app) => ({
@@ -44,8 +29,6 @@ const resources = computed<Resource[]>(() => {
       id: app.id,
       name: app.name,
       status: app.status,
-      statusDot: statusDot[app.status] ?? "status-dot-neutral",
-      statusBadge: statusBadge[app.status] ?? "badge-neutral",
       icon: "deployed_code",
       typeLabel: "Aplicação",
       domain: app.domain,
@@ -58,8 +41,6 @@ const resources = computed<Resource[]>(() => {
       id: item.id,
       name: item.name,
       status: item.status,
-      statusDot: statusDot[item.status] ?? "status-dot-neutral",
-      statusBadge: statusBadge[item.status] ?? "badge-neutral",
       icon: "database",
       typeLabel: "Banco de dados",
       domain: null,
@@ -72,8 +53,6 @@ const resources = computed<Resource[]>(() => {
       id: item.id,
       name: item.name,
       status: item.status,
-      statusDot: statusDot[item.status] ?? "status-dot-neutral",
-      statusBadge: statusBadge[item.status] ?? "badge-neutral",
       icon: "widgets",
       typeLabel: "Serviço",
       domain: item.domain,

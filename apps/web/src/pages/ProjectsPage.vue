@@ -1,18 +1,47 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import { useRoute } from "vue-router";
+import { computed, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import type { ProjectDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
+import PageState from "../components/PageState.vue";
+import ViewToggle from "../components/ViewToggle.vue";
+import ListPager from "../components/ListPager.vue";
+import Modal from "../components/Modal.vue";
 
 const route = useRoute();
+const router = useRouter();
 const teamId = route.params.teamId as string;
 
 const projects = ref<ProjectDto[]>([]);
 const loading = ref(true);
 const error = ref("");
 
+const view = ref<"list" | "grid">("grid");
+const search = ref("");
+const sortBy = ref<"name" | "recent" | "resources">("name");
+const page = ref(1);
+const pageSize = ref(12);
+watch([search, sortBy], () => (page.value = 1));
+
+const showCreate = ref(false);
 const name = ref("");
 const creating = ref(false);
+
+const filtered = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  const rows = projects.value.filter((p) => !q || p.name.toLowerCase().includes(q));
+  const sorters = {
+    name: (a: ProjectDto, b: ProjectDto) => a.name.localeCompare(b.name),
+    recent: (a: ProjectDto, b: ProjectDto) => b.createdAt.localeCompare(a.createdAt),
+    resources: (a: ProjectDto, b: ProjectDto) => b.resourceCount - a.resourceCount || a.name.localeCompare(b.name),
+  };
+  return [...rows].sort(sorters[sortBy.value]);
+});
+const paged = computed(() => filtered.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value));
+
+function summary(project: ProjectDto): string {
+  return `${project.environmentCount} env · ${project.resourceCount} ${project.resourceCount === 1 ? "recurso" : "recursos"}`;
+}
 
 async function load() {
   loading.value = true;
@@ -34,11 +63,16 @@ async function createProject() {
     const res = await api.post<{ project: ProjectDto }>(`/teams/${teamId}/projects`, { name: name.value.trim() });
     projects.value.push(res.project);
     name.value = "";
+    showCreate.value = false;
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar projeto";
   } finally {
     creating.value = false;
   }
+}
+
+function open(project: ProjectDto) {
+  router.push(`/teams/${teamId}/projects/${project.id}`);
 }
 
 onMounted(load);
@@ -51,44 +85,85 @@ onMounted(load);
         <h1>Projetos</h1>
         <p>Cada projeto agrupa ambientes (production, staging...) com seus próprios recursos.</p>
       </div>
-    </div>
-
-    <div v-if="loading" class="card"><div class="card-body"><div class="empty-state">carregando...</div></div></div>
-    <div v-else-if="projects.length === 0" class="card mb-16">
-      <div class="card-body">
-        <div class="empty-state">
-          <span class="material-symbols-outlined icon">layers</span>
-          Nenhum projeto ainda.
-        </div>
-      </div>
-    </div>
-    <div v-else class="quick-links mb-16">
-      <RouterLink v-for="project in projects" :key="project.id" :to="`/teams/${teamId}/projects/${project.id}`" class="quick-link">
-        <div class="name">
-          {{ project.name }}
-          <span class="badge badge-neutral">{{ project.environmentCount }} ambiente(s)</span>
-        </div>
-        <div class="desc">Criado em {{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</div>
-      </RouterLink>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
+      <button type="button" class="btn" @click="showCreate = true">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
         Novo projeto
-      </div>
-      <div class="card-body">
-        <form class="form-row" style="align-items: end" @submit.prevent="createProject">
-          <div class="form-group" style="margin-bottom: 0">
-            <label for="project-name">Nome</label>
-            <input id="project-name" v-model="name" class="form-control" placeholder="Ex: Meu SaaS" required />
-          </div>
-          <button type="submit" class="btn" :disabled="creating">
-            {{ creating ? "criando..." : "Criar projeto" }}
-          </button>
-        </form>
-        <div v-if="error" class="alert alert-error" style="margin-top: 12px">{{ error }}</div>
-      </div>
+      </button>
     </div>
+
+    <div v-if="error && !showCreate" class="alert alert-error mb-16">{{ error }}</div>
+
+    <div class="rtable-toolbar">
+      <div class="rtable-search input-icon">
+        <span class="material-symbols-outlined">search</span>
+        <input v-model="search" class="form-control" type="search" placeholder="Buscar projetos" aria-label="Buscar projetos" />
+      </div>
+      <div class="rtable-filters">
+        <select v-model="sortBy" class="form-control" aria-label="Ordenar por">
+          <option value="name">Ordenar: nome</option>
+          <option value="recent">Ordenar: mais recentes</option>
+          <option value="resources">Ordenar: mais recursos</option>
+        </select>
+      </div>
+      <ViewToggle v-model="view" storage-key="yeah:projects-view" />
+    </div>
+
+    <PageState :loading="loading" :empty="projects.length === 0" empty-icon="layers" empty-text="Nenhum projeto ainda. Crie o primeiro pelo botão acima.">
+      <div v-if="filtered.length === 0" class="empty-state">Nenhum projeto bate com a busca.</div>
+
+      <div v-else-if="view === 'grid'" class="project-grid">
+        <div v-for="project in paged" :key="project.id" class="project-card" tabindex="0" @click="open(project)" @keydown.enter="open(project)">
+          <div class="project-card-head">
+            <span class="rtable-icon"><span class="material-symbols-outlined">layers</span></span>
+            <strong>{{ project.name }}</strong>
+          </div>
+          <div class="project-card-foot">
+            <span class="muted">{{ summary(project) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-else class="rtable-wrap">
+        <table class="rtable">
+          <thead>
+            <tr>
+              <th>Projeto</th>
+              <th>Ambientes</th>
+              <th>Recursos</th>
+              <th>Criado em</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="project in paged" :key="project.id">
+              <td data-label="Projeto">
+                <RouterLink :to="`/teams/${teamId}/projects/${project.id}`" class="rtable-name">
+                  <span class="rtable-icon"><span class="material-symbols-outlined">layers</span></span>
+                  <strong>{{ project.name }}</strong>
+                </RouterLink>
+              </td>
+              <td data-label="Ambientes">{{ project.environmentCount }}</td>
+              <td data-label="Recursos">{{ project.resourceCount }}</td>
+              <td data-label="Criado em">{{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <ListPager v-if="filtered.length > 0" v-model:page="page" v-model:page-size="pageSize" :total="filtered.length" :sizes="[12, 24, 48]" size-key="yeah:projects-page-size" />
+    </PageState>
+
+    <Modal v-if="showCreate" title="Novo projeto" @close="showCreate = false">
+      <form @submit.prevent="createProject">
+        <div class="form-group">
+          <label for="project-name">Nome</label>
+          <input id="project-name" v-model="name" class="form-control" placeholder="Ex: Meu SaaS" required autofocus />
+        </div>
+        <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
+        <div class="btn-row">
+          <button type="submit" class="btn" :disabled="creating">{{ creating ? "criando..." : "Criar projeto" }}</button>
+          <button type="button" class="btn btn-secondary" @click="showCreate = false">Cancelar</button>
+        </div>
+      </form>
+    </Modal>
   </div>
 </template>

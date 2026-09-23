@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   DATABASE_ENGINES,
@@ -13,6 +13,7 @@ import {
 } from "@yeah/shared";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import Breadcrumb from "../components/Breadcrumb.vue";
+import Modal from "../components/Modal.vue";
 
 const route = useRoute();
 const router = useRouter();
@@ -20,28 +21,98 @@ const teamId = route.params.teamId as string;
 const projectId = route.params.projectId as string;
 const environmentId = route.params.environmentId as string;
 const basePath = `/teams/${teamId}/projects/${projectId}/environments/${environmentId}`;
-const environmentPath = basePath;
 
-type ResourceKind = "application" | "database" | "service";
-const kind = ref<ResourceKind | null>(null);
+type Category = "application" | "database" | "service";
+
+interface CatalogCard {
+  id: string;
+  category: Category;
+  name: string;
+  subtitle: string;
+  description: string;
+  icon: string;
+  website?: string;
+  docsUrl?: string;
+}
 
 const teamServers = ref<ServerDto[]>([]);
+const serverId = ref("");
 const loading = ref(true);
 const error = ref("");
+const search = ref("");
+const categoryFilter = ref<"" | Category>("");
+const creatingId = ref<string | null>(null);
 
-const appForm = ref({
-  name: "",
-  serverId: "",
-  repoUrl: "",
-  githubRepo: "",
-  branch: "main",
-  port: 3000,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const appSourceMode = ref<"url" | "github">("url");
-const githubRepos = ref<GithubRepoDto[]>([]);
 const githubConnected = ref(false);
+const githubRepos = ref<GithubRepoDto[]>([]);
+
+const cards = computed<CatalogCard[]>(() => [
+  {
+    id: "app-public",
+    category: "application",
+    name: "Repositório Git público",
+    subtitle: "Origem Git",
+    description: "Deploy de qualquer repositório público a partir do Dockerfile, sem credenciais.",
+    icon: "source",
+    docsUrl: "https://docs.docker.com/reference/dockerfile/",
+  },
+  {
+    id: "app-github",
+    category: "application",
+    name: "Repositório do GitHub (GitHub App)",
+    subtitle: "Origem Git",
+    description: "Repositórios públicos ou privados da sua conta pelo GitHub App, com auto-deploy a cada push.",
+    icon: "hub",
+  },
+  ...(Object.entries(DATABASE_ENGINES) as [DatabaseEngine, (typeof DATABASE_ENGINES)[DatabaseEngine]][]).map(
+    ([key, info]) => ({
+      id: `db-${key}`,
+      category: "database" as const,
+      name: info.label,
+      subtitle: info.defaultImage,
+      description: info.description,
+      icon: info.icon,
+      website: info.website,
+      docsUrl: info.docsUrl,
+    }),
+  ),
+  ...SERVICE_CATALOG.map((entry) => ({
+    id: `svc-${entry.key}`,
+    category: "service" as const,
+    name: entry.name,
+    subtitle: entry.image,
+    description: entry.description,
+    icon: entry.icon,
+    website: entry.website,
+    docsUrl: entry.docsUrl,
+  })),
+]);
+
+const visibleCards = computed(() => {
+  const q = search.value.trim().toLowerCase();
+  return cards.value.filter(
+    (c) => (!categoryFilter.value || c.category === categoryFilter.value) && (!q || `${c.name} ${c.description} ${c.subtitle}`.toLowerCase().includes(q)),
+  );
+});
+
+const sections: { category: Category; title: string; icon: string }[] = [
+  { category: "application", title: "Aplicações", icon: "deployed_code" },
+  { category: "database", title: "Bancos de dados", icon: "database" },
+  { category: "service", title: "Serviços", icon: "widgets" },
+];
+
+async function load() {
+  loading.value = true;
+  try {
+    const res = await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`);
+    teamServers.value = res.servers;
+    serverId.value = (res.servers.find((s) => s.status === "connected") ?? res.servers[0])?.id ?? "";
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
+  } finally {
+    loading.value = false;
+  }
+}
 
 async function loadGithub() {
   try {
@@ -56,104 +127,79 @@ async function loadGithub() {
   }
 }
 
+function suffix(): string {
+  return Math.random().toString(36).slice(2, 6);
+}
+
+// Database and service cards create the resource right away with the catalog's defaults and land
+// on its configuration page — nothing to fill in first, same as Coolify's one-click flow.
+async function deployDatabase(engine: DatabaseEngine) {
+  const info = DATABASE_ENGINES[engine];
+  const res = await postConfirmingOverload<{ database: DatabaseDto }>(`${basePath}/databases`, {
+    name: `${engine}-${suffix()}`,
+    serverId: serverId.value,
+    engine,
+    username: info.hasUsername ? "app" : undefined,
+    databaseName: info.hasDatabaseName ? "app" : undefined,
+    port: info.defaultPort,
+  });
+  router.push(`${basePath}/databases/${res.database.id}`);
+}
+
+async function deployService(catalogKey: string) {
+  const res = await postConfirmingOverload<{ service: ServiceDto }>(`${basePath}/services`, {
+    name: `${catalogKey}-${suffix()}`,
+    serverId: serverId.value,
+    catalogKey,
+  });
+  router.push(`${basePath}/services/${res.service.id}`);
+}
+
+const appModal = ref<"public" | "github" | null>(null);
+const appForm = ref({ name: "", repoUrl: "", githubRepo: "", branch: "main", port: 3000 });
+const submittingApp = ref(false);
+
 function onGithubRepoChange() {
   const repo = githubRepos.value.find((r) => r.fullName === appForm.value.githubRepo);
   if (repo) appForm.value.branch = repo.defaultBranch;
 }
 
-const dbForm = ref({
-  name: "",
-  serverId: "",
-  engine: "postgresql" as DatabaseEngine,
-  username: "app",
-  databaseName: "app",
-  port: DATABASE_ENGINES.postgresql.defaultPort,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const svcForm = ref({
-  name: "",
-  serverId: "",
-  catalogKey: SERVICE_CATALOG[0]!.key,
-  memoryLimitMb: null as number | null,
-  cpuLimit: null as number | null,
-});
-const submitting = ref(false);
-const databaseEngineOptions = Object.entries(DATABASE_ENGINES) as [DatabaseEngine, (typeof DATABASE_ENGINES)[DatabaseEngine]][];
-
-function onEngineChange() {
-  dbForm.value.port = DATABASE_ENGINES[dbForm.value.engine].defaultPort;
-}
-
-async function load() {
-  loading.value = true;
-  try {
-    const res = await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`);
-    teamServers.value = res.servers;
-    if (teamServers.value[0]) {
-      appForm.value.serverId = teamServers.value[0].id;
-      dbForm.value.serverId = teamServers.value[0].id;
-      svcForm.value.serverId = teamServers.value[0].id;
-    }
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
-  } finally {
-    loading.value = false;
-  }
-}
-
 async function createApp() {
-  submitting.value = true;
+  submittingApp.value = true;
   error.value = "";
   try {
-    const payload =
-      appSourceMode.value === "github"
-        ? { name: appForm.value.name, serverId: appForm.value.serverId, githubRepo: appForm.value.githubRepo, branch: appForm.value.branch, port: appForm.value.port }
-        : { name: appForm.value.name, serverId: appForm.value.serverId, repoUrl: appForm.value.repoUrl, branch: appForm.value.branch, port: appForm.value.port };
-    const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, {
-      ...payload,
-      memoryLimitMb: appForm.value.memoryLimitMb || null,
-      cpuLimit: appForm.value.cpuLimit || null,
-    });
+    const base = { name: appForm.value.name, serverId: serverId.value, branch: appForm.value.branch, port: appForm.value.port };
+    const payload = appModal.value === "github" ? { ...base, githubRepo: appForm.value.githubRepo } : { ...base, repoUrl: appForm.value.repoUrl };
+    const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, payload);
     router.push(`${basePath}/apps/${res.application.id}`);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar aplicação";
   } finally {
-    submitting.value = false;
+    submittingApp.value = false;
   }
 }
 
-async function createDb() {
-  submitting.value = true;
+async function deploy(card: CatalogCard) {
   error.value = "";
-  try {
-    const res = await postConfirmingOverload<{ database: DatabaseDto }>(`${basePath}/databases`, {
-      ...dbForm.value,
-      memoryLimitMb: dbForm.value.memoryLimitMb || null,
-      cpuLimit: dbForm.value.cpuLimit || null,
-    });
-    router.push(`${basePath}/databases/${res.database.id}`);
-  } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar banco de dados";
-  } finally {
-    submitting.value = false;
+  if (card.id === "app-public") {
+    appModal.value = "public";
+    return;
   }
-}
-
-async function createService() {
-  submitting.value = true;
-  error.value = "";
+  if (card.id === "app-github") {
+    if (!githubConnected.value) {
+      router.push(`/teams/${teamId}/sources`);
+      return;
+    }
+    appModal.value = "github";
+    return;
+  }
+  creatingId.value = card.id;
   try {
-    const res = await postConfirmingOverload<{ service: ServiceDto }>(`${basePath}/services`, {
-      ...svcForm.value,
-      memoryLimitMb: svcForm.value.memoryLimitMb || null,
-      cpuLimit: svcForm.value.cpuLimit || null,
-    });
-    router.push(`${basePath}/services/${res.service.id}`);
+    if (card.id.startsWith("db-")) await deployDatabase(card.id.slice(3) as DatabaseEngine);
+    else await deployService(card.id.slice(4));
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar serviço";
-  } finally {
-    submitting.value = false;
+    error.value = err instanceof ApiError ? err.message : "falha ao criar recurso";
+    creatingId.value = null;
   }
 }
 
@@ -168,211 +214,113 @@ onMounted(() => {
     <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" current="Novo recurso" />
     <div class="page-header">
       <div>
-        <h1>Novo recurso</h1>
-        <p>Escolha o que criar neste ambiente.</p>
+        <h1>Escolha um recurso</h1>
+        <p>Bancos e serviços são criados na hora com os valores padrão; você ajusta na tela do recurso.</p>
       </div>
     </div>
 
-    <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
+    <div v-if="error && !appModal" class="alert alert-error mb-16">{{ error }}</div>
 
     <div v-if="!loading && teamServers.length === 0" class="card">
       <div class="card-body">
         <div class="empty-state">
-          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">servidor conectado</RouterLink>
+          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers/new`" class="label-link">servidor conectado</RouterLink>
           antes de criar recursos.
         </div>
       </div>
     </div>
 
     <template v-else>
-      <div class="resource-kind-picker mb-16">
-        <button type="button" class="resource-kind-tile" :class="{ active: kind === 'application' }" @click="kind = 'application'">
-          <span class="material-symbols-outlined">deployed_code</span>
-          <div>
-            <div class="name">Aplicação</div>
-            <div class="desc">Deploy a partir de um repositório Git (Dockerfile)</div>
-          </div>
-        </button>
-        <button type="button" class="resource-kind-tile" :class="{ active: kind === 'database' }" @click="kind = 'database'">
-          <span class="material-symbols-outlined">database</span>
-          <div>
-            <div class="name">Banco de dados</div>
-            <div class="desc">PostgreSQL, MySQL, MariaDB, Redis ou MongoDB</div>
-          </div>
-        </button>
-        <button type="button" class="resource-kind-tile" :class="{ active: kind === 'service' }" @click="kind = 'service'">
-          <span class="material-symbols-outlined">widgets</span>
-          <div>
-            <div class="name">Serviço</div>
-            <div class="desc">Catálogo um-clique — Uptime Kuma, n8n, MinIO e mais</div>
-          </div>
-        </button>
-      </div>
-
-      <div v-if="kind === 'application'" class="card">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">deployed_code</span>
-          Nova aplicação
+      <div class="rtable-toolbar">
+        <div class="rtable-search input-icon">
+          <span class="material-symbols-outlined">search</span>
+          <input v-model="search" class="form-control" type="search" placeholder="Buscar recursos" aria-label="Buscar recursos" />
         </div>
-        <div class="card-body">
-          <form @submit.prevent="createApp">
-            <div class="form-group">
-              <label for="app-name">Nome</label>
-              <input id="app-name" v-model="appForm.name" class="form-control" placeholder="minha-api" required />
-            </div>
-            <div class="form-group">
-              <label for="app-server">Servidor</label>
-              <select id="app-server" v-model="appForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-branch">Branch</label>
-                <input id="app-branch" v-model="appForm.branch" class="form-control" placeholder="main" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-port">Porta</label>
-                <input id="app-port" v-model.number="appForm.port" type="number" class="form-control" />
-              </div>
-            </div>
-            <div v-if="githubConnected" class="form-group">
-              <div class="btn-row mb-16">
-                <button type="button" class="btn btn-secondary btn-sm" :class="{ active: appSourceMode === 'url' }" @click="appSourceMode = 'url'">
-                  URL manual
-                </button>
-                <button type="button" class="btn btn-secondary btn-sm" :class="{ active: appSourceMode === 'github' }" @click="appSourceMode = 'github'">
-                  <span class="material-symbols-outlined" style="font-size: 16px">hub</span>
-                  Repositório do GitHub
-                </button>
-              </div>
-            </div>
-            <div v-if="appSourceMode === 'github' && githubConnected" class="form-group">
-              <label for="app-github-repo">Repositório</label>
-              <select id="app-github-repo" v-model="appForm.githubRepo" class="form-control" required @change="onGithubRepoChange">
-                <option value="" disabled>selecione...</option>
-                <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">
-                  {{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}
-                </option>
-              </select>
-            </div>
-            <div v-else class="form-group">
-              <label for="app-repo">URL do repositório</label>
-              <input id="app-repo" v-model="appForm.repoUrl" class="form-control" placeholder="https://github.com/..." required />
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-mem">Limite de memória (MB)</label>
-                <input id="app-mem" v-model.number="appForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="app-cpu">Limite de CPU (cores)</label>
-                <input id="app-cpu" v-model.number="appForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
-              </div>
-            </div>
-            <button type="submit" class="btn" :disabled="submitting">
-              {{ submitting ? "criando..." : "Criar aplicação" }}
-            </button>
-          </form>
+        <div class="rtable-filters">
+          <select v-model="categoryFilter" class="form-control" aria-label="Categoria">
+            <option value="">Todas as categorias</option>
+            <option value="application">Aplicações</option>
+            <option value="database">Bancos de dados</option>
+            <option value="service">Serviços</option>
+          </select>
+          <select v-model="serverId" class="form-control" aria-label="Servidor de destino">
+            <option v-for="s in teamServers" :key="s.id" :value="s.id">Servidor: {{ s.name }}</option>
+          </select>
         </div>
       </div>
 
-      <div v-else-if="kind === 'database'" class="card">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">database</span>
-          Novo banco de dados
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="createDb">
-            <div class="form-group">
-              <label for="db-name">Nome</label>
-              <input id="db-name" v-model="dbForm.name" class="form-control" placeholder="meu-postgres" required />
-            </div>
-            <div class="form-group">
-              <label for="db-server">Servidor</label>
-              <select id="db-server" v-model="dbForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="db-engine">Motor</label>
-              <select id="db-engine" v-model="dbForm.engine" class="form-control" @change="onEngineChange">
-                <option v-for="[value, info] in databaseEngineOptions" :key="value" :value="value">{{ info.label }}</option>
-              </select>
-            </div>
-            <div class="form-row mb-16">
-              <div v-if="DATABASE_ENGINES[dbForm.engine].hasUsername" class="form-group" style="margin-bottom: 0">
-                <label for="db-username">Usuário</label>
-                <input id="db-username" v-model="dbForm.username" class="form-control" />
-              </div>
-              <div v-if="DATABASE_ENGINES[dbForm.engine].hasDatabaseName" class="form-group" style="margin-bottom: 0">
-                <label for="db-database">Database</label>
-                <input id="db-database" v-model="dbForm.databaseName" class="form-control" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-port">Porta</label>
-                <input id="db-port" v-model.number="dbForm.port" type="number" class="form-control" />
-              </div>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-mem">Limite de memória (MB)</label>
-                <input id="db-mem" v-model.number="dbForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="db-cpu">Limite de CPU (cores)</label>
-                <input id="db-cpu" v-model.number="dbForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
-              </div>
-            </div>
-            <button type="submit" class="btn" :disabled="submitting">
-              {{ submitting ? "criando..." : "Criar banco de dados" }}
-            </button>
-          </form>
-        </div>
-      </div>
+      <div v-if="visibleCards.length === 0" class="empty-state">Nada bate com a busca.</div>
 
-      <div v-else-if="kind === 'service'" class="card">
-        <div class="card-header">
-          <span class="material-symbols-outlined" style="font-size: 18px">widgets</span>
-          Novo serviço
-        </div>
-        <div class="card-body">
-          <form @submit.prevent="createService">
-            <div class="form-group">
-              <label for="svc-name">Nome</label>
-              <input id="svc-name" v-model="svcForm.name" class="form-control" placeholder="meu-uptime-kuma" required />
-            </div>
-            <div class="form-group">
-              <label for="svc-server">Servidor</label>
-              <select id="svc-server" v-model="svcForm.serverId" class="form-control" required>
-                <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ s.name }}</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="svc-catalog">Serviço</label>
-              <select id="svc-catalog" v-model="svcForm.catalogKey" class="form-control">
-                <option v-for="entry in SERVICE_CATALOG" :key="entry.key" :value="entry.key">{{ entry.name }}</option>
-              </select>
-              <p class="hint" style="margin-top: 6px">
-                {{ SERVICE_CATALOG.find((e) => e.key === svcForm.catalogKey)?.description }}
-              </p>
-            </div>
-            <div class="form-row mb-16">
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="svc-mem">Limite de memória (MB)</label>
-                <input id="svc-mem" v-model.number="svcForm.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
-              </div>
-              <div class="form-group" style="margin-bottom: 0">
-                <label for="svc-cpu">Limite de CPU (cores)</label>
-                <input id="svc-cpu" v-model.number="svcForm.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+      <template v-for="section in sections" :key="section.category">
+        <div v-if="visibleCards.some((c) => c.category === section.category)" class="card mb-16">
+          <div class="card-header">
+            <span class="material-symbols-outlined" style="font-size: 18px">{{ section.icon }}</span>
+            {{ section.title }}
+          </div>
+          <div class="card-body">
+            <p v-if="section.category === 'service'" class="hint mb-16">
+              As marcas citadas pertencem às respectivas empresas; a listagem não indica afiliação nem endosso.
+            </p>
+            <div class="catalog-grid">
+              <div v-for="card in visibleCards.filter((c) => c.category === section.category)" :key="card.id" class="catalog-card">
+                <div class="catalog-card-head">
+                  <span class="rtable-icon"><span class="material-symbols-outlined">{{ card.icon }}</span></span>
+                  <div class="rtable-name-text">
+                    <strong>{{ card.name }}</strong>
+                    <small class="muted mono">{{ card.subtitle }}</small>
+                  </div>
+                </div>
+                <p class="catalog-card-desc">{{ card.description }}</p>
+                <div class="catalog-card-actions">
+                  <a v-if="card.docsUrl" :href="card.docsUrl" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Docs</a>
+                  <a v-if="card.website" :href="card.website" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Website</a>
+                  <button type="button" class="btn btn-sm catalog-deploy" :disabled="creatingId !== null" @click="deploy(card)">
+                    {{ creatingId === card.id ? "criando..." : "Deploy" }}
+                    <span class="material-symbols-outlined" style="font-size: 16px">arrow_forward</span>
+                  </button>
+                </div>
               </div>
             </div>
-            <button type="submit" class="btn" :disabled="submitting">
-              {{ submitting ? "criando..." : "Criar serviço" }}
-            </button>
-          </form>
+          </div>
         </div>
-      </div>
+      </template>
     </template>
+
+    <Modal v-if="appModal" :title="appModal === 'github' ? 'Repositório do GitHub' : 'Repositório Git público'" @close="appModal = null">
+      <form @submit.prevent="createApp">
+        <div class="form-group">
+          <label for="app-name">Nome</label>
+          <input id="app-name" v-model="appForm.name" class="form-control" placeholder="minha-api" required />
+        </div>
+        <div v-if="appModal === 'github'" class="form-group">
+          <label for="app-github-repo">Repositório</label>
+          <select id="app-github-repo" v-model="appForm.githubRepo" class="form-control" required @change="onGithubRepoChange">
+            <option value="" disabled>selecione...</option>
+            <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">
+              {{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}
+            </option>
+          </select>
+        </div>
+        <div v-else class="form-group">
+          <label for="app-repo">URL do repositório</label>
+          <input id="app-repo" v-model="appForm.repoUrl" class="form-control" placeholder="https://github.com/..." required />
+        </div>
+        <div class="form-row mb-16">
+          <div class="form-group" style="margin-bottom: 0">
+            <label for="app-branch">Branch</label>
+            <input id="app-branch" v-model="appForm.branch" class="form-control" placeholder="main" />
+          </div>
+          <div class="form-group" style="margin-bottom: 0">
+            <label for="app-port">Porta</label>
+            <input id="app-port" v-model.number="appForm.port" type="number" class="form-control" />
+          </div>
+        </div>
+        <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
+        <div class="btn-row">
+          <button type="submit" class="btn" :disabled="submittingApp">{{ submittingApp ? "criando..." : "Criar aplicação" }}</button>
+          <button type="button" class="btn btn-secondary" @click="appModal = null">Cancelar</button>
+        </div>
+      </form>
+    </Modal>
   </div>
 </template>

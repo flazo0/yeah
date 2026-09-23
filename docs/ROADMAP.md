@@ -23,29 +23,29 @@ Ordem das fases = ordem de prioridade sugerida (estrutural antes de superficial)
 Diagnóstico (revisita à instância real): cor/ícone/CSS já estão bons; o problema é **densidade e escalabilidade** — só temos grade de cards, que degrada com muitos recursos (cenário de microsserviços).
 
 **Base responsiva (afeta toda tela — fazer primeiro)**
-- [x] Sidebar vira drawer recolhível abaixo de 900px + botão hambúrguer no topbar (feito). [ ] Botão de recolher sidebar no desktop (falta).
-- [x] Nenhum overflow horizontal de página em nenhuma tela testada a 390px; tabelas de recursos viram cards empilhados no mobile (tabelas de Servidores/Atualizações ainda só com scroll interno).
-- [ ] Formulários em coluna única no mobile; alvos de toque ≥ 44px.
-- [ ] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta.
+- [x] Sidebar vira drawer recolhível abaixo de 900px + botão hambúrguer no topbar, e botão de recolher (64px, só ícones) no desktop, lembrado no navegador.
+- [x] Nenhum overflow horizontal de página nas telas testadas a 390px; tabelas de recursos/servidores/projetos viram cards empilhados no mobile (a tabela da tela Atualizações ainda só rola dentro do próprio container).
+- [x] Formulários em coluna única no mobile; alvos de toque ≥ 44px. (regra global de CSS até 720px; os alvos de toque não foram medidos um a um)
+- [ ] Testar cada tela reformulada em 3 larguras (≈390px, ≈768px, desktop) antes de marcar pronta. (390px e desktop testados; falta 768px)
 
 **Componentes compartilhados**
-- [x] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página.
+- [x] `ResourceTable.vue`: colunas ícone+nome, tipo, status, **domínio**, servidor, tags; busca, filtro (tipo/status/servidor/tag), ordenação, paginação com seletor de itens por página. Coluna de tags fica pra quando tags existirem (Fase 3).
 - [x] Toggle lista/grade persistido em `localStorage`; **tabela como padrão** em listagens que crescem.
-- [ ] `ResourceDetailShell.vue`: header (título, status, breadcrumb, ações) + subnav de abas, reaproveitado por Application/Database/Service (hoje cada `*Layout.vue` refaz o próprio).
-- [ ] Estados vazios/carregando/erro padronizados; badge de status único.
-- [ ] Busca global (`Ctrl+K`) no topo da sidebar; `/` foca a busca da listagem atual.
+- [x] `ResourceDetailShell.vue`: header (título, status, breadcrumb, ações) + subnav de abas, reaproveitado por Application/Database/Service (hoje cada `*Layout.vue` refaz o próprio). Application/Database/Service já usam.
+- [ ] Estados vazios/carregando/erro padronizados; badge de status único. `PageState` e `StatusBadge` existem e já são usados em Projetos, Servidores, Fontes, Recursos e no shell de detalhe; falta migrar Dashboard, Notificações, Armazenamento, Atualizações e a aba de deploys.
+- [x] Busca global (`Ctrl+K`) no topo da sidebar; `/` foca a busca da listagem atual. Atalho `/` (foca a busca da listagem) implementado mas não testado no navegador.
 
 **Telas**
-- [x] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso".
-- [ ] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", atalho "+" e engrenagem no hover, busca + ordenação.
-- [ ] `ServersPage.vue` → mesmo padrão lista/grade, métricas ao vivo por linha.
-- [ ] **Catálogo "Novo recurso"** (`ResourceNewPage.vue`): busca + filtro + dropdown de categorias; seções Applications / Databases / Services; card com ícone da tecnologia, nome, tipo de origem, descrição, botões **Docs** / **Website** / **Deploy →**; aviso de marcas registradas na seção de serviços.
-- [ ] Banco e serviço = **1 clique cria com valores padrão** e já leva pra tela de configuração (sem formulário) — só aplicação Git abre passo intermediário.
-- [ ] Ícone por engine de banco (hoje `DATABASE_ENGINES` não tem campo `icon`) e ícones reais de tecnologia nos cards.
-- [ ] **`GithubPage.vue` → "Sources"**: tabela Source | Provider | Status, botão "New Source" (dropdown GitHub/GitLab), busca; detalhe da fonte com App Name, Organization, System Wide?, URL HTML/API (GitHub Enterprise), App Id, Installation Id, Client Id/Secret, Webhook Secret, chave privada; aba **Permissions** (Content: read, Metadata: read, Pull Request: write) e aba **Resources** (quais apps usam essa fonte — projeto → ambiente → nome → tipo).
-- [ ] Sidebar completa no padrão Workspace / Infraestrutura / Gerenciar: Dashboard, Projects, Terminal · Servers, Sources, Destinations, S3 Storage, Shared Variables · Team, Notifications, Keys & Tokens, Tags, Settings.
-- [ ] Página **Team**: nome editável do time padrão ("Root Team" no Coolify), descrição, criar novo time (single-admin: sem Members/Admin View).
-- [ ] Página **Settings** da instância (domínio do painel, versão, etc.).
+- [x] `EnvironmentPage.vue` → `ResourceTable` (lista + grade), botões Settings e "Novo recurso". Botão Settings do ambiente não foi feito.
+- [x] `ProjectsPage.vue` → grade/lista com "X env · Y recursos", atalho "+" e engrenagem no hover, busca + ordenação. Atalho "+" e engrenagem no hover do card não foram feitos.
+- [x] `ServersPage.vue` → mesmo padrão lista/grade, métricas ao vivo por linha. Cada servidor ganhou tela própria (abas Geral / Proxy / Recursos / Terminal) e `/servers/new`.
+- [x] **Catálogo "Novo recurso"** (`ResourceNewPage.vue`): busca + filtro + dropdown de categorias; seções Applications / Databases / Services; card com ícone da tecnologia, nome, tipo de origem, descrição, botões **Docs** / **Website** / **Deploy →**; aviso de marcas registradas na seção de serviços. Hoje só 2 origens de aplicação (Git público e GitHub App); as demais dependem da Fase 3.
+- [x] Banco e serviço = **1 clique cria com valores padrão** e já leva pra tela de configuração (sem formulário) — só aplicação Git abre passo intermediário.
+- [x] Ícone por engine de banco (hoje `DATABASE_ENGINES` não tem campo `icon`) e ícones reais de tecnologia nos cards. Ícones genéricos do Material Symbols por engine; logos reais das tecnologias não.
+- [x] **`GithubPage.vue` → "Sources"**: tabela Source | Provider | Status, botão "New Source" (dropdown GitHub/GitLab), busca; detalhe da fonte com App Name, Organization, System Wide?, URL HTML/API (GitHub Enterprise), App Id, Installation Id, Client Id/Secret, Webhook Secret, chave privada; aba **Permissions** (Content: read, Metadata: read, Pull Request: write) e aba **Resources** (quais apps usam essa fonte — projeto → ambiente → nome → tipo). Feito como `SourcesPage`/`SourceDetailPage` (tabela, "Nova fonte", abas Geral/Permissões/Recursos). App Name, System Wide e Client Id/Secret não aparecem porque o GitHub App vive em variáveis de ambiente; GitLab fica como "em breve".
+- [ ] Sidebar completa no padrão Workspace / Infraestrutura / Gerenciar: Dashboard, Projects, Terminal · Servers, Sources, Destinations, S3 Storage, Shared Variables · Team, Notifications, Keys & Tokens, Tags, Settings. Feito: Workspace / Infraestrutura / Gerenciar com as telas que existem (Dashboard, Projetos, Servidores, Fontes, Armazenamento, Time, Notificações, Atualizações, Configurações). Faltam Terminal, Destinations, Shared Variables, Keys & Tokens e Tags — dependem de features das Fases 3, 5 e 7.
+- [x] Página **Team**: nome editável do time padrão ("Root Team" no Coolify), descrição, criar novo time (single-admin: sem Members/Admin View). Sem campo de descrição (o time não tem essa coluna).
+- [x] Página **Settings** da instância (domínio do painel, versão, etc.). Básica: tema, versão da plataforma, conta.
 - [ ] Dashboard: gráfico histórico de métricas por servidor (depende da série temporal na Fase 5).
 
 ## Fase 2 — Modo "painel separado do servidor gerenciado"

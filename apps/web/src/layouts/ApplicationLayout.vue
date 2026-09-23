@@ -3,7 +3,7 @@ import { computed, provide, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApplicationDto, ApplicationStatus, DeploymentDto } from "@yeah/shared";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
-import Breadcrumb from "../components/Breadcrumb.vue";
+import ResourceDetailShell from "../components/ResourceDetailShell.vue";
 import { APPLICATION_CONTEXT_KEY, type ApplicationContext } from "../composables/useApplicationContext";
 
 const route = useRoute();
@@ -19,13 +19,6 @@ const routeBase = `/teams/${teamId}/projects/${projectId}/environments/${environ
 const app = ref<ApplicationDto | null>(null);
 const loading = ref(true);
 const error = ref("");
-
-const statusBadge: Record<ApplicationStatus, string> = {
-  idle: "badge-neutral",
-  deploying: "badge-warn",
-  running: "badge-good",
-  error: "badge-bad",
-};
 
 async function reloadApp() {
   const res = await api.get<{ application: ApplicationDto }>(basePath);
@@ -64,86 +57,61 @@ async function deploy() {
   }
 }
 
-const confirmingDelete = ref(false);
 const deleting = ref(false);
-let confirmingDeleteTimer: ReturnType<typeof setTimeout> | undefined;
 async function deleteApplication() {
-  if (!confirmingDelete.value) {
-    confirmingDelete.value = true;
-    clearTimeout(confirmingDeleteTimer);
-    confirmingDeleteTimer = setTimeout(() => (confirmingDelete.value = false), 3000);
-    return;
-  }
-  clearTimeout(confirmingDeleteTimer);
   deleting.value = true;
   try {
     await api.delete(basePath);
     router.push(environmentPath);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao excluir aplicação";
-    confirmingDelete.value = false;
     deleting.value = false;
   }
 }
 
 const configRouteNames = ["app-general", "app-env", "app-storage"];
 const isConfigGroup = computed(() => configRouteNames.includes(route.name as string));
+
+const tabs = computed(() => [
+  { to: `${routeBase}/deployments`, label: "Deployments", icon: "rocket_launch", active: route.name === "app-deployments" },
+  { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
+]);
+const subnav = computed(() => [
+  { to: `${routeBase}/general`, label: "Geral", active: route.name === "app-general" },
+  { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "app-env" },
+  { to: `${routeBase}/storage`, label: "Armazenamento", active: route.name === "app-storage" },
+]);
 </script>
 
 <template>
-  <div v-if="loading" class="empty-state">carregando...</div>
+  <div v-if="loading" class="empty-state"><span class="spinner"></span> carregando...</div>
   <div v-else-if="!app" class="empty-state">Aplicação não encontrada.</div>
-  <div v-else>
-    <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" :current="app.name" />
-    <div class="resource-header">
-      <div class="resource-title">
-        <span class="material-symbols-outlined">deployed_code</span>
-        {{ app.name }}
-        <span class="badge" :class="statusBadge[app.status]">{{ app.status }}</span>
-      </div>
-      <div class="btn-row">
-        <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="deleting" @click="deleteApplication">
-          <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
-          {{ confirmingDelete ? "Confirmar exclusão?" : "Excluir" }}
-        </button>
-        <button type="button" class="btn" :disabled="deploying" @click="deploy">
-          <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
-          {{ deploying ? "iniciando..." : "Deploy" }}
-        </button>
-      </div>
-    </div>
-    <p class="resource-subtitle mono">{{ app.repoUrl }} ({{ app.branch }}) → {{ app.serverName }}:{{ app.port }}</p>
-    <p v-if="app.domain" class="resource-subtitle">
-      <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ app.domain }}</a>
-    </p>
-
-    <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
-
-    <div class="detail-tabs">
-      <RouterLink :to="`${routeBase}/deployments`" class="detail-tab" :class="{ active: route.name === 'app-deployments' }">
+  <ResourceDetailShell
+    v-else
+    :team-id="teamId"
+    :project-id="projectId"
+    :environment-id="environmentId"
+    :name="app.name"
+    icon="deployed_code"
+    :status="app.status"
+    :error="error"
+    :deleting="deleting"
+    :tabs="tabs"
+    :subnav="isConfigGroup ? subnav : null"
+    @delete="deleteApplication"
+  >
+    <template #actions>
+      <button type="button" class="btn" :disabled="deploying" @click="deploy">
         <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
-        Deployments
-      </RouterLink>
-      <RouterLink :to="`${routeBase}/general`" class="detail-tab" :class="{ active: isConfigGroup }">
-        <span class="material-symbols-outlined" style="font-size: 18px">tune</span>
-        Configuration
-      </RouterLink>
-    </div>
-
-    <div v-if="isConfigGroup" class="detail-layout">
-      <nav class="detail-subnav">
-        <RouterLink :to="`${routeBase}/general`" class="detail-subnav-item" :class="{ active: route.name === 'app-general' }">
-          Geral
-        </RouterLink>
-        <RouterLink :to="`${routeBase}/env`" class="detail-subnav-item" :class="{ active: route.name === 'app-env' }">
-          Variáveis de ambiente
-        </RouterLink>
-        <RouterLink :to="`${routeBase}/storage`" class="detail-subnav-item" :class="{ active: route.name === 'app-storage' }">
-          Armazenamento
-        </RouterLink>
-      </nav>
-      <router-view />
-    </div>
-    <router-view v-else />
-  </div>
+        {{ deploying ? "iniciando..." : "Deploy" }}
+      </button>
+    </template>
+    <template #subtitle>
+      <p class="resource-subtitle mono">{{ app.repoUrl }} ({{ app.branch }}) → {{ app.serverName }}:{{ app.port }}</p>
+      <p v-if="app.domain" class="resource-subtitle">
+        <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ app.domain }}</a>
+      </p>
+    </template>
+    <router-view />
+  </ResourceDetailShell>
 </template>

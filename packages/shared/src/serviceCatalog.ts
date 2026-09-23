@@ -12,6 +12,9 @@ export interface ServiceCatalogEntry {
   envTemplate: string;
   /** Extra context shown in the UI — e.g. "precisa de um MySQL, crie um banco antes". */
   notes?: string;
+  /** Project site and documentation, shown as links on the resource catalog card. */
+  website?: string;
+  docsUrl?: string;
 }
 
 export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
@@ -20,6 +23,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Uptime Kuma",
     description: "Monitoramento de uptime self-hosted, com alertas — tipo um Pingdom seu.",
     icon: "monitor_heart",
+    website: "https://uptime.kuma.pet",
+    docsUrl: "https://github.com/louislam/uptime-kuma/wiki",
     image: "louislam/uptime-kuma:1",
     port: 3001,
     volumePath: "/app/data",
@@ -30,6 +35,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "n8n",
     description: "Automação de workflows low-code (tipo Zapier/Make, self-hosted).",
     icon: "hub",
+    website: "https://n8n.io",
+    docsUrl: "https://docs.n8n.io",
     image: "n8nio/n8n:latest",
     port: 5678,
     volumePath: "/home/node/.n8n",
@@ -40,6 +47,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "MinIO",
     description: "Armazenamento de objetos S3-compatível — use como destino de backup do próprio yeah.",
     icon: "cloud",
+    website: "https://min.io",
+    docsUrl: "https://min.io/docs/minio/linux/index.html",
     image: "quay.io/minio/minio:latest",
     port: 9000,
     volumePath: "/data",
@@ -51,6 +60,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "RabbitMQ",
     description: "Fila de mensagens com plugin de management incluso.",
     icon: "sync_alt",
+    website: "https://www.rabbitmq.com",
+    docsUrl: "https://www.rabbitmq.com/docs",
     image: "rabbitmq:3-management-alpine",
     port: 5672,
     volumePath: "/var/lib/rabbitmq",
@@ -62,6 +73,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Meilisearch",
     description: "Motor de busca full-text rápido, API REST simples.",
     icon: "search",
+    website: "https://www.meilisearch.com",
+    docsUrl: "https://www.meilisearch.com/docs",
     image: "getmeili/meilisearch:latest",
     port: 7700,
     volumePath: "/meili_data",
@@ -72,6 +85,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Ghost",
     description: "Plataforma de blog/newsletter — roda com SQLite embutido, sem precisar de banco externo.",
     icon: "article",
+    website: "https://ghost.org",
+    docsUrl: "https://ghost.org/docs/",
     image: "ghost:5-alpine",
     port: 2368,
     volumePath: "/var/lib/ghost/content",
@@ -82,6 +97,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Metabase",
     description: "BI/dashboards conectando em qualquer banco de dados.",
     icon: "bar_chart",
+    website: "https://www.metabase.com",
+    docsUrl: "https://www.metabase.com/docs/latest/",
     image: "metabase/metabase:latest",
     port: 3000,
     volumePath: "/metabase-data",
@@ -92,6 +109,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Portainer",
     description: "GUI de administração Docker — mostra containers/imagens/volumes do servidor.",
     icon: "dns",
+    website: "https://www.portainer.io",
+    docsUrl: "https://docs.portainer.io",
     image: "portainer/portainer-ce:latest",
     port: 9000,
     volumePath: "/data",
@@ -103,6 +122,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Adminer",
     description: "Cliente web leve pra Postgres/MySQL/SQLite — cole host/usuário/senha de qualquer banco criado no yeah.",
     icon: "table_view",
+    website: "https://www.adminer.org",
+    docsUrl: "https://www.adminer.org",
     image: "adminer:latest",
     port: 8080,
     volumePath: null,
@@ -113,6 +134,8 @@ export const SERVICE_CATALOG: ServiceCatalogEntry[] = [
     name: "Redis Commander",
     description: "GUI web pra inspecionar um Redis já existente.",
     icon: "table_rows",
+    website: "https://github.com/joeferner/redis-commander",
+    docsUrl: "https://github.com/joeferner/redis-commander#readme",
     image: "rediscommander/redis-commander:latest",
     port: 8081,
     volumePath: null,

@@ -7,6 +7,20 @@ import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { loadEnvironment, loadProject } from "../lib/projects";
 
+async function countProjectResources(projectId: string): Promise<number> {
+  const counts = await Promise.all(
+    [applications, databases, services].map(async (table) => {
+      const [row] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(table)
+        .innerJoin(environments, eq(environments.id, table.environmentId))
+        .where(eq(environments.projectId, projectId));
+      return row?.n ?? 0;
+    }),
+  );
+  return counts.reduce((a, b) => a + b, 0);
+}
+
 export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
   .get("/", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
@@ -23,6 +37,11 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       .select({
         project: projects,
         environmentCount: sql<number>`count(distinct ${environments.id})::int`,
+        resourceCount: sql<number>`(
+          (select count(*) from applications a join environments e on e.id = a.environment_id where e.project_id = ${projects.id}) +
+          (select count(*) from databases d join environments e on e.id = d.environment_id where e.project_id = ${projects.id}) +
+          (select count(*) from services s join environments e on e.id = s.environment_id where e.project_id = ${projects.id})
+        )::int`,
       })
       .from(projects)
       .leftJoin(environments, eq(environments.projectId, projects.id))
@@ -34,6 +53,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       teamId: row.project.teamId,
       name: row.project.name,
       environmentCount: row.environmentCount,
+      resourceCount: row.resourceCount,
       createdAt: row.project.createdAt.toISOString(),
     }));
 
@@ -67,6 +87,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
         teamId: project.teamId,
         name: project.name,
         environmentCount: environment ? 1 : 0,
+        resourceCount: 0,
         createdAt: project.createdAt.toISOString(),
       };
       return { project: dto };
@@ -97,6 +118,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       teamId: project.teamId,
       name: project.name,
       environmentCount: environmentRows.length,
+      resourceCount: await countProjectResources(project.id),
       createdAt: project.createdAt.toISOString(),
     };
     return { project: dto };

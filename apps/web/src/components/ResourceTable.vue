@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
+import StatusBadge from "./StatusBadge.vue";
+import { statusTone } from "../lib/status";
+import ViewToggle from "./ViewToggle.vue";
+import ListPager from "./ListPager.vue";
 
 export interface ResourceRow {
   id: string;
@@ -8,8 +12,6 @@ export interface ResourceRow {
   icon: string;
   typeLabel: string;
   status: string;
-  statusDot: string;
-  statusBadge: string;
   domain: string | null;
   serverName: string;
   detail: string;
@@ -23,26 +25,8 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{ delete: [row: ResourceRow] }>();
 
-const VIEW_KEY = "yeah:resource-view";
-const SIZE_KEY = "yeah:resource-page-size";
-
-function readStored(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function writeStored(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // storage blocked — preference just won't persist
-  }
-}
-
-const view = ref<"list" | "grid">(readStored(VIEW_KEY) === "grid" ? "grid" : "list");
-const pageSize = ref(Number(readStored(SIZE_KEY)) || 10);
+const view = ref<"list" | "grid">("list");
+const pageSize = ref(10);
 const page = ref(1);
 const search = ref("");
 const typeFilter = ref("");
@@ -50,9 +34,7 @@ const statusFilter = ref("");
 const serverFilter = ref("");
 const sortBy = ref<"name" | "status" | "type" | "server">("name");
 
-watch(view, (v) => writeStored(VIEW_KEY, v));
-watch(pageSize, (v) => writeStored(SIZE_KEY, String(v)));
-watch([search, typeFilter, statusFilter, serverFilter, sortBy, pageSize], () => {
+watch([search, typeFilter, statusFilter, serverFilter, sortBy], () => {
   page.value = 1;
 });
 
@@ -77,16 +59,9 @@ const filtered = computed(() => {
   return rows.sort((a, b) => key(a).localeCompare(key(b)) || a.name.localeCompare(b.name));
 });
 
-const pageCount = computed(() => Math.max(1, Math.ceil(filtered.value.length / pageSize.value)));
 const paged = computed(() => {
   const start = (page.value - 1) * pageSize.value;
   return filtered.value.slice(start, start + pageSize.value);
-});
-const rangeLabel = computed(() => {
-  if (filtered.value.length === 0) return "0 de 0";
-  const start = (page.value - 1) * pageSize.value + 1;
-  const end = Math.min(page.value * pageSize.value, filtered.value.length);
-  return `${start}-${end} de ${filtered.value.length}`;
 });
 const hasFilters = computed(() => Boolean(search.value || typeFilter.value || statusFilter.value || serverFilter.value));
 
@@ -131,14 +106,7 @@ function domainHref(domain: string): string {
           <option value="server">Ordenar: servidor</option>
         </select>
       </div>
-      <div class="view-toggle" role="group" aria-label="Modo de exibição">
-        <button type="button" :class="{ active: view === 'list' }" title="Lista" aria-label="Lista" @click="view = 'list'">
-          <span class="material-symbols-outlined">view_list</span>
-        </button>
-        <button type="button" :class="{ active: view === 'grid' }" title="Grade" aria-label="Grade" @click="view = 'grid'">
-          <span class="material-symbols-outlined">grid_view</span>
-        </button>
-      </div>
+      <ViewToggle v-model="view" storage-key="yeah:resource-view" />
     </div>
 
     <div v-if="loading" class="empty-state">carregando...</div>
@@ -174,7 +142,7 @@ function domainHref(domain: string): string {
               </td>
               <td data-label="Tipo">{{ row.typeLabel }}</td>
               <td data-label="Status">
-                <span class="badge" :class="row.statusBadge">{{ row.status }}</span>
+                <StatusBadge :status="row.status" />
               </td>
               <td data-label="Domínio" class="rtable-domain">
                 <a v-if="row.domain" :href="domainHref(row.domain)" target="_blank" rel="noopener noreferrer" class="mono">{{ row.domain }}</a>
@@ -202,10 +170,10 @@ function domainHref(domain: string): string {
         <div v-for="row in paged" :key="row.id" class="resource-card-wrap">
           <RouterLink :to="row.path" class="resource-card">
             <div class="name">
-              <span class="status-dot" :class="row.statusDot"></span>
+              <span class="status-dot" :class="`status-dot-${statusTone(row.status)}`"></span>
               <span class="material-symbols-outlined" style="font-size: 16px">{{ row.icon }}</span>
               {{ row.name }}
-              <span class="badge" :class="row.statusBadge" style="margin-left: auto">{{ row.status }}</span>
+              <StatusBadge :status="row.status" style="margin-left: auto" />
             </div>
             <div class="desc mono">{{ row.detail }}</div>
             <div class="desc">{{ row.domain || row.serverName }}</div>
@@ -222,22 +190,7 @@ function domainHref(domain: string): string {
         </div>
       </div>
 
-      <div class="rtable-pager">
-        <span class="muted">{{ rangeLabel }}</span>
-        <div class="rtable-pager-controls">
-          <select v-model.number="pageSize" class="form-control" aria-label="Itens por página">
-            <option :value="10">10</option>
-            <option :value="25">25</option>
-            <option :value="50">50</option>
-          </select>
-          <button type="button" class="btn btn-secondary btn-sm" :disabled="page <= 1" aria-label="Página anterior" @click="page--">
-            <span class="material-symbols-outlined" style="font-size: 18px">chevron_left</span>
-          </button>
-          <button type="button" class="btn btn-secondary btn-sm" :disabled="page >= pageCount" aria-label="Próxima página" @click="page++">
-            <span class="material-symbols-outlined" style="font-size: 18px">chevron_right</span>
-          </button>
-        </div>
-      </div>
+      <ListPager v-model:page="page" v-model:page-size="pageSize" :total="filtered.length" size-key="yeah:resource-page-size" />
     </template>
   </div>
 </template>

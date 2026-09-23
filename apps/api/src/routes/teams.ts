@@ -1,5 +1,5 @@
 import { Elysia, t } from "elysia";
-import { count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { applications, databases, deployments, servers, services, teams, teamMembers } from "@yeah/db";
 import type { TeamDto, TeamOverviewDto, TeamRole } from "@yeah/shared";
 import { db } from "../lib/db";
@@ -58,6 +58,45 @@ export const teamRoutes = new Elysia({ prefix: "/teams" })
       return { team: dto };
     },
     { body: t.Object({ name: t.String({ minLength: 1 }) }) },
+  )
+  .put(
+    "/:teamId",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const name = body.name.trim();
+      if (!name) {
+        set.status = 400;
+        return { error: "o nome não pode ficar vazio" };
+      }
+      const [team] = await db.update(teams).set({ name }).where(eq(teams.id, params.teamId)).returning();
+      if (!team) {
+        set.status = 404;
+        return { error: "team not found" };
+      }
+      const [member] = await db
+        .select({ role: teamMembers.role })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.userId, user.id)))
+        .limit(1);
+      const dto: TeamDto = {
+        id: team.id,
+        name: team.name,
+        personal: team.personal,
+        role: (member?.role ?? "owner") as TeamRole,
+        createdAt: team.createdAt.toISOString(),
+      };
+      return { team: dto };
+    },
+    { body: t.Object({ name: t.String({ minLength: 1, maxLength: 255 }) }) },
   )
   .get("/:teamId/overview", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
