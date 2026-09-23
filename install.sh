@@ -10,6 +10,7 @@
 #   1. Installs Docker + the Compose plugin if they're missing.
 #   2. Clones (or updates) yeah into /opt/yeah.
 #   3. Generates a production .env with random secrets — never overwrites an existing one.
+#      Pass --control-plane-only to install just the panel (this machine is not a deploy target).
 #   4. Builds and starts postgres, redis, api, worker, ws and web via docker compose.
 #   5. Runs pending database migrations.
 #   6. Installs a `yeah` CLI helper (update/logs/restart/status) to /usr/local/bin.
@@ -25,6 +26,123 @@ DEFAULT_WEB_PORT=58943
 log()  { printf '\033[1;36m==>\033[0m %s\n' "$1"; }
 warn() { printf '\033[1;33m!!\033[0m %s\n' "$1"; }
 die()  { printf '\033[1;31mERRO:\033[0m %s\n' "$1" >&2; exit 1; }
+
+# --- Opções --------------------------------------------------------------------------------
+# Rodando via "curl | sudo bash", passe as opções assim:  ... | sudo bash -s -- --control-plane-only
+# Também dá pra usar variáveis de ambiente (YEAH_CONTROL_PLANE_ONLY=1, YEAH_CLOUDFLARE_TUNNEL_TOKEN=...).
+CONTROL_PLANE_ONLY="${YEAH_CONTROL_PLANE_ONLY:-}"
+CF_TUNNEL_TOKEN="${YEAH_CLOUDFLARE_TUNNEL_TOKEN:-}"
+
+usage() {
+  cat <<'USAGE'
+uso: install.sh [opções]
+
+  --control-plane-only            Instala só o painel: esta máquina NÃO vira servidor de deploy (não gera a
+                                  chave SSH nem mexe em ~/.ssh/authorized_keys). Os servidores que vão rodar
+                                  os apps são adicionados depois, pela tela "Servidores", via SSH.
+  --cloudflare-tunnel-token=TOKEN Sobe também um cloudflared que expõe o painel por um túnel da Cloudflare
+                                  (sem IP público nem porta aberta). O hostname público é configurado no
+                                  painel da Cloudflare apontando pra http://web:80.
+  -h, --help                      Mostra esta ajuda.
+USAGE
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    --control-plane-only) CONTROL_PLANE_ONLY=1 ;;
+    --cloudflare-tunnel-token=*) CF_TUNNEL_TOKEN="${arg#*=}" ;;
+    -h|--help) usage; exit 0 ;;
+    *) die "opção desconhecida: $arg (veja --help)" ;;
+  esac
+done
+
+# Imprime o conteúdo do .env na saída padrão a partir das variáveis já definidas (PUBLIC_HOST, WEB_PORT,
+# POSTGRES_PASSWORD, SESSION_SECRET, ENCRYPTION_KEY, CONTROL_PLANE_ONLY, CF_TUNNEL_TOKEN e, no modo
+# completo, LOCALHOST_SSH_PRIVATE_KEY_BASE64). Fica numa função pra dar pra testar sem rodar o instalador
+# inteiro (test/install.test.ts faz `source` com YEAH_INSTALL_SOURCE_ONLY=1).
+render_env() {
+  local web_origin="http://${PUBLIC_HOST}:${WEB_PORT}"
+  # Atrás de um túnel a origem pública é https no hostname do túnel, sem porta.
+  [ -n "$CF_TUNNEL_TOKEN" ] && web_origin="https://${PUBLIC_HOST}"
+
+  cat <<EOF
+POSTGRES_USER=yeah
+POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+POSTGRES_DB=yeah
+SESSION_SECRET=${SESSION_SECRET}
+
+# Criptografa em repouso (AES-256-GCM) as chaves SSH, senhas de banco/S3/SMTP e .env dos recursos no Postgres.
+# GUARDE ESTA CHAVE: sem ela os segredos já gravados não podem ser lidos. Pra trocar, mova o valor atual
+# pra ENCRYPTION_KEY_PREVIOUS (aceita vários, separados por vírgula) e gere uma nova aqui.
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
+ENCRYPTION_KEY_PREVIOUS=
+
+API_PORT=3000
+WS_PORT=3001
+WEB_PORT=${WEB_PORT}
+
+# Opcional: deixe em branco pra servir o painel direto em "/" (padrão). Preencha com um caminho
+# (ex.: /a1b2c3d4) se quiser que o painel só responda sob essa URL — qualquer outra coisa na mesma
+# porta (incluindo "/") passa a não devolver nada. Depois de mudar, rode 'sudo yeah update'.
+PANEL_PATH=
+
+# Usado pro CORS (casos fora do proxy — dev local, etc.) e pra montar a callback URL do GitHub App.
+WEB_ORIGIN=${web_origin}
+
+# Deixe em branco: o nginx do próprio container "web" já reverse-proxya /api e /ws pro api/ws
+# internamente (apps/web/nginx.conf.template), então o frontend usa caminho relativo (mesma
+# origem) e não precisa saber o host/IP público em tempo de build. Só preencha se for rodar api/ws
+# num host ou porta diferente do dashboard (sem proxy compartilhado) — nesse caso rode
+# 'docker compose build web' de novo depois de mudar.
+VITE_API_URL=
+VITE_WS_URL=
+
+# GitHub App (opcional) — veja .env.example pra passo a passo de como cadastrar.
+GITHUB_APP_ID=
+GITHUB_APP_SLUG=
+GITHUB_APP_PRIVATE_KEY_BASE64=
+GITHUB_APP_WEBHOOK_SECRET=
+
+EOF
+
+  if [ "$CONTROL_PLANE_ONLY" = "1" ]; then
+    cat <<'EOF'
+# Modo "só painel" (--control-plane-only): esta máquina NÃO é um servidor de deploy. Nenhuma chave SSH
+# foi gerada aqui nem autorizada em ~/.ssh/authorized_keys, e o painel sobe sem nenhum servidor
+# cadastrado. Adicione as VPS que vão rodar os apps em "Servidores" → "Adicionar servidor".
+# (Pra transformar esta instalação em "painel + servidor local" depois, veja docs/INSTALLATION.md.)
+EOF
+  else
+    cat <<EOF
+# Chave gerada só pra isto — já autorizada em ~/.ssh/authorized_keys desta máquina. Usada pra
+# cadastrar esta própria máquina como servidor de deploy assim que a conta de admin é criada
+# (ver apps/api/src/lib/localhostServer.ts). Apague as quatro linhas abaixo se não quiser isso.
+LOCALHOST_SSH_PRIVATE_KEY_BASE64=${LOCALHOST_SSH_PRIVATE_KEY_BASE64}
+LOCALHOST_SSH_HOST=host.docker.internal
+LOCALHOST_SSH_PORT=22
+LOCALHOST_SSH_USER=root
+EOF
+  fi
+
+  if [ -n "$CF_TUNNEL_TOKEN" ]; then
+    cat <<EOF
+
+# Túnel da Cloudflare: o container cloudflared (profile "tunnel" do docker-compose.prod.yml) sai pra
+# Cloudflare e serve o painel — sem IP público nem porta aberta. No painel da Cloudflare, aponte o
+# hostname público pra http://web:80. A porta do painel fica só em 127.0.0.1, e o IP real do visitante
+# vem do cabeçalho CF-Connecting-IP (só é confiado se a conexão vier da rede interna do Docker).
+COMPOSE_PROFILES=tunnel
+CLOUDFLARE_TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+TRUST_CF_CONNECTING_IP=1
+WEB_BIND=127.0.0.1
+EOF
+  fi
+}
+
+# Só carrega as funções acima — usado pelos testes.
+if [ "${YEAH_INSTALL_SOURCE_ONLY:-}" = "1" ]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 [ "$(id -u)" -eq 0 ] || die "roda como root (sudo ./install.sh)"
 
@@ -76,82 +194,51 @@ else
   WEB_PORT=""
   if read -rp "Domínio ou IP público pra acessar o dashboard (deixe em branco pra localhost): " PUBLIC_HOST < /dev/tty 2>/dev/null; then
     read -rp "Porta pra expor o dashboard web [${DEFAULT_WEB_PORT}]: " WEB_PORT < /dev/tty 2>/dev/null || true
+    if [ -z "$CONTROL_PLANE_ONLY" ]; then
+      ANSWER=""
+      read -rp "Esta máquina também vai rodar os apps (servidor de deploy)? Responda 'n' pra instalar só o painel [S/n]: " ANSWER < /dev/tty 2>/dev/null || true
+      case "$ANSWER" in [nN]*) CONTROL_PLANE_ONLY=1 ;; esac
+    fi
+    if [ -z "$CF_TUNNEL_TOKEN" ]; then
+      read -rp "Token de túnel da Cloudflare pra expor o painel sem porta aberta (opcional, Enter pra pular): " CF_TUNNEL_TOKEN < /dev/tty 2>/dev/null || true
+    fi
   else
     warn "Sem terminal interativo — usando localhost:${DEFAULT_WEB_PORT}. Edite $ENV_FILE depois se precisar de outro host/porta."
   fi
   PUBLIC_HOST=${PUBLIC_HOST:-localhost}
   WEB_PORT=${WEB_PORT:-$DEFAULT_WEB_PORT}
+  CONTROL_PLANE_ONLY=${CONTROL_PLANE_ONLY:-0}
 
   POSTGRES_PASSWORD=$(openssl rand -hex 24)
   SESSION_SECRET=$(openssl rand -hex 32)
   ENCRYPTION_KEY=$(openssl rand -hex 32)
 
-  # Cadastra a própria máquina como o primeiro servidor de deploy, igual o Coolify faz — sem isso
-  # o usuário teria que adicionar "localhost" manualmente antes de conseguir fazer o primeiro
-  # deploy. Fica pro worker (rodando em container) alcançar via host.docker.internal, e o api
-  # insere a linha no banco assim que a conta de admin é criada (ver createLocalhostServerIfConfigured
-  # em apps/api/src/lib/localhostServer.ts) — não dá pra fazer isso aqui ainda porque não existe
-  # time/usuário até o registro na tela web.
-  log "Gerando chave SSH pra registrar esta máquina como servidor de deploy..."
-  SSH_KEY_PATH="$INSTALL_DIR/.yeah_localhost.key"
-  if [ ! -f "$SSH_KEY_PATH" ]; then
-    ssh-keygen -t ed25519 -N "" -f "$SSH_KEY_PATH" -C "yeah-localhost" -q
+  LOCALHOST_SSH_PRIVATE_KEY_BASE64=""
+  if [ "$CONTROL_PLANE_ONLY" = "1" ]; then
+    log "Modo só-painel: esta máquina não vira servidor de deploy (nenhuma chave SSH gerada)."
+  else
+    # Cadastra a própria máquina como o primeiro servidor de deploy, igual o Coolify faz — sem isso
+    # o usuário teria que adicionar "localhost" manualmente antes de conseguir fazer o primeiro
+    # deploy. Fica pro worker (rodando em container) alcançar via host.docker.internal, e o api
+    # insere a linha no banco assim que a conta de admin é criada (ver createLocalhostServerIfConfigured
+    # em apps/api/src/lib/localhostServer.ts) — não dá pra fazer isso aqui ainda porque não existe
+    # time/usuário até o registro na tela web.
+    log "Gerando chave SSH pra registrar esta máquina como servidor de deploy..."
+    SSH_KEY_PATH="$INSTALL_DIR/.yeah_localhost.key"
+    if [ ! -f "$SSH_KEY_PATH" ]; then
+      ssh-keygen -t ed25519 -N "" -f "$SSH_KEY_PATH" -C "yeah-localhost" -q
+    fi
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    touch ~/.ssh/authorized_keys
+    if ! grep -qF "$(cat "${SSH_KEY_PATH}.pub")" ~/.ssh/authorized_keys 2>/dev/null; then
+      cat "${SSH_KEY_PATH}.pub" >> ~/.ssh/authorized_keys
+      chmod 600 ~/.ssh/authorized_keys
+    fi
+    LOCALHOST_SSH_PRIVATE_KEY_BASE64=$(base64 -w0 "$SSH_KEY_PATH")
   fi
-  mkdir -p ~/.ssh
-  chmod 700 ~/.ssh
-  touch ~/.ssh/authorized_keys
-  if ! grep -qF "$(cat "${SSH_KEY_PATH}.pub")" ~/.ssh/authorized_keys 2>/dev/null; then
-    cat "${SSH_KEY_PATH}.pub" >> ~/.ssh/authorized_keys
-    chmod 600 ~/.ssh/authorized_keys
-  fi
-  LOCALHOST_SSH_PRIVATE_KEY_BASE64=$(base64 -w0 "$SSH_KEY_PATH")
 
-  cat > "$ENV_FILE" <<EOF
-POSTGRES_USER=yeah
-POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-POSTGRES_DB=yeah
-SESSION_SECRET=${SESSION_SECRET}
-
-# Criptografa em repouso (AES-256-GCM) as chaves SSH, senhas de banco/S3/SMTP e .env dos recursos no Postgres.
-# GUARDE ESTA CHAVE: sem ela os segredos já gravados não podem ser lidos. Pra trocar, mova o valor atual
-# pra ENCRYPTION_KEY_PREVIOUS (aceita vários, separados por vírgula) e gere uma nova aqui.
-ENCRYPTION_KEY=${ENCRYPTION_KEY}
-ENCRYPTION_KEY_PREVIOUS=
-
-API_PORT=3000
-WS_PORT=3001
-WEB_PORT=${WEB_PORT}
-
-# Opcional: deixe em branco pra servir o painel direto em "/" (padrão). Preencha com um caminho
-# (ex.: /a1b2c3d4) se quiser que o painel só responda sob essa URL — qualquer outra coisa na mesma
-# porta (incluindo "/") passa a não devolver nada. Depois de mudar, rode 'sudo yeah update'.
-PANEL_PATH=
-
-# Usado pro CORS (casos fora do proxy — dev local, etc.) e pra montar a callback URL do GitHub App.
-WEB_ORIGIN=http://${PUBLIC_HOST}:${WEB_PORT}
-
-# Deixe em branco: o nginx do próprio container "web" já reverse-proxya /api e /ws pro api/ws
-# internamente (apps/web/nginx.conf.template), então o frontend usa caminho relativo (mesma
-# origem) e não precisa saber o host/IP público em tempo de build. Só preencha se for rodar api/ws
-# num host ou porta diferente do dashboard (sem proxy compartilhado) — nesse caso rode
-# 'docker compose build web' de novo depois de mudar.
-VITE_API_URL=
-VITE_WS_URL=
-
-# GitHub App (opcional) — veja .env.example pra passo a passo de como cadastrar.
-GITHUB_APP_ID=
-GITHUB_APP_SLUG=
-GITHUB_APP_PRIVATE_KEY_BASE64=
-GITHUB_APP_WEBHOOK_SECRET=
-
-# Chave gerada só pra isto — já autorizada em ~/.ssh/authorized_keys desta máquina. Usada pra
-# cadastrar esta própria máquina como servidor de deploy assim que a conta de admin é criada
-# (ver apps/api/src/lib/localhostServer.ts). Apague as três linhas abaixo se não quiser isso.
-LOCALHOST_SSH_PRIVATE_KEY_BASE64=${LOCALHOST_SSH_PRIVATE_KEY_BASE64}
-LOCALHOST_SSH_HOST=host.docker.internal
-LOCALHOST_SSH_PORT=22
-LOCALHOST_SSH_USER=root
-EOF
+  render_env > "$ENV_FILE"
   chmod 600 "$ENV_FILE"
   log ".env gerado com senha de banco e segredo de sessão aleatórios."
 fi
@@ -221,6 +308,14 @@ echo
 log "Pronto! Acesse http://${PUBLIC_HOST_FINAL}:${WEB_PORT_FINAL}${PANEL_PATH_FINAL}/ e crie sua conta em /register."
 if [ -n "$PANEL_PATH_FINAL" ]; then
   warn "Guarde essa URL — o painel só responde nesse caminho (PANEL_PATH em $ENV_FILE); qualquer outra URL na mesma porta não devolve nada, de propósito."
+fi
+if grep -q '^LOCALHOST_SSH_PRIVATE_KEY_BASE64=.' "$ENV_FILE"; then
+  log "Esta máquina já entra como o primeiro servidor de deploy (\"Servidor local\") assim que você criar a conta."
+else
+  log "Instalação só-painel: nenhum servidor de deploy ainda. Depois de criar a conta, vá em Servidores → Adicionar servidor e conecte a VPS que vai rodar os apps (a tela gera a chave SSH e mostra o comando pra autorizar)."
+fi
+if grep -q '^CLOUDFLARE_TUNNEL_TOKEN=.' "$ENV_FILE"; then
+  log "Túnel Cloudflare ativo: aponte o hostname público pra http://web:80 no painel da Cloudflare. A porta local só escuta em 127.0.0.1."
 fi
 log "Comandos: yeah update | yeah logs [serviço] | yeah restart | yeah status | yeah stop"
 warn "Sem domínio real + TLS na frente ainda — coloque um Caddy/nginx com certificado se for expor na internet. Veja docs/INSTALLATION.md."

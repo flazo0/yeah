@@ -169,13 +169,39 @@ services:
         VITE_BASE_PATH: ${PANEL_PATH:-}
     environment:
       PANEL_PATH: ${PANEL_PATH:-}
+      # "1" quando o painel fica atrás do túnel da Cloudflare: o nginx passa a usar o cabeçalho
+      # CF-Connecting-IP como IP do visitante (só se a conexão vier da rede interna do Docker).
+      TRUST_CF_CONNECTING_IP: ${TRUST_CF_CONNECTING_IP:-}
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-8080}:80"
+      # WEB_BIND=127.0.0.1 deixa a porta só local (usado com o túnel, que não precisa de porta aberta).
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80"
     deploy:
       resources:
         limits:
           memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Túnel da Cloudflare pro painel (opcional): só sobe com COMPOSE_PROFILES=tunnel (o install.sh grava
+  # isso quando recebe --cloudflare-tunnel-token). O hostname público é configurado no painel da
+  # Cloudflare apontando pra http://web:80.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+    deploy:
+      resources:
+        limits:
+          memory: 96M
     logging:
       driver: json-file
       options:

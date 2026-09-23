@@ -1,11 +1,38 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { api } from "../../lib/api";
+import { onUnmounted, ref } from "vue";
+import { useRouter } from "vue-router";
+import { api, ApiError } from "../../lib/api";
 import { useServerContext } from "../../composables/useServerContext";
 import StatusBadge from "../../components/StatusBadge.vue";
 
-const { server, teamId } = useServerContext();
+const { server, teamId, error } = useServerContext();
+const router = useRouter();
 const testing = ref(false);
+
+const confirmingRemove = ref(false);
+const removing = ref(false);
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+onUnmounted(() => clearTimeout(confirmTimer));
+
+async function removeServer() {
+  if (!server.value) return;
+  if (!confirmingRemove.value) {
+    confirmingRemove.value = true;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => (confirmingRemove.value = false), 4000);
+    return;
+  }
+  removing.value = true;
+  error.value = "";
+  try {
+    await api.delete(`/teams/${teamId}/servers/${server.value.id}`);
+    router.push(`/teams/${teamId}/servers`);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao remover o servidor";
+    confirmingRemove.value = false;
+    removing.value = false;
+  }
+}
 
 async function testConnection() {
   if (!server.value) return;
@@ -42,6 +69,23 @@ async function testConnection() {
           Testar conexão
         </button>
       </div>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px; color: var(--bad)">warning</span>
+      Remover servidor
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Tira o servidor do painel; nada é apagado na máquina (containers, proxy e arquivos ficam lá). Só dá pra remover quando
+        não houver aplicação, banco ou serviço nele.
+      </p>
+      <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="removing" @click="removeServer">
+        <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
+        {{ confirmingRemove ? "Confirmar remoção?" : "Remover servidor" }}
+      </button>
     </div>
   </div>
 </template>

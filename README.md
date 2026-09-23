@@ -33,6 +33,14 @@ curl -fsSL https://raw.githubusercontent.com/flazo0/yeah/main/install.sh | sudo 
 
 Um comando: instala Docker se faltar, sobe Postgres/Redis/API/worker/WS/dashboard via `docker compose`, roda as migrations. Detalhes, requisitos e como atualizar depois: **[docs/INSTALLATION.md](docs/INSTALLATION.md)**.
 
+**Quer o painel fora da VPS de produção?** Instale só o painel (num PC de casa, Raspberry Pi ou VPS barata) e conecte a VPS por SSH — ela não gasta recurso com o dashboard:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/flazo0/yeah/main/install.sh | sudo bash -s -- --control-plane-only
+```
+
+O passo a passo (inclusive acesso de qualquer lugar por túnel da Cloudflare) está em [docs/INSTALLATION.md](docs/INSTALLATION.md#painel-separado-dos-servidores-só-o-painel).
+
 ## Desenvolvimento local
 
 ```bash

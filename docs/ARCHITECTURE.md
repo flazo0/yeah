@@ -22,6 +22,12 @@
                                                                     └───────────────┘
 ```
 
+### Onde o painel roda em relação aos servidores
+
+O painel (api, worker, ws, web, Postgres, Redis) e os servidores gerenciados são coisas independentes: o worker é o único que fala SSH e trata todo destino como remoto, nunca assume um socket Docker local (nem para o "Servidor local", que é só uma linha em `servers` que aponta pra `host.docker.internal`). Por isso dá pra instalar só o painel numa máquina e nunca cadastrar essa máquina como servidor (`install.sh --control-plane-only`, ver `docs/INSTALLATION.md`). O que muda é uma única peça: `createLocalhostServerIfConfigured` (`apps/api/src/lib/localhostServer.ts`) só cria o "Servidor local" — marcado `is_platform_host` — quando `LOCALHOST_SSH_PRIVATE_KEY_BASE64` está no ambiente, e o instalador só escreve isso fora do modo separado. Sem servidor `is_platform_host`, as operações "atualizar plataforma/sistema" (que agem por SSH nesse servidor) respondem 409 `no_platform_host` e a tela *Atualizações* esconde os botões: o painel se atualiza com `yeah update` na própria máquina.
+
+A conexão é sempre do painel para o servidor (saída de rede do painel, porta SSH aberta no servidor). Isso é diferente do problema que o Coolify v5 resolve com um agente que disca de volta (`docs/v5/architecture/adr/` no repo deles): gerenciar hosts atrás de NAT sem IP público. O `yeah` não tem esse caso — o servidor gerenciado precisa ser alcançável por SSH — e por isso segue sem agente.
+
 ## Por que 4 processos separados
 
 - **`api`** (Elysia) — só HTTP. Nunca fala SSH diretamente com o servidor do usuário (com duas exceções deliberadas e documentadas no código: download de backup e teardown na exclusão — ambos são operações síncronas e limitadas que o navegador já está esperando, não vale a pena um job + polling só pra isso).

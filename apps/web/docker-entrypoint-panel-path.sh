@@ -19,6 +19,7 @@ server {
     listen 80;
     server_name _;
     root /usr/share/nginx/html;
+    include /etc/nginx/realip.inc;
 
     location = ${PREFIX} {
         return 301 ${PREFIX}/;

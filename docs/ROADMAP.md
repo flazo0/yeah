@@ -52,14 +52,14 @@ Diagnóstico (revisita à instância real): cor/ícone/CSS já estão bons; o pr
 
 Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar recurso da VPS de produção. **Já é ~90% possível** — o worker só fala SSH e `localhostServer.ts` só registra servidor local se `LOCALHOST_SSH_PRIVATE_KEY_BASE64` existir; a lacuna é o `install.sh`. Dokploy documenta o mesmo modo oficialmente (~250MB de RAM só-UI). Sem problema de NAT: a conexão parte do painel pra VPS com IP público.
 
-- [ ] `install.sh` com modo `--control-plane-only` (ou pergunta interativa) que pula `ssh-keygen` + as env vars `LOCALHOST_SSH_*`.
-- [ ] Documentar a topologia no `README.md` e `docs/ARCHITECTURE.md` (painel em PC de casa / VPS de $4 / Raspberry Pi + VPS de produção como servidor remoto).
-- [ ] Testar de ponta a ponta: painel numa máquina, deploy/backup/métricas/proxy numa VPS remota.
-- [ ] Validar que **métricas remotas funcionam** nesse modo (Dokploy lista como não suportado; o nosso lê tudo via SSH exec, deve funcionar).
-- [ ] Guia "adicionar sua primeira VPS remota" (gerar chave, autorizar no `authorized_keys`, adicionar na UI).
-- [ ] **Cloudflare Tunnel pro próprio painel** (acessar de qualquer lugar sem IP público/port-forward) — mesma peça de infra do túnel de apps (Fase 3).
-- [ ] Botão de "converter" instalação existente: remover o servidor local automático sem quebrar recursos.
-- [ ] Remover/esconder atualização de plataforma quando o painel estiver em modo separado (`is_platform_host` só no host do painel).
+- [x] `install.sh` com modo `--control-plane-only` (flag, `YEAH_CONTROL_PLANE_ONLY=1` ou pergunta interativa) que pula `ssh-keygen`, o `authorized_keys` e as env vars `LOCALHOST_SSH_*`. A geração do `.env` está coberta por testes (`test/install.test.ts`); o script inteiro não foi rodado numa VPS Linux real.
+- [x] Documentar a topologia no `README.md`, `docs/INSTALLATION.md` (seção "Painel separado") e `docs/ARCHITECTURE.md`.
+- [x] Testar de ponta a ponta: painel no PC (sem servidor local) + "VPS" remota (container docker-in-docker com sshd). Provisionou um PostgreSQL por SSH (running), rodou backup (success), leu métricas, removeu tudo (container remoto derrubado). Não cobriu build de aplicação a partir do Git nem proxy (a rede do docker aninhado falhava no Docker Hub), nem uma VPS de verdade pela internet.
+- [x] Validar que **métricas remotas funcionam** nesse modo: sim — CPU 12% / RAM 24% / disco 3% lidos por SSH da VPS remota, sem nada instalado nela.
+- [x] Guia "adicionar sua primeira VPS remota": botão **Gerar chave nova** na tela de adicionar servidor (par ed25519 em formato OpenSSH, validado contra o parser do ssh2) + comando pronto pra autorizar a chave pública + seção no `docs/INSTALLATION.md`.
+- [x] **Cloudflare Tunnel pro próprio painel**: `--cloudflare-tunnel-token=` sobe o `cloudflared` (profile `tunnel` do compose), deixa a porta local em `127.0.0.1`, usa origem https e cookie `Secure`, e o nginx confia em `CF-Connecting-IP` só vindo da rede interna do Docker (testado: com a opção ligada usa o IP do cabeçalho, desligada ignora um cabeçalho forjado). Compose e nginx validados (`config`, `nginx -t`); não testado com um token real da Cloudflare.
+- [x] "Converter" instalação existente: **Servidores → (servidor) → Remover servidor** tira o servidor local do painel sem apagar nada na máquina, recusando enquanto houver recurso nele (rota nova `DELETE /teams/:teamId/servers/:serverId`; testada).
+- [x] Esconder atualização de plataforma/sistema quando o painel está em modo separado: `GET /updates/platform` devolve `hasPlatformHost`, as rotas de execução respondem 409 `no_platform_host` (testado) e a tela Atualizações esconde o card de sistema e troca o botão por "rode `sudo yeah update`" (o aviso só aparece com commit rastreável, ou seja, em produção; não visto no navegador).
 
 ## Fase 3 — Aplicações
 
@@ -137,7 +137,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] **Keys & Tokens**: tela de gerenciamento de chaves SSH (criar, importar, reutilizar entre servidores/fontes), separada do formulário do servidor.
 - [ ] **Log Drains**: encaminhar logs pra Loki / Axiom / New Relic / Fluent Bit.
 - [ ] **CA Certificate** por servidor (registry/proxy com certificado interno).
-- [ ] Excluir servidor (hoje não há rota `DELETE` de servidor) com checagem de recursos vinculados.
+- [x] Excluir servidor com checagem de recursos vinculados (feito na Fase 2 — remove só do painel; a lista de recursos bloqueia a remoção).
 - [ ] Servidor de **Build** separado do de **Deploy** (Dokploy): job de build roda numa máquina, imagem vai pra registry, servidor de deploy puxa.
 - [ ] Métricas **por container** via `docker stats --no-stream` no job SSH que já existe (sem instalar agente — não copiar o "Sentinel" do Coolify).
 - [ ] **Série temporal de métricas** (hoje só o snapshot mais recente) + gráfico das últimas 24h/7d, incluindo o gráfico no Dashboard.

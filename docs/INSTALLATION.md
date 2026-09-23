@@ -27,6 +27,44 @@ Ao final, acesse `http://<seu-host>:<porta>` e crie sua conta em `/register`.
 
 > **Sem HTTPS por padrão.** O instalador expõe o dashboard em HTTP puro pra simplificar o primeiro acesso. Se for expor pra internet, coloque um reverse proxy na frente com certificado — o jeito mais simples é [Caddy](https://caddyserver.com/) (HTTPS automático, um arquivo `Caddyfile` de 3 linhas), mas Traefik ou nginx+certbot funcionam igual. Isso é **infra de quem hospeda o `yeah`**, diferente do Traefik que o próprio `yeah` sobe nos servidores dos *seus* usuários (isso aí já vem automático, ver `docs/ARCHITECTURE.md`).
 
+### Painel separado dos servidores (só o painel)
+
+O `yeah` é 100% agentless: quem fala com os servidores é sempre o worker, por SSH — então o painel não precisa rodar na mesma máquina que os seus apps. Dá pra instalar **só o painel** num PC de casa, num Raspberry Pi ou numa VPS barata, e conectar a VPS de produção como um servidor remoto. A VPS de produção não gasta RAM/CPU com o dashboard, a API, o Postgres do painel nem o Redis (o painel usa em torno de 250MB em repouso).
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/flazo0/yeah/main/install.sh | sudo bash -s -- --control-plane-only
+```
+
+(Rodando o script direto: `sudo ./install.sh --control-plane-only`. Sem a flag e com terminal interativo, o instalador pergunta "Esta máquina também vai rodar os apps?" — responda `n`.)
+
+O que muda nesse modo: **nenhuma chave SSH é gerada e o `~/.ssh/authorized_keys` da máquina não é tocado**; o painel sobe sem nenhum servidor cadastrado (não existe o "Servidor local"). Depois de criar a conta:
+
+1. Vá em **Servidores → Adicionar servidor**.
+2. Preencha nome, host/IP, porta e usuário SSH da VPS de produção e clique em **Gerar chave nova** — a tela gera um par ed25519, coloca a chave privada no formulário (ela é guardada criptografada no banco) e mostra o comando que autoriza a chave pública.
+3. Rode esse comando na VPS (como o usuário SSH que você escolheu) e clique em **Adicionar servidor**. O status vira `connected` e o Docker da VPS aparece.
+
+Só precisa de **saída de rede** do painel até a VPS na porta SSH (o inverso não é necessário) — então o painel pode ficar atrás de NAT, sem IP público. Métricas de CPU/RAM/disco, deploy, backup e proxy funcionam igual, tudo por SSH.
+
+Diferenças a saber nesse modo:
+
+- **Atualizar o painel** é `sudo yeah update` na máquina do painel. Na tela *Atualizações* os botões "Atualizar plataforma" e "Atualizar sistema" somem, porque eles agem por SSH num servidor marcado como host da plataforma, e no modo separado o painel não roda em nenhum servidor cadastrado.
+- Os servidores de deploy são atualizados direto neles (`apt` etc.).
+- **Já instalou com o servidor local e quer converter?** Não precisa reinstalar: mova/exclua os recursos do "Servidor local" e remova-o em **Servidores → (servidor) → Remover servidor** (isso só tira ele do painel; nada é apagado na máquina). Se depois quiser também deixar de autorizar a chave dele, apague a linha `yeah-localhost` do `~/.ssh/authorized_keys` e as `LOCALHOST_SSH_*` do `.env`.
+
+#### Acessar o painel de qualquer lugar (Cloudflare Tunnel)
+
+Se o painel roda numa máquina sem IP público (casa, CGNAT), dá pra expô-lo por um [túnel da Cloudflare](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/) — sem abrir porta nem configurar roteador:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/flazo0/yeah/main/install.sh | sudo bash -s -- --control-plane-only --cloudflare-tunnel-token=SEU_TOKEN
+```
+
+1. No painel da Cloudflare (Zero Trust → Networks → Tunnels) crie um túnel e copie o token.
+2. Adicione um *public hostname* (ex.: `painel.seudominio.com`) apontando pra o serviço `http://web:80`.
+3. Ao instalar, informe esse hostname como domínio do painel. O instalador sobe também o container `cloudflared` (profile `tunnel` do `docker-compose.prod.yml`), guarda o token no `.env`, deixa a porta local só em `127.0.0.1` e passa a usar `https://<hostname>` como origem (o cookie de sessão sai com a flag `Secure`).
+
+O rate limit da API usa o IP real do visitante: atrás do túnel o nginx lê o cabeçalho `CF-Connecting-IP`, mas só quando a conexão vem da rede interna do Docker — quem acessa a porta exposta direto não consegue forjar esse cabeçalho.
+
 ### Atualizando
 
 ```bash

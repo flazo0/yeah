@@ -4,7 +4,7 @@ import { users, teams, teamMembers, type User } from "@yeah/db";
 import type { SafeUser } from "@yeah/shared";
 import { db } from "../lib/db";
 import { hashPassword, verifyPassword } from "../lib/password";
-import { createSession, destroySession, getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
+import { createSession, destroySession, getUserFromSessionId, sessionCookieOptions, SESSION_COOKIE } from "../lib/session";
 import { createDefaultProject } from "../lib/projects";
 import { createLocalhostServerIfConfigured } from "../lib/localhostServer";
 
@@ -59,13 +59,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       }
 
       const session = await createSession(user.id);
-      cookie[SESSION_COOKIE]?.set({
-        value: session.id,
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        expires: session.expiresAt,
-      });
+      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
 
       return { user: toSafeUser(user) };
     },
@@ -88,13 +82,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       }
 
       const session = await createSession(user.id);
-      cookie[SESSION_COOKIE]?.set({
-        value: session.id,
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        expires: session.expiresAt,
-      });
+      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
 
       return { user: toSafeUser(user) };
     },

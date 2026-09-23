@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { desc, eq } from "drizzle-orm";
-import { databases, platformOperations, services, type PlatformOperation } from "@yeah/db";
+import { databases, platformOperations, servers, services, type PlatformOperation } from "@yeah/db";
 import type { ImageUpdateResourceDto, PlatformOperationDto, SystemImageUpdateDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -108,6 +108,17 @@ function toPlatformOperationDto(op: PlatformOperation): PlatformOperationDto {
   };
 }
 
+async function hasPlatformHost(): Promise<boolean> {
+  const rows = await db.select({ id: servers.id }).from(servers).where(eq(servers.isPlatformHost, true)).limit(1);
+  return rows.length > 0;
+}
+
+const NO_PLATFORM_HOST = {
+  error:
+    "Este painel está em modo separado (não roda em nenhum servidor cadastrado), então não dá pra atualizar por aqui. Rode `sudo yeah update` na máquina do painel.",
+  code: "no_platform_host",
+};
+
 async function startPlatformOperation(kind: "platform_update" | "system_update"): Promise<PlatformOperationDto | null> {
   // One at a time, whichever kind — both touch the same host, running two at once would race.
   const inFlight = await db
@@ -130,13 +141,17 @@ export const updateRoutes = new Elysia()
       set.status = 401;
       return { error: "unauthorized" };
     }
-    return checkPlatformUpdate();
+    return { ...(await checkPlatformUpdate()), hasPlatformHost: await hasPlatformHost() };
   })
   .post("/updates/platform/run", async ({ cookie, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
       set.status = 401;
       return { error: "unauthorized" };
+    }
+    if (!(await hasPlatformHost())) {
+      set.status = 409;
+      return NO_PLATFORM_HOST;
     }
     const operation = await startPlatformOperation("platform_update");
     if (!operation) {
@@ -150,6 +165,10 @@ export const updateRoutes = new Elysia()
     if (!user) {
       set.status = 401;
       return { error: "unauthorized" };
+    }
+    if (!(await hasPlatformHost())) {
+      set.status = 409;
+      return NO_PLATFORM_HOST;
     }
     const operation = await startPlatformOperation("system_update");
     if (!operation) {

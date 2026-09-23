@@ -109,7 +109,7 @@ onUnmounted(() => unsubscribe?.());
       <ViewToggle v-model="view" storage-key="yeah:servers-view" />
     </div>
 
-    <PageState :loading="loading" :empty="servers.length === 0" empty-icon="dns" empty-text="Nenhum servidor ainda. Adicione o primeiro pelo botão acima.">
+    <PageState :loading="loading" :empty="servers.length === 0" empty-icon="dns" empty-text="Nenhum servidor ainda. Adicione a VPS que vai rodar seus apps pelo botão acima — a tela gera a chave SSH e mostra o comando pra autorizá-la.">
       <div v-if="filtered.length === 0" class="empty-state">Nenhum servidor bate com os filtros.</div>
 
       <div v-else-if="view === 'list'" class="rtable-wrap">

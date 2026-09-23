@@ -2010,3 +2010,24 @@ input:-webkit-autofill:focus {
 .card-icon-btn .material-symbols-outlined {
   font-size: 18px;
 }
+
+/* Callout with a copyable command (add-server key authorization) */
+.callout {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+}
+.callout-code {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}

@@ -12,6 +12,7 @@ const route = useRoute();
 const teamId = route.params.teamId as string;
 
 interface PlatformUpdate {
+  hasPlatformHost?: boolean;
   currentCommit: string | null;
   latestCommit: string | null;
   updateAvailable: boolean | null;
@@ -188,6 +189,7 @@ onUnmounted(() => {
           <span v-else-if="platform.updateAvailable === false" class="badge badge-good">em dia</span>
           <a v-if="platform.compareUrl" :href="platform.compareUrl" target="_blank" rel="noopener" class="label-link">ver mudanças</a>
           <button
+            v-if="platform.hasPlatformHost !== false"
             type="button"
             class="btn"
             style="margin-left: auto"
@@ -198,7 +200,11 @@ onUnmounted(() => {
             {{ opRunning(platformOp) ? "atualizando..." : confirmingPlatform ? "Confirmar atualização?" : "Atualizar plataforma" }}
           </button>
         </div>
-        <p class="hint mt-16" style="margin-top: 12px">
+        <p v-if="platform.hasPlatformHost === false" class="hint mt-16" style="margin-top: 12px">
+          Painel em modo separado (não roda num servidor cadastrado): pra atualizar, rode <span class="mono">sudo yeah update</span> na
+          máquina do painel. Os servidores de deploy você atualiza direto neles, por SSH.
+        </p>
+        <p v-else class="hint mt-16" style="margin-top: 12px">
           Faz <span class="mono">git pull</span> + rebuild dos containers + migrations, direto no servidor marcado como host da plataforma. A API/worker reiniciam durante o processo — o log abaixo continua acompanhando mesmo assim.
         </p>
         <div v-if="platformOp" class="mt-16" style="margin-top: 12px">
@@ -210,7 +216,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="card mb-16">
+    <div v-if="platform?.hasPlatformHost !== false" class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">dns</span>
         Sistema operacional (VPS)

@@ -198,3 +198,4 @@ export function removeRemoteFile(conn: Client, remotePath: string): Promise<void
     });
   });
 }
+export { generateSshKeyPair, type SshKeyPair } from "./keygen";

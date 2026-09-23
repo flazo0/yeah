@@ -58,10 +58,13 @@ RUN apk add --no-cache nodejs && ./node_modules/.bin/vue-tsc -b && ./node_module
 FROM nginx:1.27-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
+# Empty by default; apps/web/docker-entrypoint-realip.sh fills it when TRUST_CF_CONNECTING_IP=1.
+COPY apps/web/realip.inc /etc/nginx/realip.inc
+COPY apps/web/docker-entrypoint-realip.sh /docker-entrypoint.d/30-realip.sh
 # PANEL_PATH (docker-compose.prod.yml) is opt-in — empty by default, in which case this script is
 # a no-op and nginx just uses the plain config above. If it's set, this rewrites conf.d/default.conf
 # at container start (nginx's own /docker-entrypoint.d/ hook mechanism) to answer only under that
 # prefix. See apps/web/docker-entrypoint-panel-path.sh.
 COPY apps/web/docker-entrypoint-panel-path.sh /docker-entrypoint.d/40-panel-path.sh
-RUN chmod +x /docker-entrypoint.d/40-panel-path.sh
+RUN chmod +x /docker-entrypoint.d/40-panel-path.sh /docker-entrypoint.d/30-realip.sh
 EXPOSE 80

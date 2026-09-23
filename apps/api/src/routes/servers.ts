@@ -1,6 +1,7 @@
 import { Elysia, t } from "elysia";
-import { and, eq } from "drizzle-orm";
-import { servers, type Server } from "@yeah/db";
+import { and, count, eq } from "drizzle-orm";
+import { applications, databases, servers, services, type Server } from "@yeah/db";
+import { generateSshKeyPair } from "@yeah/ssh";
 import type { ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -30,6 +31,20 @@ function toServerDto(server: Server): ServerDto {
 }
 
 export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
+  // A fresh ed25519 keypair for the "add server" form: the private half goes into that form, the public
+  // half is what the user authorizes on the machine. Nothing is stored here.
+  .post("/generate-key", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    return generateSshKeyPair("yeah");
+  })
   .get("/", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
@@ -174,4 +189,45 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
     await db.update(servers).set({ proxyStatus: "provisioning" }).where(eq(servers.id, server.id));
     await proxyProvisionQueue.add("provision", { serverId: server.id });
     return { queued: true };
+  })
+  // Removes the server from the panel only: nothing on the machine itself is touched (containers,
+  // Traefik and files stay). Refused while anything is still deployed on it, since the rows of those
+  // resources would cascade away while their containers kept running.
+  .delete("/:serverId", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const rows = await db
+      .select()
+      .from(servers)
+      .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+      .limit(1);
+    const server = rows[0];
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+
+    const [apps, dbs, svcs] = await Promise.all(
+      [applications, databases, services].map(async (table) => {
+        const [row] = await db.select({ n: count() }).from(table).where(eq(table.serverId, server.id));
+        return row?.n ?? 0;
+      }),
+    );
+    if ((apps ?? 0) + (dbs ?? 0) + (svcs ?? 0) > 0) {
+      set.status = 409;
+      return {
+        error: `Ainda há recursos neste servidor (${apps} aplicação(ões), ${dbs} banco(s), ${svcs} serviço(s)). Exclua ou mova esses recursos antes de remover o servidor.`,
+      };
+    }
+
+    await db.delete(servers).where(eq(servers.id, server.id));
+    return { ok: true };
   });
