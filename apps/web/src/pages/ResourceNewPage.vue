@@ -64,6 +64,49 @@ const cards = computed<CatalogCard[]>(() => [
     description: "Repositórios públicos ou privados da sua conta pelo GitHub App, com auto-deploy a cada push.",
     icon: "hub",
   },
+  {
+    id: "app-deploykey",
+    category: "application",
+    name: "Repositório privado (Deploy Key)",
+    subtitle: "Origem Git · SSH",
+    description: "Qualquer Git por SSH (GitHub, GitLab, Gitea, servidor próprio). O yeah gera uma chave só pra esse repositório e mostra a pública pra você cadastrar.",
+    icon: "key",
+  },
+  {
+    id: "app-nixpacks",
+    category: "application",
+    name: "Nixpacks",
+    subtitle: "Build pack · Git",
+    description: "Sem Dockerfile: o Nixpacks detecta a linguagem (Node, Python, Go, PHP...) e monta a imagem. Instalado no servidor na primeira vez.",
+    icon: "auto_fix_high",
+    docsUrl: "https://nixpacks.com/docs",
+  },
+  {
+    id: "app-static",
+    category: "application",
+    name: "Site estático",
+    subtitle: "Build pack · Git",
+    description: "Serve uma pasta do repositório (HTML, ou a saída já buildada do seu front) com nginx.",
+    icon: "web",
+  },
+  {
+    id: "app-image",
+    category: "application",
+    name: "Docker Image",
+    subtitle: "Imagem pronta",
+    description: "Roda uma imagem de qualquer registry público, sem Git e sem build.",
+    icon: "deployed_code_history",
+    docsUrl: "https://docs.docker.com/reference/cli/docker/image/pull/",
+  },
+  {
+    id: "app-inline",
+    category: "application",
+    name: "Dockerfile",
+    subtitle: "Dockerfile colado",
+    description: "Cole um Dockerfile aqui e o yeah builda no servidor — sem repositório.",
+    icon: "description",
+    docsUrl: "https://docs.docker.com/reference/dockerfile/",
+  },
   ...(Object.entries(DATABASE_ENGINES) as [DatabaseEngine, (typeof DATABASE_ENGINES)[DatabaseEngine]][]).map(
     ([key, info]) => ({
       id: `db-${key}`,
@@ -155,8 +198,28 @@ async function deployService(catalogKey: string) {
   router.push(`${basePath}/services/${res.service.id}`);
 }
 
-const appModal = ref<"public" | "github" | null>(null);
-const appForm = ref({ name: "", repoUrl: "", githubRepo: "", branch: "main", port: 3000 });
+type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "static" | "image" | "inline";
+const appModal = ref<AppMode | null>(null);
+const appForm = ref({
+  name: "",
+  repoUrl: "",
+  githubRepo: "",
+  branch: "main",
+  port: 3000,
+  dockerImage: "",
+  dockerfileContent: "FROM node:22-alpine\nWORKDIR /app\nCOPY . .\nCMD [\"node\", \"index.js\"]\n",
+  publishDirectory: ".",
+});
+const appModalTitles: Record<AppMode, string> = {
+  public: "Repositório Git público",
+  github: "Repositório do GitHub",
+  deploykey: "Repositório privado (Deploy Key)",
+  nixpacks: "Nixpacks",
+  static: "Site estático",
+  image: "Docker Image",
+  inline: "Dockerfile",
+};
+const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "static";
 const submittingApp = ref(false);
 
 function onGithubRepoChange() {
@@ -168,10 +231,20 @@ async function createApp() {
   submittingApp.value = true;
   error.value = "";
   try {
-    const base = { name: appForm.value.name, serverId: serverId.value, branch: appForm.value.branch, port: appForm.value.port };
-    const payload = appModal.value === "github" ? { ...base, githubRepo: appForm.value.githubRepo } : { ...base, repoUrl: appForm.value.repoUrl };
+    const mode = appModal.value!;
+    const f = appForm.value;
+    const base = { name: f.name, serverId: serverId.value, port: f.port };
+    let payload: Record<string, unknown>;
+    if (mode === "github") payload = { ...base, branch: f.branch, githubRepo: f.githubRepo };
+    else if (mode === "public") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl };
+    else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, useDeployKey: true };
+    else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
+    else if (mode === "static") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "static", publishDirectory: f.publishDirectory };
+    else if (mode === "image") payload = { ...base, buildPack: "image", dockerImage: f.dockerImage };
+    else payload = { ...base, buildPack: "dockerfile_inline", dockerfileContent: f.dockerfileContent };
     const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, payload);
-    router.push(`${basePath}/apps/${res.application.id}`);
+    // A deploy key still has to be registered on the repository — land on the page that shows it.
+    router.push(`${basePath}/apps/${res.application.id}${mode === "deploykey" ? "/general" : ""}`);
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar aplicação";
   } finally {
@@ -181,8 +254,18 @@ async function createApp() {
 
 async function deploy(card: CatalogCard) {
   error.value = "";
-  if (card.id === "app-public") {
-    appModal.value = "public";
+  const modeByCard: Record<string, AppMode> = {
+    "app-public": "public",
+    "app-deploykey": "deploykey",
+    "app-nixpacks": "nixpacks",
+    "app-static": "static",
+    "app-image": "image",
+    "app-inline": "inline",
+  };
+  const mode = modeByCard[card.id];
+  if (mode) {
+    appForm.value.port = mode === "static" ? 80 : 3000;
+    appModal.value = mode;
     return;
   }
   if (card.id === "app-github") {
@@ -286,12 +369,13 @@ onMounted(() => {
       </template>
     </template>
 
-    <Modal v-if="appModal" :title="appModal === 'github' ? 'Repositório do GitHub' : 'Repositório Git público'" @close="appModal = null">
+    <Modal v-if="appModal" :title="appModalTitles[appModal]" @close="appModal = null">
       <form @submit.prevent="createApp">
         <div class="form-group">
           <label for="app-name">Nome</label>
           <input id="app-name" v-model="appForm.name" class="form-control" placeholder="minha-api" required />
         </div>
+
         <div v-if="appModal === 'github'" class="form-group">
           <label for="app-github-repo">Repositório</label>
           <select id="app-github-repo" v-model="appForm.githubRepo" class="form-control" required @change="onGithubRepoChange">
@@ -301,17 +385,41 @@ onMounted(() => {
             </option>
           </select>
         </div>
-        <div v-else class="form-group">
+        <div v-else-if="modeUsesRepo(appModal)" class="form-group">
           <label for="app-repo">URL do repositório</label>
-          <input id="app-repo" v-model="appForm.repoUrl" class="form-control" placeholder="https://github.com/..." required />
+          <input
+            id="app-repo"
+            v-model="appForm.repoUrl"
+            class="form-control mono"
+            :placeholder="appModal === 'deploykey' ? 'git@github.com:org/repo.git' : 'https://github.com/...'"
+            required
+          />
+          <p v-if="appModal === 'deploykey'" class="hint" style="margin-top: 6px">
+            Use a URL SSH. Depois de criar, o yeah mostra a chave pública pra você cadastrar no repositório como deploy key (só leitura).
+          </p>
         </div>
+
+        <div v-if="appModal === 'image'" class="form-group">
+          <label for="app-image">Imagem</label>
+          <input id="app-image" v-model="appForm.dockerImage" class="form-control mono" placeholder="nginx:1.27-alpine" required />
+        </div>
+        <div v-if="appModal === 'inline'" class="form-group">
+          <label for="app-dockerfile">Dockerfile</label>
+          <textarea id="app-dockerfile" v-model="appForm.dockerfileContent" class="form-control mono" rows="9" required></textarea>
+        </div>
+        <div v-if="appModal === 'static'" class="form-group">
+          <label for="app-publish">Pasta a publicar</label>
+          <input id="app-publish" v-model="appForm.publishDirectory" class="form-control mono" placeholder="dist" />
+          <p class="hint" style="margin-top: 6px">Relativa à raiz do repositório (`.` = a raiz). O repositório precisa já ter os arquivos prontos nessa pasta.</p>
+        </div>
+
         <div class="form-row mb-16">
-          <div class="form-group" style="margin-bottom: 0">
+          <div v-if="modeUsesRepo(appModal) || appModal === 'github'" class="form-group" style="margin-bottom: 0">
             <label for="app-branch">Branch</label>
             <input id="app-branch" v-model="appForm.branch" class="form-control" placeholder="main" />
           </div>
-          <div class="form-group" style="margin-bottom: 0">
-            <label for="app-port">Porta</label>
+          <div v-if="appModal !== 'static'" class="form-group" style="margin-bottom: 0">
+            <label for="app-port">Porta do app</label>
             <input id="app-port" v-model.number="appForm.port" type="number" class="form-control" />
           </div>
         </div>

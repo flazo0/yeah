@@ -61,3 +61,26 @@ export function parseDockerOptions(input: string): DockerOptionsResult {
 export function resourceSlug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
+
+/** A publish directory is a plain relative path inside the repo: no absolute paths, no "..", no quoting tricks. */
+export function isSafePublishDirectory(dir: string): boolean {
+  if (dir === "." || dir === "") return true;
+  if (dir.startsWith("/") || dir.includes("\\") || /["'`$;&|<>\s]/.test(dir)) return false;
+  return !dir.split("/").includes("..");
+}
+
+/** A registry image reference ("nginx", "ghcr.io/org/app:1.2", "app@sha256:...") — no spaces or shell characters. */
+export function isValidDockerImage(image: string): boolean {
+  if (image.length === 0 || image.length > 512) return false;
+  const digest = image.match(/@sha256:[a-f0-9]{64}$/);
+  const ref = digest ? image.slice(0, digest.index) : image;
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._/:-]*$/.test(ref)) return false;
+  // A registry host may carry a port ("host:5000/team/app"), but only the last path segment can hold the tag.
+  const lastSegment = ref.split("/").pop() ?? "";
+  return (lastSegment.match(/:/g) ?? []).length <= 1 && !lastSegment.endsWith(":") && !ref.includes("//");
+}
+
+/** Git URLs that authenticate with an SSH key: scp-like ("git@host:org/repo.git") or ssh://. */
+export function isSshGitUrl(url: string): boolean {
+  return /^(git@[\w.-]+:[^\s]+|ssh:\/\/[^\s]+)$/.test(url);
+}

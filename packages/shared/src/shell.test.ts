@@ -51,7 +51,7 @@ describe("shellQuote", () => {
   });
 });
 
-import { parseDockerOptions } from "./shell";
+import { isSshGitUrl, isValidDockerImage, parseDockerOptions } from "./shell";
 
 describe("parseDockerOptions", () => {
   test("splits on whitespace and keeps quoted groups together", () => {
@@ -80,5 +80,30 @@ describe("parseDockerOptions", () => {
     for (const bad of ["--name foo", "-d", "--rm", "--env-file=/x", "--restart always", "--detach"]) {
       expect(parseDockerOptions(bad).ok).toBe(false);
     }
+  });
+});
+
+describe("isValidDockerImage", () => {
+  test("accepts common references", () => {
+    for (const ok of ["nginx", "nginx:1.27-alpine", "ghcr.io/org/app:v1.2.3", "registry.example.com:5000/team/app", "app@sha256:" + "a".repeat(64)]) {
+      expect(isValidDockerImage(ok)).toBe(true);
+    }
+  });
+  test("rejects anything with spaces or shell characters", () => {
+    for (const bad of ["", "nginx latest", "nginx;rm -rf /", "$(id)", "a`b", "-flag", "img:tag:extra"]) {
+      expect(isValidDockerImage(bad)).toBe(false);
+    }
+  });
+});
+
+describe("isSshGitUrl", () => {
+  test("scp-like and ssh:// urls", () => {
+    expect(isSshGitUrl("git@github.com:org/repo.git")).toBe(true);
+    expect(isSshGitUrl("ssh://git@host:2222/org/repo.git")).toBe(true);
+  });
+  test("https urls and junk are not ssh urls", () => {
+    expect(isSshGitUrl("https://github.com/org/repo")).toBe(false);
+    expect(isSshGitUrl("git@host")).toBe(false);
+    expect(isSshGitUrl("")).toBe(false);
   });
 });

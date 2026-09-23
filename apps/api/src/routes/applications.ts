@@ -11,8 +11,8 @@ import {
   type Deployment,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto } from "@yeah/shared";
-import { volumeName } from "@yeah/shared";
-import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
+import { buildPackUsesGit, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
+import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -32,6 +32,10 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     repoUrl: app.repoUrl,
     branch: app.branch,
     buildPack: app.buildPack,
+    dockerImage: app.dockerImage,
+    dockerfileContent: app.dockerfileContent,
+    publishDirectory: app.publishDirectory,
+    deployKeyPublic: app.deployKeyPublic,
     port: app.port,
     envContent: app.envContent,
     domain: app.domain,
@@ -138,25 +142,73 @@ export const applicationRoutes = new Elysia({
         return { error: "server not found" };
       }
 
-      let repoUrl = body.repoUrl;
+      const buildPack = (body.buildPack ?? "dockerfile") as BuildPack;
+      let repoUrl = body.repoUrl ?? "";
       let githubInstallationId: number | null = null;
-      if (body.githubRepo) {
-        const installationRows = await db
-          .select()
-          .from(githubInstallations)
-          .where(eq(githubInstallations.teamId, params.teamId))
-          .limit(1);
-        const installation = installationRows[0];
-        if (!installation) {
+      let port = body.port ?? 3000;
+      let dockerImage: string | null = null;
+      let dockerfileContent: string | null = null;
+      let publishDirectory = ".";
+      let deployKey: string | null = null;
+      let deployKeyPublic: string | null = null;
+
+      if (buildPack === "image") {
+        const image = body.dockerImage?.trim() ?? "";
+        if (!isValidDockerImage(image)) {
           set.status = 400;
-          return { error: "nenhuma instalação do GitHub conectada neste time" };
+          return { error: "informe uma imagem válida (ex.: nginx:1.27-alpine ou ghcr.io/org/app:1.0)" };
         }
-        githubInstallationId = installation.installationId;
-        repoUrl = `https://github.com/${body.githubRepo}`;
+        dockerImage = image;
+        repoUrl = image;
+      } else if (buildPack === "dockerfile_inline") {
+        const content = body.dockerfileContent ?? "";
+        if (!/^\s*(ARG[^\n]*\n\s*)*FROM\s+\S+/im.test(content)) {
+          set.status = 400;
+          return { error: "o Dockerfile precisa ter pelo menos uma instrução FROM" };
+        }
+        dockerfileContent = content;
+        repoUrl = "(Dockerfile)";
+      } else {
+        // dockerfile / static / nixpacks: all start from a Git repository.
+        if (body.githubRepo) {
+          const installationRows = await db
+            .select()
+            .from(githubInstallations)
+            .where(eq(githubInstallations.teamId, params.teamId))
+            .limit(1);
+          const installation = installationRows[0];
+          if (!installation) {
+            set.status = 400;
+            return { error: "nenhuma instalação do GitHub conectada neste time" };
+          }
+          githubInstallationId = installation.installationId;
+          repoUrl = `https://github.com/${body.githubRepo}`;
+        }
+        if (!repoUrl) {
+          set.status = 400;
+          return { error: "informe repoUrl ou githubRepo" };
+        }
+        if (body.useDeployKey) {
+          if (!isSshGitUrl(repoUrl)) {
+            set.status = 400;
+            return { error: "deploy key só funciona com URL SSH (git@host:org/repo.git ou ssh://...)" };
+          }
+          const pair = generateSshKeyPair(`yeah-deploy-${body.name}`);
+          deployKey = pair.privateKey;
+          deployKeyPublic = pair.publicKey;
+        }
+        if (buildPack === "static") {
+          publishDirectory = (body.publishDirectory ?? ".").trim() || ".";
+          if (!isSafePublishDirectory(publishDirectory)) {
+            set.status = 400;
+            return { error: "a pasta publicada precisa ser um caminho relativo simples dentro do repositório" };
+          }
+          port = 80;
+        }
       }
-      if (!repoUrl) {
+      if (!buildPackUsesGit(buildPack) && body.githubRepo) {
         set.status = 400;
-        return { error: "informe repoUrl ou githubRepo" };
+        return { error: "githubRepo só vale pra aplicações a partir de um repositório Git" };
       }
 
       const [application] = await db
@@ -168,7 +220,13 @@ export const applicationRoutes = new Elysia({
           name: body.name,
           repoUrl,
           branch: body.branch ?? "main",
-          port: body.port ?? 3000,
+          buildPack,
+          dockerImage,
+          dockerfileContent,
+          publishDirectory,
+          deployKey,
+          deployKeyPublic,
+          port,
           githubInstallationId,
           githubRepo: body.githubRepo ?? null,
           memoryLimitMb: body.memoryLimitMb ?? null,
@@ -186,6 +244,11 @@ export const applicationRoutes = new Elysia({
       body: t.Object({
         name: t.String({ minLength: 1 }),
         serverId: t.String({ minLength: 1 }),
+        buildPack: t.Optional(t.Union([t.Literal("dockerfile"), t.Literal("static"), t.Literal("nixpacks"), t.Literal("image"), t.Literal("dockerfile_inline")])),
+        dockerImage: t.Optional(t.String({ maxLength: 512 })),
+        dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
+        publishDirectory: t.Optional(t.String({ maxLength: 255 })),
+        useDeployKey: t.Optional(t.Boolean()),
         repoUrl: t.Optional(t.String()),
         githubRepo: t.Optional(t.String()),
         branch: t.Optional(t.String()),

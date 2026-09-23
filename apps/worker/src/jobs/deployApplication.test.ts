@@ -4,8 +4,11 @@ import {
   buildCloneOrPullCommand,
   buildHealthWaitCommand,
   buildRunCommand,
+  buildImageSteps,
   buildStopOldCommand,
   healthWaitSeconds,
+  isSafePublishDirectory,
+  staticDockerfile,
   resolveDomain,
 } from "./deployApplication.commands";
 
@@ -19,6 +22,11 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     repoUrl: "https://github.com/example/repo",
     branch: "main",
     buildPack: "dockerfile",
+    dockerImage: null,
+    dockerfileContent: null,
+    publishDirectory: ".",
+    deployKey: null,
+    deployKeyPublic: null,
     port: 3000,
     envContent: "",
     domain: null,
@@ -224,5 +232,59 @@ describe("deploy helpers", () => {
 
   test("health wait prints container logs when it fails", () => {
     expect(buildHealthWaitCommand("c", 10)).toContain("docker logs --tail 40 'c'");
+  });
+});
+
+describe("build packs", () => {
+  test("dockerfile builds inside the repo with the container name as the image tag", () => {
+    const [step] = buildImageSteps(makeApplication(), "/opt/r", "/opt/i", "yeah-app-1");
+    expect(step!.command).toBe("cd '/opt/r' && docker build -t 'yeah-app-1' .");
+  });
+
+  test("image only pulls, and the run command starts that image instead of a built one", () => {
+    const app = makeApplication({ buildPack: "image", dockerImage: "nginx:1.27-alpine" });
+    const steps = buildImageSteps(app, "/opt/r", "/opt/i", "yeah-app-1");
+    expect(steps).toHaveLength(1);
+    expect(steps[0]!.command).toBe("docker pull 'nginx:1.27-alpine'");
+    const run = buildRunCommand(app, "/a", "yeah-app-1", null, [], "nginx:1.27-alpine");
+    expect(run.trim().endsWith("--restart unless-stopped 'nginx:1.27-alpine'")).toBe(true);
+    expect(run).toContain("--name 'yeah-app-1'");
+  });
+
+  test("inline builds from the dedicated directory, not the repo", () => {
+    const [step] = buildImageSteps(makeApplication({ buildPack: "dockerfile_inline" }), "/opt/r", "/opt/i", "yeah-app-1");
+    expect(step!.command).toBe("docker build -t 'yeah-app-1' '/opt/i'");
+  });
+
+  test("static wraps the publish directory in an nginx Dockerfile fed through stdin", () => {
+    const [step] = buildImageSteps(makeApplication({ buildPack: "static", publishDirectory: "dist" }), "/opt/r", "/opt/i", "yeah-app-1");
+    expect(step!.command).toContain("printf %s");
+    expect(step!.command).toContain("docker build -t 'yeah-app-1' -f - .");
+    expect(step!.command).toContain("COPY [\"dist\", \"/usr/share/nginx/html\"]");
+    expect(staticDockerfile(".")).toContain("COPY [\".\"");
+  });
+
+  test("nixpacks installs itself when missing, then builds the repo", () => {
+    const steps = buildImageSteps(makeApplication({ buildPack: "nixpacks" }), "/opt/r", "/opt/i", "yeah-app-1");
+    expect(steps[0]!.command).toContain("command -v nixpacks");
+    expect(steps[1]!.command).toBe("nixpacks build '/opt/r' --name 'yeah-app-1'");
+  });
+
+  test("publish directory must be a plain relative path", () => {
+    for (const ok of [".", "dist", "build/public", "a-b_c/d.e"]) expect(isSafePublishDirectory(ok)).toBe(true);
+    for (const bad of ["/etc", "../x", "a/../b", "a b", "a;b", "a\"b", "a$(x)", String.raw`a\b`]) expect(isSafePublishDirectory(bad)).toBe(false);
+  });
+});
+
+describe("deploy key clone", () => {
+  test("git uses exactly the deploy key when one is given", () => {
+    const cmd = buildCloneOrPullCommand("/opt/a", "git@github.com:o/r.git", "main", null, "/opt/a/.deploy_key");
+    expect(cmd.startsWith("export GIT_SSH_COMMAND=")).toBe(true);
+    expect(cmd).toContain("-i /opt/a/.deploy_key");
+    expect(cmd).toContain("IdentitiesOnly=yes");
+    expect(cmd).toContain("StrictHostKeyChecking=accept-new");
+  });
+  test("no GIT_SSH_COMMAND without a key", () => {
+    expect(buildCloneOrPullCommand("/opt/a", "https://x/y.git", "main", null)).not.toContain("GIT_SSH_COMMAND");
   });
 });

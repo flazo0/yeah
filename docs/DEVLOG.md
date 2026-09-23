@@ -472,3 +472,20 @@ Primeiro pedaço da Fase 3 — o que dá mais valor operacional sem mexer em com
 **Achado do teste**: o primeiro healthcheck (só `localhost`) falhava contra o demo; a causa real foi o servidor de demo que nunca subiu, mas foi o que levou a tentar `127.0.0.1` antes.
 
 **Não testado**: `[skip ci]` num push real do GitHub; o clique nos botões Iniciar/Parar/Reiniciar do layout (só as rotas e o WS); a aba Logs vendo texto de um app que escreve muito; Gerar domínio pra serviços (só aplicações têm). **Ainda na Fase 3**: build packs (Nixpacks/Railpack/estático/Compose/Docker Image/Dockerfile colado), Deploy Key/GitLab/Bitbucket/Gitea, registry com push, mudanças pendentes, terminal interativo, sub-abas Git Source/Servers/Resource Operations/Metrics, preview deployments, scheduled tasks, volumes avançados, múltiplos domínios, tags, timeout SSH, Shared Variables e build-time vs runtime.
+
+
+## Fase 3 (parte 2): build packs e origens de código
+
+Seis jeitos de colocar uma aplicação no ar, todos passando pelo mesmo caminho de deploy (healthcheck, graça de parada, opções extras, rollback de commit) — só muda como a imagem é produzida.
+
+**Modelo**: `build_pack` ganhou `static`, `nixpacks`, `image` e `dockerfile_inline` (migration `0018`), mais colunas `docker_image`, `dockerfile_content`, `publish_directory`, `deploy_key` (criptografada como os outros segredos) e `deploy_key_public`. `buildPackUsesGit()` em `packages/shared` separa os que clonam repositório dos que partem de imagem ou de texto.
+
+**Como cada um builda** (`buildImageSteps`, função pura com testes): `dockerfile` como antes; `static` gera um Dockerfile `nginx:alpine` com `COPY ["<pasta>", "/usr/share/nginx/html"]` e passa por stdin (`docker build -f -`), forçando a porta 80 — a pasta só aceita caminho relativo simples (sem `..`, aspas, espaços); `image` só faz `docker pull` e o `docker run` usa a imagem do registry em vez da imagem buildada (o último argumento do `buildRunCommand` deixou de ser sempre o nome do container); `dockerfile_inline` escreve o Dockerfile numa pasta que só tem ele e builda de lá, então `.env` e o resto do diretório da app não vazam pro contexto; `nixpacks` instala o binário no servidor se faltar e roda `nixpacks build`.
+
+**Deploy key**: ao criar com uma URL SSH, a API gera um par ed25519 (o mesmo gerador da tela de servidores), guarda a privada cifrada e devolve só a pública. No deploy o worker grava a privada no servidor (chmod 600) e o clone roda com `GIT_SSH_COMMAND='ssh -i … -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new'` — usa exatamente aquela chave, não a do agente do usuário. A tela da aplicação mostra a pública num aviso pra cadastrar no repositório.
+
+**Catálogo**: cards novos (Deploy Key, Nixpacks, Site estático, Docker Image, Dockerfile) e um modal com os campos de cada modo.
+
+**Testado** (painel local + "VPS" docker-in-docker, repositórios git locais na VPS): estático — `public/` do repo respondeu `<h1>static-ok</h1>` na porta 80; `image` (`nginx:alpine`) e `dockerfile_inline` deram `success`; validação recusou (400) imagem com `;`, Dockerfile sem `FROM`, pasta `../etc` e deploy key com URL https; **deploy key: o primeiro deploy falhou com "Permission denied" no clone e, depois de autorizar a chave pública na VPS, passou e gravou o commit** — e o DTO da aplicação não devolve a privada. Nas telas conferi os campos de cada modo do modal, o subtítulo e o aviso da chave. 182 testes, `vue-tsc` e `tsc` passam.
+
+**Não testado**: Nixpacks de verdade (sem internet no Docker aninhado), então o item continua desmarcado no roadmap; registry privado com login; repositório público real por HTTPS (usei caminho local, que passa pelo mesmo `git clone`).

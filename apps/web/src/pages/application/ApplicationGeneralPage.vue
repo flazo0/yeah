@@ -30,13 +30,27 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
     </div>
     <div class="card-body">
       <div class="grid grid-2">
-        <div>
-          <div class="stat-label">Repositório</div>
-          <div class="mono">{{ app.repoUrl }}</div>
+        <div v-if="app.buildPack === 'image'">
+          <div class="stat-label">Imagem</div>
+          <div class="mono">{{ app.dockerImage }}</div>
         </div>
-        <div>
-          <div class="stat-label">Branch</div>
-          <div class="mono">{{ app.branch }}</div>
+        <div v-else-if="app.buildPack === 'dockerfile_inline'">
+          <div class="stat-label">Origem</div>
+          <div>Dockerfile colado</div>
+        </div>
+        <template v-else>
+          <div>
+            <div class="stat-label">Repositório</div>
+            <div class="mono">{{ app.repoUrl }}</div>
+          </div>
+          <div>
+            <div class="stat-label">Branch</div>
+            <div class="mono">{{ app.branch }}</div>
+          </div>
+        </template>
+        <div v-if="app.buildPack === 'static'">
+          <div class="stat-label">Pasta publicada</div>
+          <div class="mono">{{ app.publishDirectory }}</div>
         </div>
         <div>
           <div class="stat-label">Servidor</div>
@@ -50,6 +64,13 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
           <div class="stat-label">Build pack</div>
           <div class="mono">{{ app.buildPack }}</div>
         </div>
+      </div>
+      <div v-if="app.deployKeyPublic" class="callout" style="margin-top: 16px">
+        <strong>Deploy key</strong>
+        <p class="hint" style="margin: 4px 0 8px">
+          Cadastre esta chave pública no repositório como deploy key (acesso só de leitura), senão o clone falha. A privada fica guardada criptografada no painel.
+        </p>
+        <pre class="callout-code" style="margin: 0">{{ app.deployKeyPublic }}</pre>
       </div>
     </div>
 

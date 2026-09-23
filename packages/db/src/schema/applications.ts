@@ -5,9 +5,9 @@ import { servers } from "./servers";
 import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
 
-// Only Dockerfile-based deploys are wired up today — compose/static/nixpacks/railpack
-// come later, once the worker knows how to drive each of those builds too.
-export const buildPackEnum = pgEnum("build_pack", ["dockerfile"]);
+// dockerfile / static / nixpacks build from a Git repo; image pulls a ready image; dockerfile_inline
+// builds a Dockerfile pasted into the panel. Compose and railpack are not wired up yet.
+export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "image", "dockerfile_inline"]);
 export const applicationStatusEnum = pgEnum("application_status", ["idle", "deploying", "running", "stopped", "error"]);
 
 export const applications = pgTable("applications", {
@@ -35,6 +35,16 @@ export const applications = pgTable("applications", {
   // URL — the worker mints a fresh installation token per deploy and matches pushes for auto-deploy.
   githubInstallationId: integer("github_installation_id"),
   githubRepo: varchar("github_repo", { length: 255 }),
+  // image: the registry image to pull and run ("nginx:1.27-alpine").
+  dockerImage: varchar("docker_image", { length: 512 }),
+  // dockerfile_inline: the Dockerfile text itself.
+  dockerfileContent: text("dockerfile_content"),
+  // static: the folder (relative to the repo root) that gets served by nginx.
+  publishDirectory: varchar("publish_directory", { length: 255 }).default(".").notNull(),
+  // Private repos over SSH: a per-application keypair. The private half is encrypted at rest; the
+  // public half is shown to the user to register as a read-only deploy key on the repository.
+  deployKey: encryptedText("deploy_key"),
+  deployKeyPublic: text("deploy_key_public"),
   // Docker healthcheck (run inside the container). null path = no healthcheck. When set, a deploy only
   // counts as successful once the container reports healthy.
   healthPath: varchar("health_path", { length: 255 }),

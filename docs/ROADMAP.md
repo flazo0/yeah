@@ -64,14 +64,14 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 ## Fase 3 — Aplicações
 
 **Build e origem**
-- [ ] Build pack **Nixpacks** (detecta linguagem, builda sem Dockerfile).
+- [ ] Build pack **Nixpacks** (detecta linguagem, builda sem Dockerfile). Implementado (card no catálogo, instala o nixpacks no servidor se faltar e roda `nixpacks build`) e coberto por teste unitário dos comandos, mas **não foi rodado de verdade** — o Docker aninhado do ambiente de teste não alcança a internet pra instalar o nixpacks. Marcar quando testado numa VPS real.
 - [ ] Build pack **Railpack** (alternativa mais nova que o Coolify oferece).
-- [ ] Build pack **estático** (arquivos servidos via nginx).
+- [x] Build pack **estático** (a pasta escolhida do repositório servida por nginx, Dockerfile gerado): testado — o site do repositório respondeu na porta 80 da VPS.
 - [ ] Deploy via **Docker Compose** (multi-container por aplicação).
-- [ ] Deploy via **Docker Image** de qualquer registry (sem Git).
-- [ ] Deploy via **Dockerfile colado** (sem Git).
-- [ ] Repositório **público por URL** sem credencial (hoje já há URL manual; formalizar como tipo próprio no catálogo).
-- [ ] Repositório privado via **Deploy Key** (SSH, chave por repositório).
+- [x] Deploy via **Docker Image** de qualquer registry público (sem Git, sem build): testado. Registry privado com login ainda não (item de registry abaixo).
+- [x] Deploy via **Dockerfile colado** (sem Git; o build usa uma pasta só com o Dockerfile): testado.
+- [x] Repositório **público por URL** sem credencial: tem card próprio no catálogo ("Repositório Git público").
+- [x] Repositório privado via **Deploy Key** (SSH, chave ed25519 por aplicação, privada criptografada, pública mostrada na tela pra cadastrar no repositório): testado — o clone falhou com "Permission denied" antes de autorizar a chave e funcionou depois, gravando o commit.
 - [ ] Fontes **GitLab** (GitLab App), **Bitbucket** e **Gitea**.
 - [ ] Registry privado (Docker Hub privado, GHCR…) com **push automático** da imagem buildada, tag = SHA do commit — builda uma vez e reusa.
 - [x] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push (também `[ci skip]`, `[no ci]`…). Coberto por teste unitário; não testado com um push real do GitHub.

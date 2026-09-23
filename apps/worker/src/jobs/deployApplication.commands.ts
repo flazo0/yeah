@@ -1,5 +1,5 @@
 import type { Application, Server } from "@yeah/db";
-import { PROXY_NETWORK_NAME, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
+import { PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -21,9 +21,20 @@ export function resolveDomain(application: Application, server: Server): string 
  * identically whether the repo is currently on a branch or in detached HEAD from a prior rollback,
  * so no separate checkout/re-attach step is needed either way.
  */
-export function buildCloneOrPullCommand(appDir: string, cloneUrl: string, branch: string, targetCommitSha: string | null): string {
+export function buildCloneOrPullCommand(
+  appDir: string,
+  cloneUrl: string,
+  branch: string,
+  targetCommitSha: string | null,
+  sshKeyPath: string | null = null,
+): string {
   const ref = targetCommitSha ?? `origin/${branch}`;
+  // Deploy key: git talks SSH with exactly that key; new host keys are accepted the first time, then pinned.
+  const sshEnv = sshKeyPath
+    ? `export GIT_SSH_COMMAND=${shellQuote(`ssh -i ${sshKeyPath} -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new`)} && `
+    : "";
   return (
+    sshEnv +
     `cd ${shellQuote(appDir)} && ` +
     `(test -d repo/.git && (cd repo && git remote set-url origin ${shellQuote(cloneUrl)} && git fetch origin ${shellQuote(branch)} && git reset --hard ${shellQuote(ref)}) ` +
     `|| (git clone --branch ${shellQuote(branch)} --single-branch ${shellQuote(cloneUrl)} repo && cd repo && git reset --hard ${shellQuote(ref)}))`
@@ -89,6 +100,7 @@ export function buildRunCommand(
   containerName: string,
   domain: string | null,
   volumes: Array<{ id: string; mountPath: string }> = [],
+  imageRef: string = containerName,
 ): string {
   const base =
     `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
@@ -96,7 +108,7 @@ export function buildRunCommand(
     volumeFlags(volumes) +
     healthFlags(application) +
     dockerOptionsFlags(application);
-  const restart = `--restart unless-stopped ${shellQuote(containerName)}`;
+  const restart = `--restart unless-stopped ${shellQuote(imageRef)}`;
 
   if (!domain) {
     return base + `-p ${application.port}:${application.port} ` + restart;
@@ -113,3 +125,50 @@ export function buildRunCommand(
     restart
   );
 }
+
+export interface BuildStep {
+  label: string;
+  command: string;
+}
+
+/** The nginx image a static site is served from. */
+export const STATIC_BASE_IMAGE = "nginx:alpine";
+
+export function staticDockerfile(publishDirectory: string): string {
+  const source = publishDirectory === "" ? "." : publishDirectory;
+  return `FROM ${STATIC_BASE_IMAGE}\nCOPY ["${source}", "/usr/share/nginx/html"]\nEXPOSE 80\n`;
+}
+
+/**
+ * How the image gets produced for each build pack. Git-based packs run inside the freshly cloned repo,
+ * "image" only pulls, and "dockerfile_inline" builds from a directory holding just the pasted Dockerfile
+ * (written by the job before these steps run) so nothing else is sent as build context.
+ */
+export function buildImageSteps(application: Application, repoDir: string, inlineDir: string, imageName: string): BuildStep[] {
+  const image = shellQuote(imageName);
+  switch (application.buildPack) {
+    case "image":
+      return [{ label: `baixando a imagem ${application.dockerImage}`, command: `docker pull ${shellQuote(application.dockerImage ?? "")}` }];
+    case "dockerfile_inline":
+      return [{ label: "construindo a imagem (Dockerfile colado)", command: `docker build -t ${image} ${shellQuote(inlineDir)}` }];
+    case "static":
+      return [
+        {
+          label: `construindo o site estático (${application.publishDirectory || "."} → nginx)`,
+          command: `cd ${shellQuote(repoDir)} && printf %s ${shellQuote(staticDockerfile(application.publishDirectory))} | docker build -t ${image} -f - .`,
+        },
+      ];
+    case "nixpacks":
+      return [
+        {
+          label: "garantindo o nixpacks no servidor",
+          command: "command -v nixpacks >/dev/null 2>&1 || (curl -sSL https://nixpacks.com/install.sh | bash)",
+        },
+        { label: "construindo com nixpacks (detecta a linguagem)", command: `nixpacks build ${shellQuote(repoDir)} --name ${image}` },
+      ];
+    default:
+      return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build -t ${image} .` }];
+  }
+}
+
+export { isSafePublishDirectory };

@@ -149,7 +149,12 @@ onUnmounted(unsubscribe);
       </button>
     </template>
     <template #subtitle>
-      <p class="resource-subtitle mono">{{ app.repoUrl }} ({{ app.branch }}) → {{ app.serverName }}:{{ app.port }}</p>
+      <p class="resource-subtitle mono">
+        <template v-if="app.buildPack === 'image'">{{ app.dockerImage }}</template>
+        <template v-else-if="app.buildPack === 'dockerfile_inline'">Dockerfile colado</template>
+        <template v-else>{{ app.repoUrl }} ({{ app.branch }}) · {{ app.buildPack }}</template>
+        → {{ app.serverName }}:{{ app.port }}
+      </p>
       <p v-if="app.domain" class="resource-subtitle">
         <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ app.domain }}</a>
       </p>

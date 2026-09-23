@@ -3,7 +3,7 @@ import { applications, applicationVolumes, deployments, servers, type Applicatio
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
-import { shellQuote } from "@yeah/shared";
+import { buildPackUsesGit, shellQuote } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -11,6 +11,7 @@ import { notifyTeam } from "../lib/notify";
 import {
   buildCloneOrPullCommand,
   buildHealthWaitCommand,
+  buildImageSteps,
   buildRunCommand,
   buildStopOldCommand,
   healthWaitSeconds,
@@ -67,6 +68,10 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
 
     const appDir = `/opt/yeah-apps/${application.id}`;
     const repoDir = `${appDir}/repo`;
+    const inlineDir = `${appDir}/inline`;
+    const deployKeyPath = `${appDir}/.deploy_key`;
+    const usesGit = buildPackUsesGit(application.buildPack);
+    const imageRef = application.buildPack === "image" ? (application.dockerImage ?? "") : `yeah-app-${application.id}`;
     const containerName = `yeah-app-${application.id}`;
     const domain = resolveDomain(application, server);
     const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, application.id));
@@ -91,11 +96,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         : `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
       // `set-url` before fetching re-authenticates every deploy — an installation token embedded
       // in a clone from an hour ago would otherwise make the next incremental pull fail.
-      command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget),
-    };
-    const buildStep: Step = {
-      label: "construindo a imagem",
-      command: `cd ${shellQuote(repoDir)} && docker build -t ${shellQuote(containerName)} .`,
+      command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget, application.deployKey ? deployKeyPath : null),
     };
     const removeOldStep: Step = {
       label: `parando o container anterior (até ${application.stopGraceSeconds}s de tolerância)`,
@@ -104,7 +105,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     };
     const runStepDef: Step = {
       label: domain ? `subindo o container (https://${domain})` : "subindo o container",
-      command: buildRunCommand(application, appDir, containerName, domain, volumes),
+      command: buildRunCommand(application, appDir, containerName, domain, volumes, imageRef),
     };
 
     let conn: Client | null = null;
@@ -123,19 +124,33 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await appendAndPublish(`\x1b[36m$ escrevendo variáveis de ambiente\x1b[0m\n`);
       await writeRemoteFile(conn, `${appDir}/.env`, application.envContent);
 
-      await runStep(conn, cloneOrPullStep, appendAndPublish);
+      if (usesGit) {
+        if (application.deployKey) {
+          await appendAndPublish(`\x1b[36m$ escrevendo a deploy key\x1b[0m\n`);
+          await writeRemoteFile(conn, deployKeyPath, application.deployKey.endsWith("\n") ? application.deployKey : `${application.deployKey}\n`);
+          await execStream(conn, `chmod 600 ${shellQuote(deployKeyPath)}`, () => undefined);
+        }
 
-      let resolvedCommitSha = "";
-      await execStream(conn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {
-        if (stream === "stdout") resolvedCommitSha += chunk;
-      });
-      resolvedCommitSha = resolvedCommitSha.trim();
-      if (resolvedCommitSha) {
-        await appendAndPublish(`\x1b[90m# commit ${resolvedCommitSha.slice(0, 7)}\x1b[0m\n`);
-        await db.update(deployments).set({ commitSha: resolvedCommitSha }).where(eq(deployments.id, deploymentId));
+        await runStep(conn, cloneOrPullStep, appendAndPublish);
+
+        let resolvedCommitSha = "";
+        await execStream(conn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {
+          if (stream === "stdout") resolvedCommitSha += chunk;
+        });
+        resolvedCommitSha = resolvedCommitSha.trim();
+        if (resolvedCommitSha) {
+          await appendAndPublish(`\x1b[90m# commit ${resolvedCommitSha.slice(0, 7)}\x1b[0m\n`);
+          await db.update(deployments).set({ commitSha: resolvedCommitSha }).where(eq(deployments.id, deploymentId));
+        }
+      } else if (application.buildPack === "dockerfile_inline") {
+        await appendAndPublish(`\x1b[36m$ escrevendo o Dockerfile\x1b[0m\n`);
+        await execStream(conn, `mkdir -p ${shellQuote(inlineDir)}`, () => undefined);
+        await writeRemoteFile(conn, `${inlineDir}/Dockerfile`, application.dockerfileContent ?? "");
       }
 
-      await runStep(conn, buildStep, appendAndPublish);
+      for (const step of buildImageSteps(application, repoDir, inlineDir, containerName)) {
+        await runStep(conn, step, appendAndPublish);
+      }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
       if (application.healthPath) {
