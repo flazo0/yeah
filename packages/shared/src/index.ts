@@ -9,3 +9,4 @@ export * from "./traefik";
 export * from "./pending";
 export * from "./preview";
 export * from "./metrics";
+export * from "./registry";

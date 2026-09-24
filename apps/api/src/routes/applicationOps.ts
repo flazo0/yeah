@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
-import { applications, applicationVolumes, environments, githubInstallations, projects, scheduledTasks, servers } from "@yeah/db";
+import { applications, applicationVolumes, environments, githubInstallations, projects, registries, scheduledTasks, servers } from "@yeah/db";
 import {
   buildPackUsesGit,
   isSafeComposeFile,
@@ -8,6 +8,7 @@ import {
   isSshGitUrl,
   isValidComposeService,
   isValidDockerImage,
+  isValidRegistryRepository,
 } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -339,6 +340,50 @@ export const applicationOpsRoutes = new Elysia({
     const previews = await db.select().from(applications).where(eq(applications.previewOfId, row.application.id));
     return { previews: previews.map((p) => ({ id: p.id, name: p.name, prNumber: p.prNumber, branch: p.branch, domain: p.domain, status: p.status, createdAt: p.createdAt.toISOString() })) };
   })
+  .put(
+    "/:applicationId/registry",
+    async ({ cookie, params, body, set }) => {
+          const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+          if (!user) {
+            set.status = 401;
+            return { error: "unauthorized" };
+          }
+          if (!(await assertMember(params.teamId, user.id))) {
+            set.status = 403;
+            return { error: "forbidden" };
+          }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const app = row.application;
+      if (app.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "aplicações Docker Compose não usam o registry do painel (use o docker login do próprio compose)" };
+      }
+      if (!body.registryId) {
+        const [updated] = await db.update(applications).set({ registryId: null, registryImage: null }).where(eq(applications.id, app.id)).returning();
+        return { application: await applicationDto(updated ?? app, row.serverName) };
+      }
+      const [registry] = await db.select().from(registries).where(and(eq(registries.id, body.registryId), eq(registries.teamId, params.teamId))).limit(1);
+      if (!registry) {
+        set.status = 404;
+        return { error: "registry não encontrado" };
+      }
+      let repository: string | null = null;
+      if (app.buildPack !== "image") {
+        repository = (body.repository ?? "").trim();
+        if (!isValidRegistryRepository(repository)) {
+          set.status = 400;
+          return { error: "informe o repositório onde a imagem será enviada, em minúsculas (ex.: minha-org/minha-app)" };
+        }
+      }
+      const [updated] = await db.update(applications).set({ registryId: registry.id, registryImage: repository }).where(eq(applications.id, app.id)).returning();
+      return { application: await applicationDto(updated ?? app, row.serverName) };
+    },
+    { body: t.Object({ registryId: t.Nullable(t.String()), repository: t.Optional(t.String({ maxLength: 255 })) }) },
+  )
   .put(
     "/:applicationId/move",
     async ({ cookie, params, body, set }) => {

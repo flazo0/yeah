@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
+import { registries } from "./registries";
 import { servers } from "./servers";
 import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
@@ -54,6 +55,10 @@ export const applications = pgTable("applications", {
   previewEnabled: boolean("preview_enabled").default(false).notNull(),
   previewOfId: uuid("preview_of_id").references((): AnyPgColumn => applications.id, { onDelete: "cascade" }),
   prNumber: integer("pr_number"),
+  // Private registry: pull credentials for `image` apps; for built apps also where the image is pushed
+  // (registry_image = the repository path, e.g. "org/app") and reused by commit.
+  registryId: uuid("registry_id").references((): AnyPgColumn => registries.id, { onDelete: "set null" }),
+  registryImage: varchar("registry_image", { length: 255 }),
   composeFile: varchar("compose_file", { length: 255 }).default("docker-compose.yml").notNull(),
   composeService: varchar("compose_service", { length: 64 }),
   // Private repos over SSH: a per-application keypair. The private half is encrypted at rest; the

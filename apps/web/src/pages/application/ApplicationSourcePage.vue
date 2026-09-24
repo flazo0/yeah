@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import type { GithubRepoDto } from "@yeah/shared";
+import type { GithubRepoDto, RegistryDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
@@ -12,6 +12,11 @@ const form = ref({ repoUrl: "", branch: "", githubRepo: "", dockerImage: "", doc
 const githubRepos = ref<GithubRepoDto[]>([]);
 const saving = ref(false);
 const saved = ref(false);
+const registries = ref<RegistryDto[]>([]);
+const registryId = ref("");
+const registryRepo = ref("");
+const savingRegistry = ref(false);
+const registrySaved = ref(false);
 
 onMounted(async () => {
   const a = app.value;
@@ -27,6 +32,13 @@ onMounted(async () => {
     composeService: a.composeService ?? "",
     port: a.port,
   };
+  registryId.value = a.registryId ?? "";
+  registryRepo.value = a.registryImage ?? "";
+  try {
+    registries.value = (await api.get<{ registries: RegistryDto[] }>(`/teams/${teamId}/registries`)).registries;
+  } catch {
+    registries.value = [];
+  }
   if (a.githubRepo) {
     try {
       githubRepos.value = (await api.get<{ repos: GithubRepoDto[] }>(`/teams/${teamId}/github/repos`)).repos;
@@ -35,6 +47,22 @@ onMounted(async () => {
     }
   }
 });
+
+async function saveRegistry() {
+  savingRegistry.value = true;
+  registrySaved.value = false;
+  error.value = "";
+  try {
+    await api.put(`${basePath}/registry`, { registryId: registryId.value || null, repository: registryRepo.value });
+    await reloadApp();
+    registrySaved.value = true;
+    setTimeout(() => (registrySaved.value = false), 2500);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar o registry";
+  } finally {
+    savingRegistry.value = false;
+  }
+}
 
 async function save() {
   const a = app.value;
@@ -140,4 +168,38 @@ async function save() {
       </div>
     </div>
   </form>
+
+  <div v-if="app && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">inventory_2</span>
+      Registry
+    </div>
+    <div class="card-body">
+      <p v-if="app.buildPack === 'image'" class="hint mb-16">Escolha um registry pra entrar antes de baixar a imagem (imagem privada).</p>
+      <p v-else class="hint mb-16">
+        Depois de construir, o yeah envia a imagem pro registry com a tag do commit. Um novo deploy do mesmo commit — ou um rollback, ou outro servidor — baixa a imagem pronta em vez de construir de novo.
+        Mudar as variáveis de build gera outra tag.
+      </p>
+      <div class="form-group">
+        <label for="reg-select">Registry</label>
+        <select id="reg-select" v-model="registryId" class="form-control" style="max-width: 320px">
+          <option value="">Nenhum</option>
+          <option v-for="r in registries" :key="r.id" :value="r.id">{{ r.name }} ({{ r.host }})</option>
+        </select>
+        <p v-if="registries.length === 0" class="hint" style="margin-top: 6px">Nenhum registry cadastrado — <RouterLink :to="`/teams/${teamId}/registries`" class="label-link">cadastre um</RouterLink>.</p>
+      </div>
+      <div v-if="registryId && app.buildPack !== 'image'" class="form-group">
+        <label for="reg-repo">Repositório no registry</label>
+        <input id="reg-repo" v-model="registryRepo" class="form-control mono" placeholder="minha-org/minha-app" />
+        <p class="hint" style="margin-top: 6px">Em minúsculas. A imagem vai pra <span class="mono">registry/repositório:commit</span>.</p>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary" :disabled="savingRegistry" @click="saveRegistry">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ savingRegistry ? "salvando..." : "Salvar" }}
+        </button>
+        <span v-if="registrySaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+      </div>
+    </div>
+  </div>
 </template>

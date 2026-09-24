@@ -35,6 +35,8 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     previewEnabled: false,
     previewOfId: null,
     prNumber: null,
+    registryId: null,
+    registryImage: null,
     deployKey: null,
     deployKeyPublic: null,
     port: 3000,

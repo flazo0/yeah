@@ -16,3 +16,4 @@ export * from "./platformOperations";
 export * from "./sharedVariables";
 export * from "./scheduledTasks";
 export * from "./tags";
+export * from "./registries";

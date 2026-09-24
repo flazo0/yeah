@@ -18,6 +18,7 @@ import { searchRoutes } from "./routes/search";
 import { deployHookRoutes } from "./routes/deployHook";
 import { sharedVariableRoutes } from "./routes/sharedVariables";
 import { tagRoutes } from "./routes/tags";
+import { registryRoutes } from "./routes/registries";
 import { terminalRoutes } from "./routes/terminal";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
@@ -68,6 +69,7 @@ const app = new Elysia()
   .use(deployHookRoutes)
   .use(sharedVariableRoutes)
   .use(tagRoutes)
+  .use(registryRoutes)
   .use(terminalRoutes)
   .listen(port);
 

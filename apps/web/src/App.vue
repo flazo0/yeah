@@ -48,6 +48,7 @@ const environmentId = computed(() =>
 
 const isProjectsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}`);
 const isServersRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/servers`));
+const isRegistriesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/registries`);
 const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/storages`);
 const isSourcesRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/sources`));
 const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
@@ -62,6 +63,7 @@ const breadcrumb = computed(() => {
   if (!teamId.value) return [];
   if (isServersRoute.value) return ["Servidores"];
   if (isStoragesRoute.value) return ["Armazenamento"];
+  if (isRegistriesRoute.value) return ["Registries"];
   if (isSourcesRoute.value) return ["Fontes"];
   if (isNotificationsRoute.value) return ["Notificações"];
   if (isUpdatesRoute.value) return ["Atualizações"];
@@ -115,6 +117,10 @@ const breadcrumb = computed(() => {
           <RouterLink :to="`/teams/${teamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
             <span class="material-symbols-outlined">cloud</span>
             Armazenamento
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/registries`" class="sidebar-link" :class="{ active: isRegistriesRoute }">
+            <span class="material-symbols-outlined">inventory_2</span>
+            Registries
           </RouterLink>
 
 

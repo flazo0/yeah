@@ -13,6 +13,8 @@ export const DEPLOY_AFFECTING_FIELDS = {
   composeFile: "Arquivo compose",
   composeService: "Serviço do compose",
   serverId: "Servidor",
+  registryId: "Registry",
+  registryImage: "Repositório no registry",
   port: "Porta",
   domain: "Domínio",
   extraDomains: "Domínios adicionais",

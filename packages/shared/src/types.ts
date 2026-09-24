@@ -144,6 +144,8 @@ export interface ApplicationDto extends ResourceLimits {
   domain: string | null;
   extraDomains: string[];
   wwwRedirect: WwwRedirect;
+  registryId: string | null;
+  registryImage: string | null;
   /** Opted in to PR previews (parent apps only). */
   previewEnabled: boolean;
   /** Set on a preview: the app it was copied from and the PR it shows. */
@@ -484,4 +486,14 @@ export interface TagDto {
   color: string;
   /** Resources currently carrying this tag. */
   resources: { type: TaggableType; id: string }[];
+}
+
+export interface RegistryDto {
+  id: string;
+  name: string;
+  host: string;
+  username: string;
+  /** The password is write-only: this only says one is stored. */
+  hasPassword: boolean;
+  createdAt: string;
 }

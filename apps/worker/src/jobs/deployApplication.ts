@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { and, eq as eqOp, isNull, or } from "drizzle-orm";
-import { applications, applicationVolumes, deployments, environments, servers, sharedVariables, type Application } from "@yeah/db";
+import { applications, applicationVolumes, deployments, environments, registries, servers, sharedVariables, type Application, type Registry } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { previewCommentBody, previewCommentMarker, volumeFilePath } from "@yeah/shared";
+import { previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -122,6 +122,10 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       command: buildRunCommand(application, appDir, containerName, domain, volumes, imageRef),
     };
 
+    const registry: Registry | null = application.registryId
+      ? ((await db.select().from(registries).where(eqOp(registries.id, application.registryId)).limit(1))[0] ?? null)
+      : null;
+
     let conn: Client | null = null;
     let resolvedCommit: string | null = null;
     try {
@@ -197,8 +201,28 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
           appendAndPublish,
         );
       } else {
-      for (const step of buildImageSteps(application, repoDir, inlineDir, containerName, buildTimeEntries(envEntries))) {
-        await runStep(conn, step, appendAndPublish);
+      if (registry) {
+        await appendAndPublish(`\x1b[36m$ entrando no registry ${registry.host}\x1b[0m\n`);
+        const passwordFile = `${appDir}/.registry_pw`;
+        await writeRemoteFile(conn, passwordFile, registry.password);
+        await execStream(conn, `chmod 600 ${shellQuote(passwordFile)}`, () => undefined);
+        await runStep(conn, { label: "docker login", command: registryLoginCommand(registry.host, registry.username, passwordFile) }, appendAndPublish);
+      }
+      const buildEnv = buildTimeEntries(envEntries);
+      const buildSteps = buildImageSteps(application, repoDir, inlineDir, containerName, buildEnv);
+      if (registry && application.registryImage && application.buildPack !== "image") {
+        // Build once per commit (and build-time variables): a later deploy, a rollback or another server pulls instead.
+        const variant = buildEnv.length ? createHash("sha256").update(JSON.stringify(buildEnv)).digest("hex").slice(0, 6) : undefined;
+        const ref = registryRef(registry.host, application.registryImage, registryTag(resolvedCommit, deploymentId, variant));
+        const cached = (await execStream(conn, registryExistsCommand(ref), () => undefined)).exitCode === 0;
+        if (cached) {
+          await runStep(conn, { label: `reusando a imagem já construída (${ref}) — sem build`, command: registryTagLocalCommand(ref, containerName) }, appendAndPublish);
+        } else {
+          for (const step of buildSteps) await runStep(conn, step, appendAndPublish);
+          await runStep(conn, { label: `enviando a imagem pro registry (${ref})`, command: registryPushCommand(containerName, ref) }, appendAndPublish);
+        }
+      } else {
+        for (const step of buildSteps) await runStep(conn, step, appendAndPublish);
       }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
@@ -230,6 +254,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await commentOnPreview(application, "failed", null);
       await notifyTeam(application.teamId, "deploy.failed", `Deploy de ${application.name} falhou`, message, "error");
     } finally {
+      if (conn && registry) await execStream(conn, registryLogoutCommand(registry.host), () => undefined).catch(() => undefined);
       conn?.end();
     }
   };

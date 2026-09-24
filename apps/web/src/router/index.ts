@@ -14,6 +14,7 @@ import ServerGeneralPage from "../pages/server/ServerGeneralPage.vue";
 import ServerProxyPage from "../pages/server/ServerProxyPage.vue";
 import ServerMetricsPage from "../pages/server/ServerMetricsPage.vue";
 import ServerTerminalPage from "../pages/server/ServerTerminalPage.vue";
+import RegistriesPage from "../pages/RegistriesPage.vue";
 import StoragesPage from "../pages/StoragesPage.vue";
 import SourcesPage from "../pages/SourcesPage.vue";
 import SourceDetailPage from "../pages/SourceDetailPage.vue";
@@ -72,6 +73,7 @@ export const router = createRouter({
       ],
     },
     { path: "/teams/:teamId/storages", component: StoragesPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/registries", component: RegistriesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/sources", component: SourcesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/sources/:sourceId", component: SourceDetailPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/github", redirect: (to) => `/teams/${to.params.teamId}/sources` },

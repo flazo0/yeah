@@ -65,6 +65,8 @@ function toApplicationDto(app: Application, serverName: string, pending: string[
     domain: app.domain,
     extraDomains: app.extraDomains,
     wwwRedirect: app.wwwRedirect,
+    registryId: app.registryId,
+    registryImage: app.registryImage,
     previewEnabled: app.previewEnabled,
     previewOfId: app.previewOfId,
     prNumber: app.prNumber,

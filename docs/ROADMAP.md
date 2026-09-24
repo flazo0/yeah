@@ -73,7 +73,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [x] Repositório **público por URL** sem credencial: tem card próprio no catálogo ("Repositório Git público").
 - [x] Repositório privado via **Deploy Key** (SSH, chave ed25519 por aplicação, privada criptografada, pública mostrada na tela pra cadastrar no repositório): testado — o clone falhou com "Permission denied" antes de autorizar a chave e funcionou depois, gravando o commit.
 - [ ] Fontes **GitLab** (GitLab App), **Bitbucket** e **Gitea**.
-- [ ] Registry privado (Docker Hub privado, GHCR…) com **push automático** da imagem buildada, tag = SHA do commit — builda uma vez e reusa.
+- [x] **Registry privado** (página Registries: host, usuário, senha/token criptografados, nunca devolvidos): apps de imagem entram no registry antes de baixar; apps construídas **enviam a imagem com a tag do commit** (+ um sufixo do hash das variáveis de build) e um novo deploy do mesmo commit, um **rollback** ou outro servidor **reaproveita a imagem sem construir**. A senha vai por arquivo/stdin (nunca na linha de comando), o arquivo some e o `docker logout` roda no fim. Testado num registry:2 local; Docker Hub/GHCR reais e login com falha não.
 - [x] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push (também `[ci skip]`, `[no ci]`…). Coberto por teste unitário; não testado com um push real do GitHub.
 - [x] Tela de **mudanças pendentes**: o deploy grava um snapshot dos campos que só valem no próximo deploy (senhas e Dockerfile guardados como hash); um banner no topo da aplicação lista o que mudou desde então ("2 mudanças pendentes: Domínio, Variáveis de ambiente") com botão de deploy. Só aplicações.
 - [x] Grace period de parada configurável (`docker stop -t`) em redeploy, parar e reiniciar — aba Avançado.
@@ -197,7 +197,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 - [x] Scheduled tasks com histórico de execuções → Fase 3.
 
 **Paridade com Coolify**
-- [ ] Registry privado com push automático → Fase 3.
+- [x] Registry privado com push automático → Fase 3.
 - [ ] `[skip ci]` / `[skip cd]` → Fase 3.
 - [x] Tela de mudanças pendentes → Fase 3.
 - [ ] Grace period de parada → Fase 3.
