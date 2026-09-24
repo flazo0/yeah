@@ -37,6 +37,8 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     prNumber: null,
     registryId: null,
     registryImage: null,
+    gitSourceId: null,
+    gitRepo: null,
     deployKey: null,
     deployKeyPublic: null,
     port: 3000,

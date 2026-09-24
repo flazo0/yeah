@@ -9,6 +9,7 @@ import {
   type ScheduledTask,
   deployments,
   githubInstallations,
+  gitSources,
   servers,
   type Application,
   type ApplicationVolume,
@@ -16,6 +17,7 @@ import {
   resourceTags,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
+import { gitRepoUrl, isValidGitRepoPath } from "@yeah/shared";
 import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
 import { computeRouting, configSnapshot, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
@@ -67,6 +69,8 @@ function toApplicationDto(app: Application, serverName: string, pending: string[
     wwwRedirect: app.wwwRedirect,
     registryId: app.registryId,
     registryImage: app.registryImage,
+    gitSourceId: app.gitSourceId,
+    gitRepo: app.gitRepo,
     previewEnabled: app.previewEnabled,
     previewOfId: app.previewOfId,
     prNumber: app.prNumber,
@@ -202,6 +206,8 @@ export const applicationRoutes = new Elysia({
       let composeFile = DEFAULT_COMPOSE_FILE;
       let composeService: string | null = null;
       let deployKey: string | null = null;
+      let gitSourceId: string | null = null;
+      let gitRepo: string | null = null;
       let deployKeyPublic: string | null = null;
 
       if (buildPack === "image") {
@@ -236,9 +242,27 @@ export const applicationRoutes = new Elysia({
           githubInstallationId = installation.installationId;
           repoUrl = `https://github.com/${body.githubRepo}`;
         }
+        if (body.gitSourceId) {
+          if (body.githubRepo || body.useDeployKey) {
+            set.status = 400;
+            return { error: "escolha só uma origem: fonte Git, GitHub ou deploy key" };
+          }
+          const [source] = await db.select().from(gitSources).where(and(eq(gitSources.id, body.gitSourceId), eq(gitSources.teamId, params.teamId))).limit(1);
+          if (!source) {
+            set.status = 404;
+            return { error: "fonte Git não encontrada" };
+          }
+          if (!body.gitRepo || !isValidGitRepoPath(body.gitRepo)) {
+            set.status = 400;
+            return { error: "informe o repositório no formato grupo/projeto" };
+          }
+          gitSourceId = source.id;
+          gitRepo = body.gitRepo;
+          repoUrl = gitRepoUrl(source.baseUrl, body.gitRepo);
+        }
         if (!repoUrl) {
           set.status = 400;
-          return { error: "informe repoUrl ou githubRepo" };
+          return { error: "informe repoUrl, githubRepo ou uma fonte Git" };
         }
         if (body.useDeployKey) {
           if (!isSshGitUrl(repoUrl)) {
@@ -292,6 +316,8 @@ export const applicationRoutes = new Elysia({
           composeService,
           deployKey,
           deployKeyPublic,
+          gitSourceId,
+          gitRepo,
           port,
           githubInstallationId,
           githubRepo: body.githubRepo ?? null,
@@ -317,6 +343,8 @@ export const applicationRoutes = new Elysia({
         composeFile: t.Optional(t.String({ maxLength: 255 })),
         composeService: t.Optional(t.String({ maxLength: 64 })),
         useDeployKey: t.Optional(t.Boolean()),
+        gitSourceId: t.Optional(t.String()),
+        gitRepo: t.Optional(t.String({ maxLength: 255 })),
         repoUrl: t.Optional(t.String()),
         githubRepo: t.Optional(t.String()),
         branch: t.Optional(t.String()),

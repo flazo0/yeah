@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { and, eq as eqOp, isNull, or } from "drizzle-orm";
-import { applications, applicationVolumes, deployments, environments, registries, servers, sharedVariables, type Application, type Registry } from "@yeah/db";
+import { applications, applicationVolumes, deployments, environments, gitSources, registries, servers, sharedVariables, type Application, type Registry } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
+import { gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -97,7 +97,12 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       // A GitHub App installation token is only valid for an hour, so it's minted fresh on every
       // deploy rather than stored — this also means access is revoked instantly if the App is uninstalled.
       let cloneUrl = application.repoUrl;
-      if (application.githubInstallationId && application.githubRepo) {
+      if (application.gitSourceId && application.gitRepo) {
+        const [source] = await db.select().from(gitSources).where(eqOp(gitSources.id, application.gitSourceId)).limit(1);
+        if (!source) throw new Error("a fonte Git desta aplicação foi removida — escolha outra na aba Origem");
+        // The token is embedded only for this deploy's clone/fetch; the stored repoUrl stays credential-free.
+        cloneUrl = gitCloneUrlWithToken(source.provider, source.baseUrl, source.username, source.token, application.gitRepo);
+      } else if (application.githubInstallationId && application.githubRepo) {
         const config = getGithubConfig();
         if (!config) throw new Error("aplicação usa GitHub App, mas o servidor não tem GITHUB_APP_* configurado");
         const { token } = await getInstallationToken(config.appId, config.privateKey, application.githubInstallationId);
@@ -106,7 +111,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       return {
         label: rollbackTarget
           ? `voltando pro commit ${rollbackTarget.slice(0, 7)}`
-          : `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
+          : `clonando ${application.githubRepo ?? application.gitRepo ?? application.repoUrl} (${application.branch})`,
         // `set-url` before fetching re-authenticates every deploy — an installation token embedded
         // in a clone from an hour ago would otherwise make the next incremental pull fail.
         command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget, application.deployKey ? deployKeyPath : null),
@@ -156,6 +161,10 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         }
 
         await runStep(conn, await makeCloneOrPullStep(), appendAndPublish);
+        // A token in the clone URL (a Git source's, or GitHub's short-lived one) must not stay in .git/config on the server.
+        if (application.gitSourceId || application.githubInstallationId) {
+          await execStream(conn, `git -C ${shellQuote(repoDir)} remote set-url origin ${shellQuote(application.repoUrl)}`, () => undefined);
+        }
 
         let resolvedCommitSha = "";
         await execStream(conn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {

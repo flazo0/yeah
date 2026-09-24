@@ -8,6 +8,8 @@ import {
   type DatabaseDto,
   type DatabaseEngine,
   type GithubRepoDto,
+  type GitRepoDto,
+  type GitSourceDto,
   type ServerDto,
   type ServiceDto,
 } from "@yeah/shared";
@@ -63,6 +65,14 @@ const cards = computed<CatalogCard[]>(() => [
     subtitle: "Origem Git",
     description: "Repositórios públicos ou privados da sua conta pelo GitHub App, com auto-deploy a cada push.",
     icon: "hub",
+  },
+  {
+    id: "app-gitsource",
+    category: "application",
+    name: "Repositório de uma fonte Git",
+    subtitle: "GitLab · Bitbucket · Gitea",
+    description: "Escolha um repositório de uma fonte conectada em Fontes (GitLab, Bitbucket ou Gitea), com token guardado e auto-deploy por webhook.",
+    icon: "merge",
   },
   {
     id: "app-deploykey",
@@ -186,6 +196,11 @@ async function loadGithub() {
   } catch {
     githubConnected.value = false;
   }
+  try {
+    gitSourcesList.value = (await api.get<{ sources: GitSourceDto[] }>(`/teams/${teamId}/git-sources`)).sources;
+  } catch {
+    gitSourcesList.value = [];
+  }
 }
 
 function suffix(): string {
@@ -216,7 +231,7 @@ async function deployService(catalogKey: string) {
   router.push(`${basePath}/services/${res.service.id}`);
 }
 
-type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "railpack" | "compose" | "static" | "image" | "inline";
+type AppMode = "public" | "github" | "gitsource" | "deploykey" | "nixpacks" | "railpack" | "compose" | "static" | "image" | "inline";
 const appModal = ref<AppMode | null>(null);
 const appForm = ref({
   name: "",
@@ -229,10 +244,35 @@ const appForm = ref({
   publishDirectory: ".",
   composeFile: "docker-compose.yml",
   composeService: "",
+  gitSourceId: "",
+  gitRepo: "",
 });
+const gitSourcesList = ref<GitSourceDto[]>([]);
+const gitRepos = ref<GitRepoDto[]>([]);
+const loadingGitRepos = ref(false);
+
+async function onGitSourceChange() {
+  gitRepos.value = [];
+  appForm.value.gitRepo = "";
+  if (!appForm.value.gitSourceId) return;
+  loadingGitRepos.value = true;
+  try {
+    gitRepos.value = (await api.get<{ repos: GitRepoDto[] }>(`/teams/${teamId}/git-sources/${appForm.value.gitSourceId}/repos`)).repos;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao listar os repositórios";
+  } finally {
+    loadingGitRepos.value = false;
+  }
+}
+
+function onGitRepoChange() {
+  const repo = gitRepos.value.find((r) => r.fullName === appForm.value.gitRepo);
+  if (repo) appForm.value.branch = repo.defaultBranch;
+}
 const appModalTitles: Record<AppMode, string> = {
   public: "Repositório Git público",
   github: "Repositório do GitHub",
+  gitsource: "Fonte Git",
   deploykey: "Repositório privado (Deploy Key)",
   nixpacks: "Nixpacks",
   railpack: "Railpack",
@@ -241,7 +281,7 @@ const appModalTitles: Record<AppMode, string> = {
   image: "Docker Image",
   inline: "Dockerfile",
 };
-const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "railpack" || mode === "compose" || mode === "static";
+const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "gitsource" || mode === "deploykey" || mode === "nixpacks" || mode === "railpack" || mode === "compose" || mode === "static";
 const submittingApp = ref(false);
 
 function onGithubRepoChange() {
@@ -258,6 +298,7 @@ async function createApp() {
     const base = { name: f.name, serverId: serverId.value, port: f.port };
     let payload: Record<string, unknown>;
     if (mode === "github") payload = { ...base, branch: f.branch, githubRepo: f.githubRepo };
+    else if (mode === "gitsource") payload = { ...base, branch: f.branch, gitSourceId: f.gitSourceId, gitRepo: f.gitRepo };
     else if (mode === "public") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl };
     else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, useDeployKey: true };
     else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
@@ -281,6 +322,7 @@ async function deploy(card: CatalogCard) {
   const modeByCard: Record<string, AppMode> = {
     "app-public": "public",
     "app-deploykey": "deploykey",
+    "app-gitsource": "gitsource",
     "app-nixpacks": "nixpacks",
     "app-railpack": "railpack",
     "app-compose": "compose",
@@ -292,6 +334,14 @@ async function deploy(card: CatalogCard) {
   if (mode) {
     appForm.value.port = mode === "static" ? 80 : 3000;
     appModal.value = mode;
+    return;
+  }
+  if (card.id === "app-gitsource") {
+    if (gitSourcesList.value.length === 0) {
+      router.push(`/teams/${teamId}/sources`);
+      return;
+    }
+    appModal.value = "gitsource";
     return;
   }
   if (card.id === "app-github") {
@@ -411,6 +461,24 @@ onMounted(() => {
             </option>
           </select>
         </div>
+        <template v-else-if="appModal === 'gitsource'">
+          <div class="form-group">
+            <label for="app-gitsource">Fonte</label>
+            <select id="app-gitsource" v-model="appForm.gitSourceId" class="form-control" required @change="onGitSourceChange">
+              <option value="" disabled>selecione...</option>
+              <option v-for="src in gitSourcesList" :key="src.id" :value="src.id">{{ src.name }} ({{ src.baseUrl }})</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="app-gitrepo">Repositório</label>
+            <select v-if="gitRepos.length" id="app-gitrepo" v-model="appForm.gitRepo" class="form-control" required @change="onGitRepoChange">
+              <option value="" disabled>selecione...</option>
+              <option v-for="repo in gitRepos" :key="repo.fullName" :value="repo.fullName">{{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}</option>
+            </select>
+            <input v-else id="app-gitrepo" v-model="appForm.gitRepo" class="form-control mono" placeholder="grupo/projeto" :disabled="loadingGitRepos" required />
+            <p v-if="loadingGitRepos" class="hint" style="margin-top: 6px">listando repositórios...</p>
+          </div>
+        </template>
         <div v-else-if="modeUsesRepo(appModal)" class="form-group">
           <label for="app-repo">URL do repositório</label>
           <input

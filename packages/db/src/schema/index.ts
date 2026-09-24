@@ -17,3 +17,4 @@ export * from "./sharedVariables";
 export * from "./scheduledTasks";
 export * from "./tags";
 export * from "./registries";
+export * from "./gitSources";

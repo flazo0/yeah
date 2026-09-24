@@ -19,6 +19,8 @@ import { deployHookRoutes } from "./routes/deployHook";
 import { sharedVariableRoutes } from "./routes/sharedVariables";
 import { tagRoutes } from "./routes/tags";
 import { registryRoutes } from "./routes/registries";
+import { gitSourceRoutes } from "./routes/gitSources";
+import { gitSourceWebhookRoutes } from "./routes/gitSourceWebhook";
 import { terminalRoutes } from "./routes/terminal";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
@@ -70,6 +72,8 @@ const app = new Elysia()
   .use(sharedVariableRoutes)
   .use(tagRoutes)
   .use(registryRoutes)
+  .use(gitSourceRoutes)
+  .use(gitSourceWebhookRoutes)
   .use(terminalRoutes)
   .listen(port);
 

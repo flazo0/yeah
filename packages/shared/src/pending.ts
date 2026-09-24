@@ -6,6 +6,7 @@ export const DEPLOY_AFFECTING_FIELDS = {
   repoUrl: "Repositório",
   branch: "Branch",
   githubRepo: "Repositório do GitHub",
+  gitRepo: "Repositório (fonte Git)",
   buildPack: "Build pack",
   dockerImage: "Imagem",
   dockerfileContent: "Dockerfile",

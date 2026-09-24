@@ -146,6 +146,9 @@ export interface ApplicationDto extends ResourceLimits {
   wwwRedirect: WwwRedirect;
   registryId: string | null;
   registryImage: string | null;
+  /** Set when the code comes from a GitLab / Bitbucket / Gitea source. */
+  gitSourceId: string | null;
+  gitRepo: string | null;
   /** Opted in to PR previews (parent apps only). */
   previewEnabled: boolean;
   /** Set on a preview: the app it was copied from and the PR it shows. */

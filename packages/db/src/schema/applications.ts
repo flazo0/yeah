@@ -3,6 +3,7 @@ import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varcha
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { registries } from "./registries";
+import { gitSources } from "./gitSources";
 import { servers } from "./servers";
 import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
@@ -57,6 +58,9 @@ export const applications = pgTable("applications", {
   prNumber: integer("pr_number"),
   // Private registry: pull credentials for `image` apps; for built apps also where the image is pushed
   // (registry_image = the repository path, e.g. "org/app") and reused by commit.
+  // GitLab / Bitbucket / Gitea source and the "group/project" path inside it (github apps use github_repo instead).
+  gitSourceId: uuid("git_source_id").references((): AnyPgColumn => gitSources.id, { onDelete: "set null" }),
+  gitRepo: varchar("git_repo", { length: 255 }),
   registryId: uuid("registry_id").references((): AnyPgColumn => registries.id, { onDelete: "set null" }),
   registryImage: varchar("registry_image", { length: 255 }),
   composeFile: varchar("compose_file", { length: 255 }).default("docker-compose.yml").notNull(),

@@ -8,7 +8,7 @@ import { useApplicationContext } from "../../composables/useApplicationContext";
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const teamId = useRoute().params.teamId as string;
 
-const form = ref({ repoUrl: "", branch: "", githubRepo: "", dockerImage: "", dockerfileContent: "", publishDirectory: ".", composeFile: "", composeService: "", port: 3000 });
+const form = ref({ gitRepo: "", repoUrl: "", branch: "", githubRepo: "", dockerImage: "", dockerfileContent: "", publishDirectory: ".", composeFile: "", composeService: "", port: 3000 });
 const githubRepos = ref<GithubRepoDto[]>([]);
 const saving = ref(false);
 const saved = ref(false);
@@ -25,6 +25,7 @@ onMounted(async () => {
     repoUrl: a.repoUrl,
     branch: a.branch,
     githubRepo: a.githubRepo ?? "",
+    gitRepo: a.gitRepo ?? "",
     dockerImage: a.dockerImage ?? "",
     dockerfileContent: a.dockerfileContent ?? "",
     publishDirectory: a.publishDirectory,
@@ -78,6 +79,7 @@ async function save() {
     else {
       body.branch = f.branch;
       if (a.githubRepo) body.githubRepo = f.githubRepo;
+      else if (a.gitSourceId) body.gitRepo = f.gitRepo;
       else body.repoUrl = f.repoUrl;
       if (a.buildPack === "static") body.publishDirectory = f.publishDirectory;
       if (a.buildPack === "docker_compose") {
@@ -128,6 +130,11 @@ async function save() {
             <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">{{ repo.fullName }}</option>
           </select>
           <input v-else id="src-github" v-model="form.githubRepo" class="form-control mono" />
+        </div>
+        <div v-else-if="app.gitSourceId" class="form-group">
+          <label for="src-gitrepo">Repositório (grupo/projeto)</label>
+          <input id="src-gitrepo" v-model="form.gitRepo" class="form-control mono" required />
+          <p class="hint" style="margin-top: 6px">Vem de uma fonte Git conectada (GitLab, Bitbucket ou Gitea); o token da fonte é usado no clone.</p>
         </div>
         <div v-else class="form-group">
           <label for="src-repo">URL do repositório</label>

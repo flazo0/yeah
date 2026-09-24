@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
-import { applications, applicationVolumes, environments, githubInstallations, projects, registries, scheduledTasks, servers } from "@yeah/db";
+import { applications, applicationVolumes, environments, githubInstallations, gitSources, projects, registries, scheduledTasks, servers } from "@yeah/db";
 import {
   buildPackUsesGit,
   isSafeComposeFile,
@@ -9,6 +9,8 @@ import {
   isValidComposeService,
   isValidDockerImage,
   isValidRegistryRepository,
+  isValidGitRepoPath,
+  gitRepoUrl,
 } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -94,15 +96,28 @@ export const applicationOpsRoutes = new Elysia({
             patch.githubRepo = null;
           }
         }
-        if (body.repoUrl !== undefined && body.githubRepo === undefined) {
+        if (app.gitSourceId && body.gitRepo !== undefined) {
+          if (!isValidGitRepoPath(body.gitRepo)) {
+            set.status = 400;
+            return { error: "informe o repositório no formato grupo/projeto" };
+          }
+          const [source] = await db.select().from(gitSources).where(eq(gitSources.id, app.gitSourceId)).limit(1);
+          if (!source) {
+            set.status = 400;
+            return { error: "a fonte Git desta aplicação foi removida" };
+          }
+          patch.gitRepo = body.gitRepo;
+          patch.repoUrl = gitRepoUrl(source.baseUrl, body.gitRepo);
+        }
+        if (body.repoUrl !== undefined && body.githubRepo === undefined && body.gitRepo === undefined) {
           const url = body.repoUrl.trim();
           if (!url) {
             set.status = 400;
             return { error: "informe a URL do repositório" };
           }
-          if (app.githubRepo) {
+          if (app.githubRepo || app.gitSourceId) {
             set.status = 400;
-            return { error: "esta aplicação usa o GitHub App — troque o repositório escolhendo outro do GitHub" };
+            return { error: "esta aplicação vem de uma fonte conectada — troque o repositório escolhendo outro dela" };
           }
           patch.repoUrl = url;
         } else if (body.repoUrl !== undefined && body.githubRepo === "") {
@@ -165,6 +180,7 @@ export const applicationOpsRoutes = new Elysia({
         repoUrl: t.Optional(t.String({ maxLength: 1000 })),
         branch: t.Optional(t.String({ maxLength: 255 })),
         githubRepo: t.Optional(t.String({ maxLength: 255 })),
+        gitRepo: t.Optional(t.String({ maxLength: 255 })),
         dockerImage: t.Optional(t.String({ maxLength: 512 })),
         dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
         publishDirectory: t.Optional(t.String({ maxLength: 255 })),
