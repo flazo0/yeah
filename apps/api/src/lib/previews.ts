@@ -83,7 +83,7 @@ export async function handlePullRequestEvent(pr: PullRequestEvent): Promise<Prev
       if (preview) {
         // New rows get new ids, so the copies are new docker volumes: the preview never touches the parent's data.
         const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, parent.id));
-        if (volumes.length) await db.insert(applicationVolumes).values(volumes.map((v) => ({ applicationId: preview!.id, name: v.name, mountPath: v.mountPath })));
+        if (volumes.length) await db.insert(applicationVolumes).values(volumes.map((v) => ({ applicationId: preview!.id, name: v.name, mountPath: v.mountPath, kind: v.kind, hostPath: v.hostPath, fileContent: v.fileContent })));
       }
     }
     if (!preview) continue;

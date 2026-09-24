@@ -16,6 +16,7 @@ import {
   resourceTags,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
+import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
 import { computeRouting, configSnapshot, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
@@ -118,6 +119,9 @@ function toVolumeDto(volume: ApplicationVolume): ApplicationVolumeDto {
     applicationId: volume.applicationId,
     name: volume.name,
     mountPath: volume.mountPath,
+    kind: volume.kind,
+    hostPath: volume.hostPath,
+    fileContent: volume.fileContent,
     createdAt: volume.createdAt.toISOString(),
   };
 }
@@ -304,7 +308,7 @@ export const applicationRoutes = new Elysia({
       body: t.Object({
         name: t.String({ minLength: 1 }),
         serverId: t.String({ minLength: 1 }),
-        buildPack: t.Optional(t.Union([t.Literal("dockerfile"), t.Literal("static"), t.Literal("nixpacks"), t.Literal("image"), t.Literal("dockerfile_inline"), t.Literal("docker_compose")])),
+        buildPack: t.Optional(t.Union([t.Literal("dockerfile"), t.Literal("static"), t.Literal("nixpacks"), t.Literal("railpack"), t.Literal("image"), t.Literal("dockerfile_inline"), t.Literal("docker_compose")])),
         dockerImage: t.Optional(t.String({ maxLength: 512 })),
         dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
         publishDirectory: t.Optional(t.String({ maxLength: 255 })),
@@ -956,14 +960,30 @@ export const applicationRoutes = new Elysia({
         set.status = 404;
         return { error: "application not found" };
       }
-      if (!body.mountPath.startsWith("/")) {
+      if (!isSafeMountPath(body.mountPath)) {
         set.status = 400;
-        return { error: "mountPath precisa ser um caminho absoluto (começar com /)" };
+        return { error: "mountPath precisa ser um caminho absoluto no container, sem aspas nem caracteres de shell" };
+      }
+      const kind = (body.kind ?? "volume") as VolumeKind;
+      if (kind === "bind" && !(body.hostPath && isSafeHostPath(body.hostPath))) {
+        set.status = 400;
+        return { error: "informe o diretório do servidor (caminho absoluto, sem .. nem caracteres de shell)" };
+      }
+      if (kind === "file" && (body.fileContent === undefined || body.fileContent.length > 1_000_000)) {
+        set.status = 400;
+        return { error: "informe o conteúdo do arquivo (até 1 MB)" };
       }
 
       const [volume] = await db
         .insert(applicationVolumes)
-        .values({ applicationId: params.applicationId, name: body.name, mountPath: body.mountPath })
+        .values({
+          applicationId: params.applicationId,
+          name: body.name,
+          mountPath: body.mountPath,
+          kind,
+          hostPath: kind === "bind" ? body.hostPath : null,
+          fileContent: kind === "file" ? body.fileContent : null,
+        })
         .returning();
       if (!volume) {
         set.status = 500;
@@ -972,8 +992,91 @@ export const applicationRoutes = new Elysia({
 
       return { volume: toVolumeDto(volume) };
     },
-    { body: t.Object({ name: t.String({ minLength: 1 }), mountPath: t.String({ minLength: 1 }) }) },
+    {
+      body: t.Object({
+        name: t.String({ minLength: 1 }),
+        mountPath: t.String({ minLength: 1 }),
+        kind: t.Optional(t.Union([t.Literal("volume"), t.Literal("bind"), t.Literal("file")])),
+        hostPath: t.Optional(t.String({ maxLength: 512 })),
+        fileContent: t.Optional(t.String()),
+      }),
+    },
   )
+  .put(
+    "/:applicationId/volumes/:volumeId",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!(await loadApplication(params.environmentId, params.applicationId))) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const [volume] = await db
+        .select()
+        .from(applicationVolumes)
+        .where(and(eq(applicationVolumes.id, params.volumeId), eq(applicationVolumes.applicationId, params.applicationId)))
+        .limit(1);
+      if (!volume) {
+        set.status = 404;
+        return { error: "volume not found" };
+      }
+      if (volume.kind !== "file") {
+        set.status = 400;
+        return { error: "só o conteúdo de arquivos pode ser editado" };
+      }
+      if (body.fileContent.length > 1_000_000) {
+        set.status = 400;
+        return { error: "o arquivo pode ter até 1 MB" };
+      }
+      const [updated] = await db.update(applicationVolumes).set({ fileContent: body.fileContent }).where(eq(applicationVolumes.id, volume.id)).returning();
+      return { volume: toVolumeDto(updated ?? volume) };
+    },
+    { body: t.Object({ fileContent: t.String() }) },
+  )
+  .get("/:applicationId/metrics", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadApplication(params.environmentId, params.applicationId);
+    if (!row) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+    const [server] = await db.select().from(servers).where(eq(servers.id, row.application.serverId)).limit(1);
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    // Same deliberate read-only exception as the container logs route: a short live read the browser is waiting on.
+    let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
+    try {
+      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+      let output = "";
+      const result = await execStream(conn, containerStatsCommand(row.application), (chunk) => {
+        output += chunk;
+      });
+      if (result.exitCode !== 0) return { containers: [], running: false, message: output.trim() || "container não encontrado — faça um deploy primeiro" };
+      return { containers: parseDockerStats(output), running: true };
+    } catch (err) {
+      set.status = 502;
+      return { error: err instanceof Error ? err.message : "falha ao ler as métricas" };
+    } finally {
+      conn?.end();
+    }
+  })
   .delete("/:applicationId/volumes/:volumeId", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

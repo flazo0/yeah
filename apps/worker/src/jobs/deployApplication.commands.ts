@@ -1,5 +1,5 @@
 import type { Application, Server } from "@yeah/db";
-import type { EnvEntry } from "@yeah/shared";
+import type { EnvEntry, VolumeKind } from "@yeah/shared";
 import { composeProjectName, computeRouting, normalizeHost, PROXY_NETWORK_NAME, traefikLabels, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
@@ -100,13 +100,13 @@ export function buildRunCommand(
   appDir: string,
   containerName: string,
   domain: string | null,
-  volumes: Array<{ id: string; mountPath: string }> = [],
+  volumes: Array<{ id: string; mountPath: string; kind?: VolumeKind; hostPath?: string | null }> = [],
   imageRef: string = containerName,
 ): string {
   const base =
     `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
     resourceLimitFlags(application) +
-    volumeFlags(volumes) +
+    volumeFlags(volumes, application.id) +
     healthFlags(application) +
     dockerOptionsFlags(application);
   const restart = `--restart unless-stopped ${shellQuote(imageRef)}`;
@@ -146,6 +146,7 @@ export function buildImageSteps(
 ): BuildStep[] {
   const image = shellQuote(imageName);
   const buildArgs = buildEnv.map((e) => `--build-arg ${shellQuote(`${e.key}=${e.value}`)} `).join("");
+  const railEnv = buildEnv.map((e) => ` --env ${shellQuote(`${e.key}=${e.value}`)}`).join("");
   const nixEnv = buildEnv.map((e) => ` --env ${shellQuote(`${e.key}=${e.value}`)}`).join("");
   switch (application.buildPack) {
     case "image":
@@ -166,6 +167,14 @@ export function buildImageSteps(
           command: "command -v nixpacks >/dev/null 2>&1 || (curl -sSL https://nixpacks.com/install.sh | bash)",
         },
         { label: "construindo com nixpacks (detecta a linguagem)", command: `nixpacks build ${shellQuote(repoDir)} --name ${image}${nixEnv}` },
+      ];
+    case "railpack":
+      return [
+        {
+          label: "garantindo o railpack no servidor",
+          command: "command -v railpack >/dev/null 2>&1 || (curl -sSL https://railpack.com/install.sh | sh)",
+        },
+        { label: "construindo com railpack (detecta a linguagem)", command: `railpack build ${shellQuote(repoDir)} --name ${image}${railEnv}` },
       ];
     default:
       return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build ${buildArgs}-t ${image} .` }];

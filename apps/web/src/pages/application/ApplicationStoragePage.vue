@@ -1,56 +1,86 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import type { ApplicationVolumeDto } from "@yeah/shared";
+import type { ApplicationVolumeDto, VolumeKind } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
-const { basePath, error } = useApplicationContext();
+const { app, basePath, error, reloadApp } = useApplicationContext();
 
 const volumes = ref<ApplicationVolumeDto[]>([]);
-const newVolumeName = ref("");
-const newVolumeMountPath = ref("");
-const addingVolume = ref(false);
-const deletingVolumeId = ref<string | null>(null);
+const kind = ref<VolumeKind>("volume");
+const name = ref("");
+const mountPath = ref("");
+const hostPath = ref("");
+const fileContent = ref("");
+const adding = ref(false);
+const deletingId = ref<string | null>(null);
+const editingId = ref<string | null>(null);
+const editContent = ref("");
+
+const kindLabels: Record<VolumeKind, string> = { volume: "Volume Docker", bind: "Diretório do servidor", file: "Arquivo" };
 
 async function load() {
   try {
-    const res = await api.get<{ volumes: ApplicationVolumeDto[] }>(`${basePath}/volumes`);
-    volumes.value = res.volumes;
+    volumes.value = (await api.get<{ volumes: ApplicationVolumeDto[] }>(`${basePath}/volumes`)).volumes;
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar armazenamento";
   }
 }
 onMounted(load);
 
-async function addVolume() {
-  if (!newVolumeName.value.trim() || !newVolumeMountPath.value.trim()) return;
-  addingVolume.value = true;
+const canAdd = () =>
+  name.value.trim() && mountPath.value.trim() && (kind.value !== "bind" || hostPath.value.trim()) && (kind.value !== "file" || fileContent.value.length > 0);
+
+async function add() {
+  if (!canAdd()) return;
+  adding.value = true;
   error.value = "";
   try {
     const res = await api.post<{ volume: ApplicationVolumeDto }>(`${basePath}/volumes`, {
-      name: newVolumeName.value.trim(),
-      mountPath: newVolumeMountPath.value.trim(),
+      name: name.value.trim(),
+      mountPath: mountPath.value.trim(),
+      kind: kind.value,
+      ...(kind.value === "bind" ? { hostPath: hostPath.value.trim() } : {}),
+      ...(kind.value === "file" ? { fileContent: fileContent.value } : {}),
     });
     volumes.value = [...volumes.value, res.volume];
-    newVolumeName.value = "";
-    newVolumeMountPath.value = "";
+    name.value = mountPath.value = hostPath.value = fileContent.value = "";
+    void reloadApp();
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao adicionar armazenamento";
   } finally {
-    addingVolume.value = false;
+    adding.value = false;
   }
 }
 
-async function deleteVolume(volumeId: string) {
-  deletingVolumeId.value = volumeId;
+async function remove(id: string) {
+  deletingId.value = id;
   error.value = "";
   try {
-    await api.delete(`${basePath}/volumes/${volumeId}`);
-    volumes.value = volumes.value.filter((v) => v.id !== volumeId);
+    await api.delete(`${basePath}/volumes/${id}`);
+    volumes.value = volumes.value.filter((v) => v.id !== id);
+    void reloadApp();
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao remover armazenamento";
   } finally {
-    deletingVolumeId.value = null;
+    deletingId.value = null;
+  }
+}
+
+function startEdit(v: ApplicationVolumeDto) {
+  editingId.value = v.id;
+  editContent.value = v.fileContent ?? "";
+}
+
+async function saveEdit(v: ApplicationVolumeDto) {
+  error.value = "";
+  try {
+    const res = await api.put<{ volume: ApplicationVolumeDto }>(`${basePath}/volumes/${v.id}`, { fileContent: editContent.value });
+    volumes.value = volumes.value.map((x) => (x.id === v.id ? res.volume : x));
+    editingId.value = null;
+    void reloadApp();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar o arquivo";
   }
 }
 </script>
@@ -63,56 +93,80 @@ async function deleteVolume(volumeId: string) {
     </div>
     <div class="card-body">
       <p class="hint mb-16">
-        Volumes nomeados do Docker montados no container — sobrevivem a redeploys. Aplica no próximo deploy.
+        Aplica no próximo deploy. <strong>Volume persistente não é backup:</strong> ele sobrevive a redeploys, mas se o servidor morrer ou a aplicação for excluída, os dados vão junto.
       </p>
-      <div v-if="volumes.length === 0" class="empty-state">Nenhum volume configurado.</div>
+      <p v-if="app?.buildPack === 'docker_compose'" class="hint mb-16">Em aplicações Docker Compose vale o que o arquivo compose declara — esta lista não é usada.</p>
+      <div v-if="volumes.length === 0" class="empty-state">Nada configurado.</div>
       <div v-else class="table-wrap mb-16">
         <table>
           <thead>
-            <tr>
-              <th>Nome</th>
-              <th>Caminho no container</th>
-              <th></th>
-            </tr>
+            <tr><th>Tipo</th><th>Nome</th><th>No container</th><th>Origem</th><th></th></tr>
           </thead>
           <tbody>
-            <tr v-for="volume in volumes" :key="volume.id">
-              <td>{{ volume.name }}</td>
-              <td class="mono">{{ volume.mountPath }}</td>
-              <td>
-                <button
-                  type="button"
-                  class="btn btn-secondary btn-sm"
-                  style="color: var(--bad)"
-                  :disabled="deletingVolumeId === volume.id"
-                  @click="deleteVolume(volume.id)"
-                >
-                  {{ deletingVolumeId === volume.id ? "removendo..." : "Remover" }}
-                </button>
-              </td>
-            </tr>
+            <template v-for="v in volumes" :key="v.id">
+              <tr>
+                <td>{{ kindLabels[v.kind] }}</td>
+                <td>{{ v.name }}</td>
+                <td class="mono">{{ v.mountPath }}</td>
+                <td class="mono">{{ v.kind === "bind" ? v.hostPath : v.kind === "file" ? `${(v.fileContent ?? "").length} caracteres` : "gerenciado pelo Docker" }}</td>
+                <td>
+                  <div class="btn-row">
+                    <button v-if="v.kind === 'file'" type="button" class="btn btn-secondary btn-sm" @click="startEdit(v)">Editar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" :disabled="deletingId === v.id" @click="remove(v.id)">
+                      {{ deletingId === v.id ? "removendo..." : "Remover" }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+              <tr v-if="editingId === v.id">
+                <td colspan="5">
+                  <textarea v-model="editContent" class="form-control mono" rows="8" :aria-label="`Conteúdo de ${v.mountPath}`"></textarea>
+                  <div class="btn-row" style="margin-top: 8px">
+                    <button type="button" class="btn btn-secondary btn-sm" @click="saveEdit(v)">Salvar arquivo</button>
+                    <button type="button" class="btn btn-secondary btn-sm" @click="editingId = null">Cancelar</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
           </tbody>
         </table>
       </div>
+
+      <div class="form-group">
+        <label for="vol-kind">Tipo</label>
+        <select id="vol-kind" v-model="kind" class="form-control" style="max-width: 280px">
+          <option value="volume">Volume Docker (dados persistentes)</option>
+          <option value="bind">Diretório do servidor</option>
+          <option value="file">Arquivo (conteúdo guardado no painel)</option>
+        </select>
+        <p class="hint" style="margin-top: 6px">
+          <template v-if="kind === 'volume'">O Docker gerencia o volume; o nome é só um rótulo.</template>
+          <template v-if="kind === 'bind'">Monta uma pasta que já existe (ou será criada) no servidor — útil pra compartilhar dados com o host ou com outra aplicação.</template>
+          <template v-if="kind === 'file'">O conteúdo (criptografado no painel) é escrito no servidor a cada deploy e montado como arquivo — bom pra config, certificado, <span class="mono">.htpasswd</span>.</template>
+        </p>
+      </div>
       <div class="form-row mb-16">
         <div class="form-group" style="margin-bottom: 0">
-          <label for="app-volume-name">Nome</label>
-          <input id="app-volume-name" v-model="newVolumeName" class="form-control" placeholder="uploads" />
+          <label for="vol-name">Nome</label>
+          <input id="vol-name" v-model="name" class="form-control" placeholder="uploads" />
         </div>
         <div class="form-group" style="margin-bottom: 0">
-          <label for="app-volume-path">Caminho no container</label>
-          <input id="app-volume-path" v-model="newVolumeMountPath" class="form-control mono" placeholder="/app/uploads" />
+          <label for="vol-path">Caminho no container</label>
+          <input id="vol-path" v-model="mountPath" class="form-control mono" placeholder="/app/uploads" />
         </div>
       </div>
+      <div v-if="kind === 'bind'" class="form-group">
+        <label for="vol-host">Diretório no servidor</label>
+        <input id="vol-host" v-model="hostPath" class="form-control mono" placeholder="/srv/dados" />
+      </div>
+      <div v-if="kind === 'file'" class="form-group">
+        <label for="vol-content">Conteúdo do arquivo</label>
+        <textarea id="vol-content" v-model="fileContent" class="form-control mono" rows="6"></textarea>
+      </div>
       <div class="btn-row">
-        <button
-          type="button"
-          class="btn btn-secondary"
-          :disabled="addingVolume || !newVolumeName.trim() || !newVolumeMountPath.trim()"
-          @click="addVolume"
-        >
+        <button type="button" class="btn btn-secondary" :disabled="adding || !canAdd()" @click="add">
           <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          {{ addingVolume ? "adicionando..." : "Adicionar volume" }}
+          {{ adding ? "adicionando..." : "Adicionar" }}
         </button>
       </div>
     </div>

@@ -77,6 +77,7 @@ const isConfigGroup = computed(() => configRouteNames.includes(route.name as str
 const tabs = computed(() => [
   { to: `${routeBase}/deployments`, label: "Deployments", icon: "rocket_launch", active: route.name === "app-deployments" },
   { to: `${routeBase}/logs`, label: "Logs", icon: "article", active: route.name === "app-logs" },
+  { to: `${routeBase}/metrics`, label: "Métricas", icon: "monitoring", active: route.name === "app-metrics" },
   { to: `${routeBase}/terminal`, label: "Terminal", icon: "terminal", active: route.name === "app-terminal" },
   { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
 ]);

@@ -43,7 +43,7 @@ export type ConfigSnapshot = Partial<Record<DeployAffectingField, string>>;
  */
 export function configSnapshot(
   app: Record<string, unknown>,
-  volumes: Array<{ name: string; mountPath: string }>,
+  volumes: Array<{ name: string; mountPath: string; kind?: string; hostPath?: string | null; fileContent?: string | null }>,
   digest: (text: string) => string,
 ): ConfigSnapshot {
   const snapshot: ConfigSnapshot = {};
@@ -51,7 +51,7 @@ export function configSnapshot(
     let value: unknown;
     if (field === "volumes") {
       value = volumes
-        .map((v) => `${v.name}:${v.mountPath}`)
+        .map((v) => `${v.kind ?? "volume"}:${v.name}:${v.mountPath}:${v.hostPath ?? ""}:${v.fileContent ? digest(v.fileContent) : ""}`)
         .sort()
         .join(",");
     } else if (field === "extraDomains") {

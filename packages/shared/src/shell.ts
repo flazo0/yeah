@@ -84,3 +84,15 @@ export function isValidDockerImage(image: string): boolean {
 export function isSshGitUrl(url: string): boolean {
   return /^(git@[\w.-]+:[^\s]+|ssh:\/\/[^\s]+)$/.test(url);
 }
+
+/** A host directory for a bind mount: absolute, no "..", no quoting/shell characters. */
+export function isSafeHostPath(path: string): boolean {
+  if (!path.startsWith("/") || path === "/" || path.length > 512) return false;
+  if (/["'`$;&|<>\s\\]/.test(path) || /[\x00-\x1f]/.test(path)) return false;
+  return !path.split("/").includes("..");
+}
+
+/** A path inside the container: absolute and free of quoting characters. */
+export function isSafeMountPath(path: string): boolean {
+  return path.startsWith("/") && path.length <= 512 && !/["'`$;&|<>\\]/.test(path) && !/[\x00-\x1f]/.test(path);
+}

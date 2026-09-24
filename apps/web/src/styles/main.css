@@ -2110,3 +2110,9 @@ input:-webkit-autofill:focus {
 .segmented { display: inline-flex; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
 .segmented button { border: 0; background: transparent; color: var(--ink-dim); padding: 4px 10px; font-size: 12px; cursor: pointer; }
 .segmented button.active { background: var(--surface); color: var(--ink); font-weight: 600; }
+
+/* Container metrics */
+.metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; }
+.metric-value { font-size: 20px; font-weight: 600; }
+.metric-value small { font-size: 12px; font-weight: 400; color: var(--ink-dim); }
+.spark { width: 100%; height: 34px; color: var(--accent, currentColor); margin-top: 4px; }

@@ -72,6 +72,9 @@ describe("pending changes", () => {
   test("order of extra domains does not matter; env is stored as a digest, not plain", () => {
     expect(pendingChanges(base, configSnapshot({ ...app, extraDomains: ["b.com", "z.com"] }, [{ name: "data", mountPath: "/data" }], digest))).toEqual([]);
     expect(base.envContent).toBe("d(3)");
+    expect(base.volumes).toBe("volume:data:/data::");
+    const withFile = configSnapshot(app, [{ name: "cfg", mountPath: "/c", kind: "file", fileContent: "abcd" }], digest);
+    expect(withFile.volumes).toBe("file:cfg:/c::d(4)");
   });
   test("a field missing from an old snapshot is not reported", () => {
     const old = { ...base };

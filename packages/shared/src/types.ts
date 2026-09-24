@@ -97,11 +97,11 @@ export interface ApiErrorBody {
   error: string;
 }
 
-export type BuildPack = "dockerfile" | "static" | "nixpacks" | "image" | "dockerfile_inline" | "docker_compose";
+export type BuildPack = "dockerfile" | "static" | "nixpacks" | "railpack" | "image" | "dockerfile_inline" | "docker_compose";
 
 /** Build packs that clone a Git repository (the others start from an image or pasted text). */
 export function buildPackUsesGit(buildPack: BuildPack): boolean {
-  return buildPack === "dockerfile" || buildPack === "static" || buildPack === "nixpacks" || buildPack === "docker_compose";
+  return buildPack === "dockerfile" || buildPack === "static" || buildPack === "nixpacks" || buildPack === "railpack" || buildPack === "docker_compose";
 }
 export type ApplicationStatus = "idle" | "deploying" | "running" | "stopped" | "error";
 export type ApplicationLifecycleAction = "start" | "stop" | "restart";
@@ -165,12 +165,26 @@ export interface ApplicationDto extends ResourceLimits {
   createdAt: string;
 }
 
+/** volume = named docker volume; bind = a directory of the host; file = a file whose content lives in the panel. */
+export type VolumeKind = "volume" | "bind" | "file";
+export const VOLUME_KINDS: VolumeKind[] = ["volume", "bind", "file"];
+
 export interface ApplicationVolumeDto {
   id: string;
   applicationId: string;
   name: string;
   mountPath: string;
+  kind: VolumeKind;
+  /** bind only: absolute path on the server. */
+  hostPath: string | null;
+  /** file only: the file's content. */
+  fileContent: string | null;
   createdAt: string;
+}
+
+/** Where a "file" volume is written on the server; bind-mounted into the container. */
+export function volumeFilePath(applicationId: string, volumeId: string): string {
+  return `/opt/yeah-apps/${applicationId}/files/${volumeId}`;
 }
 
 /** The actual docker volume name for a persistent storage row — one source of truth, id-derived so it never collides. */
@@ -179,9 +193,19 @@ export function volumeName(volumeId: string): string {
 }
 
 /** Builds `-v` flags for every configured persistent storage mount — empty string if there are none. */
-export function volumeFlags(volumes: Array<{ id: string; mountPath: string }>): string {
+export function volumeFlags(
+  volumes: Array<{ id: string; mountPath: string; kind?: VolumeKind; hostPath?: string | null }>,
+  /** Needed for "file" volumes: the application id, to locate the file written on the server. */
+  applicationId?: string,
+): string {
   if (volumes.length === 0) return "";
-  return volumes.map((v) => `-v ${shellQuote(volumeName(v.id))}:${shellQuote(v.mountPath)} `).join("");
+  return volumes
+    .map((v) => {
+      if (v.kind === "bind" && v.hostPath) return `-v ${shellQuote(v.hostPath)}:${shellQuote(v.mountPath)} `;
+      if (v.kind === "file" && applicationId) return `-v ${shellQuote(volumeFilePath(applicationId, v.id))}:${shellQuote(v.mountPath)} `;
+      return `-v ${shellQuote(volumeName(v.id))}:${shellQuote(v.mountPath)} `;
+    })
+    .join("");
 }
 
 export interface DeploymentDto {

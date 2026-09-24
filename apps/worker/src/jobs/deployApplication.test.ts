@@ -358,3 +358,21 @@ describe("buildRunCommand routing", () => {
     expect(resolveDomain(app, makeServer())).toBe("shop.example.com");
   });
 });
+
+describe("railpack and storage kinds", () => {
+  test("railpack installs itself if missing and builds with build env", () => {
+    const app = makeApplication({ buildPack: "railpack" });
+    const steps = buildImageSteps(app, "/r", "/i", "img", [{ key: "K", value: "v w", availability: "build" }]);
+    expect(steps[0]!.command).toContain("railpack.com/install.sh");
+    expect(steps[1]!.command).toBe("railpack build '/r' --name 'img' --env 'K=v w'");
+  });
+  test("file and bind volumes reach docker run as -v flags", () => {
+    const app = makeApplication({ id: "app-1" });
+    const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", null, [
+      { id: "f1", mountPath: "/etc/x.conf", kind: "file" },
+      { id: "b1", mountPath: "/data", kind: "bind", hostPath: "/srv/data" },
+    ]);
+    expect(cmd).toContain("-v '/opt/yeah-apps/app-1/files/f1':'/etc/x.conf'");
+    expect(cmd).toContain("-v '/srv/data':'/data'");
+  });
+});

@@ -36,6 +36,7 @@ import ApplicationSourcePage from "../pages/application/ApplicationSourcePage.vu
 import ApplicationServerPage from "../pages/application/ApplicationServerPage.vue";
 import ApplicationOperationsPage from "../pages/application/ApplicationOperationsPage.vue";
 import ApplicationPreviewsPage from "../pages/application/ApplicationPreviewsPage.vue";
+import ApplicationMetricsPage from "../pages/application/ApplicationMetricsPage.vue";
 import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
@@ -112,6 +113,7 @@ export const router = createRouter({
         { path: "webhooks", name: "app-webhooks", component: ApplicationWebhooksPage },
         { path: "tasks", name: "app-tasks", component: ApplicationTasksPage },
         { path: "terminal", name: "app-terminal", component: ApplicationTerminalPage },
+        { path: "metrics", name: "app-metrics", component: ApplicationMetricsPage },
         { path: "source", name: "app-source", component: ApplicationSourcePage },
         { path: "server", name: "app-server", component: ApplicationServerPage },
         { path: "operations", name: "app-operations", component: ApplicationOperationsPage },

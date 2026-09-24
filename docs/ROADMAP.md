@@ -65,7 +65,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 
 **Build e origem**
 - [ ] Build pack **Nixpacks** (detecta linguagem, builda sem Dockerfile). Implementado (card no catálogo, instala o nixpacks no servidor se faltar e roda `nixpacks build`) e coberto por teste unitário dos comandos, mas **não foi rodado de verdade** — o Docker aninhado do ambiente de teste não alcança a internet pra instalar o nixpacks. Marcar quando testado numa VPS real.
-- [ ] Build pack **Railpack** (alternativa mais nova que o Coolify oferece).
+- [ ] Build pack **Railpack**: implementado igual ao Nixpacks (card, instala o `railpack` no servidor se faltar, `railpack build` com as variáveis de build) e coberto por teste unitário dos comandos; a VPS de teste não tem internet nem `curl`, então o teste real só mostrou a falha visível ("railpack: not found", deploy `failed`, sem travar). Marcar quando rodar numa VPS de verdade.
 - [x] Build pack **estático** (a pasta escolhida do repositório servida por nginx, Dockerfile gerado): testado — o site do repositório respondeu na porta 80 da VPS.
 - [x] Deploy via **Docker Compose** (multi-container por aplicação): build pack `docker_compose` — `docker compose up -d --build --remove-orphans --wait` do arquivo escolhido no repositório, projeto `yeah-app-<id>`, domínio ligado ao serviço escolhido por um override com labels do Traefik, logs de todos os containers, start/stop/restart, tarefas agendadas (exec no serviço) e exclusão que derruba containers, rede e volumes. Limites: sem compose colado no painel, sem trocar arquivo/serviço depois de criado, healthcheck/limites/volumes do painel não valem (vale o que o arquivo declara).
 - [x] Deploy via **Docker Image** de qualquer registry público (sem Git, sem build): testado. Registry privado com login ainda não (item de registry abaixo).
@@ -89,11 +89,11 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [x] Sub-aba **Servidor**: ver e trocar o servidor de destino — remove o container, arquivos e volumes do servidor antigo (recusa se não conseguir limpar, com "mover mesmo assim"), deixa a app parada e pede um deploy. Os dados dos volumes não migram.
 - [x] Sub-aba **Webhooks**: URL de deploy manual (`POST /hooks/deploy/:token`, só o hash do token é guardado e a URL aparece uma vez) + explicação do auto-deploy do GitHub e dos marcadores de skip.
 - [x] Sub-aba **Operações**: clonar (mesmo ambiente ou outro, mesmo servidor ou outro; sem domínios nem token, tarefas pausadas) e mover pra outro ambiente/projeto do time. "Migrar entre servidores" = a aba Servidor.
-- [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
+- [x] Sub-aba **Métricas**: `docker stats --no-stream` do container (todos os containers do projeto no compose) a cada 5 s enquanto a aba está aberta — CPU, memória, rede, disco, processos e um gráfico curto da sessão. Nada instalado no servidor. O histórico persistente é a Fase 5.
 - [x] Sub-aba **Zona de perigo** (excluir com confirmação).
 - [x] **Preview deployments**: app ligada ao GitHub opta em previews (aba Previews); `pull_request` opened/reopened/synchronize cria (ou atualiza) uma cópia `<app>-pr-N` construída da branch do PR, em `pr-N-<app>.<wildcard>`, com as mesmas variáveis e volumes novos; `closed` apaga container, arquivos, volumes e a linha; o worker comenta a URL no PR (um comentário só, editado a cada push). PR de fork é ignorado; exige proxy ativo + wildcard no servidor. Testado com webhooks assinados contra a VPS de teste; o comentário no PR e o Traefik reais não.
 - [x] **Scheduled tasks**: comando dentro do container num cron (BullMQ job scheduler, fuso configurável), limite de tempo, "executar agora", pausar, histórico das últimas 50 execuções (status, código, log) e evento `task.failed` nas notificações. Aba "Tarefas agendadas" na aplicação. Ainda não existe em serviços/compose.
-- [ ] Persistent storage: tipos de volume/arquivo/diretório além do volume nomeado. (O "sufixo para PR" já está resolvido por construção: cada preview copia os volumes com ids novos, então nunca toca nos dados da app principal.)
+- [x] Persistent storage: tipos **volume Docker**, **diretório do servidor** (bind) e **arquivo** (conteúdo criptografado no painel, escrito no servidor a cada deploy e montado como arquivo; editável pela tela). Validação de caminhos; clone e preview copiam os três tipos. O "sufixo para PR" já é resolvido por construção (previews copiam com ids novos).
 - [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
 - [x] **Múltiplos domínios** por aplicação (até 10, validados, sem conflito entre apps do time) + **redirect www ↔ raiz** (301 por middleware do Traefik, certificado pros dois). Labels testados num container real; Traefik de verdade não. Vale para `docker run` e para compose.
 - [x] **Tags** em recursos (aplicação, banco, serviço): criar/apagar e atribuir no modal do botão de etiqueta na listagem do ambiente, chips coloridos nas linhas e cards, filtro por etiqueta e busca por nome de etiqueta. Não há página própria de gerenciamento nem renomear/trocar cor pela tela (a API já suporta).
@@ -128,7 +128,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Botões de manutenção: limpar backups com falha, limpar deletados, apagar backups + agendamento.
 - [ ] Compressão paralela (gzip multi-core).
 - [ ] **Backup de volume/storage persistente** de aplicações e serviços (não só banco).
-- [ ] Aviso explícito na UI: "volume persistente não é backup".
+- [x] Aviso explícito na UI: "volume persistente não é backup" (aba Armazenamento das aplicações). Ainda falta nos bancos/serviços.
 
 ## Fase 5 — Servidores e infraestrutura
 

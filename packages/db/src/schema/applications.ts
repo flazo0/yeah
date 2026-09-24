@@ -9,7 +9,7 @@ import { resourceLimitColumns } from "./columns";
 // dockerfile / static / nixpacks build from a Git repo; image pulls a ready image; dockerfile_inline
 // builds a Dockerfile pasted into the panel; docker_compose runs a compose file from the repo as one project.
 // Railpack is not wired up yet.
-export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "image", "dockerfile_inline", "docker_compose"]);
+export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "railpack", "image", "dockerfile_inline", "docker_compose"]);
 export const wwwRedirectEnum = pgEnum("www_redirect", ["none", "www_to_root", "root_to_www"]);
 export const applicationStatusEnum = pgEnum("application_status", ["idle", "deploying", "running", "stopped", "error"]);
 

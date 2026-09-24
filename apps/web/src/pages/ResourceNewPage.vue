@@ -82,6 +82,15 @@ const cards = computed<CatalogCard[]>(() => [
     docsUrl: "https://nixpacks.com/docs",
   },
   {
+    id: "app-railpack",
+    category: "application",
+    name: "Railpack",
+    subtitle: "Build pack · Git",
+    description: "Sem Dockerfile, como o Nixpacks, com a ferramenta mais nova da Railway. Instalado no servidor na primeira vez (precisa do BuildKit).",
+    icon: "bolt",
+    docsUrl: "https://railpack.com/",
+  },
+  {
     id: "app-compose",
     category: "application",
     name: "Docker Compose",
@@ -207,7 +216,7 @@ async function deployService(catalogKey: string) {
   router.push(`${basePath}/services/${res.service.id}`);
 }
 
-type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "compose" | "static" | "image" | "inline";
+type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "railpack" | "compose" | "static" | "image" | "inline";
 const appModal = ref<AppMode | null>(null);
 const appForm = ref({
   name: "",
@@ -226,12 +235,13 @@ const appModalTitles: Record<AppMode, string> = {
   github: "Repositório do GitHub",
   deploykey: "Repositório privado (Deploy Key)",
   nixpacks: "Nixpacks",
+  railpack: "Railpack",
   compose: "Docker Compose",
   static: "Site estático",
   image: "Docker Image",
   inline: "Dockerfile",
 };
-const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "compose" || mode === "static";
+const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "railpack" || mode === "compose" || mode === "static";
 const submittingApp = ref(false);
 
 function onGithubRepoChange() {
@@ -251,6 +261,7 @@ async function createApp() {
     else if (mode === "public") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl };
     else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, useDeployKey: true };
     else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
+    else if (mode === "railpack") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "railpack" };
     else if (mode === "compose") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "docker_compose", composeFile: f.composeFile, composeService: f.composeService };
     else if (mode === "static") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "static", publishDirectory: f.publishDirectory };
     else if (mode === "image") payload = { ...base, buildPack: "image", dockerImage: f.dockerImage };
@@ -271,6 +282,7 @@ async function deploy(card: CatalogCard) {
     "app-public": "public",
     "app-deploykey": "deploykey",
     "app-nixpacks": "nixpacks",
+    "app-railpack": "railpack",
     "app-compose": "compose",
     "app-static": "static",
     "app-image": "image",

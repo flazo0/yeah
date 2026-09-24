@@ -271,7 +271,7 @@ export const applicationOpsRoutes = new Elysia({
         return { error: "falha ao clonar" };
       }
       const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, app.id));
-      if (volumes.length) await db.insert(applicationVolumes).values(volumes.map((v) => ({ applicationId: copy.id, name: v.name, mountPath: v.mountPath })));
+      if (volumes.length) await db.insert(applicationVolumes).values(volumes.map((v) => ({ applicationId: copy.id, name: v.name, mountPath: v.mountPath, kind: v.kind, hostPath: v.hostPath, fileContent: v.fileContent })));
       // Scheduled tasks come along paused: the copy should not start running jobs before someone checks it.
       const tasks = await db.select().from(scheduledTasks).where(eq(scheduledTasks.applicationId, app.id));
       if (tasks.length) {

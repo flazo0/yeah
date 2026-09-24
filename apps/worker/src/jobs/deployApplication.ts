@@ -5,7 +5,7 @@ import { applications, applicationVolumes, deployments, environments, servers, s
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { previewCommentBody, previewCommentMarker } from "@yeah/shared";
+import { previewCommentBody, previewCommentMarker, volumeFilePath } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -167,6 +167,13 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         await appendAndPublish(`\x1b[36m$ escrevendo o Dockerfile\x1b[0m\n`);
         await execStream(conn, `mkdir -p ${shellQuote(inlineDir)}`, () => undefined);
         await writeRemoteFile(conn, `${inlineDir}/Dockerfile`, application.dockerfileContent ?? "");
+      }
+
+      // "File" volumes: the content lives in the panel and is written to the server before the container mounts it.
+      for (const volume of volumes.filter((v) => v.kind === "file" && application.buildPack !== "docker_compose")) {
+        await appendAndPublish(`\x1b[36m$ escrevendo o arquivo ${volume.mountPath}\x1b[0m\n`);
+        await execStream(conn, `mkdir -p ${shellQuote(`${appDir}/files`)} && rm -rf ${shellQuote(volumeFilePath(application.id, volume.id))}`, () => undefined);
+        await writeRemoteFile(conn, volumeFilePath(application.id, volume.id), volume.fileContent ?? "");
       }
 
       if (application.buildPack === "docker_compose") {
