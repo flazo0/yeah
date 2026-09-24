@@ -8,6 +8,25 @@ import StatusBadge from "../../components/StatusBadge.vue";
 const { server, teamId, error } = useServerContext();
 const router = useRouter();
 const testing = ref(false);
+const sshTimeout = ref(server.value?.sshTimeoutSeconds ?? 15);
+const savingTimeout = ref(false);
+const timeoutSaved = ref(false);
+
+async function saveTimeout() {
+  if (!server.value) return;
+  savingTimeout.value = true;
+  timeoutSaved.value = false;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: { sshTimeoutSeconds: number } }>(`/teams/${teamId}/servers/${server.value.id}/ssh`, { sshTimeoutSeconds: sshTimeout.value });
+    server.value.sshTimeoutSeconds = res.server.sshTimeoutSeconds;
+    timeoutSaved.value = true;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar o timeout";
+  } finally {
+    savingTimeout.value = false;
+  }
+}
 
 const confirmingRemove = ref(false);
 const removing = ref(false);
@@ -69,6 +88,26 @@ async function testConnection() {
           Testar conexão
         </button>
       </div>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">timer</span>
+      Conexão SSH
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Quanto tempo o painel espera o servidor responder ao conectar antes de desistir. Aumente pra máquinas lentas ou muito distantes.
+      </p>
+      <form class="form-group" @submit.prevent="saveTimeout">
+        <label for="ssh-timeout">Timeout de conexão (segundos)</label>
+        <input id="ssh-timeout" v-model.number="sshTimeout" type="number" min="5" max="120" class="form-control" style="max-width: 160px" />
+        <div class="btn-row" style="margin-top: 12px">
+          <button type="submit" class="btn btn-secondary" :disabled="savingTimeout">Salvar</button>
+          <span v-if="timeoutSaved" class="hint">Salvo.</span>
+        </div>
+      </form>
     </div>
   </div>
 

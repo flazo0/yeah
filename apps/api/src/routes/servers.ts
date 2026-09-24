@@ -16,6 +16,7 @@ function toServerDto(server: Server): ServerDto {
     host: server.host,
     port: server.port,
     sshUser: server.sshUser,
+    sshTimeoutSeconds: server.sshTimeoutSeconds,
     status: server.status,
     dockerVersion: server.dockerVersion,
     lastCheckedAt: server.lastCheckedAt ? server.lastCheckedAt.toISOString() : null,
@@ -159,6 +160,35 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
         acmeEmail: t.Optional(t.String()),
       }),
     },
+  )
+  .put(
+    "/:serverId/ssh",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!Number.isInteger(body.sshTimeoutSeconds) || body.sshTimeoutSeconds < 5 || body.sshTimeoutSeconds > 120) {
+        set.status = 400;
+        return { error: "o timeout SSH precisa ser de 5 a 120 segundos" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ sshTimeoutSeconds: body.sshTimeoutSeconds })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ sshTimeoutSeconds: t.Number() }) },
   )
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

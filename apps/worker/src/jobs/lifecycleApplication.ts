@@ -25,7 +25,7 @@ export function makeLifecycleApplicationProcessor(publishConnection: Redis) {
 
     let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
     try {
-      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
       let output = "";
       const result = await execStream(
         conn,

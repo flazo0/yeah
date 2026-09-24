@@ -2065,3 +2065,21 @@ input:-webkit-autofill:focus {
   font-size: 13px;
   cursor: pointer;
 }
+
+/* Tags */
+.tag-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tag, #6366f1);
+  background: color-mix(in srgb, var(--tag, #6366f1) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tag, #6366f1) 40%, transparent);
+}
+.tag-option { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.tag-option label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.resource-card-tags { right: 40px; }
+.resource-card-tags:hover { border-color: var(--line, currentColor); color: var(--ink); }

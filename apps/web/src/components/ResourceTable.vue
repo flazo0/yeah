@@ -17,6 +17,7 @@ export interface ResourceRow {
   serverName: string;
   detail: string;
   path: string;
+  tags?: { id: string; name: string; color: string }[];
 }
 
 const props = defineProps<{
@@ -24,7 +25,7 @@ const props = defineProps<{
   loading?: boolean;
   pendingDeleteId?: string | null;
 }>();
-const emit = defineEmits<{ delete: [row: ResourceRow] }>();
+const emit = defineEmits<{ delete: [row: ResourceRow]; tags: [row: ResourceRow] }>();
 
 const view = ref<"list" | "grid">("list");
 const pageSize = ref(10);
@@ -33,13 +34,19 @@ const search = ref("");
 const typeFilter = ref("");
 const statusFilter = ref("");
 const serverFilter = ref("");
+const tagFilter = ref("");
 const sortBy = ref<"name" | "status" | "type" | "server">("name");
 
-watch([search, typeFilter, statusFilter, serverFilter, sortBy], () => {
+watch([search, typeFilter, statusFilter, serverFilter, tagFilter, sortBy], () => {
   page.value = 1;
 });
 
 const statuses = computed(() => [...new Set(props.items.map((i) => i.status))].sort());
+const allTags = computed(() => {
+  const seen = new Map<string, string>();
+  for (const item of props.items) for (const tag of item.tags ?? []) seen.set(tag.id, tag.name);
+  return [...seen].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+});
 const servers = computed(() => [...new Set(props.items.map((i) => i.serverName))].sort());
 
 const filtered = computed(() => {
@@ -48,8 +55,9 @@ const filtered = computed(() => {
     if (typeFilter.value && i.kind !== typeFilter.value) return false;
     if (statusFilter.value && i.status !== statusFilter.value) return false;
     if (serverFilter.value && i.serverName !== serverFilter.value) return false;
+    if (tagFilter.value && !(i.tags ?? []).some((tag) => tag.id === tagFilter.value)) return false;
     if (!q) return true;
-    return [i.name, i.typeLabel, i.domain ?? "", i.serverName, i.detail].some((f) => f.toLowerCase().includes(q));
+    return [i.name, i.typeLabel, i.domain ?? "", i.serverName, i.detail, ...(i.tags ?? []).map((tag) => tag.name)].some((f) => f.toLowerCase().includes(q));
   });
   const key = {
     name: (r: ResourceRow) => r.name,
@@ -64,13 +72,14 @@ const paged = computed(() => {
   const start = (page.value - 1) * pageSize.value;
   return filtered.value.slice(start, start + pageSize.value);
 });
-const hasFilters = computed(() => Boolean(search.value || typeFilter.value || statusFilter.value || serverFilter.value));
+const hasFilters = computed(() => Boolean(search.value || typeFilter.value || statusFilter.value || serverFilter.value || tagFilter.value));
 
 function clearFilters() {
   search.value = "";
   typeFilter.value = "";
   statusFilter.value = "";
   serverFilter.value = "";
+  tagFilter.value = "";
 }
 
 function domainHref(domain: string): string {
@@ -99,6 +108,10 @@ function domainHref(domain: string): string {
         <select v-if="servers.length > 1" v-model="serverFilter" class="form-control" aria-label="Filtrar por servidor">
           <option value="">Todos os servidores</option>
           <option v-for="s in servers" :key="s" :value="s">{{ s }}</option>
+        </select>
+        <select v-if="allTags.length > 0" v-model="tagFilter" class="form-control" aria-label="Filtrar por etiqueta">
+          <option value="">Todas as etiquetas</option>
+          <option v-for="tag in allTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
         </select>
         <select v-model="sortBy" class="form-control" aria-label="Ordenar por">
           <option value="name">Ordenar: nome</option>
@@ -140,6 +153,9 @@ function domainHref(domain: string): string {
                     <small class="mono">{{ row.detail }}</small>
                   </span>
                 </RouterLink>
+                <div v-if="row.tags?.length" class="tag-chips">
+                  <span v-for="tag in row.tags" :key="tag.id" class="tag-chip" :style="{ '--tag': tag.color }">{{ tag.name }}</span>
+                </div>
               </td>
               <td data-label="Tipo">{{ row.typeLabel }}</td>
               <td data-label="Status">
@@ -151,6 +167,9 @@ function domainHref(domain: string): string {
               </td>
               <td data-label="Servidor">{{ row.serverName }}</td>
               <td class="rtable-actions-col">
+                <button type="button" class="rtable-delete" title="Etiquetas" aria-label="Etiquetas" @click="emit('tags', row)">
+                  <span class="material-symbols-outlined">sell</span>
+                </button>
                 <button
                   type="button"
                   class="rtable-delete"
@@ -178,7 +197,13 @@ function domainHref(domain: string): string {
             </div>
             <div class="desc mono">{{ row.detail }}</div>
             <div class="desc">{{ row.domain || row.serverName }}</div>
+            <div v-if="row.tags?.length" class="tag-chips">
+              <span v-for="tag in row.tags" :key="tag.id" class="tag-chip" :style="{ '--tag': tag.color }">{{ tag.name }}</span>
+            </div>
           </RouterLink>
+          <button type="button" class="resource-card-delete resource-card-tags" title="Etiquetas" aria-label="Etiquetas" @click="emit('tags', row)">
+            <span class="material-symbols-outlined">sell</span>
+          </button>
           <button
             type="button"
             class="resource-card-delete"

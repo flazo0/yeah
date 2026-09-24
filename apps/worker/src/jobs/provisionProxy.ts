@@ -59,6 +59,7 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
         port: server.port,
         username: server.sshUser,
         privateKey: server.privateKey,
+      timeoutMs: server.sshTimeoutSeconds * 1000,
       });
 
       try {

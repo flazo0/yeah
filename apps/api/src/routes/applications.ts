@@ -12,6 +12,7 @@ import {
   type Application,
   type ApplicationVolume,
   type Deployment,
+  resourceTags,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { buildPackUsesGit, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
@@ -506,7 +507,7 @@ export const applicationRoutes = new Elysia({
       }
       let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
       try {
-        conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+        conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
         let output = "";
         const result = await execStream(conn, `docker logs --tail ${tail} --timestamps ${shellQuote(`yeah-app-${row.application.id}`)} 2>&1`, (chunk) => {
           output += chunk;
@@ -916,7 +917,7 @@ export const applicationRoutes = new Elysia({
     const server = serverRows[0];
     if (server) {
       try {
-        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
         try {
           await execStream(conn, `docker volume rm ${shellQuote(volumeName(volume.id))} >/dev/null 2>&1 || true`, () => {});
         } finally {
@@ -1101,6 +1102,7 @@ export const applicationRoutes = new Elysia({
           port: server.port,
           username: server.sshUser,
           privateKey: server.privateKey,
+        timeoutMs: server.sshTimeoutSeconds * 1000,
         });
         try {
           await execStream(
@@ -1121,6 +1123,7 @@ export const applicationRoutes = new Elysia({
     const taskRows = await db.select({ id: scheduledTasks.id }).from(scheduledTasks).where(eq(scheduledTasks.applicationId, params.applicationId));
     for (const task of taskRows) await removeScheduledTask(scheduledTaskQueue, task.id).catch(() => undefined);
 
+    await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "application"), eq(resourceTags.resourceId, params.applicationId)));
     await db.delete(applications).where(eq(applications.id, params.applicationId));
 
     return { ok: true };

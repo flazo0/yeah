@@ -105,6 +105,7 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
         port: server.port,
         username: server.sshUser,
         privateKey: server.privateKey,
+      timeoutMs: server.sshTimeoutSeconds * 1000,
       });
 
       const containerName = containerNameForDatabase(database.id);

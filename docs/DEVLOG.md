@@ -510,3 +510,13 @@ Fiz as tarefas agendadas de uma aplicação: comando rodado com `docker exec <co
 **Testado** (painel local + "VPS" docker-in-docker, container alpine de demo): cron e fuso inválidos → 400 sem deixar linha; execução manual com sucesso (stdout+stderr no log), `exit 7` → `failed` código 7, `sleep 30` com limite de 3s → `failed` "excedeu o limite de 3s", aspas e `$HOSTNAME` chegaram certos; tarefa `* * * * *` disparou sozinha (2 execuções não manuais) e, pausada, parou. **Achei e consertei**: apagar a aplicação deixava os schedulers ativos no Redis — agora são removidos (8 → 0). 201 testes, `tsc` e `vue-tsc` passam.
 
 **Não testado**: a aba no navegador (só API e typecheck), a notificação `task.failed` num canal real, tarefas em serviços.
+
+## Fase 3 (parte 5): timeout SSH por servidor e etiquetas
+
+**Timeout SSH**: coluna `servers.ssh_timeout_seconds` (padrão 15, migração 0021); `connectSsh` e `testSshConnection` aceitam `timeoutMs` e todos os 13 pontos que abrem SSH passam o valor do servidor. Rota `PUT /servers/:id/ssh` (5–120, senão 400) e um card "Conexão SSH" na aba Geral do servidor.
+
+**Etiquetas**: tabelas `tags` (nome único por time, cor) e `resource_tags` (sem FK pro recurso, porque aponta pra aplicação, banco ou serviço — as rotas de exclusão desses recursos limpam as linhas), migração 0022. Rotas em `/teams/:id/tags` (listar, criar, renomear/recolorir, apagar, `PUT /assign` que troca o conjunto de etiquetas de um recurso e confere que recurso e etiquetas são do time). Na lista de recursos do ambiente: botão de etiqueta por linha/card com modal (marcar, criar, apagar), chips e filtro por etiqueta.
+
+**Testado** (painel local, sem VPS): timeout medido contra um IP que não responde, com chave válida — 5 s de configuração deu erro em 5,2 s e 12 s deu em 12,3 s; 2 e 500 → 400. Etiquetas pela API: criar, nome duplicado 409, cor inválida e nome vazio 400, atribuir a uma aplicação, trocar o conjunto, renomear (duplicado 409), etiqueta ou recurso de outro tipo/time recusados (400/404), time alheio 403, apagar a aplicação zerou os vínculos, apagar etiqueta 200 e depois 404. No navegador: abri o modal, criei a etiqueta pela tela, salvei, o chip apareceu só na linha certa e o filtro deixou só ela; salvei o timeout na aba Geral do servidor. 201 testes, `tsc` e `vue-tsc` passam.
+
+**Não testado**: etiquetas em bancos e serviços pela tela (mesmo código, só testei aplicação), layout do botão de etiqueta no celular e no modo grade.

@@ -33,7 +33,7 @@ export function makeScheduledTaskProcessor() {
     let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
       const command = buildTaskCommand(`yeah-app-${application.id}`, task.command);
 
       // Bounded by the task's own timeout: ending the connection kills the remote exec channel.

@@ -96,8 +96,8 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
 - [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
 - [ ] **Múltiplos domínios** por aplicação + redirect www/não-www.
-- [ ] **Tags** em recursos (criar, atribuir, filtrar na listagem).
-- [ ] Timeout de conexão SSH configurável por servidor.
+- [x] **Tags** em recursos (aplicação, banco, serviço): criar/apagar e atribuir no modal do botão de etiqueta na listagem do ambiente, chips coloridos nas linhas e cards, filtro por etiqueta e busca por nome de etiqueta. Não há página própria de gerenciamento nem renomear/trocar cor pela tela (a API já suporta).
+- [x] Timeout de conexão SSH configurável por servidor (5–120 s, padrão 15 s), na aba Geral do servidor; vale pra todos os jobs e rotas que abrem SSH.
 
 **Variáveis de ambiente**
 - [x] **Variáveis compartilhadas** por escopo (time / projeto / ambiente): página própria na sidebar, valor criptografado, referência `{{project.NOME}}` (ou `team` / `environment`) no `.env` da aplicação, expandida no deploy — referência inexistente falha o deploy com a lista do que falta. O mesmo nome em escopos diferentes convive, porque cada referência nomeia o escopo. Só aplicações usam por enquanto (serviços não).
@@ -201,7 +201,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 - [ ] `[skip ci]` / `[skip cd]` → Fase 3.
 - [ ] Tela de mudanças pendentes → Fase 3.
 - [ ] Grace period de parada → Fase 3.
-- [ ] Timeout SSH configurável por servidor → Fase 3.
+- [x] Timeout SSH configurável por servidor → Fase 3.
 - [ ] Terminal web interativo → Fase 3.
 - [ ] Variáveis compartilhadas por escopo e build-time vs runtime → Fase 3.
 - [ ] Backup de volume/storage persistente e compressão paralela → Fase 4.

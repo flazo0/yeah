@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
-import { services, servers, type Service } from "@yeah/db";
+import { resourceTags, services, servers, type Service } from "@yeah/db";
 import { findServiceCatalogEntry, type ServiceDto } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
@@ -307,6 +307,7 @@ export const serviceRoutes = new Elysia({
           port: server.port,
           username: server.sshUser,
           privateKey: server.privateKey,
+        timeoutMs: server.sshTimeoutSeconds * 1000,
         });
         try {
           await execStream(
@@ -323,6 +324,7 @@ export const serviceRoutes = new Elysia({
       }
     }
 
+    await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "service"), eq(resourceTags.resourceId, params.serviceId)));
     await db.delete(services).where(eq(services.id, params.serviceId));
     return { ok: true };
   });

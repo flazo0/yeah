@@ -53,6 +53,7 @@ export interface ServerDto {
   host: string;
   port: number;
   sshUser: string;
+  sshTimeoutSeconds: number;
   status: ServerStatus;
   dockerVersion: string | null;
   lastCheckedAt: string | null;
@@ -436,4 +437,14 @@ export interface ScheduledTaskExecutionDto {
   manual: boolean;
   startedAt: string;
   finishedAt: string | null;
+}
+
+export type TaggableType = "application" | "database" | "service";
+
+export interface TagDto {
+  id: string;
+  name: string;
+  color: string;
+  /** Resources currently carrying this tag. */
+  resources: { type: TaggableType; id: string }[];
 }

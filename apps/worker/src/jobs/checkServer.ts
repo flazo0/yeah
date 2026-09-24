@@ -28,6 +28,7 @@ export function makeCheckServerProcessor(publishConnection: Redis) {
         port: server.port,
         username: server.sshUser,
         privateKey: server.privateKey,
+      timeoutMs: server.sshTimeoutSeconds * 1000,
       });
     } catch (err) {
       result = { ok: false };

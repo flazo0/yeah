@@ -8,6 +8,8 @@ export interface SshConnectOptions {
   port: number;
   username: string;
   privateKey: string;
+  /** Handshake timeout in ms; defaults to 15s for connectSsh and 10s for testSshConnection. */
+  timeoutMs?: number;
 }
 
 export type TestConnectionOptions = SshConnectOptions;
@@ -33,7 +35,7 @@ export function testSshConnection(opts: TestConnectionOptions): Promise<TestConn
       resolve(result);
     };
 
-    const timeout = setTimeout(() => finish({ ok: false, error: "connection timed out" }), 10_000);
+    const timeout = setTimeout(() => finish({ ok: false, error: "connection timed out" }), opts.timeoutMs ?? 10_000);
 
     conn
       .on("ready", () => {
@@ -68,7 +70,7 @@ export function testSshConnection(opts: TestConnectionOptions): Promise<TestConn
         port: opts.port,
         username: opts.username,
         privateKey: opts.privateKey,
-        readyTimeout: 10_000,
+        readyTimeout: opts.timeoutMs ?? 10_000,
       });
     } catch (err) {
       finish({ ok: false, error: err instanceof Error ? err.message : String(err) });
@@ -95,7 +97,7 @@ export function connectSsh(opts: SshConnectOptions): Promise<Client> {
       settled = true;
       conn.end();
       reject(new Error("connection timed out"));
-    }, 15_000);
+    }, opts.timeoutMs ?? 15_000);
 
     conn
       .on("ready", () => {
@@ -117,7 +119,7 @@ export function connectSsh(opts: SshConnectOptions): Promise<Client> {
         port: opts.port,
         username: opts.username,
         privateKey: opts.privateKey,
-        readyTimeout: 15_000,
+        readyTimeout: opts.timeoutMs ?? 15_000,
       });
     } catch (err) {
       if (!settled) {

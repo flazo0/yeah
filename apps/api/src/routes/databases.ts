@@ -9,6 +9,7 @@ import {
   type BackupExecution,
   type BackupSchedule,
   type Database,
+  resourceTags,
 } from "@yeah/db";
 import { DATABASE_ENGINES, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
@@ -533,6 +534,7 @@ export const databaseRoutes = new Elysia({
       port: server.port,
       username: server.sshUser,
       privateKey: server.privateKey,
+    timeoutMs: server.sshTimeoutSeconds * 1000,
     });
     try {
       const fileBuffer = await readRemoteFile(sshConn, execution.filePath);
@@ -623,6 +625,7 @@ export const databaseRoutes = new Elysia({
           port: server.port,
           username: server.sshUser,
           privateKey: server.privateKey,
+        timeoutMs: server.sshTimeoutSeconds * 1000,
         });
         try {
           await execStream(
@@ -640,6 +643,7 @@ export const databaseRoutes = new Elysia({
       }
     }
 
+    await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "database"), eq(resourceTags.resourceId, params.databaseId)));
     await db.delete(databases).where(eq(databases.id, params.databaseId));
 
     return { ok: true };

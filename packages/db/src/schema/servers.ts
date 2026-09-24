@@ -16,6 +16,8 @@ export const servers = pgTable("servers", {
   sshUser: varchar("ssh_user", { length: 100 }).default("root").notNull(),
   // Encrypted at rest (AES-256-GCM, see ../encryption.ts) — reads/writes stay plaintext to callers.
   privateKey: encryptedText("private_key").notNull(),
+  // Seconds to wait for the SSH handshake (slow or far-away hosts need more than the default).
+  sshTimeoutSeconds: integer("ssh_timeout_seconds").default(15).notNull(),
   status: serverStatusEnum("status").default("pending").notNull(),
   dockerVersion: varchar("docker_version", { length: 100 }),
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }),

@@ -21,7 +21,7 @@ async function connectToPlatformHost(): Promise<{ conn: Client } | { error: stri
   const server = await findPlatformHost();
   if (!server) return { error: "nenhum servidor marcado como host da plataforma (instalação sem o setup automático do install.sh)" };
   try {
-    const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey });
+    const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
     return { conn };
   } catch (err) {
     return { error: err instanceof Error ? err.message : String(err) };
