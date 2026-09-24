@@ -91,9 +91,9 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [x] Sub-aba **Operações**: clonar (mesmo ambiente ou outro, mesmo servidor ou outro; sem domínios nem token, tarefas pausadas) e mover pra outro ambiente/projeto do time. "Migrar entre servidores" = a aba Servidor.
 - [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
 - [x] Sub-aba **Zona de perigo** (excluir com confirmação).
-- [ ] **Preview deployments**: PR do GitHub vira ambiente efêmero com URL própria, comenta no PR, morre ao fechar.
+- [x] **Preview deployments**: app ligada ao GitHub opta em previews (aba Previews); `pull_request` opened/reopened/synchronize cria (ou atualiza) uma cópia `<app>-pr-N` construída da branch do PR, em `pr-N-<app>.<wildcard>`, com as mesmas variáveis e volumes novos; `closed` apaga container, arquivos, volumes e a linha; o worker comenta a URL no PR (um comentário só, editado a cada push). PR de fork é ignorado; exige proxy ativo + wildcard no servidor. Testado com webhooks assinados contra a VPS de teste; o comentário no PR e o Traefik reais não.
 - [x] **Scheduled tasks**: comando dentro do container num cron (BullMQ job scheduler, fuso configurável), limite de tempo, "executar agora", pausar, histórico das últimas 50 execuções (status, código, log) e evento `task.failed` nas notificações. Aba "Tarefas agendadas" na aplicação. Ainda não existe em serviços/compose.
-- [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
+- [ ] Persistent storage: tipos de volume/arquivo/diretório além do volume nomeado. (O "sufixo para PR" já está resolvido por construção: cada preview copia os volumes com ids novos, então nunca toca nos dados da app principal.)
 - [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
 - [x] **Múltiplos domínios** por aplicação (até 10, validados, sem conflito entre apps do time) + **redirect www ↔ raiz** (301 por middleware do Traefik, certificado pros dois). Labels testados num container real; Traefik de verdade não. Vale para `docker run` e para compose.
 - [x] **Tags** em recursos (aplicação, banco, serviço): criar/apagar e atribuir no modal do botão de etiqueta na listagem do ambiente, chips coloridos nas linhas e cards, filtro por etiqueta e busca por nome de etiqueta. Não há página própria de gerenciamento nem renomear/trocar cor pela tela (a API já suporta).
@@ -193,7 +193,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 
 **Fases já abertas**
 - [ ] Build packs além de Dockerfile (Nixpacks, estático, Docker Compose) → Fase 3.
-- [ ] Preview deployments → Fase 3.
+- [x] Preview deployments → Fase 3.
 - [x] Scheduled tasks com histórico de execuções → Fase 3.
 
 **Paridade com Coolify**

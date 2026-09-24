@@ -13,6 +13,7 @@ import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { tearDownApplication } from "../lib/appTeardown";
+import { applicationCopyValues } from "../lib/appCopy";
 import { applicationDto, loadApplication } from "./applications";
 
 // Operations on an existing application: change where its code comes from, move it to another
@@ -264,14 +265,7 @@ export const applicationOpsRoutes = new Elysia({
         return { error: "informe um nome" };
       }
 
-      // Everything but identity, domains (they would fight for the same hostname), the deploy webhook
-      // token and the deploy history. The deploy key is the same repository's key, so it is shared.
-      const { id: _id, createdAt: _c, domain: _d, extraDomains: _e, wwwRedirect: _w, deployTokenHash: _t, deployedConfig: _dc, status: _s, ...rest } = app;
-      void [_id, _c, _d, _e, _w, _t, _dc, _s];
-      const [copy] = await db
-        .insert(applications)
-        .values({ ...rest, name, environmentId, serverId, status: "idle", domain: null, extraDomains: [], wwwRedirect: "none", deployTokenHash: null, deployedConfig: null })
-        .returning();
+      const [copy] = await db.insert(applications).values(applicationCopyValues(app, { name, environmentId, serverId })).returning();
       if (!copy) {
         set.status = 500;
         return { error: "falha ao clonar" };
@@ -289,6 +283,62 @@ export const applicationOpsRoutes = new Elysia({
     },
     { body: t.Object({ name: t.Optional(t.String({ maxLength: 255 })), environmentId: t.Optional(t.String()), serverId: t.Optional(t.String()) }) },
   )
+  .put(
+    "/:applicationId/preview",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const app = row.application;
+      if (app.previewOfId) {
+        set.status = 400;
+        return { error: "um preview não tem previews próprios" };
+      }
+      if (body.enabled) {
+        if (!app.githubRepo || !app.githubInstallationId) {
+          set.status = 400;
+          return { error: "previews só funcionam em aplicações ligadas a um repositório do GitHub (GitHub App)" };
+        }
+        const [server] = await db.select().from(servers).where(eq(servers.id, app.serverId)).limit(1);
+        if (!server || server.proxyStatus !== "active" || !server.wildcardDomain) {
+          set.status = 409;
+          return { error: "cada preview ganha um domínio próprio: o servidor precisa de proxy ativo e domínio wildcard configurado" };
+        }
+      }
+      const [updated] = await db.update(applications).set({ previewEnabled: body.enabled }).where(eq(applications.id, app.id)).returning();
+      return { application: await applicationDto(updated ?? app, row.serverName) };
+    },
+    { body: t.Object({ enabled: t.Boolean() }) },
+  )
+  .get("/:applicationId/previews", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadApplication(params.environmentId, params.applicationId);
+    if (!row) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+    const previews = await db.select().from(applications).where(eq(applications.previewOfId, row.application.id));
+    return { previews: previews.map((p) => ({ id: p.id, name: p.name, prNumber: p.prNumber, branch: p.branch, domain: p.domain, status: p.status, createdAt: p.createdAt.toISOString() })) };
+  })
   .put(
     "/:applicationId/move",
     async ({ cookie, params, body, set }) => {

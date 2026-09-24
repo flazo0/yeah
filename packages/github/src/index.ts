@@ -125,3 +125,27 @@ export function verifyWebhookSignature(rawBody: string, signatureHeader: string 
   const b = Buffer.from(signatureHeader);
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/**
+ * Posts `body` as a comment on a pull request, or edits the one that already carries `marker` — so a
+ * PR gets one comment per preview no matter how many pushes it sees. `fetchImpl` is injectable for tests.
+ */
+export async function upsertPullRequestComment(
+  installationToken: string,
+  repoFullName: string,
+  prNumber: number,
+  marker: string,
+  body: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<void> {
+  const headers = { Authorization: `Bearer ${installationToken}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" };
+  const base = `https://api.github.com/repos/${repoFullName}/issues/${prNumber}/comments`;
+  const list = await fetchImpl(`${base}?per_page=100`, { headers });
+  if (!list.ok) throw new Error(`GitHub API error listing comments: ${list.status}`);
+  const comments = (await list.json()) as Array<{ id: number; body?: string }>;
+  const existing = comments.find((c) => c.body?.includes(marker));
+  const res = existing
+    ? await fetchImpl(`https://api.github.com/repos/${repoFullName}/issues/comments/${existing.id}`, { method: "PATCH", headers, body: JSON.stringify({ body }) })
+    : await fetchImpl(base, { method: "POST", headers, body: JSON.stringify({ body }) });
+  if (!res.ok) throw new Error(`GitHub API error writing comment: ${res.status}`);
+}

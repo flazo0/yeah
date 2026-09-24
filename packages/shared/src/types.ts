@@ -144,6 +144,11 @@ export interface ApplicationDto extends ResourceLimits {
   domain: string | null;
   extraDomains: string[];
   wwwRedirect: WwwRedirect;
+  /** Opted in to PR previews (parent apps only). */
+  previewEnabled: boolean;
+  /** Set on a preview: the app it was copied from and the PR it shows. */
+  previewOfId: string | null;
+  prNumber: number | null;
   /** Labels of settings changed since the last deploy; null when the app was never deployed. */
   pendingChanges: string[] | null;
   githubRepo: string | null;

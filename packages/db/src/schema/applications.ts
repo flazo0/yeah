@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar, type AnyPgColumn } from "drizzle-orm/pg-core";
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
@@ -49,6 +49,11 @@ export const applications = pgTable("applications", {
   wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),
   // What the last deploy ran with (shared/pending.ts) — the baseline for the "pending changes" banner.
   deployedConfig: jsonb("deployed_config").$type<Record<string, string>>(),
+  // Preview deployments: a GitHub-linked app can opt in; each PR then gets a child application
+  // (preview_of_id = the parent, pr_number = the PR) that is deleted when the PR closes.
+  previewEnabled: boolean("preview_enabled").default(false).notNull(),
+  previewOfId: uuid("preview_of_id").references((): AnyPgColumn => applications.id, { onDelete: "cascade" }),
+  prNumber: integer("pr_number"),
   composeFile: varchar("compose_file", { length: 255 }).default("docker-compose.yml").notNull(),
   composeService: varchar("compose_service", { length: 64 }),
   // Private repos over SSH: a per-application keypair. The private half is encrypted at rest; the

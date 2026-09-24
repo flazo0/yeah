@@ -4,7 +4,8 @@ import { and, eq as eqOp, isNull, or } from "drizzle-orm";
 import { applications, applicationVolumes, deployments, environments, servers, sharedVariables, type Application } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
-import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
+import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
+import { previewCommentBody, previewCommentMarker } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -86,27 +87,30 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       .set({ deployedConfig: configSnapshot(application, volumes, (text) => createHash("sha256").update(text).digest("hex")) })
       .where(eq(applications.id, application.id));
 
-    // A GitHub App installation token is only valid for an hour, so it's minted fresh on every
-    // deploy rather than stored — this also means access is revoked instantly if the App is uninstalled.
-    let cloneUrl = application.repoUrl;
-    if (application.githubInstallationId && application.githubRepo) {
-      const config = getGithubConfig();
-      if (!config) throw new Error("aplicação usa GitHub App, mas o servidor não tem GITHUB_APP_* configurado");
-      const { token } = await getInstallationToken(config.appId, config.privateKey, application.githubInstallationId);
-      cloneUrl = cloneUrlForRepo(token, application.githubRepo);
-    }
-
     // A non-null commitSha at this point means this deployment was created as a rollback (see the
     // POST .../rollback route) — the row was pre-filled with a past deployment's resolved commit,
     // and checking that out instead of the branch HEAD is the entire rollback mechanism.
     const rollbackTarget = deployment.commitSha;
-    const cloneOrPullStep: Step = {
-      label: rollbackTarget
-        ? `voltando pro commit ${rollbackTarget.slice(0, 7)}`
-        : `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
-      // `set-url` before fetching re-authenticates every deploy — an installation token embedded
-      // in a clone from an hour ago would otherwise make the next incremental pull fail.
-      command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget, application.deployKey ? deployKeyPath : null),
+    // Built inside the try below: minting the GitHub token can throw (App uninstalled, GITHUB_APP_* missing),
+    // and a throw out here would leave this deployment "running" forever instead of failing it.
+    const makeCloneOrPullStep = async (): Promise<Step> => {
+      // A GitHub App installation token is only valid for an hour, so it's minted fresh on every
+      // deploy rather than stored — this also means access is revoked instantly if the App is uninstalled.
+      let cloneUrl = application.repoUrl;
+      if (application.githubInstallationId && application.githubRepo) {
+        const config = getGithubConfig();
+        if (!config) throw new Error("aplicação usa GitHub App, mas o servidor não tem GITHUB_APP_* configurado");
+        const { token } = await getInstallationToken(config.appId, config.privateKey, application.githubInstallationId);
+        cloneUrl = cloneUrlForRepo(token, application.githubRepo);
+      }
+      return {
+        label: rollbackTarget
+          ? `voltando pro commit ${rollbackTarget.slice(0, 7)}`
+          : `clonando ${application.githubRepo ?? application.repoUrl} (${application.branch})`,
+        // `set-url` before fetching re-authenticates every deploy — an installation token embedded
+        // in a clone from an hour ago would otherwise make the next incremental pull fail.
+        command: buildCloneOrPullCommand(appDir, cloneUrl, application.branch, rollbackTarget, application.deployKey ? deployKeyPath : null),
+      };
     };
     const removeOldStep: Step = {
       label: `parando o container anterior (até ${application.stopGraceSeconds}s de tolerância)`,
@@ -119,6 +123,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     };
 
     let conn: Client | null = null;
+    let resolvedCommit: string | null = null;
     try {
       conn = await connectSsh({
         host: server.host,
@@ -146,13 +151,14 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
           await execStream(conn, `chmod 600 ${shellQuote(deployKeyPath)}`, () => undefined);
         }
 
-        await runStep(conn, cloneOrPullStep, appendAndPublish);
+        await runStep(conn, await makeCloneOrPullStep(), appendAndPublish);
 
         let resolvedCommitSha = "";
         await execStream(conn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {
           if (stream === "stdout") resolvedCommitSha += chunk;
         });
         resolvedCommitSha = resolvedCommitSha.trim();
+        resolvedCommit = resolvedCommitSha || null;
         if (resolvedCommitSha) {
           await appendAndPublish(`\x1b[90m# commit ${resolvedCommitSha.slice(0, 7)}\x1b[0m\n`);
           await db.update(deployments).set({ commitSha: resolvedCommitSha }).where(eq(deployments.id, deploymentId));
@@ -205,6 +211,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await db.update(applications).set({ status: "running" }).where(eq(applications.id, application.id));
       await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "running" });
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "success" });
+      await commentOnPreview(application, "ready", resolvedCommit);
       await notifyTeam(application.teamId, "deploy.success", `Deploy de ${application.name} concluído`, `${application.repoUrl} (${application.branch}) → ${server.name}`, "info");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -213,6 +220,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await db.update(applications).set({ status: "error" }).where(eq(applications.id, application.id));
       await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "error" });
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "failed" });
+      await commentOnPreview(application, "failed", null);
       await notifyTeam(application.teamId, "deploy.failed", `Deploy de ${application.name} falhou`, message, "error");
     } finally {
       conn?.end();
@@ -260,4 +268,18 @@ async function loadSharedVariables(application: Application): Promise<SharedVari
       ),
     );
   return rows.map((row) => ({ scope: row.scope, key: row.key, value: row.value }));
+}
+
+/** Tells the pull request where its preview is (or that it failed). Never fails the deploy itself. */
+async function commentOnPreview(application: Application, state: "ready" | "failed", commit: string | null): Promise<void> {
+  if (!application.previewOfId || !application.prNumber || !application.githubRepo || !application.githubInstallationId) return;
+  try {
+    const config = getGithubConfig();
+    if (!config) return;
+    const { token } = await getInstallationToken(config.appId, config.privateKey, application.githubInstallationId);
+    const url = application.domain ? `https://${application.domain}` : "";
+    await upsertPullRequestComment(token, application.githubRepo, application.prNumber, previewCommentMarker(application.previewOfId), previewCommentBody(application.previewOfId, state, url, commit));
+  } catch (err) {
+    console.error(`[worker] could not comment on PR #${application.prNumber} of ${application.githubRepo}: ${err instanceof Error ? err.message : err}`);
+  }
 }

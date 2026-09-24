@@ -35,6 +35,7 @@ import ApplicationTerminalPage from "../pages/application/ApplicationTerminalPag
 import ApplicationSourcePage from "../pages/application/ApplicationSourcePage.vue";
 import ApplicationServerPage from "../pages/application/ApplicationServerPage.vue";
 import ApplicationOperationsPage from "../pages/application/ApplicationOperationsPage.vue";
+import ApplicationPreviewsPage from "../pages/application/ApplicationPreviewsPage.vue";
 import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
@@ -114,6 +115,7 @@ export const router = createRouter({
         { path: "source", name: "app-source", component: ApplicationSourcePage },
         { path: "server", name: "app-server", component: ApplicationServerPage },
         { path: "operations", name: "app-operations", component: ApplicationOperationsPage },
+        { path: "previews", name: "app-previews", component: ApplicationPreviewsPage },
         { path: "danger", name: "app-danger", component: ApplicationDangerPage },
       ],
     },

@@ -1,6 +1,6 @@
 import { createVerify, generateKeyPairSync } from "node:crypto";
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cloneUrlForRepo, getGithubConfig, signAppJwt, verifyWebhookSignature } from "./index";
+import { cloneUrlForRepo, getGithubConfig, signAppJwt, verifyWebhookSignature , upsertPullRequestComment } from "./index";
 
 function base64urlDecode(input: string): Buffer {
   const padded = input + "=".repeat((4 - (input.length % 4)) % 4);
@@ -120,5 +120,33 @@ describe("getGithubConfig", () => {
       privateKey: "fake-pem-content",
       webhookSecret: "shh",
     });
+  });
+});
+
+describe("upsertPullRequestComment", () => {
+  const calls: Array<{ url: string; method: string; body?: string }> = [];
+  const stub = (existing: Array<{ id: number; body: string }>) =>
+    (async (url: string, init?: { method?: string; body?: string }) => {
+      calls.push({ url: String(url), method: init?.method ?? "GET", body: init?.body });
+      if (!init?.method) return new Response(JSON.stringify(existing), { status: 200 });
+      return new Response("{}", { status: 201 });
+    }) as unknown as typeof fetch;
+
+  test("posts a new comment when none carries the marker", async () => {
+    calls.length = 0;
+    await upsertPullRequestComment("tok", "org/repo", 5, "<!-- m -->", "<!-- m -->\nhi", stub([{ id: 1, body: "unrelated" }]));
+    expect(calls.map((c) => c.method)).toEqual(["GET", "POST"]);
+    expect(calls[1]!.url).toBe("https://api.github.com/repos/org/repo/issues/5/comments");
+  });
+  test("edits the comment that already has the marker", async () => {
+    calls.length = 0;
+    await upsertPullRequestComment("tok", "org/repo", 5, "<!-- m -->", "new", stub([{ id: 9, body: "<!-- m -->\nold" }]));
+    expect(calls.map((c) => c.method)).toEqual(["GET", "PATCH"]);
+    expect(calls[1]!.url).toBe("https://api.github.com/repos/org/repo/issues/comments/9");
+    expect(JSON.parse(calls[1]!.body!)).toEqual({ body: "new" });
+  });
+  test("throws when GitHub rejects the write", async () => {
+    const failing = (async (_u: string, init?: { method?: string }) => (init?.method ? new Response("no", { status: 403 }) : new Response("[]", { status: 200 }))) as unknown as typeof fetch;
+    await expect(upsertPullRequestComment("tok", "o/r", 1, "m", "b", failing)).rejects.toThrow("403");
   });
 });

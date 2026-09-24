@@ -1,7 +1,9 @@
 import { Elysia } from "elysia";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { applications, deployments, githubInstallations } from "@yeah/db";
 import { getGithubConfig, verifyWebhookSignature } from "@yeah/github";
+import { parsePullRequestEvent } from "@yeah/shared";
+import { handlePullRequestEvent } from "../lib/previews";
 import { db } from "../lib/db";
 import { applicationDeployQueue } from "../lib/queue";
 import { shouldSkipDeploy } from "../lib/deployRules";
@@ -28,6 +30,12 @@ export const githubWebhookRoutes = new Elysia().post("/webhooks/github", async (
   }
 
   const event = request.headers.get("x-github-event");
+  if (event === "pull_request") {
+    const pr = parsePullRequestEvent(JSON.parse(rawBody));
+    if (!pr) return { ok: true, ignored: "pull_request action" };
+    if (pr.fromFork) return { ok: true, ignored: "pull request from a fork" };
+    return { ok: true, previews: await handlePullRequestEvent(pr) };
+  }
   if (event !== "push") return { ok: true, ignored: event };
 
   const payload = JSON.parse(rawBody) as GithubPushPayload;
@@ -54,6 +62,8 @@ export const githubWebhookRoutes = new Elysia().post("/webhooks/github", async (
         eq(applications.githubInstallationId, installationId),
         eq(applications.githubRepo, payload.repository.full_name),
         eq(applications.branch, branch),
+        // A preview follows its PR through the pull_request event; matching it here would deploy twice per push.
+        isNull(applications.previewOfId),
       ),
     );
 

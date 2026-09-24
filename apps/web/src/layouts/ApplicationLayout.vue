@@ -71,7 +71,7 @@ async function deleteApplication() {
   }
 }
 
-const configRouteNames = ["app-general", "app-env", "app-storage", "app-advanced", "app-source", "app-server", "app-operations", "app-webhooks", "app-tasks", "app-danger"];
+const configRouteNames = ["app-general", "app-env", "app-storage", "app-advanced", "app-source", "app-server", "app-operations", "app-previews", "app-webhooks", "app-tasks", "app-danger"];
 const isConfigGroup = computed(() => configRouteNames.includes(route.name as string));
 
 const tabs = computed(() => [
@@ -88,6 +88,7 @@ const subnav = computed(() => [
   { to: `${routeBase}/storage`, label: "Armazenamento", active: route.name === "app-storage" },
   { to: `${routeBase}/advanced`, label: "Avançado", active: route.name === "app-advanced" },
   { to: `${routeBase}/webhooks`, label: "Webhooks", active: route.name === "app-webhooks" },
+  { to: `${routeBase}/previews`, label: "Previews", active: route.name === "app-previews" },
   { to: `${routeBase}/tasks`, label: "Tarefas agendadas", active: route.name === "app-tasks" },
   { to: `${routeBase}/operations`, label: "Operações", active: route.name === "app-operations" },
   { to: `${routeBase}/danger`, label: "Zona de perigo", active: route.name === "app-danger" },

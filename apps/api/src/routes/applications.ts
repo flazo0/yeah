@@ -64,6 +64,9 @@ function toApplicationDto(app: Application, serverName: string, pending: string[
     domain: app.domain,
     extraDomains: app.extraDomains,
     wwwRedirect: app.wwwRedirect,
+    previewEnabled: app.previewEnabled,
+    previewOfId: app.previewOfId,
+    prNumber: app.prNumber,
     pendingChanges: pending,
     githubRepo: app.githubRepo,
     healthPath: app.healthPath,
@@ -1182,6 +1185,14 @@ export const applicationRoutes = new Elysia({
     const server = serverRows[0];
     const volumeRows = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, row.application.id));
 
+    // Previews belong to this app; their containers would otherwise be orphaned on the server.
+    const previews = await db.select().from(applications).where(eq(applications.previewOfId, row.application.id));
+    for (const preview of previews) {
+      if (!server) break;
+      const previewVolumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, preview.id));
+      const failure = await tearDownApplication(preview, server, previewVolumes);
+      if (failure) console.error(`[api] failed to tear down preview ${preview.id}: ${failure}`);
+    }
     if (server) {
       const failure = await tearDownApplication(row.application, server, volumeRows);
       if (failure) console.error(`[api] failed to tear down container for application ${row.application.id}: ${failure}`);
