@@ -1,4 +1,5 @@
 import type { Application, Server } from "@yeah/db";
+import type { EnvEntry } from "@yeah/shared";
 import { PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
@@ -144,13 +145,21 @@ export function staticDockerfile(publishDirectory: string): string {
  * "image" only pulls, and "dockerfile_inline" builds from a directory holding just the pasted Dockerfile
  * (written by the job before these steps run) so nothing else is sent as build context.
  */
-export function buildImageSteps(application: Application, repoDir: string, inlineDir: string, imageName: string): BuildStep[] {
+export function buildImageSteps(
+  application: Application,
+  repoDir: string,
+  inlineDir: string,
+  imageName: string,
+  buildEnv: EnvEntry[] = [],
+): BuildStep[] {
   const image = shellQuote(imageName);
+  const buildArgs = buildEnv.map((e) => `--build-arg ${shellQuote(`${e.key}=${e.value}`)} `).join("");
+  const nixEnv = buildEnv.map((e) => ` --env ${shellQuote(`${e.key}=${e.value}`)}`).join("");
   switch (application.buildPack) {
     case "image":
       return [{ label: `baixando a imagem ${application.dockerImage}`, command: `docker pull ${shellQuote(application.dockerImage ?? "")}` }];
     case "dockerfile_inline":
-      return [{ label: "construindo a imagem (Dockerfile colado)", command: `docker build -t ${image} ${shellQuote(inlineDir)}` }];
+      return [{ label: "construindo a imagem (Dockerfile colado)", command: `docker build ${buildArgs}-t ${image} ${shellQuote(inlineDir)}` }];
     case "static":
       return [
         {
@@ -164,10 +173,10 @@ export function buildImageSteps(application: Application, repoDir: string, inlin
           label: "garantindo o nixpacks no servidor",
           command: "command -v nixpacks >/dev/null 2>&1 || (curl -sSL https://nixpacks.com/install.sh | bash)",
         },
-        { label: "construindo com nixpacks (detecta a linguagem)", command: `nixpacks build ${shellQuote(repoDir)} --name ${image}` },
+        { label: "construindo com nixpacks (detecta a linguagem)", command: `nixpacks build ${shellQuote(repoDir)} --name ${image}${nixEnv}` },
       ];
     default:
-      return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build -t ${image} .` }];
+      return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build ${buildArgs}-t ${image} .` }];
   }
 }
 

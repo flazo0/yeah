@@ -51,6 +51,7 @@ const isServersRoute = computed(() => Boolean(teamId.value) && route.path.starts
 const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/storages`);
 const isSourcesRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/sources`));
 const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
+const isVariablesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/variables`);
 const isTeamRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/team`);
 const isSettingsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/settings`);
 const isUpdatesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/updates`);
@@ -64,6 +65,7 @@ const breadcrumb = computed(() => {
   if (isSourcesRoute.value) return ["Fontes"];
   if (isNotificationsRoute.value) return ["Notificações"];
   if (isUpdatesRoute.value) return ["Atualizações"];
+  if (isVariablesRoute.value) return ["Variáveis"];
   if (isTeamRoute.value) return ["Time"];
   if (isSettingsRoute.value) return ["Configurações"];
   if (!projectId.value) return ["Projetos"];
@@ -105,6 +107,10 @@ const breadcrumb = computed(() => {
           <RouterLink :to="`/teams/${teamId}/sources`" class="sidebar-link" :class="{ active: isSourcesRoute }">
             <span class="material-symbols-outlined">hub</span>
             Fontes
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/variables`" class="sidebar-link" :class="{ active: isVariablesRoute }">
+            <span class="material-symbols-outlined">data_object</span>
+            Variáveis
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
             <span class="material-symbols-outlined">cloud</span>

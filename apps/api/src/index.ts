@@ -15,6 +15,7 @@ import { serviceRoutes } from "./routes/services";
 import { updateRoutes } from "./routes/updates";
 import { searchRoutes } from "./routes/search";
 import { deployHookRoutes } from "./routes/deployHook";
+import { sharedVariableRoutes } from "./routes/sharedVariables";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
 import { clientIp, RateLimiter, ruleFor } from "./lib/rateLimit";
@@ -61,6 +62,7 @@ const app = new Elysia()
   .use(updateRoutes)
   .use(searchRoutes)
   .use(deployHookRoutes)
+  .use(sharedVariableRoutes)
   .listen(port);
 
 // Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.

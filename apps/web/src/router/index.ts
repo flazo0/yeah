@@ -20,6 +20,7 @@ import SourceDetailPage from "../pages/SourceDetailPage.vue";
 import NotificationsPage from "../pages/NotificationsPage.vue";
 import UpdatesPage from "../pages/UpdatesPage.vue";
 import TeamPage from "../pages/TeamPage.vue";
+import VariablesPage from "../pages/VariablesPage.vue";
 import SettingsPage from "../pages/SettingsPage.vue";
 import ApplicationLayout from "../layouts/ApplicationLayout.vue";
 import ApplicationDeploymentsPage from "../pages/application/ApplicationDeploymentsPage.vue";
@@ -68,6 +69,7 @@ export const router = createRouter({
     { path: "/teams/:teamId/sources/:sourceId", component: SourceDetailPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/github", redirect: (to) => `/teams/${to.params.teamId}/sources` },
     { path: "/teams/:teamId/notifications", component: NotificationsPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/variables", component: VariablesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/team", component: TeamPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/settings", component: SettingsPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/updates", component: UpdatesPage, meta: { requiresAuth: true }, props: true },

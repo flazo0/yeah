@@ -288,3 +288,28 @@ describe("deploy key clone", () => {
     expect(buildCloneOrPullCommand("/opt/a", "https://x/y.git", "main", null)).not.toContain("GIT_SSH_COMMAND");
   });
 });
+
+describe("build-time env", () => {
+  const env = [
+    { key: "NPM_TOKEN", value: "s3cr'et", availability: "build" as const },
+    { key: "MODE", value: "prod", availability: "both" as const },
+  ];
+  test("dockerfile builds get one quoted --build-arg per build-time entry", () => {
+    const [step] = buildImageSteps(makeApplication(), "/r", "/i", "img", env);
+    expect(step!.command).toContain(String.raw`--build-arg 'NPM_TOKEN=s3cr'\''et'`);
+    expect(step!.command).toContain("--build-arg 'MODE=prod'");
+    expect(step!.command.indexOf("--build-arg")).toBeLessThan(step!.command.indexOf("-t 'img'"));
+  });
+  test("no build-time env, no --build-arg", () => {
+    expect(buildImageSteps(makeApplication(), "/r", "/i", "img")[0]!.command).not.toContain("--build-arg");
+  });
+  test("nixpacks gets --env instead", () => {
+    const steps = buildImageSteps(makeApplication({ buildPack: "nixpacks" }), "/r", "/i", "img", env);
+    expect(steps[1]!.command).toContain("--env 'MODE=prod'");
+    expect(steps[1]!.command).not.toContain("--build-arg");
+  });
+  test("inline builds also pass build args", () => {
+    const [step] = buildImageSteps(makeApplication({ buildPack: "dockerfile_inline" }), "/r", "/i", "img", env);
+    expect(step!.command).toContain("--build-arg 'MODE=prod'");
+  });
+});

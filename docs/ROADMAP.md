@@ -100,9 +100,9 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Timeout de conexão SSH configurável por servidor.
 
 **Variáveis de ambiente**
-- [ ] **Shared Variables** por escopo (time / projeto / ambiente) com referência `{{project.NODE_ENV}}`.
-- [ ] Distinção **build-time vs runtime** por variável.
-- [ ] Editor de env em modo texto (`.env` colado) além de linha a linha.
+- [x] **Variáveis compartilhadas** por escopo (time / projeto / ambiente): página própria na sidebar, valor criptografado, referência `{{project.NOME}}` (ou `team` / `environment`) no `.env` da aplicação, expandida no deploy — referência inexistente falha o deploy com a lista do que falta. O mesmo nome em escopos diferentes convive, porque cada referência nomeia o escopo. Só aplicações usam por enquanto (serviços não).
+- [x] Distinção **build-time vs runtime**: `build:CHAVE=valor` vale só no build (`--build-arg`, ou `--env` no Nixpacks) e não entra no container; `both:` nos dois; sem prefixo, só runtime. Testado: o build-arg chegou na imagem e a variável build-only não existe no container.
+- [ ] Editor de env em modo texto (`.env` colado) **e** linha a linha: hoje só existe o modo texto (Monaco); falta a visão em tabela.
 
 ## Fase 4 — Bancos, serviços e microsserviços
 

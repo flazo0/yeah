@@ -13,3 +13,4 @@ export * from "./notifications";
 export * from "./services";
 export * from "./volumes";
 export * from "./platformOperations";
+export * from "./sharedVariables";

@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
-import { applications, applicationVolumes, deployments, servers, type Application } from "@yeah/db";
+import { and, eq as eqOp, isNull, or } from "drizzle-orm";
+import { applications, applicationVolumes, deployments, environments, servers, sharedVariables, type Application } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
-import { buildPackUsesGit, shellQuote } from "@yeah/shared";
+import { buildPackUsesGit, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -122,7 +123,11 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await runStep(conn, { label: "preparando diretório", command: `mkdir -p ${shellQuote(appDir)}` }, appendAndPublish);
 
       await appendAndPublish(`\x1b[36m$ escrevendo variáveis de ambiente\x1b[0m\n`);
-      await writeRemoteFile(conn, `${appDir}/.env`, application.envContent);
+      const { entries: envEntries, missing } = expandReferences(parseEnvContent(application.envContent), await loadSharedVariables(application));
+      if (missing.length > 0) {
+        throw new Error(`variável compartilhada não encontrada: ${missing.map((m) => `{{${m}}}`).join(", ")}`);
+      }
+      await writeRemoteFile(conn, `${appDir}/.env`, renderRuntimeEnv(envEntries));
 
       if (usesGit) {
         if (application.deployKey) {
@@ -148,7 +153,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         await writeRemoteFile(conn, `${inlineDir}/Dockerfile`, application.dockerfileContent ?? "");
       }
 
-      for (const step of buildImageSteps(application, repoDir, inlineDir, containerName)) {
+      for (const step of buildImageSteps(application, repoDir, inlineDir, containerName, buildTimeEntries(envEntries))) {
         await runStep(conn, step, appendAndPublish);
       }
       await runStep(conn, removeOldStep, appendAndPublish);
@@ -204,4 +209,23 @@ async function finish(deploymentId: string, status: "success" | "failed", traile
   };
   if (log !== undefined) set.log = log + trailer;
   await db.update(deployments).set(set).where(eq(deployments.id, deploymentId));
+}
+
+/** Shared variables an application may reference: its team's, its project's and its environment's. */
+async function loadSharedVariables(application: Application): Promise<SharedVariableValue[]> {
+  const [environment] = await db.select().from(environments).where(eqOp(environments.id, application.environmentId)).limit(1);
+  const rows = await db
+    .select()
+    .from(sharedVariables)
+    .where(
+      and(
+        eqOp(sharedVariables.teamId, application.teamId),
+        or(
+          eqOp(sharedVariables.scope, "team"),
+          and(eqOp(sharedVariables.scope, "project"), eqOp(sharedVariables.projectId, environment?.projectId ?? "")),
+          and(eqOp(sharedVariables.scope, "environment"), eqOp(sharedVariables.environmentId, application.environmentId)),
+        ),
+      ),
+    );
+  return rows.map((row) => ({ scope: row.scope, key: row.key, value: row.value }));
 }

@@ -399,3 +399,13 @@ export type WsServerEvent =
   | { type: "backup.status"; executionId: string; scheduleId: string; status: BackupExecutionStatus }
   | { type: "platform-operation.log"; operationId: string; line: string }
   | { type: "platform-operation.status"; operationId: string; status: PlatformOperationStatus };
+
+export interface SharedVariableDto {
+  id: string;
+  scope: "team" | "project" | "environment";
+  projectId: string | null;
+  environmentId: string | null;
+  key: string;
+  value: string;
+  createdAt: string;
+}
