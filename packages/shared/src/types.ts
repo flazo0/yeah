@@ -96,11 +96,11 @@ export interface ApiErrorBody {
   error: string;
 }
 
-export type BuildPack = "dockerfile" | "static" | "nixpacks" | "image" | "dockerfile_inline";
+export type BuildPack = "dockerfile" | "static" | "nixpacks" | "image" | "dockerfile_inline" | "docker_compose";
 
 /** Build packs that clone a Git repository (the others start from an image or pasted text). */
 export function buildPackUsesGit(buildPack: BuildPack): boolean {
-  return buildPack === "dockerfile" || buildPack === "static" || buildPack === "nixpacks";
+  return buildPack === "dockerfile" || buildPack === "static" || buildPack === "nixpacks" || buildPack === "docker_compose";
 }
 export type ApplicationStatus = "idle" | "deploying" | "running" | "stopped" | "error";
 export type ApplicationLifecycleAction = "start" | "stop" | "restart";
@@ -133,6 +133,9 @@ export interface ApplicationDto extends ResourceLimits {
   dockerImage: string | null;
   dockerfileContent: string | null;
   publishDirectory: string;
+  /** docker_compose only: compose file inside the repo, and the service the domain/port routes to. */
+  composeFile: string;
+  composeService: string | null;
   /** Public half of the deploy key, to register on the repository — the private half is never returned. */
   deployKeyPublic: string | null;
   port: number;

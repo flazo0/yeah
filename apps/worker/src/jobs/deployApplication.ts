@@ -4,13 +4,16 @@ import { applications, applicationVolumes, deployments, environments, servers, s
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
-import { buildPackUsesGit, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
+import { buildPackUsesGit, composeProxyOverride, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
 import {
   buildCloneOrPullCommand,
+  buildComposeUpCommand,
+  COMPOSE_OVERRIDE_FILE,
+  composeEnvFile,
   buildHealthWaitCommand,
   buildImageSteps,
   buildRunCommand,
@@ -154,12 +157,34 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         await writeRemoteFile(conn, `${inlineDir}/Dockerfile`, application.dockerfileContent ?? "");
       }
 
+      if (application.buildPack === "docker_compose") {
+        // The compose file may reference the variables ("env_file: .env" or ${VAR} interpolation).
+        await writeRemoteFile(conn, `${repoDir}/.env`, composeEnvFile(envEntries));
+        await writeRemoteFile(conn, `${appDir}/.env`, composeEnvFile(envEntries));
+        let withOverride = false;
+        if (domain && application.composeService) {
+          await appendAndPublish(`\x1b[36m$ roteando ${application.composeService} pelo proxy (https://${domain})\x1b[0m\n`);
+          await writeRemoteFile(conn, `${appDir}/${COMPOSE_OVERRIDE_FILE}`, composeProxyOverride(application.composeService, containerName, domain, application.port));
+          withOverride = true;
+        } else if (domain) {
+          await appendAndPublish("\x1b[33m# há um domínio, mas nenhum serviço do compose foi escolhido pra recebê-lo — sem roteamento pelo proxy\x1b[0m\n");
+        }
+        await runStep(
+          conn,
+          {
+            label: `subindo o projeto compose (${application.composeFile})`,
+            command: buildComposeUpCommand(application, appDir, repoDir, withOverride, healthWaitSeconds(application)),
+          },
+          appendAndPublish,
+        );
+      } else {
       for (const step of buildImageSteps(application, repoDir, inlineDir, containerName, buildTimeEntries(envEntries))) {
         await runStep(conn, step, appendAndPublish);
       }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
-      if (application.healthPath) {
+      }
+      if (application.healthPath && application.buildPack !== "docker_compose") {
         await runStep(
           conn,
           {

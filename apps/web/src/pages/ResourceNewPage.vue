@@ -82,6 +82,15 @@ const cards = computed<CatalogCard[]>(() => [
     docsUrl: "https://nixpacks.com/docs",
   },
   {
+    id: "app-compose",
+    category: "application",
+    name: "Docker Compose",
+    subtitle: "Stack · Git",
+    description: "Um docker-compose.yml do repositório vira uma aplicação: todos os serviços sobem juntos como um projeto, e o yeah liga o domínio no serviço que você escolher.",
+    icon: "stacks",
+    docsUrl: "https://docs.docker.com/compose/",
+  },
+  {
     id: "app-static",
     category: "application",
     name: "Site estático",
@@ -198,7 +207,7 @@ async function deployService(catalogKey: string) {
   router.push(`${basePath}/services/${res.service.id}`);
 }
 
-type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "static" | "image" | "inline";
+type AppMode = "public" | "github" | "deploykey" | "nixpacks" | "compose" | "static" | "image" | "inline";
 const appModal = ref<AppMode | null>(null);
 const appForm = ref({
   name: "",
@@ -209,17 +218,20 @@ const appForm = ref({
   dockerImage: "",
   dockerfileContent: "FROM node:22-alpine\nWORKDIR /app\nCOPY . .\nCMD [\"node\", \"index.js\"]\n",
   publishDirectory: ".",
+  composeFile: "docker-compose.yml",
+  composeService: "",
 });
 const appModalTitles: Record<AppMode, string> = {
   public: "Repositório Git público",
   github: "Repositório do GitHub",
   deploykey: "Repositório privado (Deploy Key)",
   nixpacks: "Nixpacks",
+  compose: "Docker Compose",
   static: "Site estático",
   image: "Docker Image",
   inline: "Dockerfile",
 };
-const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "static";
+const modeUsesRepo = (mode: AppMode | null) => mode === "public" || mode === "deploykey" || mode === "nixpacks" || mode === "compose" || mode === "static";
 const submittingApp = ref(false);
 
 function onGithubRepoChange() {
@@ -239,6 +251,7 @@ async function createApp() {
     else if (mode === "public") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl };
     else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, useDeployKey: true };
     else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
+    else if (mode === "compose") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "docker_compose", composeFile: f.composeFile, composeService: f.composeService };
     else if (mode === "static") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "static", publishDirectory: f.publishDirectory };
     else if (mode === "image") payload = { ...base, buildPack: "image", dockerImage: f.dockerImage };
     else payload = { ...base, buildPack: "dockerfile_inline", dockerfileContent: f.dockerfileContent };
@@ -258,6 +271,7 @@ async function deploy(card: CatalogCard) {
     "app-public": "public",
     "app-deploykey": "deploykey",
     "app-nixpacks": "nixpacks",
+    "app-compose": "compose",
     "app-static": "static",
     "app-image": "image",
     "app-inline": "inline",
@@ -398,6 +412,19 @@ onMounted(() => {
             Use a URL SSH. Depois de criar, o yeah mostra a chave pública pra você cadastrar no repositório como deploy key (só leitura).
           </p>
         </div>
+
+        <template v-if="appModal === 'compose'">
+          <div class="form-group">
+            <label for="app-compose-file">Arquivo compose</label>
+            <input id="app-compose-file" v-model="appForm.composeFile" class="form-control mono" placeholder="docker-compose.yml" />
+            <p class="hint" style="margin-top: 6px">Caminho dentro do repositório. O yeah roda <span class="mono">docker compose up -d --build</span> e espera os serviços ficarem prontos.</p>
+          </div>
+          <div class="form-group">
+            <label for="app-compose-service">Serviço que recebe o domínio</label>
+            <input id="app-compose-service" v-model="appForm.composeService" class="form-control mono" placeholder="web" />
+            <p class="hint" style="margin-top: 6px">Nome do serviço no compose (e a porta abaixo é a que ele escuta). Vazio = sem roteamento pelo proxy; use <span class="mono">ports:</span> no próprio arquivo.</p>
+          </div>
+        </template>
 
         <div v-if="appModal === 'image'" class="form-group">
           <label for="app-image">Imagem</label>

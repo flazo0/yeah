@@ -15,7 +15,7 @@ import {
   resourceTags,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
-import { buildPackUsesGit, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
+import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -40,6 +40,8 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     dockerImage: app.dockerImage,
     dockerfileContent: app.dockerfileContent,
     publishDirectory: app.publishDirectory,
+    composeFile: app.composeFile,
+    composeService: app.composeService,
     deployKeyPublic: app.deployKeyPublic,
     port: app.port,
     envContent: app.envContent,
@@ -169,6 +171,8 @@ export const applicationRoutes = new Elysia({
       let dockerImage: string | null = null;
       let dockerfileContent: string | null = null;
       let publishDirectory = ".";
+      let composeFile = DEFAULT_COMPOSE_FILE;
+      let composeService: string | null = null;
       let deployKey: string | null = null;
       let deployKeyPublic: string | null = null;
 
@@ -217,6 +221,18 @@ export const applicationRoutes = new Elysia({
           deployKey = pair.privateKey;
           deployKeyPublic = pair.publicKey;
         }
+        if (buildPack === "docker_compose") {
+          composeFile = (body.composeFile ?? DEFAULT_COMPOSE_FILE).trim() || DEFAULT_COMPOSE_FILE;
+          if (!isSafeComposeFile(composeFile)) {
+            set.status = 400;
+            return { error: "o arquivo compose precisa ser um caminho relativo simples dentro do repositório" };
+          }
+          composeService = body.composeService?.trim() || null;
+          if (composeService && !isValidComposeService(composeService)) {
+            set.status = 400;
+            return { error: "nome de serviço do compose inválido" };
+          }
+        }
         if (buildPack === "static") {
           publishDirectory = (body.publishDirectory ?? ".").trim() || ".";
           if (!isSafePublishDirectory(publishDirectory)) {
@@ -244,6 +260,8 @@ export const applicationRoutes = new Elysia({
           dockerImage,
           dockerfileContent,
           publishDirectory,
+          composeFile,
+          composeService,
           deployKey,
           deployKeyPublic,
           port,
@@ -264,10 +282,12 @@ export const applicationRoutes = new Elysia({
       body: t.Object({
         name: t.String({ minLength: 1 }),
         serverId: t.String({ minLength: 1 }),
-        buildPack: t.Optional(t.Union([t.Literal("dockerfile"), t.Literal("static"), t.Literal("nixpacks"), t.Literal("image"), t.Literal("dockerfile_inline")])),
+        buildPack: t.Optional(t.Union([t.Literal("dockerfile"), t.Literal("static"), t.Literal("nixpacks"), t.Literal("image"), t.Literal("dockerfile_inline"), t.Literal("docker_compose")])),
         dockerImage: t.Optional(t.String({ maxLength: 512 })),
         dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
         publishDirectory: t.Optional(t.String({ maxLength: 255 })),
+        composeFile: t.Optional(t.String({ maxLength: 255 })),
+        composeService: t.Optional(t.String({ maxLength: 64 })),
         useDeployKey: t.Optional(t.Boolean()),
         repoUrl: t.Optional(t.String()),
         githubRepo: t.Optional(t.String()),
@@ -509,7 +529,11 @@ export const applicationRoutes = new Elysia({
       try {
         conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
         let output = "";
-        const result = await execStream(conn, `docker logs --tail ${tail} --timestamps ${shellQuote(`yeah-app-${row.application.id}`)} 2>&1`, (chunk) => {
+        const logsCommand =
+          row.application.buildPack === "docker_compose"
+            ? composeLogsCommand(composeProjectName(row.application.id), tail)
+            : `docker logs --tail ${tail} --timestamps ${shellQuote(`yeah-app-${row.application.id}`)} 2>&1`;
+        const result = await execStream(conn, logsCommand, (chunk) => {
           output += chunk;
         });
         if (result.exitCode !== 0) return { logs: "", running: false, message: output.trim() || "container não encontrado — faça um deploy primeiro" };
@@ -1107,7 +1131,8 @@ export const applicationRoutes = new Elysia({
         try {
           await execStream(
             conn,
-            `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true` +
+            (row.application.buildPack === "docker_compose" ? composeTeardownCommand(composeProjectName(row.application.id)) : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true`) +
+              ` && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true` +
               (volumeRmCommand ? ` && ${volumeRmCommand}` : ""),
             () => {},
           );

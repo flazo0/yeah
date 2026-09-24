@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { composeLifecycleCommand, composeProjectName } from "@yeah/shared";
 import { applications, servers } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationLifecycleJobData } from "@yeah/queue";
@@ -29,7 +30,9 @@ export function makeLifecycleApplicationProcessor(publishConnection: Redis) {
       let output = "";
       const result = await execStream(
         conn,
-        buildLifecycleCommand(action, `yeah-app-${application.id}`, application.stopGraceSeconds),
+        application.buildPack === "docker_compose"
+          ? composeLifecycleCommand(action, composeProjectName(application.id), application.stopGraceSeconds)
+          : buildLifecycleCommand(action, `yeah-app-${application.id}`, application.stopGraceSeconds),
         (chunk) => {
           output += chunk;
         },

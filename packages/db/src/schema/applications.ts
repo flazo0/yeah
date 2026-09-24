@@ -6,8 +6,9 @@ import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
 
 // dockerfile / static / nixpacks build from a Git repo; image pulls a ready image; dockerfile_inline
-// builds a Dockerfile pasted into the panel. Compose and railpack are not wired up yet.
-export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "image", "dockerfile_inline"]);
+// builds a Dockerfile pasted into the panel; docker_compose runs a compose file from the repo as one project.
+// Railpack is not wired up yet.
+export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "image", "dockerfile_inline", "docker_compose"]);
 export const applicationStatusEnum = pgEnum("application_status", ["idle", "deploying", "running", "stopped", "error"]);
 
 export const applications = pgTable("applications", {
@@ -41,6 +42,8 @@ export const applications = pgTable("applications", {
   dockerfileContent: text("dockerfile_content"),
   // static: the folder (relative to the repo root) that gets served by nginx.
   publishDirectory: varchar("publish_directory", { length: 255 }).default(".").notNull(),
+  composeFile: varchar("compose_file", { length: 255 }).default("docker-compose.yml").notNull(),
+  composeService: varchar("compose_service", { length: 64 }),
   // Private repos over SSH: a per-application keypair. The private half is encrypted at rest; the
   // public half is shown to the user to register as a read-only deploy key on the repository.
   deployKey: encryptedText("deploy_key"),

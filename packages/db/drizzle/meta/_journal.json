@@ -162,6 +162,13 @@
       "when": 1790255923685,
       "tag": "0022_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790256802855,
+      "tag": "0023_docker_compose",
+      "breakpoints": true
     }
   ]
 }

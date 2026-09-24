@@ -67,7 +67,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Build pack **Nixpacks** (detecta linguagem, builda sem Dockerfile). Implementado (card no catálogo, instala o nixpacks no servidor se faltar e roda `nixpacks build`) e coberto por teste unitário dos comandos, mas **não foi rodado de verdade** — o Docker aninhado do ambiente de teste não alcança a internet pra instalar o nixpacks. Marcar quando testado numa VPS real.
 - [ ] Build pack **Railpack** (alternativa mais nova que o Coolify oferece).
 - [x] Build pack **estático** (a pasta escolhida do repositório servida por nginx, Dockerfile gerado): testado — o site do repositório respondeu na porta 80 da VPS.
-- [ ] Deploy via **Docker Compose** (multi-container por aplicação).
+- [x] Deploy via **Docker Compose** (multi-container por aplicação): build pack `docker_compose` — `docker compose up -d --build --remove-orphans --wait` do arquivo escolhido no repositório, projeto `yeah-app-<id>`, domínio ligado ao serviço escolhido por um override com labels do Traefik, logs de todos os containers, start/stop/restart, tarefas agendadas (exec no serviço) e exclusão que derruba containers, rede e volumes. Limites: sem compose colado no painel, sem trocar arquivo/serviço depois de criado, healthcheck/limites/volumes do painel não valem (vale o que o arquivo declara).
 - [x] Deploy via **Docker Image** de qualquer registry público (sem Git, sem build): testado. Registry privado com login ainda não (item de registry abaixo).
 - [x] Deploy via **Dockerfile colado** (sem Git; o build usa uma pasta só com o Dockerfile): testado.
 - [x] Repositório **público por URL** sem credencial: tem card próprio no catálogo ("Repositório Git público").

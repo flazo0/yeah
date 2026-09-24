@@ -1,3 +1,4 @@
+import { composeExecCommand, composeProjectName } from "@yeah/shared";
 import { and, desc, eq, sql } from "drizzle-orm";
 import { applications, scheduledTaskExecutions, scheduledTasks, servers } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
@@ -34,7 +35,10 @@ export function makeScheduledTaskProcessor() {
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
-      const command = buildTaskCommand(`yeah-app-${application.id}`, task.command);
+      const command =
+        application.buildPack === "docker_compose"
+          ? composeExecCommand(composeProjectName(application.id), application.composeService, task.command)
+          : buildTaskCommand(`yeah-app-${application.id}`, task.command);
 
       // Bounded by the task's own timeout: ending the connection kills the remote exec channel.
       const timedOut = new Promise<"timeout">((resolve) => {

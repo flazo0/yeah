@@ -48,6 +48,16 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
             <div class="mono">{{ app.branch }}</div>
           </div>
         </template>
+        <template v-if="app.buildPack === 'docker_compose'">
+          <div>
+            <div class="stat-label">Arquivo compose</div>
+            <div class="mono">{{ app.composeFile }}</div>
+          </div>
+          <div>
+            <div class="stat-label">Serviço do domínio</div>
+            <div class="mono">{{ app.composeService || "—" }}</div>
+          </div>
+        </template>
         <div v-if="app.buildPack === 'static'">
           <div class="stat-label">Pasta publicada</div>
           <div class="mono">{{ app.publishDirectory }}</div>

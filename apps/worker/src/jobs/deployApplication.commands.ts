@@ -1,6 +1,6 @@
 import type { Application, Server } from "@yeah/db";
 import type { EnvEntry } from "@yeah/shared";
-import { PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
+import { composeProjectName, PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -178,6 +178,26 @@ export function buildImageSteps(
     default:
       return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build ${buildArgs}-t ${image} .` }];
   }
+}
+
+/** Every variable, build-time ones included: compose interpolates `${VAR}` in the file at build too. */
+export function composeEnvFile(entries: EnvEntry[]): string {
+  return entries.length > 0 ? `${entries.map((e) => `${e.key}=${e.value}`).join("\n")}\n` : "";
+}
+
+export const COMPOSE_OVERRIDE_FILE = "compose.yeah.override.yml";
+
+/**
+ * `docker compose up` for the application's project. --wait makes it block until every service is
+ * running (or healthy, when the file declares a healthcheck) and fail otherwise; --remove-orphans drops
+ * services that left the file.
+ */
+export function buildComposeUpCommand(application: Application, appDir: string, repoDir: string, withOverride: boolean, waitSeconds: number): string {
+  const files = `-f ${shellQuote(application.composeFile)}` + (withOverride ? ` -f ${shellQuote(`${appDir}/${COMPOSE_OVERRIDE_FILE}`)}` : "");
+  return (
+    `cd ${shellQuote(repoDir)} && docker compose -p ${shellQuote(composeProjectName(application.id))} ` +
+    `--env-file ${shellQuote(`${appDir}/.env`)} ${files} up -d --build --remove-orphans --wait --wait-timeout ${Math.max(10, Math.floor(waitSeconds))}`
+  );
 }
 
 export { isSafePublishDirectory };

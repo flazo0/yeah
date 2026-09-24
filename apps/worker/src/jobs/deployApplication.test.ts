@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test";
 import type { Application, Server } from "@yeah/db";
 import {
   buildCloneOrPullCommand,
+  buildComposeUpCommand,
+  composeEnvFile,
   buildHealthWaitCommand,
   buildRunCommand,
   buildImageSteps,
@@ -25,6 +27,8 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     dockerImage: null,
     dockerfileContent: null,
     publishDirectory: ".",
+    composeFile: "docker-compose.yml",
+    composeService: null,
     deployKey: null,
     deployKeyPublic: null,
     port: 3000,
@@ -312,5 +316,25 @@ describe("build-time env", () => {
   test("inline builds also pass build args", () => {
     const [step] = buildImageSteps(makeApplication({ buildPack: "dockerfile_inline" }), "/r", "/i", "img", env);
     expect(step!.command).toContain("--build-arg 'MODE=prod'");
+  });
+});
+
+describe("docker compose", () => {
+  test("up command uses the project name, env file, compose file and waits for health", () => {
+    const app = makeApplication({ buildPack: "docker_compose", composeFile: "deploy/compose.yml" });
+    const cmd = buildComposeUpCommand(app, "/opt/yeah-apps/app-1", "/opt/yeah-apps/app-1/repo", false, 120);
+    expect(cmd).toContain("cd '/opt/yeah-apps/app-1/repo' && docker compose -p 'yeah-app-app-1'");
+    expect(cmd).toContain("--env-file '/opt/yeah-apps/app-1/.env' -f 'deploy/compose.yml' up -d --build --remove-orphans --wait --wait-timeout 120");
+    expect(cmd).not.toContain("compose.yeah.override.yml");
+  });
+  test("with a proxy route the override file is added as a second -f", () => {
+    const app = makeApplication({ buildPack: "docker_compose" });
+    const cmd = buildComposeUpCommand(app, "/opt/yeah-apps/app-1", "/opt/yeah-apps/app-1/repo", true, 5);
+    expect(cmd).toContain("-f 'docker-compose.yml' -f '/opt/yeah-apps/app-1/compose.yeah.override.yml'");
+    expect(cmd).toContain("--wait-timeout 10"); // never below 10s
+  });
+  test("env file carries build-only variables too, since compose interpolates them at build", () => {
+    expect(composeEnvFile([{ key: "A", value: "1", availability: "runtime" }, { key: "B", value: "2", availability: "build" }])).toBe("A=1\nB=2\n");
+    expect(composeEnvFile([])).toBe("");
   });
 });
