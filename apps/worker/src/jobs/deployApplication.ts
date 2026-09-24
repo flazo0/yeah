@@ -5,7 +5,7 @@ import { applications, applicationVolumes, deployments, environments, gitSources
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
+import { ensureNetworkCommand, environmentNetworkName, internalHostName, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -235,6 +235,16 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
+      // Databases and services of the same environment resolve this app by name (and vice versa).
+      const envNetwork = environmentNetworkName(application.environmentId);
+      await runStep(
+        conn,
+        {
+          label: `entrando na rede do ambiente (${internalHostName(application.name)})`,
+          command: `${ensureNetworkCommand(envNetwork)} && docker network connect --alias ${shellQuote(internalHostName(application.name))} ${shellQuote(envNetwork)} ${shellQuote(containerName)}`,
+        },
+        appendAndPublish,
+      );
       }
       if (application.healthPath && application.buildPack !== "docker_compose") {
         await runStep(

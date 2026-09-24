@@ -224,14 +224,25 @@ export interface DeploymentDto {
   createdAt: string;
 }
 
-export type DatabaseEngine = "postgresql" | "mysql" | "mariadb" | "redis" | "mongodb";
+export type DatabaseEngine = "postgresql" | "mysql" | "mariadb" | "redis" | "keydb" | "dragonfly" | "mongodb" | "clickhouse";
 export type DatabaseStatus = "idle" | "provisioning" | "running" | "error";
 export type BackupExecutionStatus = "queued" | "running" | "success" | "failed";
 
 export interface DatabaseEngineInfo {
   label: string;
   defaultImage: string;
+  /** Image repository without a tag — the creation form asks for the version (tag) separately. */
+  imageRepo: string;
+  /** Suggested tags, newest first; the form also accepts any other tag. */
+  versions: string[];
+  /** Port the engine listens on inside its container. */
+  internalPort: number;
+  /** Port published on the server when public access is on (also the default). */
   defaultPort: number;
+  /** Whether the panel can dump this engine (Dragonfly has no client in its image). */
+  supportsBackup: boolean;
+  /** Whether the panel can turn TLS on for it. */
+  supportsSsl: boolean;
   /** Redis has no concept of a login user or a named database — just a password. */
   hasUsername: boolean;
   hasDatabaseName: boolean;
@@ -242,11 +253,14 @@ export interface DatabaseEngineInfo {
 }
 
 export const DATABASE_ENGINES: Record<DatabaseEngine, DatabaseEngineInfo> = {
-  postgresql: { label: "PostgreSQL", defaultImage: "postgres:16-alpine", defaultPort: 5432, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional com forte suporte a SQL padrão e extensibilidade.", website: "https://www.postgresql.org", docsUrl: "https://www.postgresql.org/docs/" },
-  mysql: { label: "MySQL", defaultImage: "mysql:8", defaultPort: 3306, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional pra aplicações web e uso geral.", website: "https://www.mysql.com", docsUrl: "https://dev.mysql.com/doc/" },
-  mariadb: { label: "MariaDB", defaultImage: "mariadb:11", defaultPort: 3306, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional, substituto direto do MySQL.", website: "https://mariadb.org", docsUrl: "https://mariadb.com/kb/en/documentation/" },
-  redis: { label: "Redis", defaultImage: "redis:7-alpine", defaultPort: 6379, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Armazenamento chave-valor em memória: cache, filas e broker de mensagens.", website: "https://redis.io", docsUrl: "https://redis.io/docs/" },
-  mongodb: { label: "MongoDB", defaultImage: "mongo:7", defaultPort: 27017, hasUsername: true, hasDatabaseName: true, icon: "eco", description: "Banco de documentos NoSQL, esquema flexível.", website: "https://www.mongodb.com", docsUrl: "https://www.mongodb.com/docs/" },
+  postgresql: { label: "PostgreSQL", defaultImage: "postgres:16-alpine", imageRepo: "postgres", versions: ["17-alpine", "16-alpine", "15-alpine", "14-alpine", "13-alpine"], internalPort: 5432, defaultPort: 5432, supportsBackup: true, supportsSsl: true, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional com forte suporte a SQL padrão e extensibilidade.", website: "https://www.postgresql.org", docsUrl: "https://www.postgresql.org/docs/" },
+  mysql: { label: "MySQL", defaultImage: "mysql:8", imageRepo: "mysql", versions: ["9", "8.4", "8", "5.7"], internalPort: 3306, defaultPort: 3306, supportsBackup: true, supportsSsl: true, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional pra aplicações web e uso geral.", website: "https://www.mysql.com", docsUrl: "https://dev.mysql.com/doc/" },
+  mariadb: { label: "MariaDB", defaultImage: "mariadb:11", imageRepo: "mariadb", versions: ["11", "10.11", "10.6"], internalPort: 3306, defaultPort: 3306, supportsBackup: true, supportsSsl: true, hasUsername: true, hasDatabaseName: true, icon: "database", description: "Banco relacional, substituto direto do MySQL.", website: "https://mariadb.org", docsUrl: "https://mariadb.com/kb/en/documentation/" },
+  redis: { label: "Redis", defaultImage: "redis:7-alpine", imageRepo: "redis", versions: ["8-alpine", "7-alpine", "6-alpine"], internalPort: 6379, defaultPort: 6379, supportsBackup: true, supportsSsl: true, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Armazenamento chave-valor em memória: cache, filas e broker de mensagens.", website: "https://redis.io", docsUrl: "https://redis.io/docs/" },
+  keydb: { label: "KeyDB", defaultImage: "eqalpha/keydb:latest", imageRepo: "eqalpha/keydb", versions: ["latest", "x86_64_v6.3.4"], internalPort: 6379, defaultPort: 6379, supportsBackup: true, supportsSsl: true, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Fork multithread do Redis, compatível com o protocolo.", website: "https://docs.keydb.dev", docsUrl: "https://docs.keydb.dev/docs/" },
+  dragonfly: { label: "Dragonfly", defaultImage: "docker.dragonflydb.io/dragonflydb/dragonfly:latest", imageRepo: "docker.dragonflydb.io/dragonflydb/dragonfly", versions: ["latest", "v1.25.0"], internalPort: 6379, defaultPort: 6379, supportsBackup: false, supportsSsl: true, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Substituto moderno e rápido do Redis, compatível com o protocolo.", website: "https://www.dragonflydb.io", docsUrl: "https://www.dragonflydb.io/docs" },
+  mongodb: { label: "MongoDB", defaultImage: "mongo:7", imageRepo: "mongo", versions: ["8", "7", "6"], internalPort: 27017, defaultPort: 27017, supportsBackup: true, supportsSsl: true, hasUsername: true, hasDatabaseName: true, icon: "eco", description: "Banco de documentos NoSQL, esquema flexível.", website: "https://www.mongodb.com", docsUrl: "https://www.mongodb.com/docs/" },
+  clickhouse: { label: "ClickHouse", defaultImage: "clickhouse/clickhouse-server:latest", imageRepo: "clickhouse/clickhouse-server", versions: ["latest", "24.8", "23.8"], internalPort: 8123, defaultPort: 8123, supportsBackup: true, supportsSsl: false, hasUsername: true, hasDatabaseName: true, icon: "monitoring", description: "Banco colunar pra analytics e grandes volumes de eventos (interface HTTP na 8123).", website: "https://clickhouse.com", docsUrl: "https://clickhouse.com/docs" },
 };
 
 export interface DatabaseDto extends ResourceLimits {
@@ -261,6 +275,15 @@ export interface DatabaseDto extends ResourceLimits {
   port: number;
   username: string | null;
   databaseName: string | null;
+  /** Publish the port on the server so it is reachable from outside (off = only the environment's network). */
+  publicAccess: boolean;
+  ssl: boolean;
+  /** Name other resources of the environment use to connect (docker network alias). */
+  internalHost: string;
+  healthEnabled: boolean;
+  healthIntervalSeconds: number;
+  healthTimeoutSeconds: number;
+  healthRetries: number;
   status: DatabaseStatus;
   createdAt: string;
 }

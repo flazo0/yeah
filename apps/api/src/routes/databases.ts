@@ -11,7 +11,7 @@ import {
   type Database,
   resourceTags,
 } from "@yeah/db";
-import { DATABASE_ENGINES, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
+import { DATABASE_ENGINES, databaseConnectionUrl, internalHostName, isValidDockerImage, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
 import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
@@ -35,6 +35,13 @@ function toDatabaseDto(database: Database, serverName: string): DatabaseDto {
     port: database.port,
     username: database.username,
     databaseName: database.databaseName,
+    publicAccess: database.publicAccess,
+    ssl: database.ssl,
+    internalHost: internalHostName(database.name),
+    healthEnabled: database.healthEnabled,
+    healthIntervalSeconds: database.healthIntervalSeconds,
+    healthTimeoutSeconds: database.healthTimeoutSeconds,
+    healthRetries: database.healthRetries,
     memoryLimitMb: database.memoryLimitMb,
     cpuLimit: database.cpuLimit,
     status: database.status,
@@ -163,6 +170,16 @@ export const databaseRoutes = new Elysia({
 
       const engine = body.engine ?? "postgresql";
       const engineInfo = DATABASE_ENGINES[engine];
+      // The version is the image tag: "16-alpine" -> postgres:16-alpine. A full image reference also works.
+      const image = body.image ?? (body.version ? `${engineInfo.imageRepo}:${body.version}` : engineInfo.defaultImage);
+      if (!isValidDockerImage(image)) {
+        set.status = 400;
+        return { error: "versão/imagem inválida (ex.: 16-alpine ou postgres:16-alpine)" };
+      }
+      if (body.port !== undefined && (!Number.isInteger(body.port) || body.port < 1 || body.port > 65535)) {
+        set.status = 400;
+        return { error: "porta inválida" };
+      }
 
       const [database] = await db
         .insert(databases)
@@ -172,8 +189,9 @@ export const databaseRoutes = new Elysia({
           serverId: body.serverId,
           name: body.name,
           engine,
-          image: body.image ?? engineInfo.defaultImage,
+          image,
           port: body.port ?? engineInfo.defaultPort,
+          publicAccess: body.publicAccess ?? false,
           username: engineInfo.hasUsername ? (body.username ?? "app") : null,
           password: generatePassword(),
           databaseName: engineInfo.hasDatabaseName ? (body.databaseName ?? "app") : null,
@@ -200,10 +218,15 @@ export const databaseRoutes = new Elysia({
             t.Literal("mysql"),
             t.Literal("mariadb"),
             t.Literal("redis"),
+            t.Literal("keydb"),
+            t.Literal("dragonfly"),
             t.Literal("mongodb"),
+            t.Literal("clickhouse"),
           ]),
         ),
         image: t.Optional(t.String()),
+        version: t.Optional(t.String({ maxLength: 100 })),
+        publicAccess: t.Optional(t.Boolean()),
         port: t.Optional(t.Number()),
         username: t.Optional(t.String()),
         databaseName: t.Optional(t.String()),
@@ -230,6 +253,116 @@ export const databaseRoutes = new Elysia({
     }
 
     return { database: toDatabaseDto(row.database, row.serverName) };
+  })
+  .put(
+    "/:databaseId/settings",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadDatabase(params.environmentId, params.databaseId);
+      if (!row) {
+        set.status = 404;
+        return { error: "database not found" };
+      }
+      const current = row.database;
+      const info = DATABASE_ENGINES[current.engine];
+      const next = {
+        image: body.image ?? current.image,
+        publicAccess: body.publicAccess ?? current.publicAccess,
+        port: body.port ?? current.port,
+        ssl: body.ssl ?? current.ssl,
+        healthEnabled: body.healthEnabled ?? current.healthEnabled,
+        healthIntervalSeconds: body.healthIntervalSeconds ?? current.healthIntervalSeconds,
+        healthTimeoutSeconds: body.healthTimeoutSeconds ?? current.healthTimeoutSeconds,
+        healthRetries: body.healthRetries ?? current.healthRetries,
+      };
+      if (!isValidDockerImage(next.image)) {
+        set.status = 400;
+        return { error: "imagem inválida" };
+      }
+      if (!Number.isInteger(next.port) || next.port < 1 || next.port > 65535) {
+        set.status = 400;
+        return { error: "porta inválida" };
+      }
+      if (next.ssl && !info.supportsSsl) {
+        set.status = 400;
+        return { error: `${info.label} ainda não tem TLS pelo painel` };
+      }
+      const ranges: Array<[string, number, number, number]> = [
+        ["intervalo do healthcheck", next.healthIntervalSeconds, 5, 3600],
+        ["timeout do healthcheck", next.healthTimeoutSeconds, 1, 300],
+        ["tentativas do healthcheck", next.healthRetries, 1, 20],
+      ];
+      for (const [label, value, min, max] of ranges) {
+        if (!Number.isInteger(value) || value < min || value > max) {
+          set.status = 400;
+          return { error: `${label} precisa ser um inteiro entre ${min} e ${max}` };
+        }
+      }
+      if (next.publicAccess && next.port !== current.port || next.publicAccess) {
+        // A port already published by another database of this server would make docker refuse to start it.
+        const clash = await db
+          .select({ name: databases.name })
+          .from(databases)
+          .where(and(eq(databases.serverId, current.serverId), eq(databases.publicAccess, true), eq(databases.port, next.port)));
+        const other = clash.find((c) => c.name !== current.name);
+        if (other) {
+          set.status = 409;
+          return { error: `a porta ${next.port} já está publicada pelo banco "${other.name}" neste servidor — escolha outra` };
+        }
+      }
+
+      // Everything here takes effect when the container is recreated; the data volume is kept.
+      const [updated] = await db.update(databases).set({ ...next, status: "provisioning" }).where(eq(databases.id, current.id)).returning();
+      await databaseProvisionQueue.add("provision", { databaseId: current.id });
+      return { database: toDatabaseDto(updated ?? current, row.serverName) };
+    },
+    {
+      body: t.Object({
+        image: t.Optional(t.String({ maxLength: 255 })),
+        publicAccess: t.Optional(t.Boolean()),
+        port: t.Optional(t.Number()),
+        ssl: t.Optional(t.Boolean()),
+        healthEnabled: t.Optional(t.Boolean()),
+        healthIntervalSeconds: t.Optional(t.Number()),
+        healthTimeoutSeconds: t.Optional(t.Number()),
+        healthRetries: t.Optional(t.Number()),
+      }),
+    },
+  )
+  // Credentials on demand: the password is not part of the database DTO, only of this explicit read.
+  .get("/:databaseId/connection", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadDatabase(params.environmentId, params.databaseId);
+    if (!row) {
+      set.status = 404;
+      return { error: "database not found" };
+    }
+    const d = row.database;
+    const [server] = await db.select().from(servers).where(eq(servers.id, d.serverId)).limit(1);
+    const info = DATABASE_ENGINES[d.engine];
+    const common = { engine: d.engine, username: d.username, password: d.password, databaseName: d.databaseName, ssl: d.ssl };
+    return {
+      username: d.username,
+      password: d.password,
+      internal: { host: internalHostName(d.name), port: info.internalPort, url: databaseConnectionUrl({ ...common, host: internalHostName(d.name), port: info.internalPort }) },
+      external: d.publicAccess && server ? { host: server.host, port: d.port, url: databaseConnectionUrl({ ...common, host: server.host, port: d.port }) } : null,
+    };
   })
   .put(
     "/:databaseId/limits",
@@ -298,9 +431,14 @@ export const databaseRoutes = new Elysia({
         set.status = 403;
         return { error: "forbidden" };
       }
-      if (!(await loadDatabase(params.environmentId, params.databaseId))) {
+      const scheduleTarget = await loadDatabase(params.environmentId, params.databaseId);
+      if (!scheduleTarget) {
         set.status = 404;
         return { error: "database not found" };
+      }
+      if (!DATABASE_ENGINES[scheduleTarget.database.engine].supportsBackup) {
+        set.status = 400;
+        return { error: `${DATABASE_ENGINES[scheduleTarget.database.engine].label} ainda não tem backup pelo painel` };
       }
 
       const existing = await db

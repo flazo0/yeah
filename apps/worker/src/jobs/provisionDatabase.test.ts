@@ -15,6 +15,12 @@ function makeDatabase(overrides: Partial<Database> = {}): Database {
     username: "app",
     password: "s3cr3t",
     databaseName: "app",
+    publicAccess: true,
+    ssl: false,
+    healthEnabled: true,
+    healthIntervalSeconds: 30,
+    healthTimeoutSeconds: 10,
+    healthRetries: 5,
     memoryLimitMb: null,
     cpuLimit: null,
     status: "idle",
@@ -73,7 +79,8 @@ describe("buildRunCommand", () => {
       "yeah-db-4",
       "yeah-db-4-data",
     );
-    expect(cmd).not.toContain("-e ");
+    expect(cmd).not.toContain("USER");
+    expect(cmd).not.toContain("_DB");
     expect(cmd).toContain("-p 6379:6379");
     expect(cmd).toContain("-v 'yeah-db-4-data':/data ");
     expect(cmd).toContain("redis-server --requirepass 's3cr3t' --appendonly yes");

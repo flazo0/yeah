@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
+import DatabaseConnectionCard from "../../components/DatabaseConnectionCard.vue";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
 
 const { database, basePath, error } = useDatabaseContext();
@@ -26,7 +27,11 @@ const { database, basePath, error } = useDatabaseContext();
           <div>{{ database.serverName }}</div>
         </div>
         <div>
-          <div class="stat-label">Porta</div>
+          <div class="stat-label">Nome interno</div>
+          <div class="mono">{{ database.internalHost }}</div>
+        </div>
+        <div v-if="database.publicAccess">
+          <div class="stat-label">Porta externa</div>
           <div class="mono">{{ database.port }}</div>
         </div>
         <div v-if="database.username">
@@ -39,6 +44,8 @@ const { database, basePath, error } = useDatabaseContext();
         </div>
       </div>
     </div>
+
+    <DatabaseConnectionCard :base-path="basePath" :public-access="database.publicAccess" :ssl="database.ssl" @error="(msg) => (error = msg)" />
 
     <ResourceLimitsCard
       :memory-limit-mb="database.memoryLimitMb"

@@ -30,15 +30,31 @@ function buildDumpCommand(database: Database, containerName: string, filePath: s
         `mariadb-dump -u ${shellQuote(database.username ?? "app")} ${shellQuote(database.databaseName ?? "app")} ` +
         `| gzip > ${shellQuote(filePath)}`
       );
+    case "keydb": {
+      const tls = database.ssl ? "--tls --insecure " : "";
+      return (
+        `docker exec ${shellQuote(containerName)} keydb-cli ${tls}-a ${shellQuote(database.password)} --no-auth-warning --rdb /tmp/dump.rdb >/dev/null && ` +
+        `docker exec ${shellQuote(containerName)} cat /tmp/dump.rdb | gzip > ${shellQuote(filePath)}`
+      );
+    }
+    case "dragonfly":
+      throw new Error("o Dragonfly não tem cliente na imagem — backup ainda não é suportado pra esse motor");
+    case "clickhouse": {
+      const archive = filePath.split("/").pop()!;
+      return (
+        `docker exec ${shellQuote(containerName)} clickhouse-client -u ${shellQuote(database.username ?? "app")} --password ${shellQuote(database.password)} ` +
+        `-q ${shellQuote(`BACKUP DATABASE \`${database.databaseName ?? "app"}\` TO File('/backups/${archive}')`)}`
+      );
+    }
     case "redis":
       return (
-        `docker exec ${shellQuote(containerName)} redis-cli -a ${shellQuote(database.password)} --no-auth-warning --rdb /tmp/dump.rdb >/dev/null && ` +
+        `docker exec ${shellQuote(containerName)} redis-cli ${database.ssl ? "--tls --insecure " : ""}-a ${shellQuote(database.password)} --no-auth-warning --rdb /tmp/dump.rdb >/dev/null && ` +
         `docker exec ${shellQuote(containerName)} cat /tmp/dump.rdb | gzip > ${shellQuote(filePath)}`
       );
     case "mongodb":
       return (
         `docker exec ${shellQuote(containerName)} mongodump --archive --gzip ` +
-        `-u ${shellQuote(database.username ?? "root")} -p ${shellQuote(database.password)} --authenticationDatabase admin ` +
+        `${database.ssl ? "--tls --tlsInsecure " : ""}-u ${shellQuote(database.username ?? "root")} -p ${shellQuote(database.password)} --authenticationDatabase admin ` +
         `--db ${shellQuote(database.databaseName ?? "app")} > ${shellQuote(filePath)}`
       );
   }
@@ -56,6 +72,12 @@ function dumpFileName(database: Database): string {
       return `mariadb-dump-${label}-${timestamp}.sql.gz`;
     case "redis":
       return `redis-dump-${label}-${timestamp}.rdb.gz`;
+    case "keydb":
+      return `keydb-dump-${label}-${timestamp}.rdb.gz`;
+    case "dragonfly":
+      return `dragonfly-dump-${label}-${timestamp}.rdb.gz`;
+    case "clickhouse":
+      return `clickhouse-backup-${label}-${timestamp}.zip`;
     case "mongodb":
       return `mongo-dump-${label}-${timestamp}.archive.gz`;
   }

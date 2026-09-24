@@ -11,3 +11,4 @@ export * from "./preview";
 export * from "./metrics";
 export * from "./registry";
 export * from "./gitSources";
+export * from "./databaseConnection";

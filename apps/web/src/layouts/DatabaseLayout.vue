@@ -65,14 +65,17 @@ onUnmounted(() => {
   unsubscribe();
 });
 
-const configRouteNames = ["database-general"];
+const configRouteNames = ["database-general", "database-settings"];
 const isConfigGroup = computed(() => configRouteNames.includes(route.name as string));
 
 const tabs = computed(() => [
   { to: `${routeBase}/backups`, label: "Backups", icon: "backup", active: route.name === "database-backups" },
   { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
 ]);
-const subnav = computed(() => [{ to: `${routeBase}/general`, label: "Geral", active: true }]);
+const subnav = computed(() => [
+  { to: `${routeBase}/general`, label: "Geral", active: route.name === "database-general" },
+  { to: `${routeBase}/settings`, label: "Versão, acesso e saúde", active: route.name === "database-settings" },
+]);
 </script>
 
 <template>

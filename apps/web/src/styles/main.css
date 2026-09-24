@@ -2116,3 +2116,8 @@ input:-webkit-autofill:focus {
 .metric-value { font-size: 20px; font-weight: 600; }
 .metric-value small { font-size: 12px; font-weight: 400; color: var(--ink-dim); }
 .spark { width: 100%; height: 34px; color: var(--accent, currentColor); margin-top: 4px; }
+
+/* Database connection + settings */
+.conn-row { display: flex; gap: 8px; align-items: center; }
+.conn-row code { overflow-x: auto; white-space: nowrap; }
+.check-row { display: flex; gap: 8px; align-items: center; cursor: pointer; }

@@ -41,6 +41,7 @@ import ApplicationMetricsPage from "../pages/application/ApplicationMetricsPage.
 import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
+import DatabaseSettingsPage from "../pages/database/DatabaseSettingsPage.vue";
 import DatabaseGeneralPage from "../pages/database/DatabaseGeneralPage.vue";
 import ServiceLayout from "../layouts/ServiceLayout.vue";
 import ServiceGeneralPage from "../pages/service/ServiceGeneralPage.vue";
@@ -131,6 +132,7 @@ export const router = createRouter({
       children: [
         { path: "backups", name: "database-backups", component: DatabaseBackupsPage },
         { path: "general", name: "database-general", component: DatabaseGeneralPage },
+        { path: "settings", name: "database-settings", component: DatabaseSettingsPage },
       ],
     },
     {

@@ -209,17 +209,39 @@ function suffix(): string {
 
 // Database and service cards create the resource right away with the catalog's defaults and land
 // on its configuration page — nothing to fill in first, same as Coolify's one-click flow.
-async function deployDatabase(engine: DatabaseEngine) {
+// Databases ask for the version first (a database's major version is not something to guess).
+const dbModal = ref<DatabaseEngine | null>(null);
+const dbForm = ref({ name: "", version: "", customImage: "", publicAccess: false });
+const submittingDb = ref(false);
+
+function openDbModal(engine: DatabaseEngine) {
   const info = DATABASE_ENGINES[engine];
-  const res = await postConfirmingOverload<{ database: DatabaseDto }>(`${basePath}/databases`, {
-    name: `${engine}-${suffix()}`,
-    serverId: serverId.value,
-    engine,
-    username: info.hasUsername ? "app" : undefined,
-    databaseName: info.hasDatabaseName ? "app" : undefined,
-    port: info.defaultPort,
-  });
-  router.push(`${basePath}/databases/${res.database.id}`);
+  dbForm.value = { name: `${engine}-${suffix()}`, version: info.versions.includes(info.defaultImage.split(":")[1] ?? "") ? (info.defaultImage.split(":")[1] ?? info.versions[0]!) : info.versions[0]!, customImage: "", publicAccess: false };
+  dbModal.value = engine;
+}
+
+async function createDatabase() {
+  const engine = dbModal.value!;
+  const info = DATABASE_ENGINES[engine];
+  submittingDb.value = true;
+  error.value = "";
+  try {
+    const res = await postConfirmingOverload<{ database: DatabaseDto }>(`${basePath}/databases`, {
+      name: dbForm.value.name,
+      serverId: serverId.value,
+      engine,
+      ...(dbForm.value.customImage.trim() ? { image: dbForm.value.customImage.trim() } : { version: dbForm.value.version }),
+      username: info.hasUsername ? "app" : undefined,
+      databaseName: info.hasDatabaseName ? "app" : undefined,
+      port: info.defaultPort,
+      publicAccess: dbForm.value.publicAccess,
+    });
+    router.push(`${basePath}/databases/${res.database.id}`);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao criar o banco";
+  } finally {
+    submittingDb.value = false;
+  }
 }
 
 async function deployService(catalogKey: string) {
@@ -322,7 +344,6 @@ async function deploy(card: CatalogCard) {
   const modeByCard: Record<string, AppMode> = {
     "app-public": "public",
     "app-deploykey": "deploykey",
-    "app-gitsource": "gitsource",
     "app-nixpacks": "nixpacks",
     "app-railpack": "railpack",
     "app-compose": "compose",
@@ -354,8 +375,12 @@ async function deploy(card: CatalogCard) {
   }
   creatingId.value = card.id;
   try {
-    if (card.id.startsWith("db-")) await deployDatabase(card.id.slice(3) as DatabaseEngine);
-    else await deployService(card.id.slice(4));
+    if (card.id.startsWith("db-")) {
+      openDbModal(card.id.slice(3) as DatabaseEngine);
+      creatingId.value = null;
+      return;
+    }
+    await deployService(card.id.slice(4));
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar recurso";
     creatingId.value = null;
@@ -374,7 +399,7 @@ onMounted(() => {
     <div class="page-header">
       <div>
         <h1>Escolha um recurso</h1>
-        <p>Bancos e serviços são criados na hora com os valores padrão; você ajusta na tela do recurso.</p>
+        <p>Serviços são criados na hora com os valores padrão; bancos perguntam a versão antes. Você ajusta o resto na tela do recurso.</p>
       </div>
     </div>
 
@@ -444,6 +469,35 @@ onMounted(() => {
         </div>
       </template>
     </template>
+
+    <Modal v-if="dbModal" :title="`Novo banco — ${DATABASE_ENGINES[dbModal].label}`" @close="dbModal = null">
+      <form @submit.prevent="createDatabase">
+        <div class="form-group">
+          <label for="db-name">Nome</label>
+          <input id="db-name" v-model="dbForm.name" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="db-version">Versão</label>
+          <select id="db-version" v-model="dbForm.version" class="form-control" :disabled="Boolean(dbForm.customImage.trim())">
+            <option v-for="v in DATABASE_ENGINES[dbModal].versions" :key="v" :value="v">{{ DATABASE_ENGINES[dbModal].imageRepo }}:{{ v }}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="db-custom">Ou outra imagem</label>
+          <input id="db-custom" v-model="dbForm.customImage" class="form-control mono" placeholder="postgis/postgis:16-3.4" />
+        </div>
+        <label class="check-row" style="margin-bottom: 12px">
+          <input v-model="dbForm.publicAccess" type="checkbox" />
+          <span>Acesso externo (abrir a porta {{ DATABASE_ENGINES[dbModal].defaultPort }} no servidor)</span>
+        </label>
+        <p class="hint mb-16">Sem acesso externo o banco só é alcançável por outros recursos deste ambiente, pelo nome interno. Dá pra mudar depois.</p>
+        <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
+        <div class="btn-row">
+          <button type="submit" class="btn" :disabled="submittingDb">{{ submittingDb ? "criando..." : "Criar banco" }}</button>
+          <button type="button" class="btn btn-secondary" @click="dbModal = null">Cancelar</button>
+        </div>
+      </form>
+    </Modal>
 
     <Modal v-if="appModal" :title="appModalTitles[appModal]" @close="appModal = null">
       <form @submit.prevent="createApp">

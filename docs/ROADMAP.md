@@ -111,16 +111,16 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] **Serviço customizado**: colar o próprio `docker-compose.yml`.
 - [ ] Ampliar o catálogo one-click (hoje 10; Coolify tem 300+): estrutura de template em arquivo (compose + metadados + ícone), carregada de `templates/`, sem hardcode por serviço.
 - [ ] Catálogo com **busca, categorias e ícones** (usa o mesmo componente da Fase 1).
-- [ ] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): apps falam com bancos/serviços por nome interno.
+- [ ] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): **feito para aplicações e bancos** — cada ambiente tem a rede `yeah-env-<id>`, e todo recurso entra nela com um alias (o nome do recurso), então apps e bancos se acham por nome (testado: `psql` de outro container por `t-postgresql:5432`). Falta serviços (entram junto com a stack compose) e apps Docker Compose.
 - [ ] Domínio por container dentro de uma stack compose.
 - [ ] Guia/modelo de **microsserviços**: várias apps + banco + fila no mesmo ambiente com rede compartilhada e variáveis compartilhadas.
 
 **Bancos**
-- [ ] Engines novos: **Dragonfly**, **KeyDB**, **ClickHouse**.
-- [ ] Escolha de **versão da imagem** na criação (Postgres pergunta versão antes de criar).
-- [ ] **SSL** por engine e **acesso externo** configurável (publicar porta + credenciais).
-- [ ] URL de conexão interna e externa exibida e copiável.
-- [ ] Healthcheck configurável.
+- [x] Engines novos: **Dragonfly**, **KeyDB**, **ClickHouse** (criar, provisionar, conectar, healthcheck; backup de KeyDB e ClickHouse; o Dragonfly não tem cliente na imagem, então sem backup).
+- [x] Escolha de **versão da imagem** na criação (modal com as versões sugeridas de cada motor, ou qualquer outra imagem) e troca de versão depois (recria mantendo os dados, com aviso sobre salto de versão maior).
+- [x] **SSL** por motor e **acesso externo** configurável: banco novo nasce **privado** (só rede do ambiente); "acesso externo" publica a porta escolhida (conflito de porta no servidor → 409); TLS com certificado autoassinado gerado pelo painel (PostgreSQL exige TLS via `pg_hba`, MySQL `require_secure_transport`, Redis/KeyDB/Dragonfly só porta TLS, MongoDB `requireTLS`). ClickHouse ainda sem TLS pelo painel. Bancos que já existiam continuam publicados (a migração liga o acesso externo neles).
+- [x] URL de conexão **interna e externa** exibida (senha oculta com "mostrar") e copiável; a senha só sai numa leitura explícita (`GET .../connection`).
+- [x] Healthcheck configurável (ligar/desligar, intervalo, timeout, tentativas) com probe do próprio motor; o provisionamento só termina como "rodando" quando o banco responde.
 
 **Backup**
 - [ ] **Restore / Import Backup**: restaurar a partir de um backup existente ou de arquivo enviado (hoje não existe nenhuma rota de restore).
