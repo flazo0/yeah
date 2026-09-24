@@ -73,9 +73,10 @@ export function composeExecCommand(project: string, service: string | null, comm
 
 /**
  * The override compose file that routes a service through the Traefik proxy. Compose merges labels
- * and networks from every -f file, so the user's own definitions stay untouched.
+ * and networks from every -f file, so the user's own definitions stay untouched. `labels` come from
+ * traefikLabels() (shared/traefik.ts).
  */
-export function composeProxyOverride(service: string, routerName: string, domain: string, port: number): string {
+export function composeProxyOverride(service: string, labels: string[]): string {
   const q = (s: string) => JSON.stringify(s);
   return [
     "services:",
@@ -84,12 +85,8 @@ export function composeProxyOverride(service: string, routerName: string, domain
     "      - default",
     `      - ${q(PROXY_NETWORK_NAME)}`,
     "    labels:",
-    `      - ${q("traefik.enable=true")}`,
-    `      - ${q(`traefik.docker.network=${PROXY_NETWORK_NAME}`)}`,
-    `      - ${q(`traefik.http.routers.${routerName}.rule=Host(\`${domain}\`)`)}`,
-    `      - ${q(`traefik.http.routers.${routerName}.entrypoints=websecure`)}`,
-    `      - ${q(`traefik.http.routers.${routerName}.tls.certresolver=letsencrypt`)}`,
-    `      - ${q(`traefik.http.services.${routerName}.loadbalancer.server.port=${port}`)}`,
+    // Compose interpolates ${...} in the file, so a literal $ in a label (the redirect's ${1}) is written $.
+    ...labels.map((l) => `      - ${q(l.split("$").join("$"))}`),
     "networks:",
     `  ${q(PROXY_NETWORK_NAME)}:`,
     "    external: true",

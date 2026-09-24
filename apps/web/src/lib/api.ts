@@ -10,6 +10,11 @@ export function apiBaseUrl(): string {
   return API_URL.startsWith("http") ? API_URL : `${window.location.origin}${API_URL}`;
 }
 
+/** WebSocket base of the API (same rules as apiBaseUrl, ws:// or wss://). */
+export function apiWsBase(): string {
+  return apiBaseUrl().replace(/^http/, "ws");
+}
+
 export class ApiError extends Error {
   status: number;
   code?: string;

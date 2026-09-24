@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { Elysia, t } from "elysia";
 import { and, desc, eq } from "drizzle-orm";
 import {
@@ -15,6 +16,7 @@ import {
   resourceTags,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
+import { computeRouting, configSnapshot, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
@@ -24,9 +26,23 @@ import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
 import { applicationDeployQueue, applicationLifecycleQueue, scheduledTaskQueue } from "../lib/queue";
 import { addScheduledTask, removeScheduledTask } from "@yeah/queue";
+import { tearDownApplication } from "../lib/appTeardown";
 import { generateDeployToken, hashDeployToken, validateAdvancedSettings } from "../lib/deployRules";
 
-function toApplicationDto(app: Application, serverName: string): ApplicationDto {
+const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
+
+/** Settings changed since the last deploy (null if never deployed). */
+async function pendingFor(app: Application): Promise<string[] | null> {
+  if (!app.deployedConfig) return null;
+  const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, app.id));
+  return pendingChanges(app.deployedConfig as ConfigSnapshot, configSnapshot(app, volumes, sha256));
+}
+
+export async function applicationDto(app: Application, serverName: string): Promise<ApplicationDto> {
+  return toApplicationDto(app, serverName, await pendingFor(app));
+}
+
+function toApplicationDto(app: Application, serverName: string, pending: string[] | null = null): ApplicationDto {
   return {
     id: app.id,
     teamId: app.teamId,
@@ -46,6 +62,9 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     port: app.port,
     envContent: app.envContent,
     domain: app.domain,
+    extraDomains: app.extraDomains,
+    wwwRedirect: app.wwwRedirect,
+    pendingChanges: pending,
     githubRepo: app.githubRepo,
     healthPath: app.healthPath,
     healthIntervalSeconds: app.healthIntervalSeconds,
@@ -100,7 +119,7 @@ function toVolumeDto(volume: ApplicationVolume): ApplicationVolumeDto {
   };
 }
 
-async function loadApplication(environmentId: string, applicationId: string) {
+export async function loadApplication(environmentId: string, applicationId: string) {
   const rows = await db
     .select({ application: applications, serverName: servers.name })
     .from(applications)
@@ -134,7 +153,7 @@ export const applicationRoutes = new Elysia({
       .innerJoin(servers, eq(applications.serverId, servers.id))
       .where(eq(applications.environmentId, params.environmentId));
 
-    return { applications: rows.map((row) => toApplicationDto(row.application, row.serverName)) };
+    return { applications: await Promise.all(rows.map((row) => applicationDto(row.application, row.serverName))) };
   })
   .post(
     "/",
@@ -276,7 +295,7 @@ export const applicationRoutes = new Elysia({
         return { error: "failed to create application" };
       }
 
-      return { application: toApplicationDto(application, server.name) };
+      return { application: await applicationDto(application, server.name) };
     },
     {
       body: t.Object({
@@ -315,7 +334,7 @@ export const applicationRoutes = new Elysia({
       return { error: "application not found" };
     }
 
-    return { application: toApplicationDto(row.application, row.serverName) };
+    return { application: await applicationDto(row.application, row.serverName) };
   })
   .put(
     "/:applicationId/env",
@@ -346,7 +365,7 @@ export const applicationRoutes = new Elysia({
         return { error: "failed to update environment" };
       }
 
-      return { application: toApplicationDto(updated, row.serverName) };
+      return { application: await applicationDto(updated, row.serverName) };
     },
     { body: t.Object({ envContent: t.String() }) },
   )
@@ -369,9 +388,52 @@ export const applicationRoutes = new Elysia({
         return { error: "application not found" };
       }
 
+      const domain = body.domain ? normalizeHost(body.domain) : "";
+      const extraDomains = [...new Set((body.extraDomains ?? []).map(normalizeHost).filter(Boolean))].filter((d) => d !== domain);
+      const wwwRedirect = (body.wwwRedirect ?? row.application.wwwRedirect) as WwwRedirect;
+      if (!WWW_REDIRECTS.includes(wwwRedirect)) {
+        set.status = 400;
+        return { error: "redirect www inválido" };
+      }
+      if (extraDomains.length > 10) {
+        set.status = 400;
+        return { error: "no máximo 10 domínios adicionais" };
+      }
+      for (const host of [domain, ...extraDomains].filter(Boolean)) {
+        if (!isValidHostname(host)) {
+          set.status = 400;
+          return { error: `domínio inválido: ${host}` };
+        }
+      }
+      if (wwwRedirect !== "none" && !domain) {
+        set.status = 400;
+        return { error: "o redirect www precisa de um domínio principal" };
+      }
+      // Two applications answering the same hostname would fight over the Traefik router.
+      const mine = new Set([domain, ...extraDomains].filter(Boolean));
+      if (wwwRedirect !== "none") {
+        mine.add(`www.${domain.replace(/^www\./, "")}`);
+        mine.add(domain.replace(/^www\./, ""));
+      }
+      const others = await db.select().from(applications).where(and(eq(applications.teamId, params.teamId)));
+      for (const other of others) {
+        if (other.id === params.applicationId) continue;
+        // Their effective hostnames, including the ones a www redirect reserves.
+        let theirs: string[] = [...other.extraDomains];
+        if (other.domain) {
+          const r = computeRouting(normalizeHost(other.domain), other.extraDomains, other.wwwRedirect);
+          theirs = [...r.hosts, ...(r.redirectFrom ? [r.redirectFrom] : [])];
+        }
+        const clash = theirs.find((h) => h && mine.has(h));
+        if (clash) {
+          set.status = 409;
+          return { error: `o domínio ${clash} já é usado por ${other.name}` };
+        }
+      }
+
       const [updated] = await db
         .update(applications)
-        .set({ domain: body.domain || null })
+        .set({ domain: domain || null, extraDomains, wwwRedirect: domain ? wwwRedirect : "none" })
         .where(eq(applications.id, params.applicationId))
         .returning();
       if (!updated) {
@@ -379,9 +441,15 @@ export const applicationRoutes = new Elysia({
         return { error: "failed to update domain" };
       }
 
-      return { application: toApplicationDto(updated, row.serverName) };
+      return { application: await applicationDto(updated, row.serverName) };
     },
-    { body: t.Object({ domain: t.Optional(t.String()) }) },
+    {
+      body: t.Object({
+        domain: t.Optional(t.String()),
+        extraDomains: t.Optional(t.Array(t.String())),
+        wwwRedirect: t.Optional(t.Union([t.Literal("none"), t.Literal("www_to_root"), t.Literal("root_to_www")])),
+      }),
+    },
   )
   .put(
     "/:applicationId/limits",
@@ -412,7 +480,7 @@ export const applicationRoutes = new Elysia({
         return { error: "failed to update limits" };
       }
 
-      return { application: toApplicationDto(updated, row.serverName) };
+      return { application: await applicationDto(updated, row.serverName) };
     },
     { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
   )
@@ -458,7 +526,7 @@ export const applicationRoutes = new Elysia({
         set.status = 500;
         return { error: "failed to update advanced settings" };
       }
-      return { application: toApplicationDto(updated, row.serverName) };
+      return { application: await applicationDto(updated, row.serverName) };
     },
     {
       body: t.Object({
@@ -1114,34 +1182,9 @@ export const applicationRoutes = new Elysia({
     const server = serverRows[0];
     const volumeRows = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, row.application.id));
 
-    // Deliberate exception to "the API never SSHes directly" (see servers.ts): a bounded,
-    // synchronous teardown the browser is waiting on — same rationale as the backup download route.
     if (server) {
-      const containerName = `yeah-app-${row.application.id}`;
-      const appDir = `/opt/yeah-apps/${row.application.id}`;
-      const volumeRmCommand = volumeRows.map((v) => `docker volume rm ${shellQuote(volumeName(v.id))} >/dev/null 2>&1 || true`).join(" && ");
-      try {
-        const conn = await connectSsh({
-          host: server.host,
-          port: server.port,
-          username: server.sshUser,
-          privateKey: server.privateKey,
-        timeoutMs: server.sshTimeoutSeconds * 1000,
-        });
-        try {
-          await execStream(
-            conn,
-            (row.application.buildPack === "docker_compose" ? composeTeardownCommand(composeProjectName(row.application.id)) : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true`) +
-              ` && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true` +
-              (volumeRmCommand ? ` && ${volumeRmCommand}` : ""),
-            () => {},
-          );
-        } finally {
-          conn.end();
-        }
-      } catch (err) {
-        console.error(`[api] failed to tear down container for application ${row.application.id}:`, err);
-      }
+      const failure = await tearDownApplication(row.application, server, volumeRows);
+      if (failure) console.error(`[api] failed to tear down container for application ${row.application.id}: ${failure}`);
     }
 
     // Cascade removes the task rows, but their cron schedulers live in Redis and would keep ticking.

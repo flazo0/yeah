@@ -75,34 +75,34 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Fontes **GitLab** (GitLab App), **Bitbucket** e **Gitea**.
 - [ ] Registry privado (Docker Hub privado, GHCR…) com **push automático** da imagem buildada, tag = SHA do commit — builda uma vez e reusa.
 - [x] `[skip ci]` / `[skip cd]` na mensagem do commit pula o auto-deploy do push (também `[ci skip]`, `[no ci]`…). Coberto por teste unitário; não testado com um push real do GitHub.
-- [ ] Tela de **mudanças pendentes**: contagem de campos alterados (env, domínio…) desde o último deploy, antes de aplicar.
+- [x] Tela de **mudanças pendentes**: o deploy grava um snapshot dos campos que só valem no próximo deploy (senhas e Dockerfile guardados como hash); um banner no topo da aplicação lista o que mudou desde então ("2 mudanças pendentes: Domínio, Variáveis de ambiente") com botão de deploy. Só aplicações.
 - [x] Grace period de parada configurável (`docker stop -t`) em redeploy, parar e reiniciar — aba Avançado.
 - [x] Custom Docker options (flags extras do `docker run`): cada palavra vira argumento entre aspas, nada passa por shell; `--name/-d/--rm/--env-file/--restart` são recusados.
 
 **Ciclo de vida e operação**
 - [x] Ações **iniciar / parar / reiniciar** (job novo `application-lifecycle` no worker, status `stopped`, evento WS `application.status`) e **substituir** (= o botão Deploy, que recria o container).
 - [x] **Logs do container em execução** em aba própria (`docker logs --tail`, atualização a cada 3s com "Acompanhar"). É polling de uma leitura limitada pela API, não um stream `-f` — streaming de verdade exigiria protocolo de inscrição no WebSocket.
-- [ ] **Terminal interativo** dentro do container (WebSocket → API → SSH → `docker exec -it`) e do servidor.
+- [x] **Terminal interativo** (WebSocket autenticado → API → SSH com PTY): shell do **servidor** (aba Terminal do servidor) e `docker exec -it` no **container** da aplicação (aba Terminal; em compose entra no serviço do domínio). Cookie de sessão + membro do time + checagem de Origin (WebSocket não passa por CORS), limite de 5 sessões por usuário, fecha depois de 30 min sem digitar, redimensiona junto com a janela. Exceção documentada a "só o worker fala SSH". Bancos e serviços ainda não têm terminal.
 - [x] **Healthcheck configurável** por aplicação (caminho HTTP, intervalo, timeout, tentativas, período de início): o deploy só termina com sucesso quando o container fica `healthy` e, se não ficar, falha mostrando as últimas linhas do log. Bancos e serviços ainda não têm (Fase 4).
 - [x] Sub-aba **Avançado** (healthcheck, tolerância de parada, opções extras do docker).
-- [ ] Sub-aba **Git Source** (trocar fonte/branch/repo depois de criado).
-- [ ] Sub-aba **Servers** (ver/trocar servidor de destino).
+- [x] Sub-aba **Origem** (Git Source): trocar repositório, branch, repositório do GitHub (ou desligar dele), imagem, Dockerfile, pasta publicada, arquivo/serviço do compose e porta depois de criado. O build pack não muda.
+- [x] Sub-aba **Servidor**: ver e trocar o servidor de destino — remove o container, arquivos e volumes do servidor antigo (recusa se não conseguir limpar, com "mover mesmo assim"), deixa a app parada e pede um deploy. Os dados dos volumes não migram.
 - [x] Sub-aba **Webhooks**: URL de deploy manual (`POST /hooks/deploy/:token`, só o hash do token é guardado e a URL aparece uma vez) + explicação do auto-deploy do GitHub e dos marcadores de skip.
-- [ ] Sub-aba **Resource Operations** (clonar, mover entre ambientes/projetos, migrar entre servidores).
+- [x] Sub-aba **Operações**: clonar (mesmo ambiente ou outro, mesmo servidor ou outro; sem domínios nem token, tarefas pausadas) e mover pra outro ambiente/projeto do time. "Migrar entre servidores" = a aba Servidor.
 - [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
 - [x] Sub-aba **Zona de perigo** (excluir com confirmação).
 - [ ] **Preview deployments**: PR do GitHub vira ambiente efêmero com URL própria, comenta no PR, morre ao fechar.
 - [x] **Scheduled tasks**: comando dentro do container num cron (BullMQ job scheduler, fuso configurável), limite de tempo, "executar agora", pausar, histórico das últimas 50 execuções (status, código, log) e evento `task.failed` nas notificações. Aba "Tarefas agendadas" na aplicação. Ainda não existe em serviços/compose.
 - [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
 - [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
-- [ ] **Múltiplos domínios** por aplicação + redirect www/não-www.
+- [x] **Múltiplos domínios** por aplicação (até 10, validados, sem conflito entre apps do time) + **redirect www ↔ raiz** (301 por middleware do Traefik, certificado pros dois). Labels testados num container real; Traefik de verdade não. Vale para `docker run` e para compose.
 - [x] **Tags** em recursos (aplicação, banco, serviço): criar/apagar e atribuir no modal do botão de etiqueta na listagem do ambiente, chips coloridos nas linhas e cards, filtro por etiqueta e busca por nome de etiqueta. Não há página própria de gerenciamento nem renomear/trocar cor pela tela (a API já suporta).
 - [x] Timeout de conexão SSH configurável por servidor (5–120 s, padrão 15 s), na aba Geral do servidor; vale pra todos os jobs e rotas que abrem SSH.
 
 **Variáveis de ambiente**
 - [x] **Variáveis compartilhadas** por escopo (time / projeto / ambiente): página própria na sidebar, valor criptografado, referência `{{project.NOME}}` (ou `team` / `environment`) no `.env` da aplicação, expandida no deploy — referência inexistente falha o deploy com a lista do que falta. O mesmo nome em escopos diferentes convive, porque cada referência nomeia o escopo. Só aplicações usam por enquanto (serviços não).
 - [x] Distinção **build-time vs runtime**: `build:CHAVE=valor` vale só no build (`--build-arg`, ou `--env` no Nixpacks) e não entra no container; `both:` nos dois; sem prefixo, só runtime. Testado: o build-arg chegou na imagem e a variável build-only não existe no container.
-- [ ] Editor de env em modo texto (`.env` colado) **e** linha a linha: hoje só existe o modo texto (Monaco); falta a visão em tabela.
+- [x] Editor de env em modo texto (Monaco) **e** tabela (nome / valor oculto / "só execução, só build, build e execução"), com validação de nome e alternância sem perder dados; a tabela não guarda comentários.
 
 ## Fase 4 — Bancos, serviços e microsserviços
 
@@ -185,7 +185,7 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. Os que já estão nas fases acima aparecem com a referência; os marcados **(só aqui)** não cabem em nenhuma fase acima.
 
 **Navegação / layout**
-- [ ] Sub-navegação de Configuração: Advanced, Git Source, Servers, Scheduled Tasks, Webhooks, Preview Deployments, Resource Operations, Healthcheck, Analytics → Fase 3.
+- [x] Sub-navegação de Configuração: Geral, Origem, Servidor, Avançado, Webhooks, Tarefas agendadas, Operações, Zona de perigo (Healthcheck fica em Avançado; Preview Deployments e Analytics ainda não).
 - [ ] Página do GitHub reestruturada no estilo "Sources" do Coolify → Fase 1.
 - [ ] Modo tabela em `EnvironmentPage.vue` e fluxo "1 clique cria" pra banco/serviço → Fase 1.
 - [ ] Gráfico histórico de métricas no dashboard e widget de traffic analytics → Fases 1 e 5.
@@ -199,7 +199,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 **Paridade com Coolify**
 - [ ] Registry privado com push automático → Fase 3.
 - [ ] `[skip ci]` / `[skip cd]` → Fase 3.
-- [ ] Tela de mudanças pendentes → Fase 3.
+- [x] Tela de mudanças pendentes → Fase 3.
 - [ ] Grace period de parada → Fase 3.
 - [x] Timeout SSH configurável por servidor → Fase 3.
 - [ ] Terminal web interativo → Fase 3.

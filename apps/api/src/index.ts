@@ -7,6 +7,7 @@ import { serverRoutes } from "./routes/servers";
 import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
 import { applicationRoutes } from "./routes/applications";
+import { applicationOpsRoutes } from "./routes/applicationOps";
 import { databaseRoutes } from "./routes/databases";
 import { githubRoutes } from "./routes/github";
 import { githubWebhookRoutes } from "./routes/githubWebhook";
@@ -17,6 +18,7 @@ import { searchRoutes } from "./routes/search";
 import { deployHookRoutes } from "./routes/deployHook";
 import { sharedVariableRoutes } from "./routes/sharedVariables";
 import { tagRoutes } from "./routes/tags";
+import { terminalRoutes } from "./routes/terminal";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
 import { clientIp, RateLimiter, ruleFor } from "./lib/rateLimit";
@@ -55,6 +57,7 @@ const app = new Elysia()
   .use(storageRoutes)
   .use(projectRoutes)
   .use(applicationRoutes)
+  .use(applicationOpsRoutes)
   .use(databaseRoutes)
   .use(githubRoutes)
   .use(githubWebhookRoutes)
@@ -65,6 +68,7 @@ const app = new Elysia()
   .use(deployHookRoutes)
   .use(sharedVariableRoutes)
   .use(tagRoutes)
+  .use(terminalRoutes)
   .listen(port);
 
 // Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.

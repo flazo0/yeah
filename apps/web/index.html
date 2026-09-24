@@ -14,10 +14,11 @@
       connect-src só permite a api/ws desta instância — em produção %VITE_API_URL%/%VITE_WS_URL%
       ficam vazios (api/ws são same-origin via /api e /ws, reverse-proxied pelo nginx — ver
       apps/web/nginx.conf), então 'self' sozinho já cobre; só viram um host explícito se alguém
-      optar por rodar api/ws fora do proxy compartilhado. Nunca um domínio do Google ou qualquer
+      optar por rodar api/ws fora do proxy compartilhado. A api em ws:// também entra em connect-src (os terminais interativos abrem um WebSocket direto nela).
+      Nunca um domínio do Google ou qualquer
       outro terceiro. Em produção, reforçar via header no proxy além deste meta tag.
     -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' %VITE_API_URL% %VITE_WS_URL%;" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' %VITE_API_URL% %VITE_WS_URL% __API_WS_URL__;" />
 
     <meta name="theme-color" content="#000000" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

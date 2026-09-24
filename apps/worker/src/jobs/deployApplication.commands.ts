@@ -1,6 +1,6 @@
 import type { Application, Server } from "@yeah/db";
 import type { EnvEntry } from "@yeah/shared";
-import { composeProjectName, PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
+import { composeProjectName, computeRouting, normalizeHost, PROXY_NETWORK_NAME, traefikLabels, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -10,7 +10,7 @@ import { composeProjectName, PROXY_NETWORK_NAME, isSafePublishDirectory, parseDo
 
 /** null means "publish the port directly on the host" — the original, proxy-less behavior. */
 export function resolveDomain(application: Application, server: Server): string | null {
-  if (application.domain) return application.domain;
+  if (application.domain) return normalizeHost(application.domain);
   if (server.proxyStatus !== "active" || !server.wildcardDomain) return null;
   return `${resourceSlug(application.name)}.${server.wildcardDomain}`;
 }
@@ -115,16 +115,8 @@ export function buildRunCommand(
     return base + `-p ${application.port}:${application.port} ` + restart;
   }
 
-  return (
-    base +
-    `--network ${shellQuote(PROXY_NETWORK_NAME)} ` +
-    `--label traefik.enable=true ` +
-    `--label ${shellQuote(`traefik.http.routers.${containerName}.rule=Host(\`${domain}\`)`)} ` +
-    `--label traefik.http.routers.${containerName}.entrypoints=websecure ` +
-    `--label traefik.http.routers.${containerName}.tls.certresolver=letsencrypt ` +
-    `--label traefik.http.services.${containerName}.loadbalancer.server.port=${application.port} ` +
-    restart
-  );
+  const labels = traefikLabels(containerName, computeRouting(domain, application.extraDomains, application.wwwRedirect), application.port);
+  return base + `--network ${shellQuote(PROXY_NETWORK_NAME)} ` + labels.map((l) => `--label ${shellQuote(l)} `).join("") + restart;
 }
 
 export interface BuildStep {

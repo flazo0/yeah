@@ -3,11 +3,11 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 import { resourceSlug, type ServerDto } from "@yeah/shared";
 import { api } from "../../lib/api";
-import DomainCard from "../../components/DomainCard.vue";
+import AppDomainsCard from "../../components/AppDomainsCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
-const { app, basePath, error } = useApplicationContext();
+const { app, basePath, error, reloadApp } = useApplicationContext();
 const route = useRoute();
 
 const wildcard = ref<string | null>(null);
@@ -84,12 +84,14 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       </div>
     </div>
 
-    <DomainCard
+    <AppDomainsCard
       :domain="app.domain"
+      :extra-domains="app.extraDomains"
+      :www-redirect="app.wwwRedirect"
       :put-url="`${basePath}/domain`"
       :suggestion="suggestion"
       saved-message="salvo — aplica no próximo deploy"
-      @saved="(domain) => (app!.domain = domain)"
+      @saved="(v) => { app!.domain = v.domain; app!.extraDomains = v.extraDomains; app!.wwwRedirect = v.wwwRedirect; void reloadApp(); }"
       @error="(msg) => (error = msg)"
     />
 

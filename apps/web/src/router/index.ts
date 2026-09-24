@@ -31,6 +31,10 @@ import ApplicationLogsPage from "../pages/application/ApplicationLogsPage.vue";
 import ApplicationAdvancedPage from "../pages/application/ApplicationAdvancedPage.vue";
 import ApplicationWebhooksPage from "../pages/application/ApplicationWebhooksPage.vue";
 import ApplicationTasksPage from "../pages/application/ApplicationTasksPage.vue";
+import ApplicationTerminalPage from "../pages/application/ApplicationTerminalPage.vue";
+import ApplicationSourcePage from "../pages/application/ApplicationSourcePage.vue";
+import ApplicationServerPage from "../pages/application/ApplicationServerPage.vue";
+import ApplicationOperationsPage from "../pages/application/ApplicationOperationsPage.vue";
 import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
@@ -106,6 +110,10 @@ export const router = createRouter({
         { path: "advanced", name: "app-advanced", component: ApplicationAdvancedPage },
         { path: "webhooks", name: "app-webhooks", component: ApplicationWebhooksPage },
         { path: "tasks", name: "app-tasks", component: ApplicationTasksPage },
+        { path: "terminal", name: "app-terminal", component: ApplicationTerminalPage },
+        { path: "source", name: "app-source", component: ApplicationSourcePage },
+        { path: "server", name: "app-server", component: ApplicationServerPage },
+        { path: "operations", name: "app-operations", component: ApplicationOperationsPage },
         { path: "danger", name: "app-danger", component: ApplicationDangerPage },
       ],
     },

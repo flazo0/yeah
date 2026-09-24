@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, provide, ref } from "vue";
+import { computed, onUnmounted, provide, ref, watch } from "vue";
 import PageState from "../components/PageState.vue";
 import { useRoute, useRouter } from "vue-router";
 import type { ApplicationDto, ApplicationLifecycleAction, DeploymentDto, WsServerEvent } from "@yeah/shared";
@@ -71,23 +71,33 @@ async function deleteApplication() {
   }
 }
 
-const configRouteNames = ["app-general", "app-env", "app-storage", "app-advanced", "app-webhooks", "app-tasks", "app-danger"];
+const configRouteNames = ["app-general", "app-env", "app-storage", "app-advanced", "app-source", "app-server", "app-operations", "app-webhooks", "app-tasks", "app-danger"];
 const isConfigGroup = computed(() => configRouteNames.includes(route.name as string));
 
 const tabs = computed(() => [
   { to: `${routeBase}/deployments`, label: "Deployments", icon: "rocket_launch", active: route.name === "app-deployments" },
-  { to: `${routeBase}/logs`, label: "Logs", icon: "terminal", active: route.name === "app-logs" },
+  { to: `${routeBase}/logs`, label: "Logs", icon: "article", active: route.name === "app-logs" },
+  { to: `${routeBase}/terminal`, label: "Terminal", icon: "terminal", active: route.name === "app-terminal" },
   { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [
   { to: `${routeBase}/general`, label: "Geral", active: route.name === "app-general" },
+  { to: `${routeBase}/source`, label: "Origem", active: route.name === "app-source" },
+  { to: `${routeBase}/server`, label: "Servidor", active: route.name === "app-server" },
   { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "app-env" },
   { to: `${routeBase}/storage`, label: "Armazenamento", active: route.name === "app-storage" },
   { to: `${routeBase}/advanced`, label: "Avançado", active: route.name === "app-advanced" },
   { to: `${routeBase}/webhooks`, label: "Webhooks", active: route.name === "app-webhooks" },
   { to: `${routeBase}/tasks`, label: "Tarefas agendadas", active: route.name === "app-tasks" },
+  { to: `${routeBase}/operations`, label: "Operações", active: route.name === "app-operations" },
   { to: `${routeBase}/danger`, label: "Zona de perigo", active: route.name === "app-danger" },
 ]);
+
+// The banner compares the saved settings with the last deploy, so refresh it as the user moves around.
+watch(
+  () => route.fullPath,
+  () => void reloadApp().catch(() => undefined),
+);
 
 const lifecycleBusy = ref(false);
 async function lifecycle(action: ApplicationLifecycleAction) {
@@ -160,6 +170,14 @@ onUnmounted(unsubscribe);
         <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ app.domain }}</a>
       </p>
     </template>
+    <div v-if="app.pendingChanges?.length" class="callout pending-banner" role="status">
+      <span class="material-symbols-outlined" style="font-size: 18px">pending_actions</span>
+      <div>
+        <strong>{{ app.pendingChanges.length }} {{ app.pendingChanges.length === 1 ? "mudança pendente" : "mudanças pendentes" }}</strong>
+        desde o último deploy: {{ app.pendingChanges.join(", ") }}.
+        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" :disabled="deploying" @click="deploy">Fazer deploy pra aplicar</button>
+      </div>
+    </div>
     <router-view />
   </ResourceDetailShell>
 </template>

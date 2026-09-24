@@ -1,7 +1,7 @@
 import { Client } from "ssh2";
 import type { TestConnectionResult } from "@yeah/shared";
 
-export type { Client } from "ssh2";
+export type { Client, ClientChannel } from "ssh2";
 
 export interface SshConnectOptions {
   host: string;

@@ -4,11 +4,18 @@ import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { isDark } from "../lib/theme";
+import { apiWsBase } from "../lib/api";
 
-defineProps<{ serverName: string }>();
+// A real terminal: keystrokes go to the API over a WebSocket, which relays them to an SSH PTY
+// (a login shell on the server, or `docker exec -it` into the app's container).
+const props = defineProps<{ path: string; title: string }>();
 
 const container = ref<HTMLDivElement | null>(null);
+const state = ref<"connecting" | "open" | "closed">("connecting");
 let term: Terminal | null = null;
+let fit: FitAddon | null = null;
+let socket: WebSocket | null = null;
+let resizeObserver: ResizeObserver | null = null;
 
 function themeFor(dark: boolean): ITheme {
   // Background/foreground follow the page theme; ANSI colors stay a real terminal palette.
@@ -59,54 +66,82 @@ function themeFor(dark: boolean): ITheme {
       };
 }
 
+
+function sendResize() {
+  if (!term || !socket || socket.readyState !== WebSocket.OPEN) return;
+  socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+}
+
+function connect() {
+  if (!term) return;
+  socket?.close();
+  state.value = "connecting";
+  term.reset();
+  term.writeln("\x1b[90mconectando...\x1b[0m");
+  const ws = new WebSocket(`${apiWsBase()}${props.path}`);
+  socket = ws;
+  let first = true;
+  ws.onopen = () => {
+    state.value = "open";
+    sendResize();
+  };
+  ws.onmessage = (event) => {
+    if (first) {
+      first = false;
+      term?.reset();
+      // The server only starts listening once it authenticated and opened the PTY — tell it the real size then.
+      sendResize();
+    }
+    term?.write(String(event.data));
+  };
+  ws.onclose = () => {
+    if (socket !== ws) return;
+    state.value = "closed";
+    term?.writeln("\r\n\x1b[90m[conexão encerrada]\x1b[0m");
+  };
+}
+
 onMounted(() => {
   if (!container.value) return;
   term = new Terminal({
     fontFamily: "'Google Sans Code', ui-monospace, monospace",
-    fontSize: 12,
+    fontSize: 13,
     cursorBlink: true,
     theme: themeFor(isDark.value),
   });
-  const fit = new FitAddon();
+  fit = new FitAddon();
   term.loadAddon(fit);
   term.open(container.value);
   fit.fit();
-
-  term.writeln("\x1b[36m# preview local\x1b[0m \x1b[90m— exec real por SSH chega na Fase 4 do roadmap\x1b[0m");
-  term.write("\x1b[32m$\x1b[0m ");
-
-  let line = "";
   term.onData((data) => {
-    if (data === "\r") {
-      term?.write("\r\n\x1b[32m$\x1b[0m ");
-      line = "";
-      return;
-    }
-    if (data === "") {
-      if (line.length > 0) {
-        line = line.slice(0, -1);
-        term?.write("\b \b");
-      }
-      return;
-    }
-    line += data;
-    term?.write(data);
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "input", data }));
   });
+  term.onResize(() => sendResize());
+  resizeObserver = new ResizeObserver(() => fit?.fit());
+  resizeObserver.observe(container.value);
+  connect();
 });
 
 watch(isDark, (dark) => {
   if (term) term.options.theme = themeFor(dark);
 });
 
-onBeforeUnmount(() => term?.dispose());
+onBeforeUnmount(() => {
+  resizeObserver?.disconnect();
+  const ws = socket;
+  socket = null;
+  ws?.close();
+  term?.dispose();
+});
 </script>
 
 <template>
-  <details class="card" style="margin-bottom: 0">
-    <summary class="card-header" style="cursor: pointer">
+  <div class="card" style="margin-bottom: 0">
+    <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 16px">terminal</span>
-      Terminal — {{ serverName }}
-    </summary>
-    <div ref="container" class="h-40" style="background: var(--bg); padding: 4px 8px"></div>
-  </details>
+      {{ title }}
+      <button v-if="state === 'closed'" type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" @click="connect">Reconectar</button>
+    </div>
+    <div ref="container" class="terminal-box"></div>
+  </div>
 </template>

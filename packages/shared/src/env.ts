@@ -85,3 +85,9 @@ export function expandReferences(entries: EnvEntry[], variables: SharedVariableV
 export function isValidVariableKey(key: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && key.length <= 255;
 }
+
+/** Inverse of parseEnvContent for the table editor: `build:`/`both:` prefixes, runtime has none. */
+export function serializeEnvEntries(entries: EnvEntry[]): string {
+  const lines = entries.map((e) => `${e.availability === "runtime" ? "" : `${e.availability}:`}${e.key}=${e.value}`);
+  return lines.length > 0 ? `${lines.join("\n")}\n` : "";
+}

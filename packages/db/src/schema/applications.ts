@@ -1,4 +1,5 @@
-import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
@@ -9,6 +10,7 @@ import { resourceLimitColumns } from "./columns";
 // builds a Dockerfile pasted into the panel; docker_compose runs a compose file from the repo as one project.
 // Railpack is not wired up yet.
 export const buildPackEnum = pgEnum("build_pack", ["dockerfile", "static", "nixpacks", "image", "dockerfile_inline", "docker_compose"]);
+export const wwwRedirectEnum = pgEnum("www_redirect", ["none", "www_to_root", "root_to_www"]);
 export const applicationStatusEnum = pgEnum("application_status", ["idle", "deploying", "running", "stopped", "error"]);
 
 export const applications = pgTable("applications", {
@@ -42,6 +44,11 @@ export const applications = pgTable("applications", {
   dockerfileContent: text("dockerfile_content"),
   // static: the folder (relative to the repo root) that gets served by nginx.
   publishDirectory: varchar("publish_directory", { length: 255 }).default(".").notNull(),
+  // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).
+  extraDomains: text("extra_domains").array().default(sql`'{}'::text[]`).notNull(),
+  wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),
+  // What the last deploy ran with (shared/pending.ts) — the baseline for the "pending changes" banner.
+  deployedConfig: jsonb("deployed_config").$type<Record<string, string>>(),
   composeFile: varchar("compose_file", { length: 255 }).default("docker-compose.yml").notNull(),
   composeService: varchar("compose_service", { length: 64 }),
   // Private repos over SSH: a per-application keypair. The private half is encrypted at rest; the

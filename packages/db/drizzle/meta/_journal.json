@@ -169,6 +169,13 @@
       "when": 1790256802855,
       "tag": "0023_docker_compose",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790270718516,
+      "tag": "0024_domains_pending",
+      "breakpoints": true
     }
   ]
 }

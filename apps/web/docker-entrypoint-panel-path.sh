@@ -15,6 +15,12 @@ PREFIX="${PREFIX%/}"
 [ "$PREFIX" = "/" ] && exit 0
 
 cat > /etc/nginx/conf.d/default.conf <<EOF
+# Lets ${PREFIX}/api/ carry WebSockets (interactive terminals) without forcing "Connection: upgrade" on plain requests.
+map \$http_upgrade \$connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 80;
     server_name _;
@@ -27,6 +33,10 @@ server {
 
     location ${PREFIX}/api/ {
         proxy_pass http://api:3000/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection \$connection_upgrade;
+        proxy_read_timeout 1h;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;

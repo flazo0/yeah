@@ -1,3 +1,4 @@
+import type { WwwRedirect } from "./traefik";
 import { shellQuote } from "./shell";
 
 export type TeamRole = "owner" | "admin" | "member";
@@ -141,6 +142,10 @@ export interface ApplicationDto extends ResourceLimits {
   port: number;
   envContent: string;
   domain: string | null;
+  extraDomains: string[];
+  wwwRedirect: WwwRedirect;
+  /** Labels of settings changed since the last deploy; null when the app was never deployed. */
+  pendingChanges: string[] | null;
   githubRepo: string | null;
   healthPath: string | null;
   healthIntervalSeconds: number;

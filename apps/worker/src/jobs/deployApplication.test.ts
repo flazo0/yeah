@@ -29,6 +29,9 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     publishDirectory: ".",
     composeFile: "docker-compose.yml",
     composeService: null,
+    extraDomains: [],
+    wwwRedirect: "none",
+    deployedConfig: null,
     deployKey: null,
     deployKeyPublic: null,
     port: 3000,
@@ -336,5 +339,19 @@ describe("docker compose", () => {
   test("env file carries build-only variables too, since compose interpolates them at build", () => {
     expect(composeEnvFile([{ key: "A", value: "1", availability: "runtime" }, { key: "B", value: "2", availability: "build" }])).toBe("A=1\nB=2\n");
     expect(composeEnvFile([])).toBe("");
+  });
+});
+
+describe("buildRunCommand routing", () => {
+  test("extra domains join the router rule and a www redirect adds the redirect router", () => {
+    const app = makeApplication({ port: 4000, extraDomains: ["other.example.com"], wwwRedirect: "root_to_www" });
+    const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", "example.com");
+    expect(cmd).toContain("Host(`www.example.com`) || Host(`other.example.com`)");
+    expect(cmd).toContain("routers.yeah-app-1-redir.rule=Host(`example.com`)");
+    expect(cmd).toContain("redirectregex.permanent=true");
+  });
+  test("a domain typed with a scheme is normalized", () => {
+    const app = makeApplication({ domain: "HTTPS://Shop.Example.com/" });
+    expect(resolveDomain(app, makeServer())).toBe("shop.example.com");
   });
 });

@@ -62,12 +62,16 @@ describe("project commands", () => {
 });
 
 describe("composeProxyOverride", () => {
-  const yaml = composeProxyOverride("web", "yeah-app-1", "app.example.com", 8080);
-  test("attaches the service to the proxy network and sets the traefik labels", () => {
+  const yaml = composeProxyOverride("web", ["traefik.enable=true", "traefik.http.routers.r.rule=Host(`a.com`) || Host(`b.com`)"]);
+  test("attaches the service to the proxy network and lists every label", () => {
     expect(yaml).toContain("  web:");
-    expect(yaml).toContain('"traefik.http.routers.yeah-app-1.rule=Host(`app.example.com`)"');
-    expect(yaml).toContain('"traefik.http.services.yeah-app-1.loadbalancer.server.port=8080"');
-    expect(yaml).toContain('"traefik.docker.network=yeah-proxy-net"');
+    expect(yaml).toContain('"traefik.enable=true"');
+    expect(yaml).toContain('"traefik.http.routers.r.rule=Host(`a.com`) || Host(`b.com`)"');
+    expect(yaml).toContain('"yeah-proxy-net"');
     expect(yaml).toContain("external: true");
+  });
+  test("escapes $ so compose does not interpolate the redirect replacement", () => {
+    const y = composeProxyOverride("web", ["x.replacement=https://a.com/${1}"]);
+    expect(y).toContain("https://a.com/${1}");
   });
 });

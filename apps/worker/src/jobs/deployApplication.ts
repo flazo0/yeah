@@ -1,10 +1,11 @@
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { and, eq as eqOp, isNull, or } from "drizzle-orm";
 import { applications, applicationVolumes, deployments, environments, servers, sharedVariables, type Application } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken } from "@yeah/github";
-import { buildPackUsesGit, composeProxyOverride, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
+import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -79,6 +80,11 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     const containerName = `yeah-app-${application.id}`;
     const domain = resolveDomain(application, server);
     const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, application.id));
+    // Baseline for the "pending changes" banner: what this deploy runs with.
+    await db
+      .update(applications)
+      .set({ deployedConfig: configSnapshot(application, volumes, (text) => createHash("sha256").update(text).digest("hex")) })
+      .where(eq(applications.id, application.id));
 
     // A GitHub App installation token is only valid for an hour, so it's minted fresh on every
     // deploy rather than stored — this also means access is revoked instantly if the App is uninstalled.
@@ -164,7 +170,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         let withOverride = false;
         if (domain && application.composeService) {
           await appendAndPublish(`\x1b[36m$ roteando ${application.composeService} pelo proxy (https://${domain})\x1b[0m\n`);
-          await writeRemoteFile(conn, `${appDir}/${COMPOSE_OVERRIDE_FILE}`, composeProxyOverride(application.composeService, containerName, domain, application.port));
+          await writeRemoteFile(conn, `${appDir}/${COMPOSE_OVERRIDE_FILE}`, composeProxyOverride(application.composeService, traefikLabels(containerName, computeRouting(domain, application.extraDomains, application.wwwRedirect), application.port)));
           withOverride = true;
         } else if (domain) {
           await appendAndPublish("\x1b[33m# há um domínio, mas nenhum serviço do compose foi escolhido pra recebê-lo — sem roteamento pelo proxy\x1b[0m\n");
