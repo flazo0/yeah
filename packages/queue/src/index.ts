@@ -5,6 +5,7 @@ import type { ApplicationLifecycleAction, WsServerEvent } from "@yeah/shared";
 export const SERVER_CHECK_QUEUE = "server-check";
 export const APPLICATION_DEPLOY_QUEUE = "application-deploy";
 export const APPLICATION_LIFECYCLE_QUEUE = "application-lifecycle";
+export const SCHEDULED_TASK_QUEUE = "scheduled-task";
 export const DATABASE_PROVISION_QUEUE = "database-provision";
 export const DATABASE_BACKUP_QUEUE = "database-backup";
 export const PROXY_PROVISION_QUEUE = "proxy-provision";
@@ -29,6 +30,12 @@ export interface ApplicationDeployJobData {
 export interface ApplicationLifecycleJobData {
   applicationId: string;
   action: ApplicationLifecycleAction;
+}
+
+export interface ScheduledTaskJobData {
+  taskId: string;
+  /** Set when queued by "Run now" instead of the cron tick. */
+  manual?: boolean;
 }
 
 export interface DatabaseProvisionJobData {
@@ -95,6 +102,26 @@ export function createApplicationLifecycleWorker(
   processor: Processor<ApplicationLifecycleJobData>,
 ): Worker<ApplicationLifecycleJobData> {
   return new Worker<ApplicationLifecycleJobData>(APPLICATION_LIFECYCLE_QUEUE, processor, { connection });
+}
+
+export function createScheduledTaskQueue(connection: Redis): Queue<ScheduledTaskJobData> {
+  return new Queue<ScheduledTaskJobData>(SCHEDULED_TASK_QUEUE, { connection });
+}
+
+export function createScheduledTaskWorker(
+  connection: Redis,
+  processor: Processor<ScheduledTaskJobData>,
+): Worker<ScheduledTaskJobData> {
+  return new Worker<ScheduledTaskJobData>(SCHEDULED_TASK_QUEUE, processor, { connection });
+}
+
+/** Keyed by the task id so the same scheduler can be edited in place or removed later. */
+export async function addScheduledTask(queue: Queue<ScheduledTaskJobData>, taskId: string, cron: string, timezone: string): Promise<void> {
+  await queue.upsertJobScheduler(taskId, { pattern: cron, tz: timezone }, { data: { taskId } });
+}
+
+export async function removeScheduledTask(queue: Queue<ScheduledTaskJobData>, taskId: string): Promise<void> {
+  await queue.removeJobScheduler(taskId);
 }
 
 export function createDatabaseProvisionQueue(connection: Redis): Queue<DatabaseProvisionJobData> {

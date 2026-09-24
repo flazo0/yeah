@@ -11,6 +11,7 @@ const EVENT_TYPE_SCHEMA = t.Union([
   t.Literal("deploy.success"),
   t.Literal("deploy.failed"),
   t.Literal("backup.failed"),
+  t.Literal("task.failed"),
   t.Literal("server.down"),
   t.Literal("server.reconnected"),
   t.Literal("server.metrics"),

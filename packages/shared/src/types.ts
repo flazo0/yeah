@@ -319,6 +319,7 @@ export type NotificationEventType =
   | "deploy.success"
   | "deploy.failed"
   | "backup.failed"
+  | "task.failed"
   | "server.down"
   | "server.reconnected"
   | "server.metrics"
@@ -328,6 +329,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "deploy.success": "Deploy concluído",
   "deploy.failed": "Deploy falhou",
   "backup.failed": "Backup falhou",
+  "task.failed": "Tarefa agendada falhou",
   "server.down": "Servidor caiu",
   "server.reconnected": "Servidor reconectou",
   "server.metrics": "CPU/RAM/disco no limite",
@@ -408,4 +410,30 @@ export interface SharedVariableDto {
   key: string;
   value: string;
   createdAt: string;
+}
+
+export type TaskExecutionStatus = "running" | "success" | "failed";
+
+export interface ScheduledTaskDto {
+  id: string;
+  applicationId: string;
+  name: string;
+  command: string;
+  cron: string;
+  timezone: string;
+  timeoutSeconds: number;
+  enabled: boolean;
+  createdAt: string;
+  lastExecution: { status: TaskExecutionStatus; startedAt: string; finishedAt: string | null } | null;
+}
+
+export interface ScheduledTaskExecutionDto {
+  id: string;
+  taskId: string;
+  status: TaskExecutionStatus;
+  log: string;
+  exitCode: number | null;
+  manual: boolean;
+  startedAt: string;
+  finishedAt: string | null;
 }

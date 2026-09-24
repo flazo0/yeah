@@ -141,6 +141,13 @@
       "when": 1790207737095,
       "tag": "0019_shared_variables",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790208844204,
+      "tag": "0020_scheduled_tasks",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import {
   createPlatformOperationQueue,
   createProxyProvisionQueue,
   createRedisConnection,
+  createScheduledTaskQueue,
   createServerCheckQueue,
   createServiceProvisionQueue,
 } from "@yeah/queue";
@@ -25,3 +26,4 @@ export const proxyProvisionQueue = createProxyProvisionQueue(connection);
 export const serviceProvisionQueue = createServiceProvisionQueue(connection);
 export const platformOperationQueue = createPlatformOperationQueue(connection);
 export const applicationLifecycleQueue = createApplicationLifecycleQueue(connection);
+export const scheduledTaskQueue = createScheduledTaskQueue(connection);

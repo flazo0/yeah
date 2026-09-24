@@ -30,6 +30,7 @@ import ApplicationStoragePage from "../pages/application/ApplicationStoragePage.
 import ApplicationLogsPage from "../pages/application/ApplicationLogsPage.vue";
 import ApplicationAdvancedPage from "../pages/application/ApplicationAdvancedPage.vue";
 import ApplicationWebhooksPage from "../pages/application/ApplicationWebhooksPage.vue";
+import ApplicationTasksPage from "../pages/application/ApplicationTasksPage.vue";
 import ApplicationDangerPage from "../pages/application/ApplicationDangerPage.vue";
 import DatabaseLayout from "../layouts/DatabaseLayout.vue";
 import DatabaseBackupsPage from "../pages/database/DatabaseBackupsPage.vue";
@@ -104,6 +105,7 @@ export const router = createRouter({
         { path: "logs", name: "app-logs", component: ApplicationLogsPage },
         { path: "advanced", name: "app-advanced", component: ApplicationAdvancedPage },
         { path: "webhooks", name: "app-webhooks", component: ApplicationWebhooksPage },
+        { path: "tasks", name: "app-tasks", component: ApplicationTasksPage },
         { path: "danger", name: "app-danger", component: ApplicationDangerPage },
       ],
     },

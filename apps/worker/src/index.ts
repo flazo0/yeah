@@ -1,6 +1,7 @@
 import {
   createApplicationDeployWorker,
   createApplicationLifecycleWorker,
+  createScheduledTaskWorker,
   createDatabaseBackupWorker,
   createDatabaseProvisionWorker,
   createPlatformOperationQueue,
@@ -19,6 +20,7 @@ import {
 import { makeCheckServerProcessor } from "./jobs/checkServer";
 import { makeDeployApplicationProcessor } from "./jobs/deployApplication";
 import { makeLifecycleApplicationProcessor } from "./jobs/lifecycleApplication";
+import { makeScheduledTaskProcessor } from "./jobs/scheduledTask";
 import { makeProvisionDatabaseProcessor } from "./jobs/provisionDatabase";
 import { makeBackupDatabaseProcessor } from "./jobs/backupDatabase";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
@@ -38,6 +40,7 @@ const deployJobConnection = createRedisConnection(redisUrl);
 const deployPublishConnection = createRedisConnection(redisUrl);
 const lifecycleJobConnection = createRedisConnection(redisUrl);
 const lifecyclePublishConnection = createRedisConnection(redisUrl);
+const taskJobConnection = createRedisConnection(redisUrl);
 const provisionJobConnection = createRedisConnection(redisUrl);
 const provisionPublishConnection = createRedisConnection(redisUrl);
 const backupJobConnection = createRedisConnection(redisUrl);
@@ -68,6 +71,9 @@ deployWorker.on("failed", (job, err) => console.error(`[worker] application-depl
 
 const lifecycleWorker = createApplicationLifecycleWorker(lifecycleJobConnection, makeLifecycleApplicationProcessor(lifecyclePublishConnection));
 lifecycleWorker.on("failed", (job, err) => console.error(`[worker] application-lifecycle ${job?.id} failed:`, err.message));
+
+const taskWorker = createScheduledTaskWorker(taskJobConnection, makeScheduledTaskProcessor());
+taskWorker.on("failed", (job, err) => console.error(`[worker] scheduled-task ${job?.id} failed:`, err.message));
 
 const provisionWorker = createDatabaseProvisionWorker(
   provisionJobConnection,
@@ -111,5 +117,5 @@ const platformOperationWorker = createPlatformOperationWorker(
 platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
 );

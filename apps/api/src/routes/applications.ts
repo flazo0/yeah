@@ -3,6 +3,9 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   applications,
   applicationVolumes,
+  scheduledTaskExecutions,
+  scheduledTasks,
+  type ScheduledTask,
   deployments,
   githubInstallations,
   servers,
@@ -10,7 +13,7 @@ import {
   type ApplicationVolume,
   type Deployment,
 } from "@yeah/db";
-import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto } from "@yeah/shared";
+import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { buildPackUsesGit, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { db } from "../lib/db";
@@ -18,7 +21,8 @@ import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
-import { applicationDeployQueue, applicationLifecycleQueue } from "../lib/queue";
+import { applicationDeployQueue, applicationLifecycleQueue, scheduledTaskQueue } from "../lib/queue";
+import { addScheduledTask, removeScheduledTask } from "@yeah/queue";
 import { generateDeployToken, hashDeployToken, validateAdvancedSettings } from "../lib/deployRules";
 
 function toApplicationDto(app: Application, serverName: string): ApplicationDto {
@@ -52,6 +56,21 @@ function toApplicationDto(app: Application, serverName: string): ApplicationDto 
     cpuLimit: app.cpuLimit,
     status: app.status,
     createdAt: app.createdAt.toISOString(),
+  };
+}
+
+function toTaskDto(task: ScheduledTask, last: { status: "running" | "success" | "failed"; startedAt: Date; finishedAt: Date | null } | undefined): ScheduledTaskDto {
+  return {
+    id: task.id,
+    applicationId: task.applicationId,
+    name: task.name,
+    command: task.command,
+    cron: task.cron,
+    timezone: task.timezone,
+    timeoutSeconds: task.timeoutSeconds,
+    enabled: task.enabled,
+    createdAt: task.createdAt.toISOString(),
+    lastExecution: last ? { status: last.status, startedAt: last.startedAt.toISOString(), finishedAt: last.finishedAt ? last.finishedAt.toISOString() : null } : null,
   };
 }
 
@@ -543,6 +562,266 @@ export const applicationRoutes = new Elysia({
       await db.update(applications).set({ deployTokenHash: null }).where(eq(applications.id, params.applicationId));
       return { ok: true };
     })
+  .get("/:applicationId/tasks", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const tasks = await db.select().from(scheduledTasks).where(eq(scheduledTasks.applicationId, params.applicationId));
+      const result: ScheduledTaskDto[] = [];
+      for (const task of tasks) {
+        const [last] = await db
+          .select()
+          .from(scheduledTaskExecutions)
+          .where(eq(scheduledTaskExecutions.taskId, task.id))
+          .orderBy(desc(scheduledTaskExecutions.startedAt))
+          .limit(1);
+        result.push(toTaskDto(task, last));
+      }
+      return { tasks: result };
+    })
+  .post(
+    "/:applicationId/tasks",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const timeout = body.timeoutSeconds ?? 300;
+      if (!Number.isInteger(timeout) || timeout < 1 || timeout > 86400) {
+        set.status = 400;
+        return { error: "o limite de tempo precisa ser de 1 a 86400 segundos" };
+      }
+      const [task] = await db
+        .insert(scheduledTasks)
+        .values({
+          applicationId: params.applicationId,
+          name: body.name,
+          command: body.command,
+          cron: body.cron.trim(),
+          timezone: body.timezone ?? "UTC",
+          timeoutSeconds: timeout,
+          enabled: body.enabled ?? true,
+        })
+        .returning();
+      if (!task) {
+        set.status = 500;
+        return { error: "failed to create task" };
+      }
+      try {
+        if (task.enabled) await addScheduledTask(scheduledTaskQueue, task.id, task.cron, task.timezone);
+      } catch (err) {
+        // BullMQ rejects a malformed cron expression or an unknown timezone — undo the row.
+        await db.delete(scheduledTasks).where(eq(scheduledTasks.id, task.id));
+        set.status = 400;
+        return { error: `agendamento inválido: ${err instanceof Error ? err.message : "cron ou timezone"}` };
+      }
+      return { task: toTaskDto(task, undefined) };
+    },
+    {
+      body: t.Object({
+        name: t.String({ minLength: 1, maxLength: 255 }),
+        command: t.String({ minLength: 1, maxLength: 4000 }),
+        cron: t.String({ minLength: 1, maxLength: 100 }),
+        timezone: t.Optional(t.String({ maxLength: 100 })),
+        timeoutSeconds: t.Optional(t.Number()),
+        enabled: t.Optional(t.Boolean()),
+      }),
+    },
+  )
+  .put(
+    "/:applicationId/tasks/:taskId",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const [task] = await db
+        .select()
+        .from(scheduledTasks)
+        .where(and(eq(scheduledTasks.id, params.taskId), eq(scheduledTasks.applicationId, params.applicationId)))
+        .limit(1);
+      if (!task) {
+        set.status = 404;
+        return { error: "task not found" };
+      }
+
+      const timeout = body.timeoutSeconds ?? task.timeoutSeconds;
+      if (!Number.isInteger(timeout) || timeout < 1 || timeout > 86400) {
+        set.status = 400;
+        return { error: "o limite de tempo precisa ser de 1 a 86400 segundos" };
+      }
+      const next = {
+        name: body.name,
+        command: body.command,
+        cron: body.cron.trim(),
+        timezone: body.timezone ?? task.timezone,
+        timeoutSeconds: timeout,
+        enabled: body.enabled ?? task.enabled,
+      };
+      try {
+        if (next.enabled) await addScheduledTask(scheduledTaskQueue, task.id, next.cron, next.timezone);
+        else await removeScheduledTask(scheduledTaskQueue, task.id);
+      } catch (err) {
+        set.status = 400;
+        return { error: `agendamento inválido: ${err instanceof Error ? err.message : "cron ou timezone"}` };
+      }
+      const [updated] = await db.update(scheduledTasks).set(next).where(eq(scheduledTasks.id, task.id)).returning();
+      return { task: toTaskDto(updated ?? task, undefined) };
+    },
+    {
+      body: t.Object({
+        name: t.String({ minLength: 1, maxLength: 255 }),
+        command: t.String({ minLength: 1, maxLength: 4000 }),
+        cron: t.String({ minLength: 1, maxLength: 100 }),
+        timezone: t.Optional(t.String({ maxLength: 100 })),
+        timeoutSeconds: t.Optional(t.Number()),
+        enabled: t.Optional(t.Boolean()),
+      }),
+    },
+  )
+  .delete("/:applicationId/tasks/:taskId", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const [task] = await db
+        .select()
+        .from(scheduledTasks)
+        .where(and(eq(scheduledTasks.id, params.taskId), eq(scheduledTasks.applicationId, params.applicationId)))
+        .limit(1);
+      if (!task) {
+        set.status = 404;
+        return { error: "task not found" };
+      }
+
+      await removeScheduledTask(scheduledTaskQueue, task.id);
+      await db.delete(scheduledTasks).where(eq(scheduledTasks.id, task.id));
+      return { ok: true };
+    })
+  .post("/:applicationId/tasks/:taskId/run", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const [task] = await db
+        .select()
+        .from(scheduledTasks)
+        .where(and(eq(scheduledTasks.id, params.taskId), eq(scheduledTasks.applicationId, params.applicationId)))
+        .limit(1);
+      if (!task) {
+        set.status = 404;
+        return { error: "task not found" };
+      }
+
+      await scheduledTaskQueue.add("run", { taskId: task.id, manual: true });
+      return { queued: true };
+    })
+  .get("/:applicationId/tasks/:taskId/executions", async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+
+      const [task] = await db
+        .select()
+        .from(scheduledTasks)
+        .where(and(eq(scheduledTasks.id, params.taskId), eq(scheduledTasks.applicationId, params.applicationId)))
+        .limit(1);
+      if (!task) {
+        set.status = 404;
+        return { error: "task not found" };
+      }
+
+      const rows = await db
+        .select()
+        .from(scheduledTaskExecutions)
+        .where(eq(scheduledTaskExecutions.taskId, task.id))
+        .orderBy(desc(scheduledTaskExecutions.startedAt))
+        .limit(50);
+      const executions: ScheduledTaskExecutionDto[] = rows.map((e) => ({
+        id: e.id,
+        taskId: e.taskId,
+        status: e.status,
+        log: e.log,
+        exitCode: e.exitCode,
+        manual: e.manual,
+        startedAt: e.startedAt.toISOString(),
+        finishedAt: e.finishedAt ? e.finishedAt.toISOString() : null,
+      }));
+      return { executions };
+    })
   .get("/:applicationId/volumes", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
@@ -837,6 +1116,10 @@ export const applicationRoutes = new Elysia({
         console.error(`[api] failed to tear down container for application ${row.application.id}:`, err);
       }
     }
+
+    // Cascade removes the task rows, but their cron schedulers live in Redis and would keep ticking.
+    const taskRows = await db.select({ id: scheduledTasks.id }).from(scheduledTasks).where(eq(scheduledTasks.applicationId, params.applicationId));
+    for (const task of taskRows) await removeScheduledTask(scheduledTaskQueue, task.id).catch(() => undefined);
 
     await db.delete(applications).where(eq(applications.id, params.applicationId));
 
