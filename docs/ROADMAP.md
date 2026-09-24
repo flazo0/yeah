@@ -92,7 +92,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Sub-aba **Metrics** (CPU/RAM/rede do container; ver Fase 5).
 - [x] Sub-aba **Zona de perigo** (excluir com confirmação).
 - [ ] **Preview deployments**: PR do GitHub vira ambiente efêmero com URL própria, comenta no PR, morre ao fechar.
-- [ ] **Scheduled tasks**: comando arbitrário dentro do container num cron, com **histórico de execuções** (status, log, duração).
+- [x] **Scheduled tasks**: comando dentro do container num cron (BullMQ job scheduler, fuso configurável), limite de tempo, "executar agora", pausar, histórico das últimas 50 execuções (status, código, log) e evento `task.failed` nas notificações. Aba "Tarefas agendadas" na aplicação. Ainda não existe em serviços/compose.
 - [ ] Persistent storage: checkbox "sufixo para PR deployments" (isola volumes de preview) e tipos de volume/arquivo/diretório além do volume nomeado.
 - [x] Botão **Gerar domínio** (sugere `<slug>.<wildcard do servidor>`) na aba de domínio das aplicações; serviços ainda não.
 - [ ] **Múltiplos domínios** por aplicação + redirect www/não-www.
@@ -194,7 +194,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 **Fases já abertas**
 - [ ] Build packs além de Dockerfile (Nixpacks, estático, Docker Compose) → Fase 3.
 - [ ] Preview deployments → Fase 3.
-- [ ] Scheduled tasks com histórico de execuções → Fase 3.
+- [x] Scheduled tasks com histórico de execuções → Fase 3.
 
 **Paridade com Coolify**
 - [ ] Registry privado com push automático → Fase 3.
