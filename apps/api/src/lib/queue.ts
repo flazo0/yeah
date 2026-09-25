@@ -7,6 +7,8 @@ import {
   createProxyProvisionQueue,
   createRedisConnection,
   createScheduledTaskQueue,
+  createDatabaseRestoreQueue,
+  createVolumeBackupQueue,
   createServerCheckQueue,
   createServiceProvisionQueue,
 } from "@yeah/queue";
@@ -27,3 +29,5 @@ export const serviceProvisionQueue = createServiceProvisionQueue(connection);
 export const platformOperationQueue = createPlatformOperationQueue(connection);
 export const applicationLifecycleQueue = createApplicationLifecycleQueue(connection);
 export const scheduledTaskQueue = createScheduledTaskQueue(connection);
+export const databaseRestoreQueue = createDatabaseRestoreQueue(connection);
+export const volumeBackupQueue = createVolumeBackupQueue(connection);

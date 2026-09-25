@@ -8,6 +8,8 @@ export const APPLICATION_LIFECYCLE_QUEUE = "application-lifecycle";
 export const SCHEDULED_TASK_QUEUE = "scheduled-task";
 export const DATABASE_PROVISION_QUEUE = "database-provision";
 export const DATABASE_BACKUP_QUEUE = "database-backup";
+export const DATABASE_RESTORE_QUEUE = "database-restore";
+export const VOLUME_BACKUP_QUEUE = "volume-backup";
 export const PROXY_PROVISION_QUEUE = "proxy-provision";
 export const SERVICE_PROVISION_QUEUE = "service-provision";
 export const SERVER_METRICS_QUEUE = "server-metrics";
@@ -133,6 +135,33 @@ export function createDatabaseProvisionWorker(
   processor: Processor<DatabaseProvisionJobData>,
 ): Worker<DatabaseProvisionJobData> {
   return new Worker<DatabaseProvisionJobData>(DATABASE_PROVISION_QUEUE, processor, { connection });
+}
+
+export interface DatabaseRestoreJobData {
+  restoreId: string;
+  /** A backup execution of the database, or a file already uploaded to the server. */
+  source: { kind: "execution"; executionId: string } | { kind: "upload"; path: string };
+}
+
+export function createDatabaseRestoreQueue(connection: Redis): Queue<DatabaseRestoreJobData> {
+  return new Queue<DatabaseRestoreJobData>(DATABASE_RESTORE_QUEUE, { connection });
+}
+
+export function createDatabaseRestoreWorker(connection: Redis, processor: Processor<DatabaseRestoreJobData>): Worker<DatabaseRestoreJobData> {
+  return new Worker<DatabaseRestoreJobData>(DATABASE_RESTORE_QUEUE, processor, { connection });
+}
+
+export interface VolumeBackupJobData {
+  /** The volume_backups row to fill in: a backup, or a restore that names its source. */
+  backupId: string;
+}
+
+export function createVolumeBackupQueue(connection: Redis): Queue<VolumeBackupJobData> {
+  return new Queue<VolumeBackupJobData>(VOLUME_BACKUP_QUEUE, { connection });
+}
+
+export function createVolumeBackupWorker(connection: Redis, processor: Processor<VolumeBackupJobData>): Worker<VolumeBackupJobData> {
+  return new Worker<VolumeBackupJobData>(VOLUME_BACKUP_QUEUE, processor, { connection });
 }
 
 export function createDatabaseBackupQueue(connection: Redis): Queue<DatabaseBackupJobData> {

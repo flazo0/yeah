@@ -123,11 +123,11 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [x] Healthcheck configurável (ligar/desligar, intervalo, timeout, tentativas) com probe do próprio motor; o provisionamento só termina como "rodando" quando o banco responde.
 
 **Backup**
-- [ ] **Restore / Import Backup**: restaurar a partir de um backup existente ou de arquivo enviado (hoje não existe nenhuma rota de restore).
-- [ ] **Databases To Include** em instâncias multi-database.
-- [ ] Botões de manutenção: limpar backups com falha, limpar deletados, apagar backups + agendamento.
-- [ ] Compressão paralela (gzip multi-core).
-- [ ] **Backup de volume/storage persistente** de aplicações e serviços (não só banco).
+- [x] **Restore / Import Backup**: restaurar a partir de um backup da lista (local ou S3) ou de um **arquivo enviado** (até 120 MB pelo painel). Testado de verdade em PostgreSQL, MySQL, MongoDB, ClickHouse, Redis e KeyDB (dados trocados voltam ao original), com histórico e log por restore, confirmação em dois passos, um restore por vez, e arquivo corrompido/SQL inválido **falha** em vez de "restaurar nada". MariaDB usa o mesmo caminho do MySQL, não subi a imagem. Dragonfly não tem backup.
+- [x] **Databases To Include**: agendamento de PostgreSQL/MySQL/MariaDB/MongoDB aceita uma lista de bancos da instância; com mais de um o backup vira um `.tar.gz` com um dump por banco, e o restore recria cada banco pelo nome (testado no PostgreSQL com 2 bancos).
+- [x] Botões de manutenção: **limpar falhos**, **limpar sem arquivo** (backups cujo arquivo sumiu do servidor/S3), **remover agendamento e apagar os backups** (arquivos locais e do S3). Excluir um backup agora apaga também o arquivo local (antes só o objeto do S3).
+- [x] Compressão paralela: os dumps usam `pigz` quando o servidor tem e `gzip` senão (testado com um `pigz` de mentira que registrava o uso).
+- [x] **Backup de volume/storage persistente** de **aplicações**: botão por volume (volume Docker, diretório do servidor, arquivo), `.tar.gz` no servidor (5 mais recentes por volume), baixar, restaurar (para a app, substitui, reinicia) e excluir; testado com os 3 tipos, arquivos ocultos, retenção e isolamento entre aplicações. Falta serviços (junto com as stacks) e enviar pro S3.
 - [x] Aviso explícito na UI: "volume persistente não é backup" (aba Armazenamento das aplicações). Ainda falta nos bancos/serviços.
 
 ## Fase 5 — Servidores e infraestrutura
@@ -204,7 +204,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 - [x] Timeout SSH configurável por servidor → Fase 3.
 - [ ] Terminal web interativo → Fase 3.
 - [ ] Variáveis compartilhadas por escopo e build-time vs runtime → Fase 3.
-- [ ] Backup de volume/storage persistente e compressão paralela → Fase 4.
+- [x] Backup de volume/storage persistente e compressão paralela → Fase 4 (volumes de serviços ainda faltam).
 - [ ] Healthcheck configurável → Fase 3.
 - [ ] Métricas por container, sink externo de logs, gráfico histórico, analytics de tráfego → Fase 5.
 - [ ] Limpeza automática de Docker e CA Certificate por servidor → Fase 5.

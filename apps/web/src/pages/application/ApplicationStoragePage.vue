@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onMounted, ref } from "vue";
-import type { ApplicationVolumeDto, VolumeKind } from "@yeah/shared";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import type { ApplicationVolumeDto, VolumeBackupDto, VolumeKind } from "@yeah/shared";
+import StatusBadge from "../../components/StatusBadge.vue";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
@@ -26,7 +27,72 @@ async function load() {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar armazenamento";
   }
 }
-onMounted(load);
+// ---- backups of the volumes' contents
+const backups = ref<VolumeBackupDto[]>([]);
+const openLogId = ref<string | null>(null);
+const confirmingRestore = ref("");
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+let poll: ReturnType<typeof setInterval> | undefined;
+const backupBusy = computed(() => backups.value.some((b) => b.status === "queued" || b.status === "running"));
+
+async function loadBackups() {
+  try {
+    backups.value = (await api.get<{ backups: VolumeBackupDto[] }>(`${basePath}/volume-backups`)).backups;
+  } catch {
+    /* next poll */
+  }
+}
+
+async function backupVolume(volume: ApplicationVolumeDto) {
+  error.value = "";
+  try {
+    await api.post(`${basePath}/volumes/${volume.id}/backup`, {});
+    await loadBackups();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao iniciar o backup";
+  }
+}
+
+async function restoreBackup(b: VolumeBackupDto) {
+  if (confirmingRestore.value !== b.id) {
+    confirmingRestore.value = b.id;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => (confirmingRestore.value = ""), 4000);
+    return;
+  }
+  confirmingRestore.value = "";
+  error.value = "";
+  try {
+    await api.post(`${basePath}/volume-backups/${b.id}/restore`, {});
+    await loadBackups();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao iniciar o restore";
+  }
+}
+
+async function deleteBackup(b: VolumeBackupDto) {
+  try {
+    await api.delete(`${basePath}/volume-backups/${b.id}`);
+    backups.value = backups.value.filter((x) => x.id !== b.id);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao excluir";
+  }
+}
+
+const downloadUrl = (id: string) => `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}${basePath}/volume-backups/${id}/download`;
+const size = (n: number | null) => (!n ? "-" : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+onMounted(() => {
+  void load();
+  void loadBackups();
+  poll = setInterval(() => {
+    if (backupBusy.value) void loadBackups();
+  }, 3000);
+});
+onBeforeUnmount(() => {
+  clearInterval(poll);
+  clearTimeout(confirmTimer);
+});
 
 const canAdd = () =>
   name.value.trim() && mountPath.value.trim() && (kind.value !== "bind" || hostPath.value.trim()) && (kind.value !== "file" || fileContent.value.length > 0);
@@ -111,6 +177,7 @@ async function saveEdit(v: ApplicationVolumeDto) {
                 <td class="mono">{{ v.kind === "bind" ? v.hostPath : v.kind === "file" ? `${(v.fileContent ?? "").length} caracteres` : "gerenciado pelo Docker" }}</td>
                 <td>
                   <div class="btn-row">
+                    <button v-if="app?.buildPack !== 'docker_compose'" type="button" class="btn btn-secondary btn-sm" :disabled="backupBusy" @click="backupVolume(v)">Backup</button>
                     <button v-if="v.kind === 'file'" type="button" class="btn btn-secondary btn-sm" @click="startEdit(v)">Editar</button>
                     <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" :disabled="deletingId === v.id" @click="remove(v.id)">
                       {{ deletingId === v.id ? "removendo..." : "Remover" }}
@@ -169,6 +236,46 @@ async function saveEdit(v: ApplicationVolumeDto) {
           {{ adding ? "adicionando..." : "Adicionar" }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <div v-if="app && app.buildPack !== 'docker_compose' && (backups.length > 0 || volumes.length > 0)" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">backup</span>
+      Backups do armazenamento
+    </div>
+    <div class="card-body">
+      <p class="hint" style="margin: 0">
+        "Backup" numa linha acima cria um <span class="mono">.tar.gz</span> do conteúdo daquele volume, no servidor (guardamos os 5 mais recentes de cada). Restaurar
+        <strong>substitui</strong> o conteúdo atual do volume e reinicia a aplicação. Baixe os arquivos pra guardá-los fora do servidor.
+      </p>
+    </div>
+    <div v-if="backups.length" class="table-wrap">
+      <table>
+        <thead><tr><th>Quando</th><th>Volume</th><th>Operação</th><th>Status</th><th>Tamanho</th><th></th></tr></thead>
+        <tbody>
+          <template v-for="b in backups" :key="b.id">
+            <tr>
+              <td>{{ new Date(b.createdAt).toLocaleString("pt-BR") }}</td>
+              <td class="mono">{{ b.label }}</td>
+              <td>{{ b.operation === "backup" ? "backup" : "restore" }}</td>
+              <td><StatusBadge :status="b.status" kind="job" /></td>
+              <td class="mono">{{ size(b.sizeBytes) }}</td>
+              <td>
+                <div class="btn-row">
+                  <template v-if="b.operation === 'backup' && b.status === 'success'">
+                    <a class="btn btn-secondary btn-sm" :href="downloadUrl(b.id)">Baixar</a>
+                    <button type="button" class="btn btn-secondary btn-sm" :disabled="backupBusy" @click="restoreBackup(b)">{{ confirmingRestore === b.id ? "Substituir os dados?" : "Restaurar" }}</button>
+                  </template>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="openLogId = openLogId === b.id ? null : b.id">Log</button>
+                  <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteBackup(b)">Excluir</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="openLogId === b.id"><td colspan="6"><pre class="callout-code" style="max-height: 240px; overflow: auto; margin: 0">{{ b.log || "(sem saída ainda)" }}</pre></td></tr>
+          </template>
+        </tbody>
+      </table>
     </div>
   </div>
 </template>

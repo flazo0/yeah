@@ -3,6 +3,8 @@ import {
   createApplicationLifecycleWorker,
   createScheduledTaskWorker,
   createDatabaseBackupWorker,
+  createDatabaseRestoreWorker,
+  createVolumeBackupWorker,
   createDatabaseProvisionWorker,
   createPlatformOperationQueue,
   createPlatformOperationWorker,
@@ -23,6 +25,8 @@ import { makeLifecycleApplicationProcessor } from "./jobs/lifecycleApplication";
 import { makeScheduledTaskProcessor } from "./jobs/scheduledTask";
 import { makeProvisionDatabaseProcessor } from "./jobs/provisionDatabase";
 import { makeBackupDatabaseProcessor } from "./jobs/backupDatabase";
+import { makeRestoreDatabaseProcessor } from "./jobs/restoreDatabase";
+import { makeVolumeBackupProcessor } from "./jobs/volumeBackup";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
 import { makeProvisionServiceProcessor } from "./jobs/provisionService";
 import { makePlatformOperationProcessor } from "./jobs/platformOperation";
@@ -82,6 +86,14 @@ const provisionWorker = createDatabaseProvisionWorker(
 provisionWorker.on("completed", (job) => console.log(`[worker] database-provision ${job.id} completed`));
 provisionWorker.on("failed", (job, err) => console.error(`[worker] database-provision ${job?.id} failed:`, err.message));
 
+const restoreConnection = createRedisConnection(redisUrl);
+const restoreWorker = createDatabaseRestoreWorker(restoreConnection, makeRestoreDatabaseProcessor());
+restoreWorker.on("failed", (job, err) => console.error(`[worker] database-restore ${job?.id} failed:`, err.message));
+
+const volumeBackupConnection = createRedisConnection(redisUrl);
+const volumeBackupWorker = createVolumeBackupWorker(volumeBackupConnection, makeVolumeBackupProcessor());
+volumeBackupWorker.on("failed", (job, err) => console.error(`[worker] volume-backup ${job?.id} failed:`, err.message));
+
 const backupWorker = createDatabaseBackupWorker(
   backupJobConnection,
   makeBackupDatabaseProcessor(backupPublishConnection),
@@ -117,5 +129,5 @@ const platformOperationWorker = createPlatformOperationWorker(
 platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check and platform-operation jobs",
 );

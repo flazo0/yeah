@@ -8,7 +8,9 @@ import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
 import { applicationRoutes } from "./routes/applications";
 import { applicationOpsRoutes } from "./routes/applicationOps";
+import { volumeBackupRoutes } from "./routes/volumeBackups";
 import { databaseRoutes } from "./routes/databases";
+import { databaseBackupRoutes } from "./routes/databaseBackups";
 import { githubRoutes } from "./routes/github";
 import { githubWebhookRoutes } from "./routes/githubWebhook";
 import { notificationRoutes } from "./routes/notifications";
@@ -61,7 +63,9 @@ const app = new Elysia()
   .use(projectRoutes)
   .use(applicationRoutes)
   .use(applicationOpsRoutes)
+  .use(volumeBackupRoutes)
   .use(databaseRoutes)
+  .use(databaseBackupRoutes)
   .use(githubRoutes)
   .use(githubWebhookRoutes)
   .use(notificationRoutes)

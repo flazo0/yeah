@@ -20,6 +20,8 @@ export const backupSchedules = pgTable("backup_schedules", {
   retentionSizeGb: integer("retention_size_gb").default(0).notNull(),
   // null = keep the dump on the target server's disk (original behavior); set = upload to that S3 destination instead.
   storageId: uuid("storage_id").references(() => s3Storages.id, { onDelete: "set null" }),
+  // Comma-separated databases to dump from a multi-database instance; null = only the one it was created with.
+  databasesToInclude: varchar("databases_to_include", { length: 1000 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -43,3 +45,21 @@ export type BackupSchedule = typeof backupSchedules.$inferSelect;
 export type NewBackupSchedule = typeof backupSchedules.$inferInsert;
 export type BackupExecution = typeof backupExecutions.$inferSelect;
 export type NewBackupExecution = typeof backupExecutions.$inferInsert;
+
+// A restore of a database from a backup (or an uploaded file): its own history, because it replaces
+// data and the operator needs the log of what happened.
+export const databaseRestores = pgTable("database_restores", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  databaseId: uuid("database_id")
+    .references(() => databases.id, { onDelete: "cascade" })
+    .notNull(),
+  status: backupScheduleStatusEnum("status").default("queued").notNull(),
+  // "backup de 24/09 14:03" or the uploaded file's name.
+  sourceLabel: varchar("source_label", { length: 512 }).notNull(),
+  log: text("log").default("").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export type DatabaseRestore = typeof databaseRestores.$inferSelect;

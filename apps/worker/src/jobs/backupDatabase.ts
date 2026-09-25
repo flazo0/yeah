@@ -8,80 +8,9 @@ import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
 import { containerNameForDatabase } from "./provisionDatabase";
+import { buildDumpCommand, dumpFileName, includedDatabases } from "./databaseDump.commands";
 
 const BACKUP_DIR = (databaseId: string) => `/opt/yeah-backups/${databaseId}`;
-
-function buildDumpCommand(database: Database, containerName: string, filePath: string): string {
-  switch (database.engine) {
-    case "postgresql":
-      return (
-        `docker exec ${shellQuote(containerName)} pg_dump -U ${shellQuote(database.username ?? "postgres")} ${shellQuote(database.databaseName ?? "app")} ` +
-        `| gzip > ${shellQuote(filePath)}`
-      );
-    case "mysql":
-      return (
-        `docker exec -e MYSQL_PWD=${shellQuote(database.password)} ${shellQuote(containerName)} ` +
-        `mysqldump -u ${shellQuote(database.username ?? "app")} ${shellQuote(database.databaseName ?? "app")} ` +
-        `| gzip > ${shellQuote(filePath)}`
-      );
-    case "mariadb":
-      return (
-        `docker exec -e MYSQL_PWD=${shellQuote(database.password)} ${shellQuote(containerName)} ` +
-        `mariadb-dump -u ${shellQuote(database.username ?? "app")} ${shellQuote(database.databaseName ?? "app")} ` +
-        `| gzip > ${shellQuote(filePath)}`
-      );
-    case "keydb": {
-      const tls = database.ssl ? "--tls --insecure " : "";
-      return (
-        `docker exec ${shellQuote(containerName)} keydb-cli ${tls}-a ${shellQuote(database.password)} --no-auth-warning --rdb /tmp/dump.rdb >/dev/null && ` +
-        `docker exec ${shellQuote(containerName)} cat /tmp/dump.rdb | gzip > ${shellQuote(filePath)}`
-      );
-    }
-    case "dragonfly":
-      throw new Error("o Dragonfly não tem cliente na imagem — backup ainda não é suportado pra esse motor");
-    case "clickhouse": {
-      const archive = filePath.split("/").pop()!;
-      return (
-        `docker exec ${shellQuote(containerName)} clickhouse-client -u ${shellQuote(database.username ?? "app")} --password ${shellQuote(database.password)} ` +
-        `-q ${shellQuote(`BACKUP DATABASE \`${database.databaseName ?? "app"}\` TO File('/backups/${archive}')`)}`
-      );
-    }
-    case "redis":
-      return (
-        `docker exec ${shellQuote(containerName)} redis-cli ${database.ssl ? "--tls --insecure " : ""}-a ${shellQuote(database.password)} --no-auth-warning --rdb /tmp/dump.rdb >/dev/null && ` +
-        `docker exec ${shellQuote(containerName)} cat /tmp/dump.rdb | gzip > ${shellQuote(filePath)}`
-      );
-    case "mongodb":
-      return (
-        `docker exec ${shellQuote(containerName)} mongodump --archive --gzip ` +
-        `${database.ssl ? "--tls --tlsInsecure " : ""}-u ${shellQuote(database.username ?? "root")} -p ${shellQuote(database.password)} --authenticationDatabase admin ` +
-        `--db ${shellQuote(database.databaseName ?? "app")} > ${shellQuote(filePath)}`
-      );
-  }
-}
-
-function dumpFileName(database: Database): string {
-  const label = database.databaseName ?? database.name;
-  const timestamp = Date.now();
-  switch (database.engine) {
-    case "postgresql":
-      return `pg-dump-${label}-${timestamp}.sql.gz`;
-    case "mysql":
-      return `mysql-dump-${label}-${timestamp}.sql.gz`;
-    case "mariadb":
-      return `mariadb-dump-${label}-${timestamp}.sql.gz`;
-    case "redis":
-      return `redis-dump-${label}-${timestamp}.rdb.gz`;
-    case "keydb":
-      return `keydb-dump-${label}-${timestamp}.rdb.gz`;
-    case "dragonfly":
-      return `dragonfly-dump-${label}-${timestamp}.rdb.gz`;
-    case "clickhouse":
-      return `clickhouse-backup-${label}-${timestamp}.zip`;
-    case "mongodb":
-      return `mongo-dump-${label}-${timestamp}.archive.gz`;
-  }
-}
 
 export function makeBackupDatabaseProcessor(publishConnection: Redis) {
   return async function backupDatabase(job: Job<DatabaseBackupJobData>) {
@@ -132,10 +61,11 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
 
       const containerName = containerNameForDatabase(database.id);
       const dir = BACKUP_DIR(database.id);
-      const fileName = dumpFileName(database);
+      const names = includedDatabases(database, schedule.databasesToInclude);
+      const fileName = dumpFileName(database, names);
       const filePath = `${dir}/${fileName}`;
 
-      const dumpCommand = `mkdir -p ${shellQuote(dir)} && ` + buildDumpCommand(database, containerName, filePath);
+      const dumpCommand = `mkdir -p ${shellQuote(dir)} && ` + buildDumpCommand(database, containerName, filePath, names);
       append(`$ backup (${database.engine}) → ${filePath}\n`);
       const dumpResult = await execStream(conn, dumpCommand, (chunk) => append(chunk));
       if (dumpResult.exitCode !== 0) {

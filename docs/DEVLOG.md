@@ -598,3 +598,19 @@ Tabela `registries` (senha criptografada, migração 0027) e, na aplicação, `r
 **Bugs achados**: a URL `redis://:senha@…` que eu montava falha no redis-cli (manda `AUTH ""`) — passou a `redis://default:senha@…`; o MongoDB não subia com TLS sem `--tlsCAFile`; o Dragonfly não sobe se a VPS estiver com pouca memória (exige 256 MiB por thread) — com limite de memória o painel agora dimensiona `--maxmemory` e `--proactor_threads`, e sem healthcheck próprio sob TLS (o da imagem é TCP plano); o card "Repositório de uma fonte Git" abria o modal vazio em vez de mandar pra Fontes quando não há fonte (o `app-gitsource` estava no mapa de modos e a checagem era inalcançável); o `pg_hba` saía world-writable do SFTP. 315 testes, `tsc` e `vue-tsc` passam.
 
 **Não testado**: MariaDB (mesmo caminho do MySQL, não subi a imagem), TLS no MongoDB pela URL gerada com clientes de aplicação reais, upgrade de versão maior com dados, ClickHouse com TLS (não suportado ainda).
+
+## Fase 4 (parte 2): backups — restore, importação, vários bancos, manutenção, pigz e volumes
+
+**Restore.** Fila `database-restore` e tabela `database_restores` (migração 0030, status + log por restore). `databaseDump.commands.ts` virou o lugar único de dump *e* restore por motor. A regra que mais importa: o dump é primeiro **descomprimido pra um arquivo** (`plainCopyCommand`, detecta o magic `1f8b`) e só então carregado — `gzip | psql` reporta só o status do último comando, então um arquivo corrompido virava "restore com sucesso" de nada (aconteceu de verdade no teste: `gzip: invalid magic` e status `success`; o busybox da VPS de teste nem tem `gzip -f` passando dado cru).
+
+**O Redis/KeyDB não carrega o `dump.rdb` com `appendonly yes`** — sobe do zero criando um AOF novo. Meu primeiro restore "dava certo" e deixava o banco vazio. O RDB agora é colocado como `appendonly.aof` legado (um AOF pode começar com um RDB); Redis e KeyDB carregam e convertem, e os dados sobrevivem a um restart.
+
+**Vários bancos**: `databases_to_include` no agendamento; um único banco segue o arquivo de sempre, vários viram um tarball `<banco>.sql|.archive`. Restore recria cada banco.
+
+**Segurança — achei buracos de autorização nas rotas de backup que já existiam**: apagar agendamento, "backup agora", apagar execução e baixar backup só checavam que o usuário era membro do time da URL, **nunca que o id pertencia àquele banco** — um membro de qualquer time podia baixar, apagar ou disparar backup de outro time sabendo o id. Reescrevi as rotas em `databaseBackups.ts`: o banco é resolvido pelo ambiente e todo agendamento/execução pelo banco (foreign ids → 404, testado). Aproveitei pra: um cron inválido no agendamento agora dá 400 (antes deixava a linha e devolvia 500), excluir uma execução apaga o arquivo local, e o download deixou de mentir "application/gzip".
+
+**pigz**: `GZ=$(command -v pigz || command -v gzip)`. **Volumes**: tabela `volume_backups` (migração 0031), fila `volume-backup`, um contêiner auxiliar `alpine` monta o volume só-leitura e faz o `tar`; bind e arquivo são arquivados direto.
+
+**Testado** (painel local + VPS docker-in-docker; motores criados de verdade): ver o roadmap acima; além disso, ClickHouse precisou que o diretório de backups pertença ao usuário do motor (`Permission denied` no `.lock`), o mongodump só aceita `--ssl` (não `--tls`) e o mongorestore lê o arquivo `--gzip` dele direto, sem gunzip. Volumes: arquivo oculto (`.hid`), retenção (6 backups → 5 linhas e 5 arquivos), um backup por vez por volume (409), download com magic gzip, aplicação alheia 404 nas 4 rotas, excluir a aplicação apaga linhas e arquivos. 339 testes, `tsc` e `vue-tsc` passam.
+
+**Não testado no navegador**: as telas novas de backup/restore/armazenamento (só typecheck) — faço a passada de tela no fim da Fase 4. **Não testado**: restore de S3 real, upload perto do limite de 120 MB, MariaDB.

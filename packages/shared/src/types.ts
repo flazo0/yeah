@@ -300,6 +300,19 @@ export interface BackupScheduleDto {
   retentionSizeGb: number;
   /** null = dump stays on the target server's disk; set = uploaded to this S3 destination. */
   storageId: string | null;
+  /** Comma-separated databases to include from a multi-database instance; null = the primary one. */
+  databases: string | null;
+  createdAt: string;
+}
+
+export interface DatabaseRestoreDto {
+  id: string;
+  databaseId: string;
+  status: BackupExecutionStatus;
+  sourceLabel: string;
+  log: string;
+  startedAt: string | null;
+  finishedAt: string | null;
   createdAt: string;
 }
 
@@ -521,5 +534,19 @@ export interface RegistryDto {
   username: string;
   /** The password is write-only: this only says one is stored. */
   hasPassword: boolean;
+  createdAt: string;
+}
+
+export interface VolumeBackupDto {
+  id: string;
+  volumeId: string | null;
+  label: string;
+  operation: "backup" | "restore";
+  status: BackupExecutionStatus;
+  log: string;
+  sizeBytes: number | null;
+  sourceBackupId: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
   createdAt: string;
 }

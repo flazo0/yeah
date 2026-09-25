@@ -156,7 +156,7 @@ export function execStream(
 }
 
 /** Writes `content` to `remotePath` over SFTP, creating/overwriting the file. */
-export function writeRemoteFile(conn: Client, remotePath: string, content: string): Promise<void> {
+export function writeRemoteFile(conn: Client, remotePath: string, content: string | Uint8Array): Promise<void> {
   return new Promise((resolve, reject) => {
     conn.sftp((err, sftp) => {
       if (err) {

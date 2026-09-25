@@ -70,6 +70,10 @@ export function makeProvisionDatabaseProcessor(publishConnection: Redis) {
         }
         if (database.engine === "clickhouse") {
           await run(`mkdir -p ${shellQuote(dbConfigDir(databaseId))} ${shellQuote(dbBackupsDir(databaseId))}`, "mkdir");
+          // ClickHouse runs as its own user and writes its backups (and lock files) into this directory.
+          const uid = await engineUid(database, run);
+          if (uid) await run(`chown ${uid}:${uid} ${shellQuote(dbBackupsDir(databaseId))}`, "chown");
+          else await run(`chmod 777 ${shellQuote(dbBackupsDir(databaseId))}`, "chmod");
           await writeRemoteFile(conn, `${dbConfigDir(databaseId)}/backups.xml`, clickhouseBackupsConfig());
         }
 
@@ -128,4 +132,15 @@ async function installTlsFiles(
     : `chmod 644 ${shellQuote(`${dir}/server.key`)} ${shellQuote(`${dir}/server.pem`)}`;
   await run(`chmod 644 ${shellQuote(`${dir}/server.crt`)} ${shellQuote(`${dir}/pg_hba.conf`)} 2>/dev/null; ${secret} && chmod 755 ${shellQuote(dir)}`, "chmod");
   void DATABASE_ENGINES;
+}
+
+/** The numeric uid the engine's server process runs as, looked up inside its own image (null when unknown). */
+async function engineUid(database: typeof databases.$inferSelect, run: (command: string, what: string) => Promise<string>): Promise<string | null> {
+  const user = ENGINE_RUN_USER[database.engine];
+  try {
+    const out = (await run(`docker run --rm --entrypoint sh ${shellQuote(database.image)} -c ${shellQuote(`id -u ${user} 2>/dev/null`)}`, "uid lookup")).trim();
+    return /^d+$/.test(out) ? out : null;
+  } catch {
+    return null;
+  }
 }

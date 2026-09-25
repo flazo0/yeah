@@ -13,10 +13,11 @@ void applications;
 export async function tearDownApplication(application: Application, server: Server, volumes: ApplicationVolume[]): Promise<string | null> {
   const containerName = `yeah-app-${application.id}`;
   const appDir = `/opt/yeah-apps/${application.id}`;
+  const backupsDir = `/opt/yeah-backups/volumes/${application.id}`;
   const volumeRm = volumes.map((v) => `docker volume rm ${shellQuote(volumeName(v.id))} >/dev/null 2>&1 || true`).join(" && ");
   const command =
     (application.buildPack === "docker_compose" ? composeTeardownCommand(composeProjectName(application.id)) : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true`) +
-    ` && rm -rf ${shellQuote(appDir)} >/dev/null 2>&1 || true` +
+    ` && rm -rf ${shellQuote(appDir)} ${shellQuote(backupsDir)} >/dev/null 2>&1 || true` +
     (volumeRm ? ` && ${volumeRm}` : "");
   try {
     const conn = await connectSsh({

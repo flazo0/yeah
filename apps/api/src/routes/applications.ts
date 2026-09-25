@@ -15,6 +15,7 @@ import {
   type ApplicationVolume,
   type Deployment,
   resourceTags,
+  volumeBackups,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { gitRepoUrl, isValidGitRepoPath } from "@yeah/shared";
@@ -1336,6 +1337,7 @@ export const applicationRoutes = new Elysia({
     for (const task of taskRows) await removeScheduledTask(scheduledTaskQueue, task.id).catch(() => undefined);
 
     await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "application"), eq(resourceTags.resourceId, params.applicationId)));
+    await db.delete(volumeBackups).where(and(eq(volumeBackups.ownerType, "application"), eq(volumeBackups.ownerId, params.applicationId)));
     await db.delete(applications).where(eq(applications.id, params.applicationId));
 
     return { ok: true };
