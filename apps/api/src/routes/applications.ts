@@ -23,6 +23,7 @@ import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStat
 import { computeRouting, configSnapshot, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -146,6 +147,7 @@ export async function loadApplication(environmentId: string, applicationId: stri
 export const applicationRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/applications",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .get("/", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

@@ -5,6 +5,7 @@ import { DATABASE_ENGINES, type DatabaseRestoreDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
 import { connectSsh, execStream, readRemoteFile, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -78,6 +79,7 @@ async function deleteBackupFile(execution: BackupExecution, database: Database):
 export const databaseBackupRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/databases",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .derive(async ({ cookie, params, set }) => {
     // Resolved once for every route below: the caller, membership and the database itself.
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

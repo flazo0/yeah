@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { resourceTags, services, servers, type Service } from "@yeah/db";
 import { findServiceCatalogEntry, type ServiceDto } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -43,6 +44,7 @@ async function loadService(environmentId: string, serviceId: string) {
 export const serviceRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/services",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .get("/", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

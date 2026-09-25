@@ -15,6 +15,7 @@ import { DATABASE_ENGINES, databaseConnectionUrl, internalHostName, isValidDocke
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
 import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -113,6 +114,7 @@ export async function loadDatabase(environmentId: string, databaseId: string) {
 export const databaseRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/databases",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .get("/", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

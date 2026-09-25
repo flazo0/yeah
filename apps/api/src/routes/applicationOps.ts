@@ -12,6 +12,7 @@ import {
   isValidGitRepoPath,
   gitRepoUrl,
 } from "@yeah/shared";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -36,6 +37,7 @@ async function environmentInTeam(environmentId: string, teamId: string): Promise
 export const applicationOpsRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/applications",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .put(
     "/:applicationId/source",
     async ({ cookie, params, body, set }) => {

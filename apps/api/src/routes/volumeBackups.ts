@@ -3,6 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { applicationVolumes, servers, volumeBackups, type VolumeBackup } from "@yeah/db";
 import type { VolumeBackupDto } from "@yeah/shared";
 import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
+import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -31,6 +32,7 @@ function toDto(b: VolumeBackup): VolumeBackupDto {
 export const volumeBackupRoutes = new Elysia({
   prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/applications",
 })
+  .onBeforeHandle(requireEnvironmentScope)
   .derive(async ({ cookie, params }) => {
     const p = params as Record<string, string>;
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
