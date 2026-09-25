@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
-import { resourceTags, services, servers, type Service } from "@yeah/db";
+import { resourceTags, services, servers, volumeBackups, type Service } from "@yeah/db";
 import { composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, normalizeHost, parseComposeStack, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
@@ -43,7 +43,7 @@ function toServiceDto(service: Service, serverName: string): ServiceDto {
   };
 }
 
-async function loadService(environmentId: string, serviceId: string) {
+export async function loadService(environmentId: string, serviceId: string) {
   const rows = await db
     .select({ service: services, serverName: servers.name })
     .from(services)
@@ -570,7 +570,7 @@ export const serviceRoutes = new Elysia({
           await execStream(
             conn,
             isStack
-              ? `${composeTeardownCommand(containerName)}; rm -rf ${shellQuote(`/opt/yeah-services/${row.service.id}`)} >/dev/null 2>&1 || true`
+              ? `${composeTeardownCommand(containerName)}; rm -rf ${shellQuote(`/opt/yeah-services/${row.service.id}`)} ${shellQuote(`/opt/yeah-backups/volumes/${row.service.id}`)} >/dev/null 2>&1 || true`
               : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && ` + `docker volume rm ${shellQuote(volumeName)} >/dev/null 2>&1 || true`,
             () => {},
           );
@@ -583,6 +583,7 @@ export const serviceRoutes = new Elysia({
     }
 
     await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "service"), eq(resourceTags.resourceId, params.serviceId)));
+    await db.delete(volumeBackups).where(and(eq(volumeBackups.ownerType, "service"), eq(volumeBackups.ownerId, params.serviceId)));
     await db.delete(services).where(eq(services.id, params.serviceId));
     return { ok: true };
   });

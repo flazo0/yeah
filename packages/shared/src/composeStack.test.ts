@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { composeStackOverride, parseComposeStack, stackNetworkJoinCommand, validateStackDomains } from "./composeStack";
+import { composeNamedVolumes, composeStackOverride, parseComposeStack, stackNetworkJoinCommand, validateStackDomains } from "./composeStack";
 
 const ok = `
 services:
@@ -99,5 +99,20 @@ describe("stackNetworkJoinCommand", () => {
   test("is idempotent and a container that cannot join does not fail the deploy", () => {
     expect(cmd).toContain("docker network disconnect -f 'yeah-env-e1'");
     expect(cmd).toContain("|| true");
+  });
+});
+
+describe("composeNamedVolumes", () => {
+  const yaml = "services:\n  db:\n    image: postgres\nvolumes:\n  data:\n  named:\n    name: shared-name\n  ext:\n    external: true\n";
+  test("project prefix by default, explicit name wins, external keeps its own name", () => {
+    expect(composeNamedVolumes(yaml, "yeah-svc-1")).toEqual([
+      { key: "data", dockerName: "yeah-svc-1_data" },
+      { key: "named", dockerName: "shared-name" },
+      { key: "ext", dockerName: "ext" },
+    ]);
+  });
+  test("no volumes or invalid yaml -> empty", () => {
+    expect(composeNamedVolumes("services:\n  a:\n    image: x\n", "p")).toEqual([]);
+    expect(composeNamedVolumes("a: [", "p")).toEqual([]);
   });
 });

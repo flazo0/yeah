@@ -65,3 +65,23 @@ export function buildVolumeRestoreCommands(source: VolumeSource, archivePath: st
     start,
   };
 }
+
+// ---- named volumes of a service stack (compose project) ----
+
+/** Archive name for a stack volume: the key is sanitised since it comes from the compose file. */
+export function stackVolumeArchiveName(key: string, timestamp = Date.now()): string {
+  return `vol-${key.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 40)}-${timestamp}.tar.gz`;
+}
+
+/** tar.gz of a docker volume by its real name (read-only mount into a throw-away container). */
+export function buildNamedVolumeBackupCommand(dockerName: string, archivePath: string): string {
+  return `docker run --rm -v ${shellQuote(dockerName)}:/data:ro ${VOLUME_HELPER_IMAGE} tar -czf - -C /data . > ${shellQuote(archivePath)}`;
+}
+
+/** Replaces a docker volume's contents with the archive. */
+export function buildNamedVolumeRestoreCommand(dockerName: string, archivePath: string): string {
+  return (
+    `docker run --rm -v ${shellQuote(dockerName)}:/data -v ${shellQuote(archivePath)}:/backup.tar.gz:ro ${VOLUME_HELPER_IMAGE} ` +
+    `sh -c 'find /data -mindepth 1 -delete && tar -xzf /backup.tar.gz -C /data'`
+  );
+}

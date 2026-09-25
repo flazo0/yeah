@@ -112,3 +112,33 @@ export function stackNetworkJoinCommand(project: string, envNetwork: string, slu
     `done`
   );
 }
+
+export interface StackVolume {
+  /** Key under the top-level `volumes:` of the compose file. */
+  key: string;
+  /** The name Docker gives it on the server. */
+  dockerName: string;
+}
+
+/**
+ * The named volumes a stack declares (top-level `volumes:`), with the name Docker uses for each:
+ * `<project>_<key>` unless the file sets `name:`. Empty on an invalid compose.
+ */
+export function composeNamedVolumes(content: string, project: string): StackVolume[] {
+  let doc: unknown;
+  try {
+    doc = parseYaml(content);
+  } catch {
+    return [];
+  }
+  const volumes = doc && typeof doc === "object" ? (doc as { volumes?: unknown }).volumes : undefined;
+  if (!volumes || typeof volumes !== "object" || Array.isArray(volumes)) return [];
+  const out: StackVolume[] = [];
+  for (const [key, def] of Object.entries(volumes as Record<string, unknown>)) {
+    if (!SERVICE_NAME.test(key)) continue;
+    const d = def && typeof def === "object" ? (def as { name?: unknown; external?: unknown }) : {};
+    const explicit = typeof d.name === "string" && d.name.trim() !== "" ? d.name.trim() : null;
+    out.push({ key, dockerName: explicit ?? (d.external ? key : `${project}_${key}`) });
+  }
+  return out;
+}

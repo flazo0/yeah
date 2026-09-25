@@ -15,6 +15,7 @@ import { githubRoutes } from "./routes/github";
 import { githubWebhookRoutes } from "./routes/githubWebhook";
 import { notificationRoutes } from "./routes/notifications";
 import { serviceRoutes } from "./routes/services";
+import { serviceVolumeBackupRoutes } from "./routes/serviceVolumeBackups";
 import { updateRoutes } from "./routes/updates";
 import { searchRoutes } from "./routes/search";
 import { deployHookRoutes } from "./routes/deployHook";
@@ -71,6 +72,7 @@ const app = new Elysia()
   .use(githubWebhookRoutes)
   .use(notificationRoutes)
   .use(serviceRoutes)
+  .use(serviceVolumeBackupRoutes)
   .use(updateRoutes)
   .use(searchRoutes)
   .use(deployHookRoutes)

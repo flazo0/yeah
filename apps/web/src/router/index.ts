@@ -48,6 +48,7 @@ import ServiceGeneralPage from "../pages/service/ServiceGeneralPage.vue";
 import ServiceComposePage from "../pages/service/ServiceComposePage.vue";
 import ServiceDomainsPage from "../pages/service/ServiceDomainsPage.vue";
 import ServiceLogsPage from "../pages/service/ServiceLogsPage.vue";
+import ServiceBackupsPage from "../pages/service/ServiceBackupsPage.vue";
 import ServiceEnvPage from "../pages/service/ServiceEnvPage.vue";
 
 // import.meta.env.BASE_URL comes from Vite's own `base` config (set at build time — see
@@ -149,6 +150,7 @@ export const router = createRouter({
         { path: "compose", name: "service-compose", component: ServiceComposePage },
         { path: "domains", name: "service-domains", component: ServiceDomainsPage },
         { path: "logs", name: "service-logs", component: ServiceLogsPage },
+        { path: "backups", name: "service-backups", component: ServiceBackupsPage },
       ],
     },
   ],

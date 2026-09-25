@@ -24,6 +24,7 @@ const subnav = computed(() =>
         { to: `${routeBase}/compose`, label: "Compose", active: route.name === "service-compose" },
         { to: `${routeBase}/domains`, label: "Domínios", active: route.name === "service-domains" },
         { to: `${routeBase}/logs`, label: "Logs", active: route.name === "service-logs" },
+        { to: `${routeBase}/backups`, label: "Backups", active: route.name === "service-backups" },
       ]
     : [
         { to: `${routeBase}/general`, label: "Geral", active: route.name === "service-general" },

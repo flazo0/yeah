@@ -567,6 +567,12 @@ export interface VolumeBackupDto {
   createdAt: string;
 }
 
+/** A named volume of a service stack, as the backups screen lists it. */
+export interface ServiceVolumeDto {
+  key: string;
+  dockerName: string;
+}
+
 export interface ServiceTemplateDto {
   key: string;
   name: string;
