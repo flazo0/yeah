@@ -1,0 +1,19 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Redis Commander"
+description: "GUI web pra inspecionar um Redis existente."
+icon: table_rows
+category: database
+website: "https://github.com/joeferner/redis-commander"
+notes: "Troque REDIS_HOSTS pelo nome interno do seu banco Redis (aba Geral do banco) e a porta."
+main: commander
+port: 8081
+env:
+  REDIS_HOSTS: "local:nome-do-redis:6379"
+compose: |
+  services:
+    commander:
+      image: rediscommander/redis-commander:latest
+      restart: unless-stopped
+      environment:
+        - REDIS_HOSTS=${REDIS_HOSTS}

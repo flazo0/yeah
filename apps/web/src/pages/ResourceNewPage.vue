@@ -3,7 +3,6 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   DATABASE_ENGINES,
-  SERVICE_CATALOG,
   type ApplicationDto,
   type DatabaseDto,
   type DatabaseEngine,
@@ -11,6 +10,7 @@ import {
   type GitRepoDto,
   type GitSourceDto,
   type ServerDto,
+  type ServiceTemplateDto,
   type ServiceDto,
 } from "@yeah/shared";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
@@ -35,12 +35,21 @@ interface CatalogCard {
   icon: string;
   website?: string;
   docsUrl?: string;
+  /** Templates only: the sub-category used by the service filter. */
+  serviceCategory?: string;
 }
 
 const teamServers = ref<ServerDto[]>([]);
 const serverId = ref("");
 const loading = ref(true);
 const error = ref("");
+const templates = ref<ServiceTemplateDto[]>([]);
+const serviceCategory = ref("");
+const CATEGORY_LABELS: Record<string, string> = {
+  monitoring: "Monitoramento", automation: "Automação", storage: "Arquivos", messaging: "Mensageria", search: "Busca", cms: "CMS e sites",
+  analytics: "Analytics", devops: "DevOps", database: "Banco de dados", dev: "Dev", security: "Segurança", media: "Mídia", productivity: "Produtividade", other: "Outros",
+};
+const templateCategories = computed(() => [...new Set(templates.value.map((t) => t.category))].sort((a, b) => (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b)));
 const search = ref("");
 const categoryFilter = ref<"" | Category>("");
 const creatingId = ref<string | null>(null);
@@ -147,22 +156,36 @@ const cards = computed<CatalogCard[]>(() => [
       docsUrl: info.docsUrl,
     }),
   ),
-  ...SERVICE_CATALOG.map((entry) => ({
-    id: `svc-${entry.key}`,
+  {
+    id: "svc-custom",
     category: "service" as const,
-    name: entry.name,
-    subtitle: entry.image,
-    description: entry.description,
-    icon: entry.icon,
-    website: entry.website,
-    docsUrl: entry.docsUrl,
+    name: "Compose próprio",
+    subtitle: "Cole um docker-compose.yml",
+    description: "Suba qualquer stack de vários containers colando o seu docker-compose.yml: rede do ambiente, domínio por container e logs prontos.",
+    icon: "edit_document",
+    serviceCategory: "dev",
+    docsUrl: "https://docs.docker.com/compose/",
+  },
+  ...templates.value.map((t) => ({
+    id: `svc-${t.key}`,
+    category: "service" as const,
+    name: t.name,
+    subtitle: `${t.services.length} container${t.services.length === 1 ? "" : "s"} · ${CATEGORY_LABELS[t.category] ?? t.category}`,
+    description: t.description,
+    icon: t.icon,
+    serviceCategory: t.category,
+    website: t.website,
+    docsUrl: t.docsUrl,
   })),
 ]);
 
 const visibleCards = computed(() => {
   const q = search.value.trim().toLowerCase();
   return cards.value.filter(
-    (c) => (!categoryFilter.value || c.category === categoryFilter.value) && (!q || `${c.name} ${c.description} ${c.subtitle}`.toLowerCase().includes(q)),
+    (c) =>
+      (!categoryFilter.value || c.category === categoryFilter.value) &&
+      (!serviceCategory.value || c.category !== 'service' || c.serviceCategory === serviceCategory.value) &&
+      (!q || `${c.name} ${c.description} ${c.subtitle}`.toLowerCase().includes(q)),
   );
 });
 
@@ -182,6 +205,14 @@ async function load() {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
   } finally {
     loading.value = false;
+  }
+}
+
+async function loadTemplates() {
+  try {
+    templates.value = (await api.get<{ templates: ServiceTemplateDto[] }>(`/teams/${teamId}/service-templates`)).templates;
+  } catch {
+    templates.value = [];
   }
 }
 
@@ -244,13 +275,40 @@ async function createDatabase() {
   }
 }
 
-async function deployService(catalogKey: string) {
+async function deployService(templateKey: string) {
   const res = await postConfirmingOverload<{ service: ServiceDto }>(`${basePath}/services`, {
-    name: `${catalogKey}-${suffix()}`,
+    name: `${templateKey}-${suffix()}`,
     serverId: serverId.value,
-    catalogKey,
+    templateKey,
   });
   router.push(`${basePath}/services/${res.service.id}`);
+}
+
+// A pasted compose file: the same stack machinery, the user's own YAML.
+const customModal = ref(false);
+const customForm = ref({
+  name: "",
+  composeContent: "services:\n  web:\n    image: nginx:alpine\n    restart: unless-stopped\n",
+  port: 80,
+});
+const submittingCustom = ref(false);
+
+async function createCustomService() {
+  submittingCustom.value = true;
+  error.value = "";
+  try {
+    const res = await postConfirmingOverload<{ service: ServiceDto }>(`${basePath}/services`, {
+      name: customForm.value.name,
+      serverId: serverId.value,
+      composeContent: customForm.value.composeContent,
+      port: customForm.value.port,
+    });
+    router.push(`${basePath}/services/${res.service.id}`);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao criar o serviço";
+  } finally {
+    submittingCustom.value = false;
+  }
 }
 
 type AppMode = "public" | "github" | "gitsource" | "deploykey" | "nixpacks" | "railpack" | "compose" | "static" | "image" | "inline";
@@ -380,6 +438,12 @@ async function deploy(card: CatalogCard) {
       creatingId.value = null;
       return;
     }
+    if (card.id === "svc-custom") {
+      customForm.value.name = `compose-${suffix()}`;
+      customModal.value = true;
+      creatingId.value = null;
+      return;
+    }
     await deployService(card.id.slice(4));
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao criar recurso";
@@ -390,6 +454,7 @@ async function deploy(card: CatalogCard) {
 onMounted(() => {
   load();
   loadGithub();
+  void loadTemplates();
 });
 </script>
 
@@ -426,6 +491,10 @@ onMounted(() => {
             <option value="application">Aplicações</option>
             <option value="database">Bancos de dados</option>
             <option value="service">Serviços</option>
+          </select>
+          <select v-if="templateCategories.length && (categoryFilter === '' || categoryFilter === 'service')" v-model="serviceCategory" class="form-control" aria-label="Tipo de serviço">
+            <option value="">Todos os tipos de serviço</option>
+            <option v-for="c in templateCategories" :key="c" :value="c">{{ CATEGORY_LABELS[c] ?? c }}</option>
           </select>
           <select v-model="serverId" class="form-control" aria-label="Servidor de destino">
             <option v-for="s in teamServers" :key="s.id" :value="s.id">Servidor: {{ s.name }}</option>
@@ -469,6 +538,33 @@ onMounted(() => {
         </div>
       </template>
     </template>
+
+    <Modal v-if="customModal" title="Serviço com compose próprio" @close="customModal = false">
+      <form @submit.prevent="createCustomService">
+        <div class="form-group">
+          <label for="cs-name">Nome</label>
+          <input id="cs-name" v-model="customForm.name" class="form-control" required />
+        </div>
+        <div class="form-group">
+          <label for="cs-compose">docker-compose.yml</label>
+          <textarea id="cs-compose" v-model="customForm.composeContent" class="form-control mono" rows="14" spellcheck="false" required></textarea>
+          <p class="hint" style="margin-top: 6px">
+            Só <span class="mono">image</span> (não há código pra <span class="mono">build</span>). Variáveis <span class="mono">${NOME}</span> são lidas do .env do serviço.
+            Todos os containers entram na rede do ambiente, com o nome <span class="mono">nome-do-serviço-container</span>.
+            Cuidado com <span class="mono">privileged</span>, <span class="mono">network_mode: host</span> e montagens do host: dão ao container poder sobre o servidor.
+          </p>
+        </div>
+        <div class="form-group">
+          <label for="cs-port">Porta do primeiro serviço (pro domínio)</label>
+          <input id="cs-port" v-model.number="customForm.port" type="number" class="form-control" style="max-width: 160px" />
+        </div>
+        <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
+        <div class="btn-row">
+          <button type="submit" class="btn" :disabled="submittingCustom">{{ submittingCustom ? "criando..." : "Criar serviço" }}</button>
+          <button type="button" class="btn btn-secondary" @click="customModal = false">Cancelar</button>
+        </div>
+      </form>
+    </Modal>
 
     <Modal v-if="dbModal" :title="`Novo banco — ${DATABASE_ENGINES[dbModal].label}`" @close="dbModal = null">
       <form @submit.prevent="createDatabase">

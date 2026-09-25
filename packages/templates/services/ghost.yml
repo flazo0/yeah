@@ -1,0 +1,25 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Ghost"
+description: "Plataforma de blog e newsletter — roda com SQLite embutido, sem banco externo."
+icon: article
+category: cms
+website: "https://ghost.org"
+docs: "https://ghost.org/docs/"
+notes: "Ajuste GHOST_URL pro endereço público (https://seu-dominio) e faça deploy de novo."
+main: ghost
+port: 2368
+env:
+  GHOST_URL: "http://localhost:2368"
+compose: |
+  services:
+    ghost:
+      image: ghost:5-alpine
+      restart: unless-stopped
+      environment:
+        - NODE_ENV=production
+        - url=${GHOST_URL}
+      volumes:
+        - content:/var/lib/ghost/content
+  volumes:
+    content: {}

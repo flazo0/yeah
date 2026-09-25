@@ -1,0 +1,19 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Memos"
+description: "Notas rápidas em estilo timeline, com Markdown."
+icon: sticky_note_2
+category: productivity
+website: "https://usememos.com"
+main: memos
+port: 5230
+env: {}
+compose: |
+  services:
+    memos:
+      image: neosmemo/memos:stable
+      restart: unless-stopped
+      volumes:
+        - data:/var/opt/memos
+  volumes:
+    data: {}

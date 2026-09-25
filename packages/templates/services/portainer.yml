@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Portainer"
+description: "GUI de administração Docker — containers, imagens e volumes do servidor."
+icon: dns
+category: devops
+website: "https://www.portainer.io"
+docs: "https://docs.portainer.io"
+notes: "Monta o docker.sock do servidor: quem entra nele controla o Docker. Só use em servidor de confiança."
+main: portainer
+port: 9000
+env: {}
+compose: |
+  services:
+    portainer:
+      image: portainer/portainer-ce:latest
+      restart: unless-stopped
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - data:/data
+  volumes:
+    data: {}

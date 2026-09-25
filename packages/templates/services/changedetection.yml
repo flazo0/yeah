@@ -1,0 +1,19 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "changedetection.io"
+description: "Avisa quando uma página web muda (preços, estoque, documentação)."
+icon: difference
+category: monitoring
+website: "https://changedetection.io"
+main: changedetection
+port: 5000
+env: {}
+compose: |
+  services:
+    changedetection:
+      image: ghcr.io/dgtlmoon/changedetection.io:latest
+      restart: unless-stopped
+      volumes:
+        - data:/datastore
+  volumes:
+    data: {}

@@ -1,0 +1,23 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Jellyfin"
+description: "Servidor de mídia (filmes, séries, música) sem assinatura."
+icon: movie
+category: media
+website: "https://jellyfin.org"
+main: jellyfin
+port: 8096
+env: {}
+compose: |
+  services:
+    jellyfin:
+      image: jellyfin/jellyfin:latest
+      restart: unless-stopped
+      volumes:
+        - config:/config
+        - cache:/cache
+        - media:/media
+  volumes:
+    config: {}
+    cache: {}
+    media: {}

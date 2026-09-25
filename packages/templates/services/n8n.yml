@@ -1,0 +1,28 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "n8n"
+description: "Automação de workflows low-code (tipo Zapier/Make, self-hosted)."
+icon: hub
+category: automation
+website: "https://n8n.io"
+docs: "https://docs.n8n.io"
+notes: "Depois de ligar um domínio, ajuste N8N_HOST e N8N_PROTOCOL=https nas variáveis e faça deploy de novo."
+main: n8n
+port: 5678
+env:
+  N8N_HOST: "localhost"
+  N8N_PROTOCOL: "http"
+  GENERIC_TIMEZONE: "America/Sao_Paulo"
+compose: |
+  services:
+    n8n:
+      image: n8nio/n8n:latest
+      restart: unless-stopped
+      environment:
+        - N8N_HOST=${N8N_HOST}
+        - N8N_PROTOCOL=${N8N_PROTOCOL}
+        - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      volumes:
+        - data:/home/node/.n8n
+  volumes:
+    data: {}

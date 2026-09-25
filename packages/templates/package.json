@@ -1,0 +1,6 @@
+{
+  "name": "@yeah/templates",
+  "private": true,
+  "version": "0.0.0",
+  "description": "One-click service templates (compose + metadata), loaded by the API at runtime."
+}

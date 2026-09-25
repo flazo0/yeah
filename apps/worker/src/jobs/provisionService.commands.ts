@@ -1,5 +1,5 @@
 import type { Server, Service } from "@yeah/db";
-import { findServiceCatalogEntry, PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote } from "@yeah/shared";
+import { composeProjectName, findServiceCatalogEntry, PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote } from "@yeah/shared";
 
 // Pure command-building logic, kept separate from provisionService.ts's SSH execution for the
 // same reason as deployApplication.commands.ts — see that file's comment.
@@ -39,3 +39,26 @@ export function buildRunCommand(service: Service, containerName: string, envFile
     restart
   );
 }
+
+// ---- stacks (compose) ----
+
+export const stackProject = (serviceId: string) => `yeah-svc-${serviceId}`;
+export const stackDir = (serviceId: string) => `/opt/yeah-services/${serviceId}`;
+export const STACK_OVERRIDE_FILE = "compose.yeah.override.yml";
+
+/** `docker compose up` for the service's project: waits for every container to be running (or healthy). */
+export function buildStackUpCommand(serviceId: string, waitSeconds = 300): string {
+  const dir = stackDir(serviceId);
+  return (
+    `cd ${shellQuote(dir)} && docker compose -p ${shellQuote(stackProject(serviceId))} --env-file .env -f docker-compose.yml -f ${STACK_OVERRIDE_FILE} ` +
+    `up -d --remove-orphans --wait --wait-timeout ${Math.max(30, Math.floor(waitSeconds))}`
+  );
+}
+
+/** Pulls the images first so a slow download is not counted against the "wait for healthy" timeout. */
+export function buildStackPullCommand(serviceId: string): string {
+  const dir = stackDir(serviceId);
+  return `cd ${shellQuote(dir)} && docker compose -p ${shellQuote(stackProject(serviceId))} --env-file .env -f docker-compose.yml pull --quiet`;
+}
+
+void composeProjectName;

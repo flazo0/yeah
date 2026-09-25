@@ -614,3 +614,13 @@ Tabela `registries` (senha criptografada, migração 0027) e, na aplicação, `r
 **Testado** (painel local + VPS docker-in-docker; motores criados de verdade): ver o roadmap acima; além disso, ClickHouse precisou que o diretório de backups pertença ao usuário do motor (`Permission denied` no `.lock`), o mongodump só aceita `--ssl` (não `--tls`) e o mongorestore lê o arquivo `--gzip` dele direto, sem gunzip. Volumes: arquivo oculto (`.hid`), retenção (6 backups → 5 linhas e 5 arquivos), um backup por vez por volume (409), download com magic gzip, aplicação alheia 404 nas 4 rotas, excluir a aplicação apaga linhas e arquivos. 339 testes, `tsc` e `vue-tsc` passam.
 
 **Não testado no navegador**: as telas novas de backup/restore/armazenamento (só typecheck) — faço a passada de tela no fim da Fase 4. **Não testado**: restore de S3 real, upload perto do limite de 120 MB, MariaDB.
+
+## Fase 4 (parte 3): serviços como stacks compose, catálogo em arquivos, domínio por container
+
+Serviço agora pode ser uma **stack**: `compose_content` + `template_key` + `main_service` + `domains` + `last_log` (migração 0032). Os 38 templates ficam em `packages/templates/services/*.yml` (metadados + compose + env com segredos gerados: `password`/`hex`/`base64`), lidos por `apps/api/src/lib/templates.ts`; um teste valida todos os arquivos (compose parseia, `main` existe, toda `${VAR}` tem valor). Compose colado passa por `parseComposeStack` (recusa `build:`, exige serviços). O worker escreve compose/.env/override, faz `pull`, `up -d --wait --remove-orphans` e só então liga os containers à rede do ambiente.
+
+**Decisão de rede**: o Compose põe o nome puro do serviço como alias em *toda* rede a que ele se junta — se o override anexasse a rede do ambiente, duas stacks com um `db` responderiam uma pela outra. Por isso o override cuida só do proxy (labels do Traefik) e a rede do ambiente é ligada por `docker network connect --alias <slug>-<serviço>` depois do `up` (o principal também como `<slug>`).
+
+**Corrigido**: start/stop/restart não marcavam `provisioning`, então a tela lia o status antigo enquanto o job corria.
+
+**Testado**: 363 testes, `tsc` e `vue-tsc`. O e2e na VPS de teste da primeira versão passou nos caminhos principais (catálogo, validações, whoami, stack própria com domínios, gitea com 2 containers e segredos, imagem inválida com log legível, serviço legado, exclusão). **Não re-testado depois da mudança de rede** (o Docker Desktop travou) e **não testado no navegador**: telas de compose/domínios/logs, modal de novo recurso.

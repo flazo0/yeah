@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Server, Service } from "@yeah/db";
 import { SERVICE_CATALOG } from "@yeah/shared";
-import { buildRunCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
+import { buildRunCommand, buildStackPullCommand, buildStackUpCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
 
 function makeService(overrides: Partial<Service> = {}): Service {
   return {
@@ -15,6 +15,11 @@ function makeService(overrides: Partial<Service> = {}): Service {
     port: 3001,
     envContent: "",
     domain: null,
+    composeContent: null,
+    templateKey: null,
+    mainService: null,
+    domains: [],
+    lastLog: "",
     memoryLimitMb: null,
     cpuLimit: null,
     status: "idle",
@@ -112,5 +117,19 @@ describe("buildRunCommand", () => {
     const cmd = buildRunCommand(makeService({ catalogKey: "not-a-real-catalog-entry" }), "yeah-svc-1", "/opt/env", null);
     expect(cmd).not.toContain("-data'");
     expect(cmd).toContain("docker run");
+  });
+});
+
+describe("stack commands", () => {
+  test("up waits for the whole project, using the generated override", () => {
+    const cmd = buildStackUpCommand("svc-1", 120);
+    expect(cmd).toContain("cd '/opt/yeah-services/svc-1' && docker compose -p 'yeah-svc-svc-1' --env-file .env -f docker-compose.yml -f compose.yeah.override.yml");
+    expect(cmd).toContain("up -d --remove-orphans --wait --wait-timeout 120");
+    expect(buildStackUpCommand("svc-1", 5)).toContain("--wait-timeout 30");
+  });
+  test("pull runs before, without the override (it only needs the images)", () => {
+    const cmd = buildStackPullCommand("svc-1");
+    expect(cmd).toContain("pull --quiet");
+    expect(cmd).not.toContain("override");
   });
 });

@@ -1,0 +1,20 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "ntfy"
+description: "Notificações push por HTTP pub/sub — um curl e o celular apita."
+icon: campaign
+category: messaging
+website: "https://ntfy.sh"
+main: ntfy
+port: 80
+env: {}
+compose: |
+  services:
+    ntfy:
+      image: binwiederhier/ntfy:latest
+      command: serve
+      restart: unless-stopped
+      volumes:
+        - cache:/var/cache/ntfy
+  volumes:
+    cache: {}

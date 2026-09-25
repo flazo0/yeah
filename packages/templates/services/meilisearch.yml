@@ -1,0 +1,23 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Meilisearch"
+description: "Motor de busca full-text rápido, com API REST simples."
+icon: search
+category: search
+website: "https://www.meilisearch.com"
+docs: "https://www.meilisearch.com/docs"
+main: meilisearch
+port: 7700
+env:
+  MEILI_MASTER_KEY: "$generate:hex"
+compose: |
+  services:
+    meilisearch:
+      image: getmeili/meilisearch:latest
+      restart: unless-stopped
+      environment:
+        - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      volumes:
+        - data:/meili_data
+  volumes:
+    data: {}

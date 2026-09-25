@@ -1,0 +1,24 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "pgAdmin"
+description: "Administração web de PostgreSQL."
+icon: database
+category: database
+website: "https://www.pgadmin.org"
+main: pgadmin
+port: 80
+env:
+  PGADMIN_DEFAULT_EMAIL: "admin@example.com"
+  PGADMIN_DEFAULT_PASSWORD: "$generate:password"
+compose: |
+  services:
+    pgadmin:
+      image: dpage/pgadmin4:latest
+      restart: unless-stopped
+      environment:
+        - PGADMIN_DEFAULT_EMAIL=${PGADMIN_DEFAULT_EMAIL}
+        - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_DEFAULT_PASSWORD}
+      volumes:
+        - data:/var/lib/pgadmin
+  volumes:
+    data: {}

@@ -12,3 +12,4 @@ export * from "./metrics";
 export * from "./registry";
 export * from "./gitSources";
 export * from "./databaseConnection";
+export * from "./composeStack";

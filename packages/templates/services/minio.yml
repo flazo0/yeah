@@ -1,0 +1,27 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "MinIO"
+description: "Armazenamento de objetos S3-compatível — use como destino de backup do próprio yeah."
+icon: cloud
+category: storage
+website: "https://min.io"
+docs: "https://min.io/docs/minio/linux/index.html"
+notes: "O console é a porta 9001 (domínio principal); a API S3 é a 9000 — adicione um segundo domínio pra ela na aba Domínios."
+main: minio
+port: 9001
+env:
+  MINIO_ROOT_USER: "admin"
+  MINIO_ROOT_PASSWORD: "$generate:password"
+compose: |
+  services:
+    minio:
+      image: quay.io/minio/minio:latest
+      command: server /data --console-address :9001
+      restart: unless-stopped
+      environment:
+        - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+        - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      volumes:
+        - data:/data
+  volumes:
+    data: {}

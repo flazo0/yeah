@@ -1,0 +1,15 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Whoami"
+description: "Serviço minúsculo que responde com o nome do container e os headers da requisição — ótimo pra testar domínio, proxy e rede."
+icon: badge
+category: dev
+website: "https://github.com/traefik/whoami"
+main: whoami
+port: 80
+env: {}
+compose: |
+  services:
+    whoami:
+      image: traefik/whoami:latest
+      restart: unless-stopped

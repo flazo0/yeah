@@ -1,0 +1,18 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Dozzle"
+description: "Visualizador de logs de containers em tempo real."
+icon: receipt_long
+category: devops
+website: "https://dozzle.dev"
+notes: "Monta o docker.sock (somente leitura) do servidor."
+main: dozzle
+port: 8080
+env: {}
+compose: |
+  services:
+    dozzle:
+      image: amir20/dozzle:latest
+      restart: unless-stopped
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro

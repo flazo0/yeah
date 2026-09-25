@@ -21,6 +21,7 @@ import { deployHookRoutes } from "./routes/deployHook";
 import { sharedVariableRoutes } from "./routes/sharedVariables";
 import { tagRoutes } from "./routes/tags";
 import { registryRoutes } from "./routes/registries";
+import { serviceTemplateRoutes } from "./routes/serviceTemplates";
 import { gitSourceRoutes } from "./routes/gitSources";
 import { gitSourceWebhookRoutes } from "./routes/gitSourceWebhook";
 import { terminalRoutes } from "./routes/terminal";
@@ -76,6 +77,7 @@ const app = new Elysia()
   .use(sharedVariableRoutes)
   .use(tagRoutes)
   .use(registryRoutes)
+  .use(serviceTemplateRoutes)
   .use(gitSourceRoutes)
   .use(gitSourceWebhookRoutes)
   .use(terminalRoutes)

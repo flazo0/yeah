@@ -1,0 +1,26 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "RabbitMQ"
+description: "Fila de mensagens com o plugin de management incluso."
+icon: sync_alt
+category: messaging
+website: "https://www.rabbitmq.com"
+docs: "https://www.rabbitmq.com/docs"
+notes: "O painel é a 15672 (domínio); as aplicações do ambiente usam a 5672 pelo nome interno."
+main: rabbitmq
+port: 15672
+env:
+  RABBITMQ_DEFAULT_USER: "admin"
+  RABBITMQ_DEFAULT_PASS: "$generate:password"
+compose: |
+  services:
+    rabbitmq:
+      image: rabbitmq:3-management-alpine
+      restart: unless-stopped
+      environment:
+        - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+        - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      volumes:
+        - data:/var/lib/rabbitmq
+  volumes:
+    data: {}

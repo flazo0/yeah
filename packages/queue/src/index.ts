@@ -56,6 +56,8 @@ export interface ProxyProvisionJobData {
 
 export interface ServiceProvisionJobData {
   serviceId: string;
+  /** Default "deploy" (create/recreate). The others act on the running stack without recreating it. */
+  action?: "deploy" | "start" | "stop" | "restart";
 }
 
 export interface PlatformOperationJobData {

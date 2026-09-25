@@ -107,12 +107,12 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 ## Fase 4 — Bancos, serviços e microsserviços
 
 **Serviços / stacks**
-- [ ] Serviço = **stack Docker Compose** de vários containers como um recurso (hoje o catálogo é de container único).
-- [ ] **Serviço customizado**: colar o próprio `docker-compose.yml`.
-- [ ] Ampliar o catálogo one-click (hoje 10; Coolify tem 300+): estrutura de template em arquivo (compose + metadados + ícone), carregada de `templates/`, sem hardcode por serviço.
-- [ ] Catálogo com **busca, categorias e ícones** (usa o mesmo componente da Fase 1).
-- [ ] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): **feito para aplicações e bancos** — cada ambiente tem a rede `yeah-env-<id>`, e todo recurso entra nela com um alias (o nome do recurso), então apps e bancos se acham por nome (testado: `psql` de outro container por `t-postgresql:5432`). Falta serviços (entram junto com a stack compose) e apps Docker Compose.
-- [ ] Domínio por container dentro de uma stack compose.
+- [x] Serviço = **stack Docker Compose** de vários containers como um recurso (hoje o catálogo é de container único).
+- [x] **Serviço customizado**: colar o próprio `docker-compose.yml`.
+- [x] Ampliar o catálogo one-click (hoje 10; Coolify tem 300+): estrutura de template em arquivo (compose + metadados + ícone), carregada de `templates/`, sem hardcode por serviço.
+- [x] Catálogo com **busca, categorias e ícones** (usa o mesmo componente da Fase 1).
+- [ ] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): **feito para aplicações e bancos** — cada ambiente tem a rede `yeah-env-<id>`, e todo recurso entra nela com um alias (o nome do recurso), então apps e bancos se acham por nome (testado: `psql` de outro container por `t-postgresql:5432`). Serviços em stack entram na rede depois do `up` com alias `<serviço>-<container>` (o nome puro só no container principal, pra dois `db` de stacks diferentes não se confundirem). Falta apps Docker Compose.
+- [x] Domínio por container dentro de uma stack compose (vários por container, porta por domínio, labels do Traefik por override).
 - [ ] Guia/modelo de **microsserviços**: várias apps + banco + fila no mesmo ambiente com rede compartilhada e variáveis compartilhadas.
 
 **Bancos**

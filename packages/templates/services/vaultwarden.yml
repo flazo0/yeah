@@ -1,0 +1,23 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Vaultwarden"
+description: "Servidor compatível com o Bitwarden — gerenciador de senhas da equipe."
+icon: key
+category: security
+website: "https://github.com/dani-garcia/vaultwarden"
+notes: "Precisa de HTTPS pra funcionar no navegador: ligue um domínio com o proxy ativo. O painel admin usa ADMIN_TOKEN em /admin."
+main: vaultwarden
+port: 80
+env:
+  ADMIN_TOKEN: "$generate:hex"
+compose: |
+  services:
+    vaultwarden:
+      image: vaultwarden/server:latest
+      restart: unless-stopped
+      environment:
+        - ADMIN_TOKEN=${ADMIN_TOKEN}
+      volumes:
+        - data:/data
+  volumes:
+    data: {}

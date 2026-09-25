@@ -1,0 +1,15 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Stirling PDF"
+description: "Ferramentas de PDF (juntar, dividir, converter, OCR) no seu servidor."
+icon: picture_as_pdf
+category: productivity
+website: "https://github.com/Stirling-Tools/Stirling-PDF"
+main: pdf
+port: 8080
+env: {}
+compose: |
+  services:
+    pdf:
+      image: frooodle/s-pdf:latest
+      restart: unless-stopped

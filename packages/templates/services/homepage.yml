@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Homepage"
+description: "Painel de entrada com links e status dos seus serviços."
+icon: home
+category: dev
+website: "https://gethomepage.dev"
+main: homepage
+port: 3000
+env:
+  HOMEPAGE_ALLOWED_HOSTS: "*"
+compose: |
+  services:
+    homepage:
+      image: ghcr.io/gethomepage/homepage:latest
+      restart: unless-stopped
+      environment:
+        - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+      volumes:
+        - config:/app/config
+  volumes:
+    config: {}

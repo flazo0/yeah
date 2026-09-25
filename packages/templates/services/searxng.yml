@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "SearXNG"
+description: "Metabuscador privado, sem rastreamento."
+icon: travel_explore
+category: search
+website: "https://docs.searxng.org"
+main: searxng
+port: 8080
+env:
+  SEARXNG_SECRET: "$generate:hex"
+compose: |
+  services:
+    searxng:
+      image: searxng/searxng:latest
+      restart: unless-stopped
+      environment:
+        - SEARXNG_SECRET=${SEARXNG_SECRET}
+      volumes:
+        - config:/etc/searxng
+  volumes:
+    config: {}

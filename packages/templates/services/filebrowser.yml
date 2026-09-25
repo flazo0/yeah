@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "File Browser"
+description: "Gerenciador de arquivos web com usuários e compartilhamento."
+icon: folder_open
+category: storage
+website: "https://filebrowser.org"
+notes: "Login inicial: admin / admin — troque na primeira entrada."
+main: filebrowser
+port: 80
+env: {}
+compose: |
+  services:
+    filebrowser:
+      image: filebrowser/filebrowser:latest
+      restart: unless-stopped
+      volumes:
+        - files:/srv
+        - config:/config
+  volumes:
+    files: {}
+    config: {}

@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "code-server"
+description: "VS Code no navegador, rodando no seu servidor."
+icon: code
+category: dev
+website: "https://coder.com/docs/code-server"
+main: code
+port: 8080
+env:
+  PASSWORD: "$generate:password"
+compose: |
+  services:
+    code:
+      image: codercom/code-server:latest
+      restart: unless-stopped
+      environment:
+        - PASSWORD=${PASSWORD}
+      volumes:
+        - home:/home/coder
+  volumes:
+    home: {}

@@ -1,0 +1,15 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "IT Tools"
+description: "Coleção de ferramentas de dev no navegador (conversores, geradores, hashes…)."
+icon: build
+category: dev
+website: "https://it-tools.tech"
+main: it-tools
+port: 80
+env: {}
+compose: |
+  services:
+    it-tools:
+      image: corentinth/it-tools:latest
+      restart: unless-stopped

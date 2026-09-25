@@ -225,6 +225,13 @@
       "when": 1790345659608,
       "tag": "0031_volume_backups",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790346846209,
+      "tag": "0032_service_stacks",
+      "breakpoints": true
     }
   ]
 }

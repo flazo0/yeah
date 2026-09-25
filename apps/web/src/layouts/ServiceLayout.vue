@@ -17,10 +17,19 @@ const serviceId = route.params.serviceId as string;
 const basePath = `/teams/${teamId}/projects/${projectId}/environments/${environmentId}/services/${serviceId}`;
 const environmentPath = `/teams/${teamId}/projects/${projectId}/environments/${environmentId}`;
 const routeBase = basePath;
-const subnav = computed(() => [
-  { to: `${routeBase}/general`, label: "Geral", active: route.name === "service-general" },
-  { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "service-env" },
-]);
+const subnav = computed(() =>
+  service.value?.composeContent
+    ? [
+        { to: `${routeBase}/general`, label: "Geral", active: route.name === "service-general" },
+        { to: `${routeBase}/compose`, label: "Compose", active: route.name === "service-compose" },
+        { to: `${routeBase}/domains`, label: "Domínios", active: route.name === "service-domains" },
+        { to: `${routeBase}/logs`, label: "Logs", active: route.name === "service-logs" },
+      ]
+    : [
+        { to: `${routeBase}/general`, label: "Geral", active: route.name === "service-general" },
+        { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "service-env" },
+      ],
+);
 
 const service = ref<ServiceDto | null>(null);
 const loading = ref(true);
@@ -91,7 +100,7 @@ onUnmounted(() => {
     :project-id="projectId"
     :environment-id="environmentId"
     :name="service.name"
-    :icon="findServiceCatalogEntry(service.catalogKey)?.icon ?? 'widgets'"
+    :icon="service.composeContent ? 'stacks' : (findServiceCatalogEntry(service.catalogKey)?.icon ?? 'widgets')"
     :status="service.status"
     :error="error"
     :deleting="deleting"
@@ -105,7 +114,13 @@ onUnmounted(() => {
       </button>
     </template>
     <template #subtitle>
-      <p class="resource-subtitle mono">{{ service.image }} · {{ service.serverName }}:{{ service.port }}</p>
+      <p class="resource-subtitle mono">
+        <template v-if="service.composeContent">{{ service.stackServices.length }} container{{ service.stackServices.length === 1 ? "" : "s" }} ({{ service.stackServices.join(", ") }}) · {{ service.serverName }}</template>
+        <template v-else>{{ service.image }} · {{ service.serverName }}:{{ service.port }}</template>
+      </p>
+      <p v-for="d in service.domains" :key="d.domain" class="resource-subtitle">
+        <a :href="`https://${d.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ d.domain }}</a> <span class="muted">→ {{ d.service }}:{{ d.port }}</span>
+      </p>
       <p v-if="service.domain" class="resource-subtitle">
         <a :href="`https://${service.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ service.domain }}</a>
       </p>

@@ -1,0 +1,45 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Nextcloud"
+description: "Arquivos, calendário e contatos na sua infra (com MariaDB e Redis)."
+icon: folder_shared
+category: storage
+website: "https://nextcloud.com"
+main: nextcloud
+port: 80
+env:
+  DB_PASSWORD: "$generate:password"
+  DB_ROOT_PASSWORD: "$generate:password"
+compose: |
+  services:
+    nextcloud:
+      image: nextcloud:stable
+      restart: unless-stopped
+      depends_on:
+        - db
+        - redis
+      environment:
+        - MYSQL_HOST=db
+        - MYSQL_DATABASE=nextcloud
+        - MYSQL_USER=nextcloud
+        - MYSQL_PASSWORD=${DB_PASSWORD}
+        - REDIS_HOST=redis
+      volumes:
+        - data:/var/www/html
+    db:
+      image: mariadb:11
+      restart: unless-stopped
+      command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+      environment:
+        - MARIADB_DATABASE=nextcloud
+        - MARIADB_USER=nextcloud
+        - MARIADB_PASSWORD=${DB_PASSWORD}
+        - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      volumes:
+        - db:/var/lib/mysql
+    redis:
+      image: redis:7-alpine
+      restart: unless-stopped
+  volumes:
+    data: {}
+    db: {}

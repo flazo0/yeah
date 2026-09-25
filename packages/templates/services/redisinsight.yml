@@ -1,0 +1,19 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "RedisInsight"
+description: "Interface oficial da Redis pra explorar chaves e rodar comandos."
+icon: query_stats
+category: database
+website: "https://redis.io/insight/"
+main: insight
+port: 5540
+env: {}
+compose: |
+  services:
+    insight:
+      image: redis/redisinsight:latest
+      restart: unless-stopped
+      volumes:
+        - data:/data
+  volumes:
+    data: {}

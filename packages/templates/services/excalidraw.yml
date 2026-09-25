@@ -1,0 +1,15 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Excalidraw"
+description: "Quadro branco colaborativo com traço de desenho à mão."
+icon: draw
+category: productivity
+website: "https://excalidraw.com"
+main: excalidraw
+port: 80
+env: {}
+compose: |
+  services:
+    excalidraw:
+      image: excalidraw/excalidraw:latest
+      restart: unless-stopped

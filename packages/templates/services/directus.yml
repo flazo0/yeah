@@ -1,0 +1,47 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Directus"
+description: "Headless CMS e painel de dados sobre PostgreSQL."
+icon: layers
+category: cms
+website: "https://directus.io"
+docs: "https://docs.directus.io"
+main: directus
+port: 8055
+env:
+  DB_PASSWORD: "$generate:password"
+  DIRECTUS_KEY: "$generate:hex"
+  DIRECTUS_SECRET: "$generate:hex"
+  ADMIN_EMAIL: "admin@example.com"
+  ADMIN_PASSWORD: "$generate:password"
+compose: |
+  services:
+    directus:
+      image: directus/directus:11
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - KEY=${DIRECTUS_KEY}
+        - SECRET=${DIRECTUS_SECRET}
+        - DB_CLIENT=pg
+        - DB_HOST=db
+        - DB_DATABASE=directus
+        - DB_USER=directus
+        - DB_PASSWORD=${DB_PASSWORD}
+        - ADMIN_EMAIL=${ADMIN_EMAIL}
+        - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      volumes:
+        - uploads:/directus/uploads
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        - POSTGRES_USER=directus
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=directus
+      volumes:
+        - db:/var/lib/postgresql/data
+  volumes:
+    uploads: {}
+    db: {}

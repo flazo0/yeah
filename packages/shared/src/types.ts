@@ -1,3 +1,4 @@
+import type { StackDomain } from "./composeStack";
 import type { WwwRedirect } from "./traefik";
 import { shellQuote } from "./shell";
 
@@ -374,7 +375,7 @@ export interface GithubRepoDto {
   private: boolean;
 }
 
-export type ServiceStatus = "idle" | "provisioning" | "running" | "error";
+export type ServiceStatus = "idle" | "provisioning" | "running" | "stopped" | "error";
 
 export interface ServiceDto extends ResourceLimits {
   id: string;
@@ -388,8 +389,23 @@ export interface ServiceDto extends ResourceLimits {
   port: number;
   envContent: string;
   domain: string | null;
+  /** Stack services only: the compose file and the containers/domains built on it. */
+  composeContent: string | null;
+  templateKey: string | null;
+  mainService: string | null;
+  domains: StackDomain[];
+  stackServices: string[];
+  lastLog: string;
   status: ServiceStatus;
   createdAt: string;
+}
+
+export interface ServiceContainerDto {
+  name: string;
+  service: string;
+  image: string;
+  state: string;
+  status: string;
 }
 
 export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email";
@@ -549,4 +565,19 @@ export interface VolumeBackupDto {
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
+}
+
+export interface ServiceTemplateDto {
+  key: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: string;
+  website?: string;
+  docsUrl?: string;
+  notes?: string;
+  /** The compose service that receives the domain. */
+  mainService: string;
+  /** Every service of the stack, for the card ("3 containers"). */
+  services: string[];
 }

@@ -1,0 +1,20 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Docker Registry"
+description: "Registry de imagens Docker próprio (sem autenticação — coloque atrás de proxy/VPN)."
+icon: inventory_2
+category: devops
+website: "https://distribution.github.io/distribution/"
+notes: "Sem login por padrão: não exponha na internet sem proteção."
+main: registry
+port: 5000
+env: {}
+compose: |
+  services:
+    registry:
+      image: registry:2
+      restart: unless-stopped
+      volumes:
+        - data:/var/lib/registry
+  volumes:
+    data: {}

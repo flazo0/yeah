@@ -1,0 +1,19 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "PocketBase"
+description: "Backend em um arquivo: banco, auth, storage e API em tempo real."
+icon: storage
+category: database
+website: "https://pocketbase.io"
+main: pocketbase
+port: 8090
+env: {}
+compose: |
+  services:
+    pocketbase:
+      image: ghcr.io/muchobien/pocketbase:latest
+      restart: unless-stopped
+      volumes:
+        - data:/pb_data
+  volumes:
+    data: {}

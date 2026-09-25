@@ -1,0 +1,33 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Umami"
+description: "Analytics web simples e sem cookies (com PostgreSQL)."
+icon: monitoring
+category: analytics
+website: "https://umami.is"
+main: umami
+port: 3000
+env:
+  DB_PASSWORD: "$generate:password"
+  APP_SECRET: "$generate:hex"
+compose: |
+  services:
+    umami:
+      image: ghcr.io/umami-software/umami:postgresql-latest
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - DATABASE_URL=postgresql://umami:${DB_PASSWORD}@db:5432/umami
+        - APP_SECRET=${APP_SECRET}
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        - POSTGRES_USER=umami
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=umami
+      volumes:
+        - db:/var/lib/postgresql/data
+  volumes:
+    db: {}

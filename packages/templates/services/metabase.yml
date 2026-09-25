@@ -1,0 +1,22 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Metabase"
+description: "BI e dashboards conectando em qualquer banco de dados."
+icon: bar_chart
+category: analytics
+website: "https://www.metabase.com"
+docs: "https://www.metabase.com/docs/latest/"
+main: metabase
+port: 3000
+env: {}
+compose: |
+  services:
+    metabase:
+      image: metabase/metabase:latest
+      restart: unless-stopped
+      environment:
+        - MB_DB_FILE=/metabase-data/metabase.db
+      volumes:
+        - data:/metabase-data
+  volumes:
+    data: {}

@@ -1,0 +1,39 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Gitea"
+description: "Git self-hosted leve (com PostgreSQL) — repositórios, issues e pull requests."
+icon: merge
+category: devops
+website: "https://about.gitea.com"
+docs: "https://docs.gitea.com"
+main: gitea
+port: 3000
+env:
+  DB_PASSWORD: "$generate:password"
+compose: |
+  services:
+    gitea:
+      image: gitea/gitea:1
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - GITEA__database__DB_TYPE=postgres
+        - GITEA__database__HOST=db:5432
+        - GITEA__database__NAME=gitea
+        - GITEA__database__USER=gitea
+        - GITEA__database__PASSWD=${DB_PASSWORD}
+      volumes:
+        - data:/data
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        - POSTGRES_USER=gitea
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=gitea
+      volumes:
+        - db:/var/lib/postgresql/data
+  volumes:
+    data: {}
+    db: {}

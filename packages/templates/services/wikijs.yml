@@ -1,0 +1,36 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "Wiki.js"
+description: "Wiki moderna com editor Markdown (com PostgreSQL)."
+icon: menu_book
+category: cms
+website: "https://js.wiki"
+main: wiki
+port: 3000
+env:
+  DB_PASSWORD: "$generate:password"
+compose: |
+  services:
+    wiki:
+      image: ghcr.io/requarks/wiki:2
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - DB_TYPE=postgres
+        - DB_HOST=db
+        - DB_PORT=5432
+        - DB_USER=wiki
+        - DB_PASS=${DB_PASSWORD}
+        - DB_NAME=wiki
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        - POSTGRES_USER=wiki
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=wiki
+      volumes:
+        - db:/var/lib/postgresql/data
+  volumes:
+    db: {}

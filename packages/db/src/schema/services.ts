@@ -1,11 +1,11 @@
-import { integer, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
 import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
 
-export const serviceStatusEnum = pgEnum("service_status", ["idle", "provisioning", "running", "error"]);
+export const serviceStatusEnum = pgEnum("service_status", ["idle", "provisioning", "running", "stopped", "error"]);
 
 export const services = pgTable("services", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -28,6 +28,16 @@ export const services = pgTable("services", {
   // Application.envContent, user-editable before/after provisioning.
   envContent: encryptedText("env_content").default("").notNull(),
   domain: varchar("domain", { length: 255 }),
+  // Stack services (a template or a pasted compose file): the compose text and where it came from.
+  // null compose = a legacy single-container service described by catalog_key.
+  composeContent: text("compose_content"),
+  templateKey: varchar("template_key", { length: 100 }),
+  // The compose service that also answers to the plain name on the environment network.
+  mainService: varchar("main_service", { length: 64 }),
+  // Domains per container: [{ service, domain, port }].
+  domains: jsonb("domains").$type<Array<{ service: string; domain: string; port: number }>>().default([]).notNull(),
+  // Output of the last deploy of the stack, so a failure is readable in the panel.
+  lastLog: text("last_log").default("").notNull(),
   ...resourceLimitColumns(),
   status: serviceStatusEnum("status").default("idle").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

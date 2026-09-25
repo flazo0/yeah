@@ -1,0 +1,34 @@
+# Template de serviço do yeah. Campos: name, description, icon (Material Symbols), category, tags, main (serviço que recebe o domínio),
+# port (porta desse serviço), env (valores iniciais; "$generate:password|hex|base64" gera um segredo novo a cada instância) e compose.
+name: "NocoDB"
+description: "Planilha/Airtable open source sobre PostgreSQL."
+icon: grid_on
+category: database
+website: "https://nocodb.com"
+main: nocodb
+port: 8080
+env:
+  DB_PASSWORD: "$generate:password"
+compose: |
+  services:
+    nocodb:
+      image: nocodb/nocodb:latest
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - NC_DB=pg://db:5432?u=nocodb&p=${DB_PASSWORD}&d=nocodb
+      volumes:
+        - data:/usr/app/data
+    db:
+      image: postgres:16-alpine
+      restart: unless-stopped
+      environment:
+        - POSTGRES_USER=nocodb
+        - POSTGRES_PASSWORD=${DB_PASSWORD}
+        - POSTGRES_DB=nocodb
+      volumes:
+        - db:/var/lib/postgresql/data
+  volumes:
+    data: {}
+    db: {}
