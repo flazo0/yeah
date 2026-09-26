@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { ApplicationVolumeDto, VolumeBackupDto, VolumeKind } from "@yeah/shared";
+import { useRoute } from "vue-router";
+import type { ApplicationVolumeDto, S3StorageDto, VolumeBackupDto, VolumeKind } from "@yeah/shared";
 import StatusBadge from "../../components/StatusBadge.vue";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
 
+const teamId = useRoute().params.teamId as string;
+const storages = ref<S3StorageDto[]>([]);
+const storageId = ref("");
 const volumes = ref<ApplicationVolumeDto[]>([]);
 const kind = ref<VolumeKind>("volume");
 const name = ref("");
@@ -46,7 +50,7 @@ async function loadBackups() {
 async function backupVolume(volume: ApplicationVolumeDto) {
   error.value = "";
   try {
-    await api.post(`${basePath}/volumes/${volume.id}/backup`, {});
+    await api.post(`${basePath}/volumes/${volume.id}/backup`, { storageId: storageId.value || null });
     await loadBackups();
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao iniciar o backup";
@@ -84,6 +88,7 @@ const size = (n: number | null) => (!n ? "-" : n < 1048576 ? `${(n / 1024).toFix
 
 onMounted(() => {
   void load();
+  api.get<{ storages: S3StorageDto[] }>(`/teams/${teamId}/storages`).then((r) => (storages.value = r.storages)).catch(() => undefined);
   void loadBackups();
   poll = setInterval(() => {
     if (backupBusy.value) void loadBackups();
@@ -250,6 +255,13 @@ async function saveEdit(v: ApplicationVolumeDto) {
         <strong>substitui</strong> o conteúdo atual do volume e reinicia a aplicação. Baixe os arquivos pra guardá-los fora do servidor.
       </p>
     </div>
+    <div v-if="storages.length" class="card-body" style="display: flex; align-items: center; gap: 8px">
+      <label for="backup-destination" class="hint" style="margin: 0">Guardar em</label>
+      <select id="backup-destination" v-model="storageId" class="input" style="max-width: 320px">
+        <option value="">Neste servidor</option>
+        <option v-for="st in storages" :key="st.id" :value="st.id">S3: {{ st.name }} ({{ st.bucket }})</option>
+      </select>
+    </div>
     <div v-if="backups.length" class="table-wrap">
       <table>
         <thead><tr><th>Quando</th><th>Volume</th><th>Operação</th><th>Status</th><th>Tamanho</th><th></th></tr></thead>
@@ -260,7 +272,7 @@ async function saveEdit(v: ApplicationVolumeDto) {
               <td class="mono">{{ b.label }}</td>
               <td>{{ b.operation === "backup" ? "backup" : "restore" }}</td>
               <td><StatusBadge :status="b.status" kind="job" /></td>
-              <td class="mono">{{ size(b.sizeBytes) }}</td>
+              <td class="mono">{{ size(b.sizeBytes) }}<span v-if="b.inS3" class="hint"> · S3</span></td>
               <td>
                 <div class="btn-row">
                   <template v-if="b.operation === 'backup' && b.status === 'success'">

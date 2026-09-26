@@ -1,0 +1,2 @@
+ALTER TABLE "volume_backups" ADD COLUMN "s3_storage_id" uuid;--> statement-breakpoint
+ALTER TABLE "volume_backups" ADD CONSTRAINT "volume_backups_s3_storage_id_s3_storages_id_fk" FOREIGN KEY ("s3_storage_id") REFERENCES "public"."s3_storages"("id") ON DELETE set null ON UPDATE no action;

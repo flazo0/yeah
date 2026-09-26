@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { ServiceVolumeDto, VolumeBackupDto } from "@yeah/shared";
+import { useRoute } from "vue-router";
+import type { S3StorageDto, ServiceVolumeDto, VolumeBackupDto } from "@yeah/shared";
 import StatusBadge from "../../components/StatusBadge.vue";
 import { api, ApiError } from "../../lib/api";
 import { useServiceContext } from "../../composables/useServiceContext";
 
 const { basePath, error } = useServiceContext();
 
+const teamId = useRoute().params.teamId as string;
+const storages = ref<S3StorageDto[]>([]);
+const storageId = ref("");
 const volumes = ref<ServiceVolumeDto[]>([]);
 const backups = ref<VolumeBackupDto[]>([]);
 const loaded = ref(false);
@@ -27,6 +31,7 @@ async function loadBackups() {
 async function load() {
   try {
     volumes.value = (await api.get<{ volumes: ServiceVolumeDto[] }>(`${basePath}/volumes`)).volumes;
+    storages.value = (await api.get<{ storages: S3StorageDto[] }>(`/teams/${teamId}/storages`)).storages;
     await loadBackups();
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar os volumes";
@@ -38,7 +43,7 @@ async function load() {
 async function backupVolume(v: ServiceVolumeDto) {
   error.value = "";
   try {
-    await api.post(`${basePath}/volumes/${encodeURIComponent(v.key)}/backup`, {});
+    await api.post(`${basePath}/volumes/${encodeURIComponent(v.key)}/backup`, { storageId: storageId.value || null });
     await loadBackups();
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao iniciar o backup";
@@ -95,14 +100,21 @@ onBeforeUnmount(() => {
     <div class="card-body">
       <p class="hint" style="margin: 0">
         <strong>Volume persistente não é backup:</strong> ele sobrevive a redeploys, mas se o servidor morrer ou o serviço for excluído, os dados vão junto.
-        "Backup" cria um <span class="mono">.tar.gz</span> do conteúdo do volume, no servidor (guardamos os 5 mais recentes de cada). Restaurar
+        "Backup" cria um <span class="mono">.tar.gz</span> do conteúdo do volume, no servidor ou num destino S3 (guardamos os 5 mais recentes de cada). Restaurar
         <strong>substitui</strong> o conteúdo do volume e reinicia os containers da stack. Baixe os arquivos pra guardá-los fora do servidor.
       </p>
     </div>
     <div v-if="loaded && volumes.length === 0" class="card-body">
       <p class="hint" style="margin: 0">O compose deste serviço não declara volumes nomeados (a chave <span class="mono">volumes:</span> no nível de cima), então não há o que copiar.</p>
     </div>
-    <div v-else-if="volumes.length" class="table-wrap">
+    <div v-if="volumes.length && storages.length" class="card-body" style="display: flex; align-items: center; gap: 8px">
+      <label for="backup-destination" class="hint" style="margin: 0">Guardar em</label>
+      <select id="backup-destination" v-model="storageId" class="input" style="max-width: 320px">
+        <option value="">Neste servidor</option>
+        <option v-for="st in storages" :key="st.id" :value="st.id">S3: {{ st.name }} ({{ st.bucket }})</option>
+      </select>
+    </div>
+    <div v-if="volumes.length" class="table-wrap">
       <table>
         <thead><tr><th>Volume</th><th>Nome no Docker</th><th></th></tr></thead>
         <tbody>
@@ -128,7 +140,7 @@ onBeforeUnmount(() => {
               <td class="mono">{{ b.label }}</td>
               <td>{{ b.operation === "backup" ? "backup" : "restore" }}</td>
               <td><StatusBadge :status="b.status" kind="job" /></td>
-              <td class="mono">{{ size(b.sizeBytes) }}</td>
+              <td class="mono">{{ size(b.sizeBytes) }}<span v-if="b.inS3" class="hint"> · S3</span></td>
               <td>
                 <div class="btn-row">
                   <template v-if="b.operation === 'backup' && b.status === 'success'">

@@ -1,9 +1,9 @@
-import { Elysia } from "elysia";
+import { Elysia, t } from "elysia";
 import { and, desc, eq } from "drizzle-orm";
-import { servers, volumeBackups, type VolumeBackup } from "@yeah/db";
-import { composeNamedVolumes, type VolumeBackupDto } from "@yeah/shared";
-import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
+import { volumeBackups } from "@yeah/db";
+import { composeNamedVolumes } from "@yeah/shared";
 import { requireEnvironmentScope } from "../lib/scope";
+import { findTeamStorage, removeVolumeBackupFile, volumeBackupDownload, volumeBackupDto } from "../lib/volumeBackupFiles";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -11,22 +11,6 @@ import { volumeBackupQueue } from "../lib/queue";
 import { loadService } from "./services";
 
 const stackProject = (serviceId: string) => `yeah-svc-${serviceId}`;
-
-function toDto(b: VolumeBackup): VolumeBackupDto {
-  return {
-    id: b.id,
-    volumeId: null,
-    label: b.label,
-    operation: b.operation,
-    status: b.status,
-    log: b.log,
-    sizeBytes: b.sizeBytes,
-    sourceBackupId: b.sourceBackupId,
-    startedAt: b.startedAt ? b.startedAt.toISOString() : null,
-    finishedAt: b.finishedAt ? b.finishedAt.toISOString() : null,
-    createdAt: b.createdAt.toISOString(),
-  };
-}
 
 // Backups of the named volumes a stack service declares in its compose file: a tar.gz on the server per
 // volume (newest five kept), restorable (the stack is stopped around it) and downloadable. Same model as
@@ -58,9 +42,9 @@ export const serviceVolumeBackupRoutes = new Elysia({
       return { error: sctx.error };
     }
     const rows = await db.select().from(volumeBackups).where(and(eq(volumeBackups.ownerType, "service"), eq(volumeBackups.ownerId, sctx.service.id))).orderBy(desc(volumeBackups.createdAt)).limit(50);
-    return { backups: rows.map(toDto) };
+    return { backups: rows.map(volumeBackupDto) };
   })
-  .post("/:serviceId/volumes/:key/backup", async ({ sctx, params, set }) => {
+  .post("/:serviceId/volumes/:key/backup", async ({ sctx, params, body, set }) => {
     if ("error" in sctx) {
       set.status = sctx.status;
       return { error: sctx.error };
@@ -80,10 +64,15 @@ export const serviceVolumeBackupRoutes = new Elysia({
       set.status = 409;
       return { error: "já há uma operação em andamento neste volume" };
     }
-    const [row] = await db.insert(volumeBackups).values({ teamId: sctx.service.teamId, ownerType: "service", ownerId: sctx.service.id, label: volume.key, operation: "backup" }).returning();
+    const storageId = body?.storageId ?? null;
+    if (storageId && !(await findTeamStorage(sctx.service.teamId, storageId))) {
+      set.status = 404;
+      return { error: "destino S3 não encontrado" };
+    }
+    const [row] = await db.insert(volumeBackups).values({ teamId: sctx.service.teamId, ownerType: "service", ownerId: sctx.service.id, label: volume.key, operation: "backup", s3StorageId: storageId }).returning();
     await volumeBackupQueue.add("backup", { backupId: row!.id });
-    return { backup: toDto(row!) };
-  })
+    return { backup: volumeBackupDto(row!) };
+  }, { body: t.Optional(t.Object({ storageId: t.Optional(t.Union([t.String(), t.Null()])) })) })
   .post("/:serviceId/volume-backups/:backupId/restore", async ({ sctx, params, set }) => {
     if ("error" in sctx) {
       set.status = sctx.status;
@@ -107,7 +96,7 @@ export const serviceVolumeBackupRoutes = new Elysia({
       .values({ teamId: sctx.service.teamId, ownerType: "service", ownerId: sctx.service.id, label: source.label, operation: "restore", sourceBackupId: source.id })
       .returning();
     await volumeBackupQueue.add("restore", { backupId: row!.id });
-    return { backup: toDto(row!) };
+    return { backup: volumeBackupDto(row!) };
   })
   .get("/:serviceId/volume-backups/:backupId/download", async ({ sctx, params, set }) => {
     if ("error" in sctx) {
@@ -119,19 +108,12 @@ export const serviceVolumeBackupRoutes = new Elysia({
       set.status = 404;
       return { error: "backup file not found" };
     }
-    const [server] = await db.select().from(servers).where(eq(servers.id, sctx.service.serverId)).limit(1);
-    if (!server) {
+    const res = await volumeBackupDownload(b, sctx.service.serverId);
+    if (!res) {
       set.status = 404;
-      return { error: "server not found" };
+      return { error: "backup file not found" };
     }
-    // Bounded SFTP read for a download the browser is waiting on (same exception as database backups).
-    const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
-    try {
-      const buf = await readRemoteFile(conn, b.filePath);
-      return new Response(new Uint8Array(buf), { headers: { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="${b.filePath.split("/").pop()}"` } });
-    } finally {
-      conn.end();
-    }
+    return res;
   })
   .delete("/:serviceId/volume-backups/:backupId", async ({ sctx, params, set }) => {
     if ("error" in sctx) {
@@ -143,22 +125,7 @@ export const serviceVolumeBackupRoutes = new Elysia({
       set.status = 404;
       return { error: "backup not found" };
     }
-    // Only an archive owns a file; a restore row merely points at one.
-    if (b.operation === "backup" && b.filePath) {
-      const [server] = await db.select().from(servers).where(eq(servers.id, sctx.service.serverId)).limit(1);
-      if (server) {
-        try {
-          const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
-          try {
-            await execStream(conn, `rm -f ${shellQuote(b.filePath)}`, () => undefined);
-          } finally {
-            conn.end();
-          }
-        } catch (err) {
-          console.error("[api] failed to delete volume backup file:", err);
-        }
-      }
-    }
+    await removeVolumeBackupFile(b, sctx.service.serverId);
     await db.delete(volumeBackups).where(eq(volumeBackups.id, b.id));
     return { ok: true };
   });

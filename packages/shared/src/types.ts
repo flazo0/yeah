@@ -556,6 +556,8 @@ export interface RegistryDto {
 export interface VolumeBackupDto {
   id: string;
   volumeId: string | null;
+  /** True when the archive lives in S3 instead of on the server. */
+  inS3: boolean;
   label: string;
   operation: "backup" | "restore";
   status: BackupExecutionStatus;

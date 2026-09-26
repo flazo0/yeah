@@ -1,7 +1,8 @@
 import { and, desc, eq, type SQL } from "drizzle-orm";
-import { applicationVolumes, applications, servers, services, volumeBackups, type VolumeBackup } from "@yeah/db";
+import { applicationVolumes, applications, s3Storages, servers, services, volumeBackups, type VolumeBackup } from "@yeah/db";
 import { composeLifecycleCommand, composeNamedVolumes } from "@yeah/shared";
-import { connectSsh, execStream, shellQuote, type Client } from "@yeah/ssh";
+import { connectSsh, execStream, readRemoteFile, shellQuote, writeRemoteFile, type Client } from "@yeah/ssh";
+import { s3ClientFor } from "@yeah/storage";
 import type { VolumeBackupJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
@@ -83,12 +84,29 @@ export function makeVolumeBackupProcessor() {
         await append("\n\x1b[32mBackup concluído.\x1b[0m\n");
         await applyRetention(conn, target);
       } else {
-        const commands = target.restore(sourceRow.filePath!);
-        await run(commands.stop, target.stopLabel);
+        let archive = sourceRow.filePath!;
+        let staged: string | null = null;
+        if (sourceRow.s3StorageId) {
+          const [storage] = await db.select().from(s3Storages).where(eq(s3Storages.id, sourceRow.s3StorageId)).limit(1);
+          if (!storage) throw new Error("o destino S3 desse backup não existe mais");
+          const dir = volumeBackupsDir(target.ownerId);
+          staged = `${dir}/restore-${row.id}.tar.gz`;
+          await run(`mkdir -p ${shellQuote(dir)}`, "preparando a pasta");
+          await append(`[36m$ baixando do S3 (${storage.name})[0m
+`);
+          await writeRemoteFile(conn, staged, new Uint8Array(await s3ClientFor(storage).file(sourceRow.filePath!).arrayBuffer()));
+          archive = staged;
+        }
+        const commands = target.restore(archive);
         try {
-          await run(commands.replace, `restaurando ${target.label}`);
+          await run(commands.stop, target.stopLabel);
+          try {
+            await run(commands.replace, `restaurando ${target.label}`);
+          } finally {
+            await run(commands.start, target.startLabel);
+          }
         } finally {
-          await run(commands.start, target.startLabel);
+          if (staged) await execStream(conn, `rm -f ${shellQuote(staged)}`, () => undefined);
         }
         await db.update(volumeBackups).set({ status: "success", finishedAt: new Date(), filePath: sourceRow.filePath }).where(eq(volumeBackups.id, row.id));
         await append("\n\x1b[32mRestore concluído.\x1b[0m\n");
@@ -154,7 +172,10 @@ async function applyRetention(conn: Client, target: Target) {
     .where(and(eq(volumeBackups.ownerId, target.ownerId), target.sameVolume, eq(volumeBackups.operation, "backup"), eq(volumeBackups.status, "success")))
     .orderBy(desc(volumeBackups.createdAt));
   for (const old of rows.slice(KEEP_VOLUME_BACKUPS)) {
-    if (old.filePath) await execStream(conn, `rm -f ${shellQuote(old.filePath)}`, () => undefined);
+    if (old.filePath && old.s3StorageId) {
+      const [storage] = await db.select().from(s3Storages).where(eq(s3Storages.id, old.s3StorageId)).limit(1);
+      if (storage) await s3ClientFor(storage).delete(old.filePath).catch((err) => console.error("[worker] failed to delete S3 volume backup:", err));
+    } else if (old.filePath) await execStream(conn, `rm -f ${shellQuote(old.filePath)}`, () => undefined);
     await db.delete(volumeBackups).where(eq(volumeBackups.id, old.id));
   }
 }
