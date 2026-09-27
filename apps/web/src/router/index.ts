@@ -12,6 +12,7 @@ import ServerNewPage from "../pages/ServerNewPage.vue";
 import ServerLayout from "../layouts/ServerLayout.vue";
 import ServerGeneralPage from "../pages/server/ServerGeneralPage.vue";
 import ServerProxyPage from "../pages/server/ServerProxyPage.vue";
+import ServerMaintenancePage from "../pages/server/ServerMaintenancePage.vue";
 import ServerMetricsPage from "../pages/server/ServerMetricsPage.vue";
 import ServerTerminalPage from "../pages/server/ServerTerminalPage.vue";
 import RegistriesPage from "../pages/RegistriesPage.vue";
@@ -73,6 +74,7 @@ export const router = createRouter({
       children: [
         { path: "general", name: "server-general", component: ServerGeneralPage },
         { path: "proxy", name: "server-proxy", component: ServerProxyPage },
+        { path: "maintenance", name: "server-maintenance", component: ServerMaintenancePage },
         { path: "metrics", name: "server-metrics", component: ServerMetricsPage },
         { path: "terminal", name: "server-terminal", component: ServerTerminalPage },
       ],

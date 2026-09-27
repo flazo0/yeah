@@ -3,6 +3,7 @@ import {
   createApplicationLifecycleQueue,
   createDatabaseBackupQueue,
   createDatabaseProvisionQueue,
+  createDockerCleanupQueue,
   createPlatformOperationQueue,
   createProxyProvisionQueue,
   createRedisConnection,
@@ -31,3 +32,4 @@ export const applicationLifecycleQueue = createApplicationLifecycleQueue(connect
 export const scheduledTaskQueue = createScheduledTaskQueue(connection);
 export const databaseRestoreQueue = createDatabaseRestoreQueue(connection);
 export const volumeBackupQueue = createVolumeBackupQueue(connection);
+export const dockerCleanupQueue = createDockerCleanupQueue(connection);

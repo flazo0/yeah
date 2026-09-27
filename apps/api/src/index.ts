@@ -4,6 +4,7 @@ import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
 import { teamRoutes } from "./routes/teams";
 import { serverRoutes } from "./routes/servers";
+import { dockerCleanupRoutes } from "./routes/dockerCleanup";
 import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
 import { applicationRoutes } from "./routes/applications";
@@ -61,6 +62,7 @@ const app = new Elysia()
   .use(authRoutes)
   .use(teamRoutes)
   .use(serverRoutes)
+  .use(dockerCleanupRoutes)
   .use(storageRoutes)
   .use(projectRoutes)
   .use(applicationRoutes)

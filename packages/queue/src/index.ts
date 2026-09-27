@@ -15,6 +15,7 @@ export const SERVICE_PROVISION_QUEUE = "service-provision";
 export const SERVER_METRICS_QUEUE = "server-metrics";
 export const TLS_CHECK_QUEUE = "tls-check";
 export const PLATFORM_OPERATION_QUEUE = "platform-operation";
+export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -253,6 +254,28 @@ export async function addBackupSchedule(
 
 export async function removeBackupSchedule(queue: Queue<DatabaseBackupJobData>, scheduleId: string): Promise<void> {
   await queue.removeJobScheduler(scheduleId);
+}
+
+export interface DockerCleanupJobData {
+  serverId: string;
+  manual?: boolean;
+}
+
+export function createDockerCleanupQueue(connection: Redis): Queue<DockerCleanupJobData> {
+  return new Queue<DockerCleanupJobData>(DOCKER_CLEANUP_QUEUE, { connection });
+}
+
+export function createDockerCleanupWorker(connection: Redis, processor: Processor<DockerCleanupJobData>): Worker<DockerCleanupJobData> {
+  return new Worker<DockerCleanupJobData>(DOCKER_CLEANUP_QUEUE, processor, { connection });
+}
+
+/** One schedule per server, keyed by the server's own id (upsert re-keys cron/timezone in place). */
+export async function addDockerCleanupSchedule(queue: Queue<DockerCleanupJobData>, serverId: string, cron: string, timezone: string): Promise<void> {
+  await queue.upsertJobScheduler(serverId, { pattern: cron, tz: timezone }, { data: { serverId } });
+}
+
+export async function removeDockerCleanupSchedule(queue: Queue<DockerCleanupJobData>, serverId: string): Promise<void> {
+  await queue.removeJobScheduler(serverId);
 }
 
 export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {

@@ -306,6 +306,29 @@ export interface BackupScheduleDto {
   createdAt: string;
 }
 
+export interface DockerCleanupScheduleDto {
+  id: string;
+  serverId: string;
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  pruneImages: boolean;
+  pruneVolumes: boolean;
+  createdAt: string;
+}
+
+export interface DockerCleanupExecutionDto {
+  id: string;
+  serverId: string;
+  status: BackupExecutionStatus;
+  log: string;
+  reclaimedBytes: number | null;
+  manual: boolean;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
 export interface DatabaseRestoreDto {
   id: string;
   databaseId: string;
@@ -418,7 +441,8 @@ export type NotificationEventType =
   | "server.down"
   | "server.reconnected"
   | "server.metrics"
-  | "tls.expiring";
+  | "tls.expiring"
+  | "docker-cleanup.failed";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -429,6 +453,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "server.reconnected": "Servidor reconectou",
   "server.metrics": "CPU/RAM/disco no limite",
   "tls.expiring": "Certificado TLS perto de expirar",
+  "docker-cleanup.failed": "Limpeza do Docker falhou",
 };
 
 export interface NotificationChannelDto {

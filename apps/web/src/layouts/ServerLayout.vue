@@ -56,6 +56,7 @@ onUnmounted(unsubscribe);
 const tabs = [
   { path: "general", label: "Geral", icon: "tune" },
   { path: "proxy", label: "Proxy", icon: "shield_lock" },
+  { path: "maintenance", label: "Manutenção", icon: "cleaning_services" },
   { path: "metrics", label: "Recursos", icon: "monitor_heart" },
   { path: "terminal", label: "Terminal", icon: "terminal" },
 ];

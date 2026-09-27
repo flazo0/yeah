@@ -19,3 +19,4 @@ export * from "./tags";
 export * from "./registries";
 export * from "./gitSources";
 export * from "./volumeBackups";
+export * from "./dockerCleanups";
