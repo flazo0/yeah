@@ -48,6 +48,7 @@ const environmentId = computed(() =>
 
 const isProjectsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}`);
 const isServersRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/servers`));
+const isKeysTokensRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/keys-tokens`);
 const isRegistriesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/registries`);
 const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/storages`);
 const isSourcesRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/sources`));
@@ -62,6 +63,7 @@ const isUpdatesRoute = computed(() => Boolean(teamId.value) && route.path === `/
 const breadcrumb = computed(() => {
   if (!teamId.value) return [];
   if (isServersRoute.value) return ["Servidores"];
+  if (isKeysTokensRoute.value) return ["Keys & Tokens"];
   if (isStoragesRoute.value) return ["Armazenamento"];
   if (isRegistriesRoute.value) return ["Registries"];
   if (isSourcesRoute.value) return ["Fontes"];
@@ -109,6 +111,10 @@ const breadcrumb = computed(() => {
           <RouterLink :to="`/teams/${teamId}/sources`" class="sidebar-link" :class="{ active: isSourcesRoute }">
             <span class="material-symbols-outlined">hub</span>
             Fontes
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/keys-tokens`" class="sidebar-link" :class="{ active: isKeysTokensRoute }">
+            <span class="material-symbols-outlined">key</span>
+            Keys &amp; Tokens
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/variables`" class="sidebar-link" :class="{ active: isVariablesRoute }">
             <span class="material-symbols-outlined">data_object</span>

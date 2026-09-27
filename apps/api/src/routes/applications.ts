@@ -11,6 +11,7 @@ import {
   githubInstallations,
   gitSources,
   servers,
+  sshKeys,
   type Application,
   type ApplicationVolume,
   type Deployment,
@@ -267,14 +268,24 @@ export const applicationRoutes = new Elysia({
           set.status = 400;
           return { error: "informe repoUrl, githubRepo ou uma fonte Git" };
         }
-        if (body.useDeployKey) {
+        if (body.useDeployKey || body.deployKeySshKeyId) {
           if (!isSshGitUrl(repoUrl)) {
             set.status = 400;
             return { error: "deploy key só funciona com URL SSH (git@host:org/repo.git ou ssh://...)" };
           }
-          const pair = generateSshKeyPair(`yeah-deploy-${body.name}`);
-          deployKey = pair.privateKey;
-          deployKeyPublic = pair.publicKey;
+          if (body.deployKeySshKeyId) {
+            const [key] = await db.select().from(sshKeys).where(and(eq(sshKeys.id, body.deployKeySshKeyId), eq(sshKeys.teamId, params.teamId))).limit(1);
+            if (!key) {
+              set.status = 404;
+              return { error: "ssh key not found" };
+            }
+            deployKey = key.privateKey;
+            deployKeyPublic = key.publicKey;
+          } else {
+            const pair = generateSshKeyPair(`yeah-deploy-${body.name}`);
+            deployKey = pair.privateKey;
+            deployKeyPublic = pair.publicKey;
+          }
         }
         if (buildPack === "docker_compose") {
           composeFile = (body.composeFile ?? DEFAULT_COMPOSE_FILE).trim() || DEFAULT_COMPOSE_FILE;
@@ -346,6 +357,7 @@ export const applicationRoutes = new Elysia({
         composeFile: t.Optional(t.String({ maxLength: 255 })),
         composeService: t.Optional(t.String({ maxLength: 64 })),
         useDeployKey: t.Optional(t.Boolean()),
+        deployKeySshKeyId: t.Optional(t.String()),
         gitSourceId: t.Optional(t.String()),
         gitRepo: t.Optional(t.String({ maxLength: 255 })),
         repoUrl: t.Optional(t.String()),

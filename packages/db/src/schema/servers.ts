@@ -1,5 +1,6 @@
 import { boolean, integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
+import { sshKeys } from "./sshKeys";
 import { encryptedText } from "../encryption";
 
 export const serverStatusEnum = pgEnum("server_status", ["pending", "connected", "error"]);
@@ -16,6 +17,10 @@ export const servers = pgTable("servers", {
   sshUser: varchar("ssh_user", { length: 100 }).default("root").notNull(),
   // Encrypted at rest (AES-256-GCM, see ../encryption.ts) — reads/writes stay plaintext to callers.
   privateKey: encryptedText("private_key").notNull(),
+  // Set only when this server's key was copied in from Keys & Tokens (reused) — this is just
+  // provenance for the UI ("chave X") and to refuse deleting a key that's still in use; the connection
+  // itself always uses the copy in private_key above, never a live join to this row.
+  sshKeyId: uuid("ssh_key_id").references(() => sshKeys.id, { onDelete: "set null" }),
   // Seconds to wait for the SSH handshake (slow or far-away hosts need more than the default).
   sshTimeoutSeconds: integer("ssh_timeout_seconds").default(15).notNull(),
   status: serverStatusEnum("status").default("pending").notNull(),

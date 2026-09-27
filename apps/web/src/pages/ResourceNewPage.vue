@@ -12,6 +12,7 @@ import {
   type ServerDto,
   type ServiceTemplateDto,
   type ServiceDto,
+  type SshKeyDto,
 } from "@yeah/shared";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import Breadcrumb from "../components/Breadcrumb.vue";
@@ -232,6 +233,11 @@ async function loadGithub() {
   } catch {
     gitSourcesList.value = [];
   }
+  try {
+    sshKeysList.value = (await api.get<{ keys: SshKeyDto[] }>(`/teams/${teamId}/ssh-keys`)).keys;
+  } catch {
+    sshKeysList.value = [];
+  }
 }
 
 function suffix(): string {
@@ -326,8 +332,10 @@ const appForm = ref({
   composeService: "",
   gitSourceId: "",
   gitRepo: "",
+  deployKeySshKeyId: "",
 });
 const gitSourcesList = ref<GitSourceDto[]>([]);
+const sshKeysList = ref<SshKeyDto[]>([]);
 const gitRepos = ref<GitRepoDto[]>([]);
 const loadingGitRepos = ref(false);
 
@@ -380,7 +388,7 @@ async function createApp() {
     if (mode === "github") payload = { ...base, branch: f.branch, githubRepo: f.githubRepo };
     else if (mode === "gitsource") payload = { ...base, branch: f.branch, gitSourceId: f.gitSourceId, gitRepo: f.gitRepo };
     else if (mode === "public") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl };
-    else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, useDeployKey: true };
+    else if (mode === "deploykey") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, ...(f.deployKeySshKeyId ? { deployKeySshKeyId: f.deployKeySshKeyId } : { useDeployKey: true }) };
     else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
     else if (mode === "railpack") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "railpack" };
     else if (mode === "compose") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "docker_compose", composeFile: f.composeFile, composeService: f.composeService };
@@ -640,6 +648,16 @@ onMounted(() => {
           />
           <p v-if="appModal === 'deploykey'" class="hint" style="margin-top: 6px">
             Use a URL SSH. Depois de criar, o yeah mostra a chave pública pra você cadastrar no repositório como deploy key (só leitura).
+          </p>
+        </div>
+        <div v-if="appModal === 'deploykey' && sshKeysList.length > 0" class="form-group">
+          <label for="app-deploykey-existing">Deploy key</label>
+          <select id="app-deploykey-existing" v-model="appForm.deployKeySshKeyId" class="form-control">
+            <option value="">Gerar uma nova</option>
+            <option v-for="k in sshKeysList" :key="k.id" :value="k.id">{{ k.name }} (Keys &amp; Tokens)</option>
+          </select>
+          <p v-if="appForm.deployKeySshKeyId" class="hint" style="margin-top: 6px">
+            Essa chave precisa já estar cadastrada como deploy key no repositório — o yeah não recadastra sozinho.
           </p>
         </div>
 

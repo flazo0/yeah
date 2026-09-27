@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
 import { and, count, eq } from "drizzle-orm";
-import { applications, databases, servers, services, type Server } from "@yeah/db";
+import { applications, databases, servers, services, sshKeys, type Server } from "@yeah/db";
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
 import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
@@ -27,6 +27,7 @@ function toServerDto(server: Server): ServerDto {
     memPercent: server.memPercent,
     diskPercent: server.diskPercent,
     metricsCheckedAt: server.metricsCheckedAt ? server.metricsCheckedAt.toISOString() : null,
+    sshKeyId: server.sshKeyId,
     createdAt: server.createdAt.toISOString(),
   };
 }
@@ -73,6 +74,25 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
         return { error: "forbidden" };
       }
 
+      // Either paste/generate a key inline (privateKey), or reuse one already in Keys & Tokens
+      // (sshKeyId) — the row keeps its own copy either way, so rotating/deleting the reusable key
+      // later never breaks a connection that's already working.
+      let privateKey = body.privateKey ?? null;
+      let sshKeyId: string | null = null;
+      if (body.sshKeyId) {
+        const [key] = await db.select().from(sshKeys).where(and(eq(sshKeys.id, body.sshKeyId), eq(sshKeys.teamId, params.teamId))).limit(1);
+        if (!key) {
+          set.status = 404;
+          return { error: "ssh key not found" };
+        }
+        privateKey = key.privateKey;
+        sshKeyId = key.id;
+      }
+      if (!privateKey) {
+        set.status = 400;
+        return { error: "informe privateKey ou sshKeyId" };
+      }
+
       const [server] = await db
         .insert(servers)
         .values({
@@ -81,7 +101,8 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
           host: body.host,
           port: body.port ?? 22,
           sshUser: body.sshUser ?? "root",
-          privateKey: body.privateKey,
+          privateKey,
+          sshKeyId,
         })
         .returning();
       if (!server) {
@@ -97,7 +118,8 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
         host: t.String({ minLength: 1 }),
         port: t.Optional(t.Number()),
         sshUser: t.Optional(t.String()),
-        privateKey: t.String({ minLength: 1 }),
+        privateKey: t.Optional(t.String({ minLength: 1 })),
+        sshKeyId: t.Optional(t.String()),
       }),
     },
   )

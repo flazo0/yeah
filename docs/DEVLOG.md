@@ -662,3 +662,11 @@ A aba já tinha status e a config do Traefik (domínio wildcard, e-mail Let's En
 O comando é só `docker system prune -f`, com `-a` (imagens sem uso, não só as dangling) e `--volumes` (volumes sem uso, incluindo nomeados — por isso desligado por padrão e com aviso explícito na tela: um volume "sem uso" pode ser de um recurso que só está parado, não excluído). O espaço liberado sai de "Total reclaimed space: X MB" no próprio output do comando (`parseReclaimedBytes`, testado pros 5 sufixos que o Docker usa).
 
 **Não testado**: só `tsc`, `vue-tsc` e os testes unitários dos comandos passam (372 no total). Falta confirmar numa VPS real: o cron dispara sozinho, "rodar agora" com os dois toggles ligados/desligados, o parse do espaço liberado contra a saída real do Docker (o formato pode variar por versão), e a notificação em falha.
+
+## Fase 5: Keys & Tokens (chaves SSH reutilizáveis) — **não testado**
+
+`ssh_keys` (por time, nome único, chave privada criptografada + pública em claro — migração 0035, junto de `servers.ssh_key_id` nullable). Rotas `/teams/:teamId/ssh-keys`: gerar (`generateSshKeyPair` já existente), importar (exige colar as duas metades — deriving a chave pública a partir só da privada, em qualquer formato/algoritmo, é o tipo de parsing que vale a pena não reinventar; então pede as duas), listar com quantos servidores usam cada uma, excluir (409 se ainda em uso). A privada nunca é devolvida pela API depois de guardada.
+
+`POST /teams/:teamId/servers` aceita `sshKeyId` como alternativa a `privateKey` — copia a chave da tabela pro `servers.private_key` de qualquer forma (a conexão nunca faz join ao vivo com `ssh_keys`; o `ssh_key_id` guardado é só rastreabilidade e o que a exclusão confere). Deploy key de aplicação (repositório privado via SSH) ganhou o mesmo caminho: `deployKeySshKeyId` no lugar de `useDeployKey` copia a chave existente em vez de gerar uma nova. Tela `KeysTokensPage.vue` nova, link "Keys & Tokens" na sidebar (Infraestrutura); os formulários de novo servidor e de deploy key ganharam um seletor pra escolher uma chave já cadastrada.
+
+**Não testado**: só `tsc`, `vue-tsc` e os testes unitários passam (372, sem novos — nada aqui é lógica pura isolável; rotas de API não têm teste unitário no projeto, e o e2e fica pra quando houver uma VPS real).

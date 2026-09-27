@@ -17,6 +17,7 @@ import ServerMetricsPage from "../pages/server/ServerMetricsPage.vue";
 import ServerTerminalPage from "../pages/server/ServerTerminalPage.vue";
 import RegistriesPage from "../pages/RegistriesPage.vue";
 import StoragesPage from "../pages/StoragesPage.vue";
+import KeysTokensPage from "../pages/KeysTokensPage.vue";
 import SourcesPage from "../pages/SourcesPage.vue";
 import SourceDetailPage from "../pages/SourceDetailPage.vue";
 import NotificationsPage from "../pages/NotificationsPage.vue";
@@ -80,6 +81,7 @@ export const router = createRouter({
       ],
     },
     { path: "/teams/:teamId/storages", component: StoragesPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/keys-tokens", component: KeysTokensPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/registries", component: RegistriesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/sources", component: SourcesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/sources/:sourceId", component: SourceDetailPage, meta: { requiresAuth: true }, props: true },

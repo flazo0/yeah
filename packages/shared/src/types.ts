@@ -66,6 +66,19 @@ export interface ServerDto {
   memPercent: number | null;
   diskPercent: number | null;
   metricsCheckedAt: string | null;
+  /** Set when the server's key was copied in from an existing entry in Keys & Tokens. */
+  sshKeyId: string | null;
+  createdAt: string;
+}
+
+/** A reusable SSH keypair (Keys & Tokens). The private key never travels over the API. */
+export interface SshKeyDto {
+  id: string;
+  teamId: string;
+  name: string;
+  publicKey: string;
+  /** How many servers currently use this key — shown so deleting one isn't a surprise. */
+  serversUsing: number;
   createdAt: string;
 }
 

@@ -67,6 +67,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     id: "server-1",
     teamId: "team-1",
     name: "prod",
+    sshKeyId: null,
     host: "1.2.3.4",
     port: 22,
     sshUser: "root",
