@@ -113,7 +113,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [x] Catálogo com **busca, categorias e ícones** (usa o mesmo componente da Fase 1).
 - [x] Rede interna entre recursos do mesmo ambiente (**Destinations** = redes Docker): cada ambiente tem a rede `yeah-env-<id>`, e todo recurso entra nela com um alias (o nome do recurso) — aplicações (Dockerfile/imagem/estático), bancos, serviços em stack e agora também **aplicações Docker Compose** (mesmo esquema dos serviços: `<slug>-<serviço>` em todo container do projeto, e o serviço escolhido pro domínio também responde ao `<slug>` puro). Testado antes desta última parte (`psql` de outro container por `t-postgresql:5432`); a junção das apps compose **não foi testada** (só `tsc`/testes unitários — precisa de uma VPS real).
 - [x] Domínio por container dentro de uma stack compose (vários por container, porta por domínio, labels do Traefik por override).
-- [ ] Guia/modelo de **microsserviços**: várias apps + banco + fila no mesmo ambiente com rede compartilhada e variáveis compartilhadas.
+- [x] Guia/modelo de **microsserviços**: várias apps + banco + fila no mesmo ambiente com rede compartilhada e variáveis compartilhadas — `docs/GUIDE-microservices.md`. Deixa explícito um ponto que não estava documentado em lugar nenhum: a rede do ambiente é uma bridge Docker local ao servidor, então só funciona quando todos os recursos estão no mesmo servidor.
 
 **Bancos**
 - [x] Engines novos: **Dragonfly**, **KeyDB**, **ClickHouse** (criar, provisionar, conectar, healthcheck; backup de KeyDB e ClickHouse; o Dragonfly não tem cliente na imagem, então sem backup).
