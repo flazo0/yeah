@@ -16,6 +16,7 @@ export const SERVER_METRICS_QUEUE = "server-metrics";
 export const TLS_CHECK_QUEUE = "tls-check";
 export const PLATFORM_OPERATION_QUEUE = "platform-operation";
 export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
+export const CA_CERTIFICATE_QUEUE = "ca-certificate";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -276,6 +277,22 @@ export async function addDockerCleanupSchedule(queue: Queue<DockerCleanupJobData
 
 export async function removeDockerCleanupSchedule(queue: Queue<DockerCleanupJobData>, serverId: string): Promise<void> {
   await queue.removeJobScheduler(serverId);
+}
+
+export interface CaCertificateJobData {
+  serverId: string;
+  host: string;
+  action: "install" | "remove";
+  /** The CA's PEM content — required for "install", unused for "remove". */
+  pem?: string;
+}
+
+export function createCaCertificateQueue(connection: Redis): Queue<CaCertificateJobData> {
+  return new Queue<CaCertificateJobData>(CA_CERTIFICATE_QUEUE, { connection });
+}
+
+export function createCaCertificateWorker(connection: Redis, processor: Processor<CaCertificateJobData>): Worker<CaCertificateJobData> {
+  return new Worker<CaCertificateJobData>(CA_CERTIFICATE_QUEUE, processor, { connection });
 }
 
 export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {

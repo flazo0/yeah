@@ -489,6 +489,16 @@ export interface NotificationChannelDto {
   createdAt: string;
 }
 
+export interface CaCertificateDto {
+  id: string;
+  serverId: string;
+  name: string;
+  host: string;
+  status: BackupExecutionStatus;
+  error: string | null;
+  createdAt: string;
+}
+
 export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http";
 
 export interface LogDrainDto {

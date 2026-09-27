@@ -7,6 +7,7 @@ import {
   createVolumeBackupWorker,
   createDatabaseProvisionWorker,
   createDockerCleanupWorker,
+  createCaCertificateWorker,
   createPlatformOperationQueue,
   createPlatformOperationWorker,
   createProxyProvisionWorker,
@@ -30,6 +31,7 @@ import { makeRestoreDatabaseProcessor } from "./jobs/restoreDatabase";
 import { makeVolumeBackupProcessor } from "./jobs/volumeBackup";
 import { makeProvisionProxyProcessor } from "./jobs/provisionProxy";
 import { makeDockerCleanupProcessor } from "./jobs/dockerCleanup";
+import { makeCaCertificateProcessor } from "./jobs/caCertificate";
 import { makeProvisionServiceProcessor } from "./jobs/provisionService";
 import { makePlatformOperationProcessor } from "./jobs/platformOperation";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
@@ -61,6 +63,7 @@ const metricsSchedulerConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
 const tlsSchedulerConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
+const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
 const platformOperationPublishConnection = createRedisConnection(redisUrl);
 const platformOperationSelfQueueConnection = createRedisConnection(redisUrl);
@@ -134,6 +137,9 @@ platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platf
 const dockerCleanupWorker = createDockerCleanupWorker(dockerCleanupConnection, makeDockerCleanupProcessor());
 dockerCleanupWorker.on("failed", (job, err) => console.error(`[worker] docker-cleanup ${job?.id} failed:`, err.message));
 
+const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, makeCaCertificateProcessor());
+caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
+
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation and docker-cleanup jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup and ca-certificate jobs",
 );

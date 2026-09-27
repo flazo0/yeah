@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, onUnmounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import type { CaCertificateDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useServerContext } from "../../composables/useServerContext";
 import StatusBadge from "../../components/StatusBadge.vue";
@@ -63,6 +64,53 @@ async function testConnection() {
     testing.value = false;
   }
 }
+
+// ---- CA certificates (registries with a self-signed / private-CA TLS cert)
+const certs = ref<CaCertificateDto[]>([]);
+const certForm = ref({ name: "", host: "", pem: "" });
+const addingCert = ref(false);
+const certBasePath = () => `/teams/${teamId}/servers/${server.value!.id}/ca-certificates`;
+let certPoll: ReturnType<typeof setInterval> | undefined;
+
+async function loadCerts() {
+  if (!server.value) return;
+  try {
+    certs.value = (await api.get<{ certificates: CaCertificateDto[] }>(certBasePath())).certificates;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao carregar os certificados";
+  }
+}
+
+async function addCert() {
+  addingCert.value = true;
+  error.value = "";
+  try {
+    const res = await api.post<{ certificate: CaCertificateDto }>(certBasePath(), certForm.value);
+    certs.value.push(res.certificate);
+    certForm.value = { name: "", host: "", pem: "" };
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao adicionar o certificado";
+  } finally {
+    addingCert.value = false;
+  }
+}
+
+async function removeCert(cert: CaCertificateDto) {
+  try {
+    await api.delete(`${certBasePath()}/${cert.id}`);
+    cert.status = "queued";
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao remover o certificado";
+  }
+}
+
+onMounted(() => {
+  void loadCerts();
+  certPoll = setInterval(() => {
+    if (certs.value.some((c) => c.status === "queued")) void loadCerts();
+  }, 3000);
+});
+onBeforeUnmount(() => clearInterval(certPoll));
 </script>
 
 <template>
@@ -107,6 +155,60 @@ async function testConnection() {
           <button type="submit" class="btn btn-secondary" :disabled="savingTimeout">Salvar</button>
           <span v-if="timeoutSaved" class="hint">Salvo.</span>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">verified_user</span>
+      Certificados CA (registries)
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Se você usa um registry Docker próprio com certificado autoassinado (ou de uma CA interna), cadastre a CA aqui — o Docker deste
+        servidor passa a confiar em <span class="mono">host[:porta]</span> sem precisar de <span class="mono">--insecure-registry</span>.
+      </p>
+      <div v-if="certs.length" class="table-wrap mb-16">
+        <table>
+          <thead><tr><th>Nome</th><th>Host</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="cert in certs" :key="cert.id">
+              <td>{{ cert.name }}</td>
+              <td class="mono">{{ cert.host }}</td>
+              <td>
+                <StatusBadge :status="cert.status" kind="job" />
+                <span v-if="cert.error" class="hint" style="display: block; color: var(--bad)">{{ cert.error }}</span>
+              </td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="removeCert(cert)">
+                  <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
+                  Remover
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <form @submit.prevent="addCert">
+        <div class="form-row mb-16">
+          <div class="form-group" style="margin-bottom: 0">
+            <label for="ca-name">Nome</label>
+            <input id="ca-name" v-model="certForm.name" class="form-control" placeholder="registry-interno" required />
+          </div>
+          <div class="form-group" style="margin-bottom: 0">
+            <label for="ca-host">Host[:porta]</label>
+            <input id="ca-host" v-model="certForm.host" class="form-control mono" placeholder="registry.example.com:5000" required />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="ca-pem">Certificado da CA (PEM)</label>
+          <textarea id="ca-pem" v-model="certForm.pem" class="form-control mono" rows="6" placeholder="-----BEGIN CERTIFICATE-----" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-secondary" :disabled="addingCert">
+          <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+          {{ addingCert ? "adicionando..." : "Adicionar certificado" }}
+        </button>
       </form>
     </div>
   </div>

@@ -260,6 +260,13 @@
       "when": 1790543749636,
       "tag": "0036_log_drains",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790544145941,
+      "tag": "0037_ca_certificates",
+      "breakpoints": true
     }
   ]
 }

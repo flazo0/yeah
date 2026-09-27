@@ -5,6 +5,7 @@ import { authRoutes } from "./routes/auth";
 import { teamRoutes } from "./routes/teams";
 import { serverRoutes } from "./routes/servers";
 import { sshKeyRoutes } from "./routes/sshKeys";
+import { caCertificateRoutes } from "./routes/caCertificates";
 import { dockerCleanupRoutes } from "./routes/dockerCleanup";
 import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
@@ -65,6 +66,7 @@ const app = new Elysia()
   .use(teamRoutes)
   .use(serverRoutes)
   .use(sshKeyRoutes)
+  .use(caCertificateRoutes)
   .use(dockerCleanupRoutes)
   .use(storageRoutes)
   .use(projectRoutes)

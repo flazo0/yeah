@@ -678,3 +678,11 @@ Pacote novo `@yeah/logdrains` (mesmo desenho do `@yeah/notifications`: uma funç
 **Decisão de escopo, registrada na própria tela**: isso encaminha o log **inteiro de um job já concluído** (deploy, execução de tarefa agendada) — não um tail contínuo do stdout do container. Um tail de verdade precisaria de uma conexão SSH que fica aberta indefinidamente por recurso; hoje todo job do worker é "conecta, roda, desconecta" (server-check, deploy, backup, etc.), e mudar esse modelo só pra isso é um projeto à parte, não uma tarde. Ficou documentado pra não vender como algo que não é.
 
 **Testado**: 13 testes unitários dos 4 formatos de payload e do tratamento de erro/resposta não-2xx (mock de `fetch`, sem endpoint real). `tsc`, `vue-tsc`, 385 testes no total. **Não testado**: contra um Loki/Axiom/New Relic/Fluent Bit de verdade, nem a tela no navegador.
+
+## Fase 5: CA Certificate por servidor (registry com TLS próprio) — **não testado**
+
+`ca_certificates` (por servidor, host único por servidor — migração 0037): nome, host (`registry.example.com:5000`), o PEM da CA e status (fila do worker instala/remove, como toda mutação SSH — nada de exceção nova pra isso). Instalar é só `mkdir -p /etc/docker/certs.d/<host>` + escrever `ca.crt`; o Docker lê o diretório a cada pull, sem precisar reiniciar o daemon. Remover apaga o diretório inteiro (só tem esse arquivo lá, é tudo que o painel escreveu). Cartão na aba Geral do servidor, com o status de cada certificado (pode falhar por SSH/permissão, e a tela mostra o erro).
+
+**Escopo**: só cobre a metade "registry" do que o roadmap citava ("registry/proxy com certificado interno") — não achei um caso de uso real hoje pro Traefik precisar confiar numa CA própria (ele não fala TLS com nenhum backend interno; todo tráfego interno do painel é HTTP simples entre os containers). Deixei isso escrito em vez de inventar uma tela sem função.
+
+**Não testado**: só `tsc`, `vue-tsc` e os 3 testes unitários dos comandos passam (388 no total).

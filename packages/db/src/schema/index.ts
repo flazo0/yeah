@@ -22,3 +22,4 @@ export * from "./volumeBackups";
 export * from "./dockerCleanups";
 export * from "./sshKeys";
 export * from "./logDrains";
+export * from "./caCertificates";
