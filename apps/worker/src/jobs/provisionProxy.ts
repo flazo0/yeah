@@ -2,13 +2,12 @@ import { eq } from "drizzle-orm";
 import { servers } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ProxyProvisionJobData } from "@yeah/queue";
-import { PROXY_NETWORK_NAME } from "@yeah/shared";
+import { buildProxyRestartCommand, PROXY_CONTAINER_NAME, PROXY_NETWORK_NAME } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 
-export { PROXY_NETWORK_NAME };
-export const PROXY_CONTAINER_NAME = "yeah-proxy";
+export { PROXY_NETWORK_NAME, PROXY_CONTAINER_NAME };
 const PROXY_DIR = "/opt/yeah-proxy";
 
 function traefikStaticConfig(acmeEmail: string): string {
@@ -40,7 +39,7 @@ certificatesResolvers:
 
 export function makeProvisionProxyProcessor(publishConnection: Redis) {
   return async function provisionProxy(job: Job<ProxyProvisionJobData>) {
-    const { serverId } = job.data;
+    const { serverId, action = "provision" } = job.data;
 
     const rows = await db.select().from(servers).where(eq(servers.id, serverId)).limit(1);
     const server = rows[0];
@@ -48,6 +47,25 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
       console.warn(`[worker] proxy-provision: server ${serverId} not found, skipping`);
       return;
     }
+
+    if (action === "restart") {
+      try {
+        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+        try {
+          const result = await execStream(conn, buildProxyRestartCommand(), () => {});
+          if (result.exitCode !== 0) throw new Error(`o proxy não está ativo neste servidor (docker restart saiu com código ${result.exitCode})`);
+          await db.update(servers).set({ proxyStatus: "active" }).where(eq(servers.id, serverId));
+          await publishServerEvent(publishConnection, { type: "server.proxy", serverId, proxyStatus: "active" });
+        } finally {
+          conn.end();
+        }
+      } catch (err) {
+        console.error(`[worker] proxy-provision: restart failed for ${serverId}:`, err);
+        await fail(serverId, publishConnection, err instanceof Error ? err.message : String(err));
+      }
+      return;
+    }
+
     if (!server.acmeEmail) {
       await fail(serverId, publishConnection, "servidor sem e-mail configurado pro Let's Encrypt");
       return;

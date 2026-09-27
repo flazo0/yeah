@@ -646,3 +646,11 @@ Só faltava isso pra "rede interna" cobrir todos os tipos de recurso. Reaproveit
 ## Fase 4: guia de microsserviços
 
 `docs/GUIDE-microservices.md`: como montar API + worker + Postgres + fila (Redis ou o template RabbitMQ) no mesmo ambiente, usando a rede interna (Destinations) e Shared Variables (`{{environment.CHAVE}}`) em vez de colar a mesma URL de conexão em cada `.env`. O ponto que valia a pena deixar escrito, porque não estava em nenhum outro doc: a rede `yeah-env-<id>` é criada por SSH no servidor de cada recurso — é uma bridge Docker comum, local àquele daemon — então dois recursos só se enxergam pelo alias se estiverem **no mesmo servidor**; servidores diferentes têm redes com o mesmo nome mas sem relação nenhuma entre si. Conferido contra o código (`environmentNetworkName`/`ensureNetworkCommand`, o toggle de TLS do banco valendo também pra URL interna, o template do RabbitMQ). Documentação pura, nada pra testar.
+
+## Fase 5: aba Proxy do servidor — logs, reiniciar e alerta de container parado — **não testado**
+
+A aba já tinha status e a config do Traefik (domínio wildcard, e-mail Let's Encrypt); faltavam logs, reiniciar sem recriar o container e um alerta quando o `proxyStatus` do banco (`active`) não bate com a realidade (alguém derrubou o container por fora). Os comandos do container do proxy (`docker restart`, `docker logs --tail`, `docker inspect -f '{{.State.Running}}'`) foram pra `packages/shared/src/constants.ts`, junto de `PROXY_CONTAINER_NAME` — evita import cruzado entre `apps/api` e `apps/worker` (que não têm dependência um do outro).
+
+`POST /:serverId/proxy/restart` enfileira uma ação `restart` no mesmo job de sempre (`ProxyProvisionJobData` ganhou `action?: "provision" | "restart"`); recusa 400 se o proxy nunca foi ativado. `GET /:serverId/proxy/logs` é leitura limitada por SSH que o navegador espera (mesma exceção documentada dos logs de app/serviço) e devolve `running` de verdade, não só o status guardado — a tela mostra um aviso quando os dois divergem.
+
+**Não testado**: só `tsc`, `vue-tsc` e os testes unitários dos comandos passam.

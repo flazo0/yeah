@@ -1,8 +1,8 @@
 import { Elysia, t } from "elysia";
 import { and, count, eq } from "drizzle-orm";
 import { applications, databases, servers, services, type Server } from "@yeah/db";
-import { generateSshKeyPair } from "@yeah/ssh";
-import type { ServerDto } from "@yeah/shared";
+import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
+import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { serverCheckQueue, proxyProvisionQueue } from "../lib/queue";
@@ -219,6 +219,66 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
     await db.update(servers).set({ proxyStatus: "provisioning" }).where(eq(servers.id, server.id));
     await proxyProvisionQueue.add("provision", { serverId: server.id });
     return { queued: true };
+  })
+  .post("/:serverId/proxy/restart", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const rows = await db.select().from(servers).where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId))).limit(1);
+    const server = rows[0];
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    if (server.proxyStatus !== "active" && server.proxyStatus !== "error") {
+      set.status = 400;
+      return { error: "o proxy não está ativo neste servidor" };
+    }
+    await db.update(servers).set({ proxyStatus: "provisioning" }).where(eq(servers.id, server.id));
+    await proxyProvisionQueue.add("restart", { serverId: server.id, action: "restart" });
+    return { queued: true };
+  })
+  // Bounded read for a browser waiting on it — same documented exception as container/service logs.
+  .get("/:serverId/proxy/logs", async ({ cookie, params, query, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const rows = await db.select().from(servers).where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId))).limit(1);
+    const server = rows[0];
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    const tail = Math.min(2000, Math.max(1, Number(query.tail) || 300));
+    let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
+    try {
+      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+      let running = "";
+      await execStream(conn, buildProxyIsRunningCommand(), (c) => (running += c));
+      let output = "";
+      const result = await execStream(conn, buildProxyLogsCommand(tail), (chunk) => {
+        output += chunk;
+      });
+      if (result.exitCode !== 0) return { logs: "", running: false, message: output.trim() || "o proxy não está ativo neste servidor" };
+      return { logs: output, running: running.trim() === "true" };
+    } catch (err) {
+      set.status = 502;
+      return { error: err instanceof Error ? err.message : "falha ao ler os logs" };
+    } finally {
+      conn?.end();
+    }
   })
   // Removes the server from the panel only: nothing on the machine itself is touched (containers,
   // Traefik and files stay). Refused while anything is still deployed on it, since the rows of those

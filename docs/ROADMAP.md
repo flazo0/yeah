@@ -132,7 +132,7 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 
 ## Fase 5 — Servidores e infraestrutura
 
-- [ ] Aba **Proxy** do servidor (status, logs, reiniciar, config do Traefik) com alerta quando não está rodando.
+- [x] Aba **Proxy** do servidor: status (já existia), **logs** (`docker logs` do container do Traefik, com atualização automática a cada 10s), **reiniciar** (`docker restart`, sem recriar o container) e **alerta** quando o painel marca `active` mas o container não está de fato rodando no servidor (checado a cada leitura de log), além do alerta de `error`. Config do Traefik (domínio wildcard + e-mail do Let's Encrypt) já existia. **Não testado** (só `tsc`/`vue-tsc`/testes unitários — ver [[feedback-no-local-docker-testing]]).
 - [ ] **Docker Cleanup** agendado (`docker system prune`) via BullMQ + SSH.
 - [ ] **Keys & Tokens**: tela de gerenciamento de chaves SSH (criar, importar, reutilizar entre servidores/fontes), separada do formulário do servidor.
 - [ ] **Log Drains**: encaminhar logs pra Loki / Axiom / New Relic / Fluent Bit.
