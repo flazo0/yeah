@@ -5,7 +5,7 @@ import { applications, applicationVolumes, deployments, environments, gitSources
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { ensureNetworkCommand, environmentNetworkName, internalHostName, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
+import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -189,6 +189,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         await writeRemoteFile(conn, volumeFilePath(application.id, volume.id), volume.fileContent ?? "");
       }
 
+      // Databases and services of the same environment resolve this app by name (and vice versa).
+      const envNetwork = environmentNetworkName(application.environmentId);
       if (application.buildPack === "docker_compose") {
         // The compose file may reference the variables ("env_file: .env" or ${VAR} interpolation).
         await writeRemoteFile(conn, `${repoDir}/.env`, composeEnvFile(envEntries));
@@ -206,6 +208,17 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
           {
             label: `subindo o projeto compose (${application.composeFile})`,
             command: buildComposeUpCommand(application, appDir, repoDir, withOverride, healthWaitSeconds(application)),
+          },
+          appendAndPublish,
+        );
+        // Every container of the project joins under `<slug>-<serviço>`; the one chosen for the domain
+        // (if any) also answers to the plain `<slug>` — the same scheme as a service stack, so two apps'
+        // same-named compose service (e.g. two "db") never collide on the network.
+        await runStep(
+          conn,
+          {
+            label: `entrando na rede do ambiente (${internalHostName(application.name)})`,
+            command: `${ensureNetworkCommand(envNetwork)} && ${stackNetworkJoinCommand(composeProjectName(application.id), envNetwork, internalHostName(application.name), application.composeService)}`,
           },
           appendAndPublish,
         );
@@ -235,8 +248,6 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
-      // Databases and services of the same environment resolve this app by name (and vice versa).
-      const envNetwork = environmentNetworkName(application.environmentId);
       await runStep(
         conn,
         {
