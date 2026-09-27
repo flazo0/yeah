@@ -11,6 +11,7 @@ import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
+import { forwardJobLog } from "../lib/logDrains";
 import {
   buildCloneOrPullCommand,
   buildComposeUpCommand,
@@ -274,6 +275,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "success" });
       await commentOnPreview(application, "ready", resolvedCommit);
       await notifyTeam(application.teamId, "deploy.success", `Deploy de ${application.name} concluído`, `${application.repoUrl} (${application.branch}) → ${server.name}`, "info");
+      await forwardJobLog(application.teamId, log + "\n\x1b[32mDeploy concluído.\x1b[0m\n", { app: application.name, job: "deploy", status: "success" });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await appendAndPublish(`\n\x1b[31mFalha no deploy: ${message}\x1b[0m\n`);
@@ -283,6 +285,9 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await publishServerEvent(publishConnection, { type: "deployment.status", deploymentId, status: "failed" });
       await commentOnPreview(application, "failed", null);
       await notifyTeam(application.teamId, "deploy.failed", `Deploy de ${application.name} falhou`, message, "error");
+      // appendAndPublish above already put the failure line into `log` itself (unlike the success
+      // path, whose "Deploy concluído" trailer isn't in `log` until finish() appends it) — forward as is.
+      await forwardJobLog(application.teamId, log, { app: application.name, job: "deploy", status: "failed" });
     } finally {
       if (conn && registry) await execStream(conn, registryLogoutCommand(registry.host), () => undefined).catch(() => undefined);
       conn?.end();

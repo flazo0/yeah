@@ -17,6 +17,7 @@
         "@elysiajs/cors": "^1.4.2",
         "@yeah/db": "workspace:*",
         "@yeah/github": "workspace:*",
+        "@yeah/logdrains": "workspace:*",
         "@yeah/notifications": "workspace:*",
         "@yeah/queue": "workspace:*",
         "@yeah/shared": "workspace:*",
@@ -56,6 +57,7 @@
       "dependencies": {
         "@yeah/db": "workspace:*",
         "@yeah/github": "workspace:*",
+        "@yeah/logdrains": "workspace:*",
         "@yeah/notifications": "workspace:*",
         "@yeah/queue": "workspace:*",
         "@yeah/shared": "workspace:*",
@@ -94,6 +96,13 @@
     },
     "packages/github": {
       "name": "@yeah/github",
+      "version": "0.0.1",
+      "devDependencies": {
+        "typescript": "^5.7.3",
+      },
+    },
+    "packages/logdrains": {
+      "name": "@yeah/logdrains",
       "version": "0.0.1",
       "devDependencies": {
         "typescript": "^5.7.3",
@@ -147,6 +156,10 @@
       "devDependencies": {
         "typescript": "^5.7.3",
       },
+    },
+    "packages/templates": {
+      "name": "@yeah/templates",
+      "version": "0.0.0",
     },
   },
   "packages": {
@@ -370,6 +383,8 @@
 
     "@yeah/github": ["@yeah/github@workspace:packages/github"],
 
+    "@yeah/logdrains": ["@yeah/logdrains@workspace:packages/logdrains"],
+
     "@yeah/notifications": ["@yeah/notifications@workspace:packages/notifications"],
 
     "@yeah/queue": ["@yeah/queue@workspace:packages/queue"],
@@ -379,6 +394,8 @@
     "@yeah/ssh": ["@yeah/ssh@workspace:packages/ssh"],
 
     "@yeah/storage": ["@yeah/storage@workspace:packages/storage"],
+
+    "@yeah/templates": ["@yeah/templates@workspace:packages/templates"],
 
     "@yeah/web": ["@yeah/web@workspace:apps/web"],
 

@@ -13,6 +13,7 @@
     "@yeah/db": "workspace:*",
     "@yeah/github": "workspace:*",
     "@yeah/notifications": "workspace:*",
+    "@yeah/logdrains": "workspace:*",
     "@yeah/queue": "workspace:*",
     "@yeah/shared": "workspace:*",
     "@yeah/ssh": "workspace:*",

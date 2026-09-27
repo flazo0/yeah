@@ -253,6 +253,13 @@
       "when": 1790543224661,
       "tag": "0035_ssh_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790543749636,
+      "tag": "0036_log_drains",
+      "breakpoints": true
     }
   ]
 }

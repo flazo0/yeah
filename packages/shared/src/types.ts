@@ -489,6 +489,21 @@ export interface NotificationChannelDto {
   createdAt: string;
 }
 
+export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http";
+
+export interface LogDrainDto {
+  id: string;
+  teamId: string;
+  name: string;
+  kind: LogDrainKind;
+  enabled: boolean;
+  url: string | null;
+  lokiUsername: string | null;
+  axiomDataset: string | null;
+  // Secrets (lokiPassword, axiomToken, newRelicLicenseKey) are deliberately never sent back to the frontend.
+  createdAt: string;
+}
+
 export type PlatformOperationKind = "platform_update" | "system_update";
 export type PlatformOperationStatus = "queued" | "running" | "success" | "failed";
 

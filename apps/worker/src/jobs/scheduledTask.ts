@@ -6,6 +6,7 @@ import type { ScheduledTaskJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
+import { forwardJobLog } from "../lib/logDrains";
 import { appendCapped, buildTaskCommand, KEEP_EXECUTIONS } from "./scheduledTask.commands";
 
 export { buildTaskCommand, appendCapped } from "./scheduledTask.commands";
@@ -80,5 +81,6 @@ export function makeScheduledTaskProcessor() {
     if (failure) {
       await notifyTeam(application.teamId, "task.failed", `Tarefa "${task.name}" falhou em ${application.name}`, failure, "error");
     }
+    await forwardJobLog(application.teamId, log, { app: application.name, task: task.name, job: "scheduled-task", status: failure ? "failed" : "success" });
   };
 }

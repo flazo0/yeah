@@ -53,6 +53,7 @@ const isRegistriesRoute = computed(() => Boolean(teamId.value) && route.path ===
 const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/storages`);
 const isSourcesRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/sources`));
 const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
+const isLogDrainsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/log-drains`);
 const isVariablesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/variables`);
 const isTeamRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/team`);
 const isSettingsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/settings`);
@@ -68,6 +69,7 @@ const breadcrumb = computed(() => {
   if (isRegistriesRoute.value) return ["Registries"];
   if (isSourcesRoute.value) return ["Fontes"];
   if (isNotificationsRoute.value) return ["Notificações"];
+  if (isLogDrainsRoute.value) return ["Log Drains"];
   if (isUpdatesRoute.value) return ["Atualizações"];
   if (isVariablesRoute.value) return ["Variáveis"];
   if (isTeamRoute.value) return ["Time"];
@@ -138,6 +140,10 @@ const breadcrumb = computed(() => {
           <RouterLink :to="`/teams/${teamId}/notifications`" class="sidebar-link" :class="{ active: isNotificationsRoute }">
             <span class="material-symbols-outlined">notifications</span>
             Notificações
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/log-drains`" class="sidebar-link" :class="{ active: isLogDrainsRoute }">
+            <span class="material-symbols-outlined">receipt_long</span>
+            Log Drains
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
             <span class="material-symbols-outlined">deployed_code_update</span>

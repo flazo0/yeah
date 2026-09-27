@@ -21,3 +21,4 @@ export * from "./gitSources";
 export * from "./volumeBackups";
 export * from "./dockerCleanups";
 export * from "./sshKeys";
+export * from "./logDrains";

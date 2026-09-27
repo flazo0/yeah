@@ -670,3 +670,11 @@ O comando é só `docker system prune -f`, com `-a` (imagens sem uso, não só a
 `POST /teams/:teamId/servers` aceita `sshKeyId` como alternativa a `privateKey` — copia a chave da tabela pro `servers.private_key` de qualquer forma (a conexão nunca faz join ao vivo com `ssh_keys`; o `ssh_key_id` guardado é só rastreabilidade e o que a exclusão confere). Deploy key de aplicação (repositório privado via SSH) ganhou o mesmo caminho: `deployKeySshKeyId` no lugar de `useDeployKey` copia a chave existente em vez de gerar uma nova. Tela `KeysTokensPage.vue` nova, link "Keys & Tokens" na sidebar (Infraestrutura); os formulários de novo servidor e de deploy key ganharam um seletor pra escolher uma chave já cadastrada.
 
 **Não testado**: só `tsc`, `vue-tsc` e os testes unitários passam (372, sem novos — nada aqui é lógica pura isolável; rotas de API não têm teste unitário no projeto, e o e2e fica pra quando houver uma VPS real).
+
+## Fase 5: Log Drains — Loki, Axiom, New Relic, Fluent Bit
+
+Pacote novo `@yeah/logdrains` (mesmo desenho do `@yeah/notifications`: uma função por provedor, `fetch` direto, nunca lança — best-effort, nunca derruba o job que gerou o log). `log_drains` por time (migração 0036): Loki (`POST {url}/loki/api/v1/push`, basic auth opcional), Axiom (`POST /v1/datasets/{dataset}/ingest`, bearer token), New Relic (Logs API, header `Api-Key`), Fluent Bit (`POST` num http input configurado com `Format json`). `splitLogLines` limpa os códigos ANSI e linhas vazias do log guardado antes de virar linhas separadas.
+
+**Decisão de escopo, registrada na própria tela**: isso encaminha o log **inteiro de um job já concluído** (deploy, execução de tarefa agendada) — não um tail contínuo do stdout do container. Um tail de verdade precisaria de uma conexão SSH que fica aberta indefinidamente por recurso; hoje todo job do worker é "conecta, roda, desconecta" (server-check, deploy, backup, etc.), e mudar esse modelo só pra isso é um projeto à parte, não uma tarde. Ficou documentado pra não vender como algo que não é.
+
+**Testado**: 13 testes unitários dos 4 formatos de payload e do tratamento de erro/resposta não-2xx (mock de `fetch`, sem endpoint real). `tsc`, `vue-tsc`, 385 testes no total. **Não testado**: contra um Loki/Axiom/New Relic/Fluent Bit de verdade, nem a tela no navegador.
