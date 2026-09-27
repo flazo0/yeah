@@ -381,7 +381,8 @@ export const applicationOpsRoutes = new Elysia({
         return { error: "aplicações Docker Compose não usam o registry do painel (use o docker login do próprio compose)" };
       }
       if (!body.registryId) {
-        const [updated] = await db.update(applications).set({ registryId: null, registryImage: null }).where(eq(applications.id, app.id)).returning();
+        // A build server needs the registry to hand off the built image — clearing one clears the other.
+        const [updated] = await db.update(applications).set({ registryId: null, registryImage: null, buildServerId: null }).where(eq(applications.id, app.id)).returning();
         return { application: await applicationDto(updated ?? app, row.serverName) };
       }
       const [registry] = await db.select().from(registries).where(and(eq(registries.id, body.registryId), eq(registries.teamId, params.teamId))).limit(1);
@@ -401,6 +402,49 @@ export const applicationOpsRoutes = new Elysia({
       return { application: await applicationDto(updated ?? app, row.serverName) };
     },
     { body: t.Object({ registryId: t.Nullable(t.String()), repository: t.Optional(t.String({ maxLength: 255 })) }) },
+  )
+  // Separates where the image is built from where it runs: build_server_id builds+pushes, server_id
+  // (above) only ever pulls. Requires a registry + image already set (see /registry above) — that's
+  // the only way the built image gets from one server to the other.
+  .put(
+    "/:applicationId/build-server",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const app = row.application;
+      if (!body.buildServerId) {
+        const [updated] = await db.update(applications).set({ buildServerId: null }).where(eq(applications.id, app.id)).returning();
+        return { application: await applicationDto(updated ?? app, row.serverName) };
+      }
+      if (app.buildPack === "image" || app.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "servidor de build só vale pra build packs que constroem uma imagem a partir do repositório (não image nem docker_compose)" };
+      }
+      if (!app.registryId || !app.registryImage) {
+        set.status = 400;
+        return { error: "configure primeiro um registry e o repositório da imagem (aba Origem) — é assim que a imagem construída chega no servidor de deploy" };
+      }
+      const [buildServer] = await db.select().from(servers).where(and(eq(servers.id, body.buildServerId), eq(servers.teamId, params.teamId))).limit(1);
+      if (!buildServer) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      const [updated] = await db.update(applications).set({ buildServerId: buildServer.id }).where(eq(applications.id, app.id)).returning();
+      return { application: await applicationDto(updated ?? app, row.serverName) };
+    },
+    { body: t.Object({ buildServerId: t.Nullable(t.String()) }) },
   )
   .put(
     "/:applicationId/move",

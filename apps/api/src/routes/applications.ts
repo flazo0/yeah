@@ -45,16 +45,19 @@ async function pendingFor(app: Application): Promise<string[] | null> {
 }
 
 export async function applicationDto(app: Application, serverName: string): Promise<ApplicationDto> {
-  return toApplicationDto(app, serverName, await pendingFor(app));
+  const buildServerName = app.buildServerId ? ((await db.select({ name: servers.name }).from(servers).where(eq(servers.id, app.buildServerId)).limit(1))[0]?.name ?? null) : null;
+  return toApplicationDto(app, serverName, buildServerName, await pendingFor(app));
 }
 
-function toApplicationDto(app: Application, serverName: string, pending: string[] | null = null): ApplicationDto {
+function toApplicationDto(app: Application, serverName: string, buildServerName: string | null, pending: string[] | null = null): ApplicationDto {
   return {
     id: app.id,
     teamId: app.teamId,
     environmentId: app.environmentId,
     serverId: app.serverId,
     serverName,
+    buildServerId: app.buildServerId,
+    buildServerName,
     name: app.name,
     repoUrl: app.repoUrl,
     branch: app.branch,

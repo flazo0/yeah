@@ -132,9 +132,77 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       ? ((await db.select().from(registries).where(eqOp(registries.id, application.registryId)).limit(1))[0] ?? null)
       : null;
 
+    const buildServer = application.buildServerId
+      ? ((await db.select().from(servers).where(eqOp(servers.id, application.buildServerId)).limit(1))[0] ?? null)
+      : null;
+
     let conn: Client | null = null;
+    let buildConn: Client | null = null;
     let resolvedCommit: string | null = null;
+    // Set once the build server has pushed an image — the deploy-server phase below then just
+    // pulls and tags it locally instead of cloning/building there too.
+    let builtRef: string | null = null;
     try {
+      if (application.buildServerId && !buildServer) throw new Error("o servidor de build desta aplicação não existe mais");
+      if (buildServer) {
+        if (!registry || !application.registryImage) throw new Error("servidor de build exige um registry e um repositório de imagem configurados (aba Origem)");
+
+        buildConn = await connectSsh({ host: buildServer.host, port: buildServer.port, username: buildServer.sshUser, privateKey: buildServer.privateKey, timeoutMs: buildServer.sshTimeoutSeconds * 1000 });
+        await appendAndPublish(`\x1b[90m# construindo em ${buildServer.name} (servidor de build)\x1b[0m\n`);
+        await runStep(buildConn, { label: "preparando diretório de build", command: `mkdir -p ${shellQuote(appDir)}` }, appendAndPublish);
+
+        if (usesGit) {
+          if (application.deployKey) {
+            await appendAndPublish(`\x1b[36m$ escrevendo a deploy key\x1b[0m\n`);
+            await writeRemoteFile(buildConn, deployKeyPath, application.deployKey.endsWith("\n") ? application.deployKey : `${application.deployKey}\n`);
+            await execStream(buildConn, `chmod 600 ${shellQuote(deployKeyPath)}`, () => undefined);
+          }
+          await runStep(buildConn, await makeCloneOrPullStep(), appendAndPublish);
+          if (application.gitSourceId || application.githubInstallationId) {
+            await execStream(buildConn, `git -C ${shellQuote(repoDir)} remote set-url origin ${shellQuote(application.repoUrl)}`, () => undefined);
+          }
+          let resolvedCommitSha = "";
+          await execStream(buildConn, `cd ${shellQuote(repoDir)} && git rev-parse HEAD`, (chunk, stream) => {
+            if (stream === "stdout") resolvedCommitSha += chunk;
+          });
+          resolvedCommitSha = resolvedCommitSha.trim();
+          resolvedCommit = resolvedCommitSha || null;
+          if (resolvedCommitSha) {
+            await appendAndPublish(`\x1b[90m# commit ${resolvedCommitSha.slice(0, 7)}\x1b[0m\n`);
+            await db.update(deployments).set({ commitSha: resolvedCommitSha }).where(eq(deployments.id, deploymentId));
+          }
+        } else if (application.buildPack === "dockerfile_inline") {
+          await appendAndPublish(`\x1b[36m$ escrevendo o Dockerfile\x1b[0m\n`);
+          await execStream(buildConn, `mkdir -p ${shellQuote(inlineDir)}`, () => undefined);
+          await writeRemoteFile(buildConn, `${inlineDir}/Dockerfile`, application.dockerfileContent ?? "");
+        }
+
+        const { entries: buildTimeSource, missing: buildMissing } = expandReferences(parseEnvContent(application.envContent), await loadSharedVariables(application));
+        if (buildMissing.length > 0) throw new Error(`variável compartilhada não encontrada: ${buildMissing.map((m) => `{{${m}}}`).join(", ")}`);
+        const buildEnv = buildTimeEntries(buildTimeSource);
+
+        await appendAndPublish(`\x1b[36m$ entrando no registry ${registry.host}\x1b[0m\n`);
+        const buildPasswordFile = `${appDir}/.registry_pw`;
+        await writeRemoteFile(buildConn, buildPasswordFile, registry.password);
+        await execStream(buildConn, `chmod 600 ${shellQuote(buildPasswordFile)}`, () => undefined);
+        await runStep(buildConn, { label: "docker login", command: registryLoginCommand(registry.host, registry.username, buildPasswordFile) }, appendAndPublish);
+
+        const buildSteps = buildImageSteps(application, repoDir, inlineDir, containerName, buildEnv);
+        const variant = buildEnv.length ? createHash("sha256").update(JSON.stringify(buildEnv)).digest("hex").slice(0, 6) : undefined;
+        const ref = registryRef(registry.host, application.registryImage, registryTag(resolvedCommit, deploymentId, variant));
+        const cached = (await execStream(buildConn, registryExistsCommand(ref), () => undefined)).exitCode === 0;
+        if (cached) {
+          await appendAndPublish(`\x1b[90m# imagem ${ref} já existe no registry — sem build\x1b[0m\n`);
+        } else {
+          for (const step of buildSteps) await runStep(buildConn, step, appendAndPublish);
+          await runStep(buildConn, { label: `enviando a imagem pro registry (${ref})`, command: registryPushCommand(containerName, ref) }, appendAndPublish);
+        }
+        await execStream(buildConn, registryLogoutCommand(registry.host), () => undefined).catch(() => undefined);
+        buildConn.end();
+        buildConn = null;
+        builtRef = ref;
+      }
+
       conn = await connectSsh({
         host: server.host,
         port: server.port,
@@ -154,7 +222,9 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       }
       await writeRemoteFile(conn, `${appDir}/.env`, renderRuntimeEnv(envEntries));
 
-      if (usesGit) {
+      if (builtRef) {
+        // Already cloned/built on the build server above — nothing to do here.
+      } else if (usesGit) {
         if (application.deployKey) {
           await appendAndPublish(`\x1b[36m$ escrevendo a deploy key\x1b[0m\n`);
           await writeRemoteFile(conn, deployKeyPath, application.deployKey.endsWith("\n") ? application.deployKey : `${application.deployKey}\n`);
@@ -224,6 +294,18 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
           appendAndPublish,
         );
       } else {
+      if (builtRef) {
+        // Built and pushed on the build server above — pull it here and tag it as the run name.
+        if (registry) {
+          await appendAndPublish(`\x1b[36m$ entrando no registry ${registry.host}\x1b[0m\n`);
+          const passwordFile = `${appDir}/.registry_pw`;
+          await writeRemoteFile(conn, passwordFile, registry.password);
+          await execStream(conn, `chmod 600 ${shellQuote(passwordFile)}`, () => undefined);
+          await runStep(conn, { label: "docker login", command: registryLoginCommand(registry.host, registry.username, passwordFile) }, appendAndPublish);
+        }
+        await runStep(conn, { label: `baixando a imagem construída (${builtRef})`, command: `docker pull ${shellQuote(builtRef)}` }, appendAndPublish);
+        await runStep(conn, { label: "preparando a imagem local", command: registryTagLocalCommand(builtRef, containerName) }, appendAndPublish);
+      } else {
       if (registry) {
         await appendAndPublish(`\x1b[36m$ entrando no registry ${registry.host}\x1b[0m\n`);
         const passwordFile = `${appDir}/.registry_pw`;
@@ -246,6 +328,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         }
       } else {
         for (const step of buildSteps) await runStep(conn, step, appendAndPublish);
+      }
       }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
@@ -290,7 +373,9 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       await forwardJobLog(application.teamId, log, { app: application.name, job: "deploy", status: "failed" });
     } finally {
       if (conn && registry) await execStream(conn, registryLogoutCommand(registry.host), () => undefined).catch(() => undefined);
+      if (buildConn && registry) await execStream(buildConn, registryLogoutCommand(registry.host), () => undefined).catch(() => undefined);
       conn?.end();
+      buildConn?.end();
     }
   };
 }

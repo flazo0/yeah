@@ -141,6 +141,9 @@ export interface ApplicationDto extends ResourceLimits {
   environmentId: string;
   serverId: string;
   serverName: string;
+  /** Set = build happens on this other server instead of serverId; it only ever pulls the pushed image. */
+  buildServerId: string | null;
+  buildServerName: string | null;
   name: string;
   repoUrl: string;
   branch: string;

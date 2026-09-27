@@ -26,6 +26,11 @@ export const applications = pgTable("applications", {
   serverId: uuid("server_id")
     .references(() => servers.id, { onDelete: "cascade" })
     .notNull(),
+  // Set = build on a different machine than the one this app runs on: the image is pushed to
+  // registry_id/registry_image there and server_id above only ever pulls it. Requires both of those
+  // (see the create/update routes) — there'd be no way to get the built image onto the deploy
+  // server otherwise. null = build and run on server_id, like every app before this existed.
+  buildServerId: uuid("build_server_id").references((): AnyPgColumn => servers.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
   repoUrl: varchar("repo_url", { length: 1024 }).notNull(),
   branch: varchar("branch", { length: 255 }).default("main").notNull(),

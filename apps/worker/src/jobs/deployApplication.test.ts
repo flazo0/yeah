@@ -20,6 +20,7 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     teamId: "team-1",
     environmentId: "env-1",
     serverId: "server-1",
+    buildServerId: null,
     name: "my-api",
     repoUrl: "https://github.com/example/repo",
     branch: "main",

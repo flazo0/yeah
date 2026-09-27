@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import type { GithubRepoDto, RegistryDto } from "@yeah/shared";
+import type { GithubRepoDto, RegistryDto, ServerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
@@ -17,6 +17,10 @@ const registryId = ref("");
 const registryRepo = ref("");
 const savingRegistry = ref(false);
 const registrySaved = ref(false);
+const servers = ref<ServerDto[]>([]);
+const buildServerId = ref("");
+const savingBuildServer = ref(false);
+const buildServerSaved = ref(false);
 
 onMounted(async () => {
   const a = app.value;
@@ -35,10 +39,16 @@ onMounted(async () => {
   };
   registryId.value = a.registryId ?? "";
   registryRepo.value = a.registryImage ?? "";
+  buildServerId.value = a.buildServerId ?? "";
   try {
     registries.value = (await api.get<{ registries: RegistryDto[] }>(`/teams/${teamId}/registries`)).registries;
   } catch {
     registries.value = [];
+  }
+  try {
+    servers.value = (await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`)).servers;
+  } catch {
+    servers.value = [];
   }
   if (a.githubRepo) {
     try {
@@ -62,6 +72,22 @@ async function saveRegistry() {
     error.value = err instanceof ApiError ? err.message : "falha ao salvar o registry";
   } finally {
     savingRegistry.value = false;
+  }
+}
+
+async function saveBuildServer() {
+  savingBuildServer.value = true;
+  buildServerSaved.value = false;
+  error.value = "";
+  try {
+    await api.put(`${basePath}/build-server`, { buildServerId: buildServerId.value || null });
+    await reloadApp();
+    buildServerSaved.value = true;
+    setTimeout(() => (buildServerSaved.value = false), 2500);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar o servidor de build";
+  } finally {
+    savingBuildServer.value = false;
   }
 }
 
@@ -206,6 +232,34 @@ async function save() {
           {{ savingRegistry ? "salvando..." : "Salvar" }}
         </button>
         <span v-if="registrySaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="app && app.buildPack !== 'image' && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">precision_manufacturing</span>
+      Servidor de build
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Constrói e envia a imagem num servidor separado do que roda a aplicação — útil pra não competir por CPU/memória com o que já está no ar,
+        ou pra construir numa máquina maior. Exige registry e repositório configurados acima.
+      </p>
+      <div v-if="!(app?.registryId && app?.registryImage)" class="hint mb-16">Configure o registry acima primeiro.</div>
+      <div v-else class="form-group">
+        <label for="build-server-select">Construir em</label>
+        <select id="build-server-select" v-model="buildServerId" class="form-control" style="max-width: 320px">
+          <option value="">Neste servidor (padrão)</option>
+          <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
+      </div>
+      <div class="btn-row" style="margin-top: 12px">
+        <button type="button" class="btn btn-secondary" :disabled="savingBuildServer || !(app?.registryId && app?.registryImage)" @click="saveBuildServer">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ savingBuildServer ? "salvando..." : "Salvar" }}
+        </button>
+        <span v-if="buildServerSaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
       </div>
     </div>
   </div>
