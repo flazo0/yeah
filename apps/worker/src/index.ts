@@ -42,44 +42,42 @@ if (!redisUrl) {
   throw new Error("REDIS_URL is not set");
 }
 
+// Each BullMQ Worker needs its own dedicated connection (it issues blocking commands to wait for
+// jobs, which would stall any other command sharing that connection) — these 15 stay separate.
 const jobConnection = createRedisConnection(redisUrl);
-const publishConnection = createRedisConnection(redisUrl);
 const deployJobConnection = createRedisConnection(redisUrl);
-const deployPublishConnection = createRedisConnection(redisUrl);
 const lifecycleJobConnection = createRedisConnection(redisUrl);
-const lifecyclePublishConnection = createRedisConnection(redisUrl);
 const taskJobConnection = createRedisConnection(redisUrl);
 const provisionJobConnection = createRedisConnection(redisUrl);
-const provisionPublishConnection = createRedisConnection(redisUrl);
+const restoreConnection = createRedisConnection(redisUrl);
+const volumeBackupConnection = createRedisConnection(redisUrl);
 const backupJobConnection = createRedisConnection(redisUrl);
-const backupPublishConnection = createRedisConnection(redisUrl);
 const proxyJobConnection = createRedisConnection(redisUrl);
-const proxyPublishConnection = createRedisConnection(redisUrl);
 const serviceJobConnection = createRedisConnection(redisUrl);
-const servicePublishConnection = createRedisConnection(redisUrl);
 const metricsJobConnection = createRedisConnection(redisUrl);
-const metricsPublishConnection = createRedisConnection(redisUrl);
-const metricsSchedulerConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
-const tlsSchedulerConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
 const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
-const platformOperationPublishConnection = createRedisConnection(redisUrl);
-const platformOperationSelfQueueConnection = createRedisConnection(redisUrl);
 
-const serverCheckWorker = createServerCheckWorker(jobConnection, makeCheckServerProcessor(publishConnection));
+// Everything else here is a plain non-blocking command (PUBLISH, or BullMQ Queue calls like
+// upsertJobScheduler/add) — those freely interleave on Redis regardless of who else is using the
+// connection, so one shared connection covers every processor's publish side plus the two
+// schedulers and the platform-operation self-queue, instead of 12 separate idle sockets.
+const sharedConnection = createRedisConnection(redisUrl);
+
+const serverCheckWorker = createServerCheckWorker(jobConnection, makeCheckServerProcessor(sharedConnection));
 serverCheckWorker.on("completed", (job) => console.log(`[worker] server-check ${job.id} completed`));
 serverCheckWorker.on("failed", (job, err) => console.error(`[worker] server-check ${job?.id} failed:`, err.message));
 
 const deployWorker = createApplicationDeployWorker(
   deployJobConnection,
-  makeDeployApplicationProcessor(deployPublishConnection),
+  makeDeployApplicationProcessor(sharedConnection),
 );
 deployWorker.on("completed", (job) => console.log(`[worker] application-deploy ${job.id} completed`));
 deployWorker.on("failed", (job, err) => console.error(`[worker] application-deploy ${job?.id} failed:`, err.message));
 
-const lifecycleWorker = createApplicationLifecycleWorker(lifecycleJobConnection, makeLifecycleApplicationProcessor(lifecyclePublishConnection));
+const lifecycleWorker = createApplicationLifecycleWorker(lifecycleJobConnection, makeLifecycleApplicationProcessor(sharedConnection));
 lifecycleWorker.on("failed", (job, err) => console.error(`[worker] application-lifecycle ${job?.id} failed:`, err.message));
 
 const taskWorker = createScheduledTaskWorker(taskJobConnection, makeScheduledTaskProcessor());
@@ -87,50 +85,48 @@ taskWorker.on("failed", (job, err) => console.error(`[worker] scheduled-task ${j
 
 const provisionWorker = createDatabaseProvisionWorker(
   provisionJobConnection,
-  makeProvisionDatabaseProcessor(provisionPublishConnection),
+  makeProvisionDatabaseProcessor(sharedConnection),
 );
 provisionWorker.on("completed", (job) => console.log(`[worker] database-provision ${job.id} completed`));
 provisionWorker.on("failed", (job, err) => console.error(`[worker] database-provision ${job?.id} failed:`, err.message));
 
-const restoreConnection = createRedisConnection(redisUrl);
 const restoreWorker = createDatabaseRestoreWorker(restoreConnection, makeRestoreDatabaseProcessor());
 restoreWorker.on("failed", (job, err) => console.error(`[worker] database-restore ${job?.id} failed:`, err.message));
 
-const volumeBackupConnection = createRedisConnection(redisUrl);
 const volumeBackupWorker = createVolumeBackupWorker(volumeBackupConnection, makeVolumeBackupProcessor());
 volumeBackupWorker.on("failed", (job, err) => console.error(`[worker] volume-backup ${job?.id} failed:`, err.message));
 
 const backupWorker = createDatabaseBackupWorker(
   backupJobConnection,
-  makeBackupDatabaseProcessor(backupPublishConnection),
+  makeBackupDatabaseProcessor(sharedConnection),
 );
 backupWorker.on("completed", (job) => console.log(`[worker] database-backup ${job.id} completed`));
 backupWorker.on("failed", (job, err) => console.error(`[worker] database-backup ${job?.id} failed:`, err.message));
 
-const proxyWorker = createProxyProvisionWorker(proxyJobConnection, makeProvisionProxyProcessor(proxyPublishConnection));
+const proxyWorker = createProxyProvisionWorker(proxyJobConnection, makeProvisionProxyProcessor(sharedConnection));
 proxyWorker.on("completed", (job) => console.log(`[worker] proxy-provision ${job.id} completed`));
 proxyWorker.on("failed", (job, err) => console.error(`[worker] proxy-provision ${job?.id} failed:`, err.message));
 
-const serviceWorker = createServiceProvisionWorker(serviceJobConnection, makeProvisionServiceProcessor(servicePublishConnection));
+const serviceWorker = createServiceProvisionWorker(serviceJobConnection, makeProvisionServiceProcessor(sharedConnection));
 serviceWorker.on("completed", (job) => console.log(`[worker] service-provision ${job.id} completed`));
 serviceWorker.on("failed", (job, err) => console.error(`[worker] service-provision ${job?.id} failed:`, err.message));
 
-const metricsWorker = createServerMetricsWorker(metricsJobConnection, makeServerMetricsProcessor(metricsPublishConnection));
+const metricsWorker = createServerMetricsWorker(metricsJobConnection, makeServerMetricsProcessor(sharedConnection));
 metricsWorker.on("failed", (job, err) => console.error(`[worker] server-metrics ${job?.id} failed:`, err.message));
 
-const metricsSchedulerQueue = createServerMetricsQueue(metricsSchedulerConnection);
+const metricsSchedulerQueue = createServerMetricsQueue(sharedConnection);
 await ensureServerMetricsScheduler(metricsSchedulerQueue);
 
 const tlsWorker = createTlsCheckWorker(tlsJobConnection, makeTlsCheckProcessor());
 tlsWorker.on("failed", (job, err) => console.error(`[worker] tls-check ${job?.id} failed:`, err.message));
 
-const tlsSchedulerQueue = createTlsCheckQueue(tlsSchedulerConnection);
+const tlsSchedulerQueue = createTlsCheckQueue(sharedConnection);
 await ensureTlsCheckScheduler(tlsSchedulerQueue);
 
-const platformOperationSelfQueue = createPlatformOperationQueue(platformOperationSelfQueueConnection);
+const platformOperationSelfQueue = createPlatformOperationQueue(sharedConnection);
 const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
-  makePlatformOperationProcessor(platformOperationPublishConnection, platformOperationSelfQueue),
+  makePlatformOperationProcessor(sharedConnection, platformOperationSelfQueue),
 );
 platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
 

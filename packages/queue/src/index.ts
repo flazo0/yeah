@@ -74,7 +74,12 @@ export type ServerMetricsJobData = Record<string, never>;
 /** Tick job, no per-run data — it re-checks every domain in use each time it fires. */
 export type TlsCheckJobData = Record<string, never>;
 
-/** Each queue/worker/pubsub role should get its own connection instance (ioredis convention). */
+/**
+ * Each BullMQ `Worker` needs its own dedicated connection — it blocks on it waiting for jobs, which
+ * would stall any other command sharing that socket. `Queue` instances and plain PUBLISH/SUBSCRIBE
+ * calls are non-blocking and safe to share a single connection across many roles (see apps/worker's
+ * `sharedConnection` and apps/api's `lib/queue.ts`).
+ */
 export function createRedisConnection(url: string): Redis {
   return new Redis(url, { maxRetriesPerRequest: null });
 }

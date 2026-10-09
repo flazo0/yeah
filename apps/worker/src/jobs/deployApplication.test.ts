@@ -83,6 +83,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     memPercent: null,
     diskPercent: null,
     metricsCheckedAt: null,
+    metricsEnabled: true,
     isPlatformHost: false,
     sshTimeoutSeconds: 15,
     createdAt: new Date(),

@@ -25,7 +25,10 @@ const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, m
 
 export function makeServerMetricsProcessor(publishConnection: Redis) {
   return async function serverMetrics(_job: Job<ServerMetricsJobData>) {
-    const allServers = await db.select().from(servers).where(eq(servers.status, "connected"));
+    const allServers = await db
+      .select()
+      .from(servers)
+      .where(and(eq(servers.status, "connected"), eq(servers.metricsEnabled, true)));
 
     await Promise.all(allServers.map((server) => checkOne(server, publishConnection)));
   };

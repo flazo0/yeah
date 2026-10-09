@@ -37,6 +37,10 @@ export const servers = pgTable("servers", {
   memPercent: real("mem_percent"),
   diskPercent: real("disk_percent"),
   metricsCheckedAt: timestamp("metrics_checked_at", { withTimezone: true }),
+  // Off switch for the periodic docker-stats-over-SSH poll (server + per-container history) — costs
+  // one SSH connect/exec per tick plus DB writes, so whoever is optimizing for a minimal footprint
+  // on a small VPS can disable it per server instead of all-or-nothing.
+  metricsEnabled: boolean("metrics_enabled").default(true).notNull(),
   // Set only on the one server install.sh auto-registers (the machine yeah itself runs on) — the
   // Updates page's "atualizar plataforma"/"atualizar sistema" buttons target this row specifically,
   // never an arbitrary managed server, so there's no ambiguity about which host gets touched.

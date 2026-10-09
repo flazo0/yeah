@@ -29,6 +29,23 @@ async function saveTimeout() {
   }
 }
 
+const savingMetricsEnabled = ref(false);
+
+async function toggleMetricsEnabled(enabled: boolean) {
+  if (!server.value) return;
+  savingMetricsEnabled.value = true;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: { metricsEnabled: boolean } }>(`/teams/${teamId}/servers/${server.value.id}/metrics-enabled`, { metricsEnabled: enabled });
+    server.value.metricsEnabled = res.server.metricsEnabled;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    if (server.value) server.value.metricsEnabled = !enabled;
+  } finally {
+    savingMetricsEnabled.value = false;
+  }
+}
+
 const confirmingRemove = ref(false);
 const removing = ref(false);
 let confirmTimer: ReturnType<typeof setTimeout> | undefined;
@@ -156,6 +173,22 @@ onBeforeUnmount(() => clearInterval(certPoll));
           <span v-if="timeoutSaved" class="hint">Salvo.</span>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">monitor_heart</span>
+      Monitoramento
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Checagem periódica de CPU/RAM/disco do servidor e de cada container (aba Métricas) — uma conexão SSH por minuto. Desligar economiza essa conexão e a gravação do histórico pra quem está otimizando recursos; os valores já coletados continuam visíveis.
+      </p>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0">
+        <input id="metrics-enabled" type="checkbox" :checked="server.metricsEnabled" :disabled="savingMetricsEnabled" @change="toggleMetricsEnabled(($event.target as HTMLInputElement).checked)" />
+        <label for="metrics-enabled" style="margin: 0">Coletar métricas deste servidor</label>
+      </div>
     </div>
   </div>
 

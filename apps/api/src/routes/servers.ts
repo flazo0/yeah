@@ -27,6 +27,7 @@ function toServerDto(server: Server): ServerDto {
     memPercent: server.memPercent,
     diskPercent: server.diskPercent,
     metricsCheckedAt: server.metricsCheckedAt ? server.metricsCheckedAt.toISOString() : null,
+    metricsEnabled: server.metricsEnabled,
     sshKeyId: server.sshKeyId,
     createdAt: server.createdAt.toISOString(),
   };
@@ -238,6 +239,31 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       return { server: toServerDto(server) };
     },
     { body: t.Object({ sshTimeoutSeconds: t.Number() }) },
+  )
+  .put(
+    "/:serverId/metrics-enabled",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ metricsEnabled: body.metricsEnabled })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ metricsEnabled: t.Boolean() }) },
   )
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

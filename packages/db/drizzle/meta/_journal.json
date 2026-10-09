@@ -281,6 +281,13 @@
       "when": 1790544883616,
       "tag": "0039_metric_samples",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791586373737,
+      "tag": "0040_server_metrics_enabled",
+      "breakpoints": true
     }
   ]
 }
