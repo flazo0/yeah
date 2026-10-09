@@ -16,6 +16,7 @@ import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
 import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
 import { requireEnvironmentScope } from "../lib/scope";
+import { loadResourceMetricHistory } from "../lib/metricsHistory";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -256,6 +257,23 @@ export const databaseRoutes = new Elysia({
     }
 
     return { database: toDatabaseDto(row.database, row.serverName) };
+  })
+  .get("/:databaseId/metrics-history", async ({ cookie, params, query, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadDatabase(params.environmentId, params.databaseId);
+    if (!row) {
+      set.status = 404;
+      return { error: "database not found" };
+    }
+    return { history: await loadResourceMetricHistory("database", params.databaseId, Number(query.hours)) };
   })
   .put(
     "/:databaseId/settings",

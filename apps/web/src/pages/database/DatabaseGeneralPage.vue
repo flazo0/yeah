@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import DatabaseConnectionCard from "../../components/DatabaseConnectionCard.vue";
+import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
+import { api } from "../../lib/api";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
 
 const { database, basePath, error } = useDatabaseContext();
+
+function fetchHistory(hours: number) {
+  return api.get<{ history: { at: string; cpu: number; mem: number }[] }>(`${basePath}/metrics-history?hours=${hours}`);
+}
 </script>
 
 <template>
@@ -56,5 +62,10 @@ const { database, basePath, error } = useDatabaseContext();
       @saved="(limits) => { database!.memoryLimitMb = limits.memoryLimitMb; database!.cpuLimit = limits.cpuLimit; }"
       @error="(msg) => (error = msg)"
     />
+
+    <div class="card">
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> Histórico de recursos</div>
+      <div class="card-body"><MetricsHistoryChart :fetch-history="fetchHistory" /></div>
+    </div>
   </div>
 </template>

@@ -4,10 +4,15 @@ import type { ServiceContainerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import DomainCard from "../../components/DomainCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
+import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
 import { useServiceContext } from "../../composables/useServiceContext";
 
 const { service, basePath, error, reloadService } = useServiceContext();
 const isStack = computed(() => Boolean(service.value?.composeContent));
+
+function fetchHistory(hours: number) {
+  return api.get<{ history: { at: string; cpu: number; mem: number }[]; multiContainer?: boolean }>(`${basePath}/metrics-history?hours=${hours}`);
+}
 
 const containers = ref<ServiceContainerDto[]>([]);
 const showLog = ref(false);
@@ -122,5 +127,10 @@ async function lifecycle(action: "start" | "stop" | "restart") {
       @saved="(limits) => { service!.memoryLimitMb = limits.memoryLimitMb; service!.cpuLimit = limits.cpuLimit; }"
       @error="(msg) => (error = msg)"
     />
+
+    <div class="card">
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> Histórico de recursos</div>
+      <div class="card-body"><MetricsHistoryChart :fetch-history="fetchHistory" /></div>
+    </div>
   </div>
 </template>

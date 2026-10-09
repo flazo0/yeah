@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { containerStatsCommand, parseDockerStats, parseSize } from "./metrics";
+import { allContainerStatsCommand, containerStatsCommand, parseDockerStats, parseSize } from "./metrics";
 
 describe("parseSize", () => {
   test("decimal and binary units", () => {
@@ -50,5 +50,13 @@ describe("containerStatsCommand", () => {
     const cmd = containerStatsCommand({ id: "abc", buildPack: "docker_compose" });
     expect(cmd).toContain("label=com.docker.compose.project=yeah-app-abc");
     expect(cmd).toContain("docker stats");
+  });
+});
+
+describe("allContainerStatsCommand", () => {
+  test("no filter — every running container on the host, tolerant of an empty host", () => {
+    const cmd = allContainerStatsCommand();
+    expect(cmd).toBe("docker stats --no-stream --format '{{json .}}' || true");
+    expect(cmd).not.toContain("--filter");
   });
 });

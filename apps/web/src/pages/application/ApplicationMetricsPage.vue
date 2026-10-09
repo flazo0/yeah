@@ -3,8 +3,13 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import type { ContainerStats } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
 
 const { basePath, error } = useApplicationContext();
+
+function fetchHistory(hours: number) {
+  return api.get<{ history: { at: string; cpu: number; mem: number }[]; multiContainer?: boolean }>(`${basePath}/metrics-history?hours=${hours}`);
+}
 
 interface Sample {
   at: number;
@@ -86,6 +91,10 @@ function bytes(n: number): string {
           <div class="metric-value">{{ c.pids }}</div>
         </div>
       </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> Histórico</div>
+      <div class="card-body"><MetricsHistoryChart :fetch-history="fetchHistory" /></div>
     </div>
   </div>
 </template>

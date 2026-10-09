@@ -15,6 +15,7 @@ const overview = ref<TeamOverviewDto | null>(null);
 const servers = ref<ServerDto[]>([]);
 const projects = ref<ProjectDto[]>([]);
 const loadingOverview = ref(false);
+const cpuHistoryByServer = ref<Record<string, number[]>>({});
 
 function metricBarClass(value: number | null, threshold: number): string {
   if (value === null) return "metric-bar-fill-neutral";
@@ -23,17 +24,26 @@ function metricBarClass(value: number | null, threshold: number): string {
   return "metric-bar-fill-good";
 }
 
+/** Points for a tiny SVG polyline in a 100x24 box — CPU-only, just enough to show a trend at a glance. */
+function sparkPoints(serverId: string): string {
+  const values = cpuHistoryByServer.value[serverId] ?? [];
+  if (values.length < 2) return "";
+  return values.map((v, i) => `${((i / (values.length - 1)) * 100).toFixed(1)},${(24 - (Math.min(100, v) / 100) * 22 - 1).toFixed(1)}`).join(" ");
+}
+
 async function loadOverview(teamId: string) {
   loadingOverview.value = true;
   try {
-    const [overviewRes, serversRes, projectsRes] = await Promise.all([
+    const [overviewRes, serversRes, projectsRes, historyRes] = await Promise.all([
       api.get<{ overview: TeamOverviewDto }>(`/teams/${teamId}/overview`),
       api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`),
       api.get<{ projects: ProjectDto[] }>(`/teams/${teamId}/projects`),
+      api.get<{ history: Record<string, { at: string; cpu: number }[]> }>(`/teams/${teamId}/servers/metrics-history?hours=24`),
     ]);
     overview.value = overviewRes.overview;
     servers.value = serversRes.servers;
     projects.value = projectsRes.projects;
+    cpuHistoryByServer.value = Object.fromEntries(Object.entries(historyRes.history).map(([id, points]) => [id, points.map((p) => p.cpu)]));
   } catch {
     // Dashboard widgets are a bonus, not critical path.
   } finally {
@@ -170,6 +180,9 @@ watch(
               <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.diskPercent, 85)" :style="{ width: `${server.diskPercent}%` }"></div></div>
             </div>
           </div>
+          <svg v-if="sparkPoints(server.id)" viewBox="0 0 100 24" preserveAspectRatio="none" class="spark" style="margin-top: 8px" aria-hidden="true">
+            <polyline :points="sparkPoints(server.id)" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke" />
+          </svg>
         </div>
       </div>
     </template>

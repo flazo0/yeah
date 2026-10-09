@@ -23,3 +23,4 @@ export * from "./dockerCleanups";
 export * from "./sshKeys";
 export * from "./logDrains";
 export * from "./caCertificates";
+export * from "./metricSamples";

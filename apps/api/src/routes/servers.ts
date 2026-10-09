@@ -1,6 +1,6 @@
 import { Elysia, t } from "elysia";
-import { and, count, eq } from "drizzle-orm";
-import { applications, databases, servers, services, sshKeys, type Server } from "@yeah/db";
+import { and, count, eq, gte } from "drizzle-orm";
+import { applications, databases, serverMetricSamples, servers, services, sshKeys, type Server } from "@yeah/db";
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
 import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
@@ -60,6 +60,33 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
 
     const rows = await db.select().from(servers).where(eq(servers.teamId, params.teamId));
     return { servers: rows.map(toServerDto) };
+  })
+  // One round trip for every server's CPU/mem/disk history — the Dashboard's sparklines and each
+  // server's own "Recursos" chart both read this (the latter passing a single serverId is still just
+  // this same shape, filtered client-side, so there's one code path instead of two).
+  .get("/metrics-history", async ({ cookie, params, query, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const hours = Math.min(168, Math.max(1, Number(query.hours) || 24));
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const rows = await db
+      .select({ serverId: serverMetricSamples.serverId, cpuPercent: serverMetricSamples.cpuPercent, memPercent: serverMetricSamples.memPercent, diskPercent: serverMetricSamples.diskPercent, capturedAt: serverMetricSamples.capturedAt })
+      .from(serverMetricSamples)
+      .innerJoin(servers, eq(servers.id, serverMetricSamples.serverId))
+      .where(and(eq(servers.teamId, params.teamId), gte(serverMetricSamples.capturedAt, since)))
+      .orderBy(serverMetricSamples.capturedAt);
+    const history: Record<string, Array<{ at: string; cpu: number; mem: number; disk: number }>> = {};
+    for (const row of rows) {
+      (history[row.serverId] ??= []).push({ at: row.capturedAt.toISOString(), cpu: row.cpuPercent, mem: row.memPercent, disk: row.diskPercent });
+    }
+    return { history };
   })
   .post(
     "/",

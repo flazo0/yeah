@@ -4,6 +4,7 @@ import { resourceTags, services, servers, volumeBackups, type Service } from "@y
 import { composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, normalizeHost, parseComposeStack, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
+import { loadResourceMetricHistory } from "../lib/metricsHistory";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -208,6 +209,24 @@ export const serviceRoutes = new Elysia({
     }
 
     return { service: toServiceDto(row.service, row.serverName) };
+  })
+  .get("/:serviceId/metrics-history", async ({ cookie, params, query, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadService(params.environmentId, params.serviceId);
+    if (!row) {
+      set.status = 404;
+      return { error: "service not found" };
+    }
+    if (row.service.composeContent) return { history: [], multiContainer: true };
+    return { history: await loadResourceMetricHistory("service", params.serviceId, Number(query.hours)), multiContainer: false };
   })
   .put(
     "/:serviceId/env",

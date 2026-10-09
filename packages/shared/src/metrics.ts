@@ -87,4 +87,11 @@ export function containerStatsCommand(app: { id: string; buildPack: string }): s
   return `docker stats ${format} ${shellQuote(`yeah-app-${app.id}`)}`;
 }
 
+/** Every running container on the host in one call — used by the periodic history capture, which
+ * then matches each line's `Name` against the single-container resources it knows about (see
+ * container_metric_samples in packages/db). `|| true`: an empty host (no containers at all) exits 1. */
+export function allContainerStatsCommand(): string {
+  return "docker stats --no-stream --format '{{json .}}' || true";
+}
+
 void isValidComposeService;
