@@ -114,6 +114,8 @@ services:
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
       GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}
+      # Dias até esvaziar o log de texto de deploys/backups/tarefas já terminados (0 desliga) — ver .env.example.
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
     deploy:
       resources:
         limits:

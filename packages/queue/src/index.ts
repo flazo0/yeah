@@ -17,11 +17,14 @@ export const TLS_CHECK_QUEUE = "tls-check";
 export const PLATFORM_OPERATION_QUEUE = "platform-operation";
 export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
 export const CA_CERTIFICATE_QUEUE = "ca-certificate";
+export const LOG_RETENTION_QUEUE = "log-retention";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
 /** Fixed id for the single system-wide repeatable job that ticks the TLS expiry check. */
 export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
+/** Fixed id for the single system-wide repeatable job that ticks the log-retention sweep. */
+export const LOG_RETENTION_SCHEDULER_ID = "system-log-retention";
 
 export interface ServerCheckJobData {
   serverId: string;
@@ -73,6 +76,9 @@ export type ServerMetricsJobData = Record<string, never>;
 
 /** Tick job, no per-run data — it re-checks every domain in use each time it fires. */
 export type TlsCheckJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it sweeps every log-bearing execution table each time it fires. */
+export type LogRetentionJobData = Record<string, never>;
 
 /**
  * Each BullMQ `Worker` needs its own dedicated connection — it blocks on it waiting for jobs, which
@@ -246,6 +252,19 @@ export function createTlsCheckWorker(connection: Redis, processor: Processor<Tls
 /** Called once at worker boot — idempotent (upsert). Certs don't need minute-level polling, so this defaults to once a day. */
 export async function ensureTlsCheckScheduler(queue: Queue<TlsCheckJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
   await queue.upsertJobScheduler(TLS_CHECK_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createLogRetentionQueue(connection: Redis): Queue<LogRetentionJobData> {
+  return new Queue<LogRetentionJobData>(LOG_RETENTION_QUEUE, { connection });
+}
+
+export function createLogRetentionWorker(connection: Redis, processor: Processor<LogRetentionJobData>): Worker<LogRetentionJobData> {
+  return new Worker<LogRetentionJobData>(LOG_RETENTION_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Once a day is plenty for a day-granularity retention window. */
+export async function ensureLogRetentionScheduler(queue: Queue<LogRetentionJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(LOG_RETENTION_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 /** A schedule's job scheduler is keyed by `scheduleId` so it can be found again to remove or edit in place. */

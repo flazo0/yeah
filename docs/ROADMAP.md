@@ -144,7 +144,8 @@ Pedido do usuário: rodar o painel num PC/servidor barato à parte, sem gastar r
 - [ ] Analytics de tráfego por aplicação (baixa prioridade).
 - [ ] **Cloudflare Tunnel** por servidor/recurso: modos wildcard para todos os recursos, recurso único, SSH pelo túnel, HTTPS até o painel (compartilha peça com a Fase 2).
 - [ ] Tailscale como forma alternativa de acesso (Dokploy documenta).
-- [ ] Logs estruturados (JSON) de `api`/`worker`/`ws` com nível e correlação por request/job id + retenção configurável de logs de deploy/backup.
+- [ ] Logs estruturados (JSON) de `api`/`worker`/`ws` com nível e correlação por request/job id.
+- [x] **Retenção configurável de logs de deploy/backup/tarefas/limpezas/atualizações**: job novo `log-retention` (BullMQ, roda 1x/dia) esvazia o campo `log` (texto) de `deployments`, `backup_executions`, `docker_cleanup_executions`, `platform_operations`, `scheduled_task_executions` e `volume_backups` pra quem já terminou (`finished_at` não nulo) há mais de `LOG_RETENTION_DAYS` dias (padrão 90, `0` desliga — `.env.example`/`docker-compose.prod.yml`). Só o texto do log some; status, tamanho, datas e o resto da linha continuam (histórico/contagem intactos). Não apaga a linha nem o arquivo de backup em si — só o log de execução, que costuma ser o grosso do tamanho da linha no Postgres. Testado: `retentionCutoff()` isolado em teste unitário (padrão, string vazia, valor customizado, `0` desliga, valor inválido/negativo desliga) — a parte que mexe no banco de verdade não, ver [[feedback-no-local-docker-testing]].
 
 ## Fase 6 — Arquitetura de execução (avaliar antes de fazer)
 

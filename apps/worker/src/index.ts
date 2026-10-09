@@ -18,8 +18,11 @@ import {
   createServerMetricsWorker,
   createTlsCheckQueue,
   createTlsCheckWorker,
+  createLogRetentionQueue,
+  createLogRetentionWorker,
   ensureServerMetricsScheduler,
   ensureTlsCheckScheduler,
+  ensureLogRetentionScheduler,
 } from "@yeah/queue";
 import { makeCheckServerProcessor } from "./jobs/checkServer";
 import { makeDeployApplicationProcessor } from "./jobs/deployApplication";
@@ -36,6 +39,7 @@ import { makeProvisionServiceProcessor } from "./jobs/provisionService";
 import { makePlatformOperationProcessor } from "./jobs/platformOperation";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
 import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
+import { makeLogRetentionProcessor } from "./jobs/logRetention";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -56,6 +60,7 @@ const proxyJobConnection = createRedisConnection(redisUrl);
 const serviceJobConnection = createRedisConnection(redisUrl);
 const metricsJobConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
+const logRetentionJobConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
 const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
@@ -123,6 +128,12 @@ tlsWorker.on("failed", (job, err) => console.error(`[worker] tls-check ${job?.id
 const tlsSchedulerQueue = createTlsCheckQueue(sharedConnection);
 await ensureTlsCheckScheduler(tlsSchedulerQueue);
 
+const logRetentionWorker = createLogRetentionWorker(logRetentionJobConnection, makeLogRetentionProcessor());
+logRetentionWorker.on("failed", (job, err) => console.error(`[worker] log-retention ${job?.id} failed:`, err.message));
+
+const logRetentionSchedulerQueue = createLogRetentionQueue(sharedConnection);
+await ensureLogRetentionScheduler(logRetentionSchedulerQueue);
+
 const platformOperationSelfQueue = createPlatformOperationQueue(sharedConnection);
 const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
@@ -137,5 +148,5 @@ const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, m
 caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup and ca-certificate jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate and log-retention jobs",
 );

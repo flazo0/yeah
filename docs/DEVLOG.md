@@ -730,3 +730,15 @@ Pedido explícito, modelado no que o usuário descreveu do Coolify: ao abrir o p
 **Escopo**: só cobre backups agendados de banco de dados (dumps) — volume backup de aplicação/serviço é uma cópia do volume, não um dump, e não ganhou esse ciclo ainda (ficaria pra uma iteração futura se fizer sentido). **Não testado**: a rota em si segue o mesmo padrão de `deleteBackupFile`/`findExecution` já usado e testado neste arquivo, mas o fluxo de múltiplos downloads automáticos via `<a download>` no navegador (que alguns navegadores podem pedir confirmação depois de poucos arquivos seguidos) não foi exercitado numa sessão de navegador real — ver [[feedback-no-local-docker-testing]].
 
 389 testes, `tsc`/`vue-tsc` limpos nos quatro apps.
+
+## Fase 5: retenção configurável de logs de execução — **não testado contra um banco real**
+
+Continuando a marcha pelo roadmap: próximo item em ordem depois da Fase 9. O item original juntava duas coisas ("logs estruturados JSON com correlação" + "retenção configurável de deploy/backup") — separei em dois porque são features independentes, e só implementei a segunda agora (a primeira fica pendente, é um refactor bem maior que toca todo call site de `console.log` nos três apps).
+
+Job novo `log-retention` (BullMQ, scheduler diário igual ao `tls-check`, mesmo padrão de `upsertJobScheduler`): varre as seis tabelas que guardam um log de texto por execução (`deployments`, `backup_executions`, `docker_cleanup_executions`, `platform_operations`, `scheduled_task_executions`, `volume_backups`) e esvazia (`SET log = ''`) o campo `log` de quem já terminou (`finished_at` preenchido) há mais de `LOG_RETENTION_DAYS` dias. Não apaga a linha — status, tamanho, datas continuam valendo pro histórico/contagem da tela; só o texto do log (o que de longe mais pesa numa linha dessas) some. `LOG_RETENTION_DAYS` é variável de ambiente (padrão 90, `0` desliga o job inteiro sem nem rodar a query) — decidi não criar uma tela de configuração pra isso porque é uma política de plataforma inteira, não por time/recurso, e o projeto já trata esse tipo de config (chaves de criptografia, GitHub App) como variável de ambiente em vez de tela.
+
+Puxa o mesmo tema da Fase 9 (eficiência de recursos): log de texto sem limite crescendo pra sempre em várias tabelas é exatamente o tipo de coisa que incha o Postgres (tamanho de linha, `VACUUM`, backup do próprio banco) numa VPS pequena sem ninguém perceber o motivo.
+
+**Testado**: a única lógica pura (`retentionCutoff()` — calcula a data de corte a partir da env var, trata vazio/zero/negativo/não-numérico) tem 5 testes unitários. A parte que de fato roda a query (`makeLogRetentionProcessor`) não tem como testar sem um Postgres de verdade — ver [[feedback-no-local-docker-testing]].
+
+394 testes, `tsc`/`vue-tsc` limpos.
