@@ -27,6 +27,11 @@ const scheduleForm = ref({
   storageId: "" as string | "",
   databases: "",
 });
+const syncKeepCount = ref<number | null>(null);
+const savingSync = ref(false);
+const syncing = ref(false);
+const syncMessage = ref("");
+let autoSyncRan = false;
 const creatingSchedule = ref(false);
 const runningNow = ref(false);
 const editingSchedule = ref(false);
@@ -62,7 +67,13 @@ async function load() {
     ]);
     schedule.value = scheduleRes.schedule;
     storages.value = storagesRes.storages;
+    syncKeepCount.value = schedule.value?.autoSyncKeepCount ?? null;
     if (schedule.value) await loadExecutions();
+    // "Abrir o painel já sincroniza" — only when the schedule opted in, and only once per visit to this page.
+    if (schedule.value?.autoSyncKeepCount && !autoSyncRan) {
+      autoSyncRan = true;
+      void syncNow();
+    }
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar backups";
   }
@@ -124,6 +135,65 @@ async function cleanup(what: "failed" | "missing") {
     error.value = err instanceof ApiError ? err.message : "falha na limpeza";
   } finally {
     cleaning.value = false;
+  }
+}
+
+async function saveSync() {
+  if (!schedule.value) return;
+  savingSync.value = true;
+  error.value = "";
+  try {
+    const res = await api.put<{ schedule: BackupScheduleDto }>(`${basePath}/backup-schedule/${schedule.value.id}`, {
+      autoSyncKeepCount: syncKeepCount.value && syncKeepCount.value > 0 ? syncKeepCount.value : null,
+    });
+    schedule.value = res.schedule;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+  } finally {
+    savingSync.value = false;
+  }
+}
+
+/**
+ * Downloads every not-yet-synced successful execution to the browser's download folder, marks each
+ * as synced only after the download itself resolved, then prunes the server/S3 down to the configured
+ * keep count — but only among executions already marked synced, so a download that silently failed
+ * never costs the only copy of a backup. Stops (without pruning anything) at the first failure.
+ */
+async function syncNow() {
+  if (!schedule.value) return;
+  syncing.value = true;
+  syncMessage.value = "";
+  error.value = "";
+  try {
+    const pending = executions.value.filter((e) => e.status === "success" && !e.syncedAt);
+    let downloaded = 0;
+    for (const execution of pending) {
+      const res = await fetch(downloadUrl(execution.id), { credentials: "include" });
+      if (!res.ok) throw new Error(`falha ao baixar o backup de ${new Date(execution.createdAt).toLocaleString("pt-BR")}`);
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const disposition = res.headers.get("Content-Disposition") ?? "";
+      const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `backup-${execution.id}`;
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+      await api.post(`${basePath}/backup-executions/${execution.id}/mark-synced`, {});
+      downloaded++;
+    }
+    if (schedule.value.autoSyncKeepCount) {
+      const pruneRes = await api.post<{ removed: number }>(`${basePath}/backup-schedule/${schedule.value.id}/prune`, {});
+      syncMessage.value = `${downloaded} baixado(s), ${pruneRes.removed} removido(s) do servidor.`;
+    } else {
+      syncMessage.value = downloaded === 0 ? "Nada novo pra baixar." : `${downloaded} baixado(s).`;
+    }
+    await loadExecutions();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "falha ao sincronizar";
+  } finally {
+    syncing.value = false;
   }
 }
 
@@ -413,6 +483,23 @@ onUnmounted(() => {
         </div>
       </div>
 
+      <div class="card-body" style="border-bottom: 1px solid var(--border)">
+        <p class="hint mb-16">
+          Sincronização local: baixa pro seu computador todo backup ainda não baixado e, se um número estiver configurado abaixo, apaga do servidor/S3 os mais antigos além desse número — só os que já foram baixados com sucesso. Com um número configurado, isso roda sozinho sempre que você abre esta aba.
+        </p>
+        <div class="btn-row">
+          <div class="form-group" style="margin-bottom: 0">
+            <label for="sync-keep">Manter no servidor (vazio = não apagar nada)</label>
+            <input id="sync-keep" v-model.number="syncKeepCount" type="number" min="1" class="form-control" style="max-width: 160px" @change="saveSync" :disabled="savingSync" />
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" style="align-self: flex-end" :disabled="syncing" @click="syncNow">
+            <span class="material-symbols-outlined" style="font-size: 16px">sync</span>
+            {{ syncing ? "sincronizando..." : "Sincronizar agora" }}
+          </button>
+          <span v-if="syncMessage" class="muted" style="align-self: center; font-size: 13px">{{ syncMessage }}</span>
+        </div>
+      </div>
+
       <div v-if="executions.length === 0" class="card-body">
         <div class="empty-state">Nenhuma execução ainda.</div>
       </div>
@@ -432,6 +519,7 @@ onUnmounted(() => {
               <td><StatusBadge :status="execution.status" kind="job" /></td>
               <td class="mono">{{ formatSize(execution.sizeBytes) }}</td>
               <td class="btn-row">
+                <span v-if="execution.syncedAt" class="badge badge-neutral" title="já baixado pela sincronização local">sincronizado</span>
                 <a
                   v-if="execution.status === 'success'"
                   class="btn btn-secondary btn-sm"

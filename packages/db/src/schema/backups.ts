@@ -22,6 +22,11 @@ export const backupSchedules = pgTable("backup_schedules", {
   storageId: uuid("storage_id").references(() => s3Storages.id, { onDelete: "set null" }),
   // Comma-separated databases to dump from a multi-database instance; null = only the one it was created with.
   databasesToInclude: varchar("databases_to_include", { length: 1000 }),
+  // null = off. Set = every time the Backups page loads, the browser downloads every execution not
+  // yet synced and then this schedule keeps only the N most recent on the server/S3 (the rest only
+  // exist in whatever the user downloaded) — a local-first mirror of Coolify's backup lifecycle,
+  // for a VPS that shouldn't be the only copy or the one holding the full history.
+  autoSyncKeepCount: integer("auto_sync_keep_count"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -39,6 +44,10 @@ export const backupExecutions = pgTable("backup_executions", {
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  // Set once the browser has confirmed downloading this execution's file via the sync flow — the
+  // prune step (see backupSchedules.autoSyncKeepCount) only ever deletes an execution that has this
+  // set, so a download that silently failed can never cost the only copy of a backup.
+  syncedAt: timestamp("synced_at", { withTimezone: true }),
 });
 
 export type BackupSchedule = typeof backupSchedules.$inferSelect;

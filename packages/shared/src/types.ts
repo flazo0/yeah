@@ -321,6 +321,8 @@ export interface BackupScheduleDto {
   storageId: string | null;
   /** Comma-separated databases to include from a multi-database instance; null = the primary one. */
   databases: string | null;
+  /** null = off. Set = the Backups page downloads every un-synced execution then prunes down to this many on the server/S3. */
+  autoSyncKeepCount: number | null;
   createdAt: string;
 }
 
@@ -369,6 +371,8 @@ export interface BackupExecutionDto {
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
+  /** Set once the browser has confirmed downloading this file via the sync flow — see BackupScheduleDto.autoSyncKeepCount. */
+  syncedAt: string | null;
 }
 
 export interface S3StorageDto {

@@ -64,6 +64,7 @@ export function toScheduleDto(schedule: BackupSchedule): BackupScheduleDto {
     retentionSizeGb: schedule.retentionSizeGb,
     storageId: schedule.storageId,
     databases: schedule.databasesToInclude,
+    autoSyncKeepCount: schedule.autoSyncKeepCount,
     createdAt: schedule.createdAt.toISOString(),
   };
 }
@@ -80,6 +81,7 @@ export function toExecutionDto(execution: BackupExecution): BackupExecutionDto {
     startedAt: execution.startedAt ? execution.startedAt.toISOString() : null,
     finishedAt: execution.finishedAt ? execution.finishedAt.toISOString() : null,
     createdAt: execution.createdAt.toISOString(),
+    syncedAt: execution.syncedAt ? execution.syncedAt.toISOString() : null,
   };
 }
 

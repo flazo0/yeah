@@ -136,6 +136,7 @@ export const databaseBackupRoutes = new Elysia({
           retentionSizeGb: body.retentionSizeGb ?? 0,
           storageId: body.storageId ?? null,
           databasesToInclude: included.value,
+          autoSyncKeepCount: body.autoSyncKeepCount ?? null,
         })
         .returning();
       if (!schedule) {
@@ -162,6 +163,7 @@ export const databaseBackupRoutes = new Elysia({
         retentionSizeGb: t.Optional(t.Number()),
         storageId: t.Optional(t.Nullable(t.String())),
         databases: t.Optional(t.Nullable(t.String({ maxLength: 1000 }))),
+        autoSyncKeepCount: t.Optional(t.Nullable(t.Number())),
       }),
     },
   )
@@ -201,6 +203,7 @@ export const databaseBackupRoutes = new Elysia({
         retentionSizeGb: body.retentionSizeGb ?? existing.retentionSizeGb,
         storageId: nextStorageId,
         databasesToInclude: nextIncluded,
+        autoSyncKeepCount: "autoSyncKeepCount" in body ? (body.autoSyncKeepCount ?? null) : existing.autoSyncKeepCount,
       };
       try {
         // upsertJobScheduler re-keys by id: changes cron/timezone in place, and is safe when only retention changed.
@@ -222,6 +225,7 @@ export const databaseBackupRoutes = new Elysia({
         retentionSizeGb: t.Optional(t.Number()),
         storageId: t.Optional(t.Nullable(t.String())),
         databases: t.Optional(t.Nullable(t.String({ maxLength: 1000 }))),
+        autoSyncKeepCount: t.Optional(t.Nullable(t.Number())),
       }),
     },
   )
@@ -375,6 +379,51 @@ export const databaseBackupRoutes = new Elysia({
     await db.delete(backupExecutions).where(eq(backupExecutions.id, execution.id));
     return { ok: true };
   })
+  // Called by the browser right after it confirms downloading this execution's file — see the
+  // autoSyncKeepCount prune route below, which only ever removes an execution that has this set.
+  .post("/:databaseId/backup-executions/:executionId/mark-synced", async ({ ctx, params, set }) => {
+    if ("error" in ctx) {
+      set.status = ctx.status;
+      return { error: ctx.error };
+    }
+    const execution = await findExecution(params.databaseId, params.executionId);
+    if (!execution) {
+      set.status = 404;
+      return { error: "backup not found" };
+    }
+    const [updated] = await db.update(backupExecutions).set({ syncedAt: new Date() }).where(eq(backupExecutions.id, execution.id)).returning();
+    return { execution: toExecutionDto(updated as BackupExecution) };
+  })
+  // Keeps only the N most recent successful executions of this schedule — of the ones beyond that,
+  // only an execution the browser already confirmed downloading (syncedAt set) is ever removed, so a
+  // sync that silently failed to download something can never cost the only copy of that backup.
+  .post(
+    "/:databaseId/backup-schedule/:scheduleId/prune",
+    async ({ ctx, params, body, set }) => {
+      if ("error" in ctx) {
+        set.status = ctx.status;
+        return { error: ctx.error };
+      }
+      const [schedule] = await db.select().from(backupSchedules).where(and(eq(backupSchedules.id, params.scheduleId), eq(backupSchedules.databaseId, params.databaseId))).limit(1);
+      if (!schedule) {
+        set.status = 404;
+        return { error: "backup schedule not found" };
+      }
+      const keep = Math.max(1, body.keep ?? schedule.autoSyncKeepCount ?? 1);
+      const successful = await db
+        .select()
+        .from(backupExecutions)
+        .where(and(eq(backupExecutions.scheduleId, schedule.id), eq(backupExecutions.status, "success")))
+        .orderBy(desc(backupExecutions.createdAt));
+      const candidates = successful.slice(keep).filter((e) => e.syncedAt !== null);
+      for (const execution of candidates) {
+        await deleteBackupFile(execution, ctx.database);
+        await db.delete(backupExecutions).where(eq(backupExecutions.id, execution.id));
+      }
+      return { removed: candidates.length };
+    },
+    { body: t.Object({ keep: t.Optional(t.Number()) }) },
+  )
   // ---- restore
   .get("/:databaseId/restores", async ({ ctx, params, set }) => {
     if ("error" in ctx) {

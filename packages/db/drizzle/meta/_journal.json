@@ -288,6 +288,13 @@
       "when": 1791586373737,
       "tag": "0040_server_metrics_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791586881477,
+      "tag": "0041_backup_sync",
+      "breakpoints": true
     }
   ]
 }

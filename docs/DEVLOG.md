@@ -720,3 +720,13 @@ Pedido do usuário: o painel precisa rodar bem numa VPS pequena (1 vCPU/4GB), me
 **Pendente, não comecei ainda**: revisão do tamanho do pool de conexões Postgres (não dá pra tunar sem carga real pra validar) e o ciclo de vida de backup "baixa tudo, poda o resto" (pedido novo, ainda não implementado).
 
 389 testes, `tsc`/`vue-tsc` limpos nos quatro apps. **Não testado contra uma VPS real** (a consolidação de conexões Redis e o toggle de métricas só mudam coisas que o worker já fazia, verificado por leitura — não há como observar o padrão de memória de verdade sem rodar numa VPS) — ver [[feedback-no-local-docker-testing]].
+
+## Fase 9: ciclo de vida de backups "baixa tudo, poda o resto" — **não testado no navegador**
+
+Pedido explícito, modelado no que o usuário descreveu do Coolify: ao abrir o painel, baixar pro computador o histórico de backups ainda na VPS e podar o servidor até só sobrar o mais recente, com o "quantos manter" configurável.
+
+`backup_schedules.auto_sync_keep_count` (migração 0041, `null` = desligado) e `backup_executions.synced_at` (migração 0041 também) são as duas peças: o campo na aba Backups do banco liga a sincronização e define quantos manter no servidor; `synced_at` só é gravado depois que o navegador confirma ter terminado de baixar aquele arquivo (`fetch` + `blob`, nunca um link cru — precisa do `blob` resolvido pra saber que o download não falhou). A rota nova `POST .../backup-schedule/:id/prune` só considera candidato a apagar uma execução **com** `synced_at` — mesmo que o número configurado mande apagar mais, uma execução nunca baixada com sucesso nunca é removida. `syncNow()` no `DatabaseBackupsPage.vue` roda sozinho uma vez por visita à aba quando o número está configurado (bate com "abro o painel e ele já sincroniza"), ou sob demanda no botão "Sincronizar agora"; para na primeira falha de download sem apagar nada.
+
+**Escopo**: só cobre backups agendados de banco de dados (dumps) — volume backup de aplicação/serviço é uma cópia do volume, não um dump, e não ganhou esse ciclo ainda (ficaria pra uma iteração futura se fizer sentido). **Não testado**: a rota em si segue o mesmo padrão de `deleteBackupFile`/`findExecution` já usado e testado neste arquivo, mas o fluxo de múltiplos downloads automáticos via `<a download>` no navegador (que alguns navegadores podem pedir confirmação depois de poucos arquivos seguidos) não foi exercitado numa sessão de navegador real — ver [[feedback-no-local-docker-testing]].
+
+389 testes, `tsc`/`vue-tsc` limpos nos quatro apps.
