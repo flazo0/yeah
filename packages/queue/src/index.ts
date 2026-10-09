@@ -18,6 +18,7 @@ export const PLATFORM_OPERATION_QUEUE = "platform-operation";
 export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
 export const CA_CERTIFICATE_QUEUE = "ca-certificate";
 export const LOG_RETENTION_QUEUE = "log-retention";
+export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -317,6 +318,21 @@ export function createCaCertificateQueue(connection: Redis): Queue<CaCertificate
 
 export function createCaCertificateWorker(connection: Redis, processor: Processor<CaCertificateJobData>): Worker<CaCertificateJobData> {
   return new Worker<CaCertificateJobData>(CA_CERTIFICATE_QUEUE, processor, { connection });
+}
+
+export interface CloudflareTunnelJobData {
+  serverId: string;
+  action: "install" | "remove";
+  /** The tunnel token from Cloudflare's dashboard — required for "install", unused for "remove". */
+  token?: string;
+}
+
+export function createCloudflareTunnelQueue(connection: Redis): Queue<CloudflareTunnelJobData> {
+  return new Queue<CloudflareTunnelJobData>(CLOUDFLARE_TUNNEL_QUEUE, { connection });
+}
+
+export function createCloudflareTunnelWorker(connection: Redis, processor: Processor<CloudflareTunnelJobData>): Worker<CloudflareTunnelJobData> {
+  return new Worker<CloudflareTunnelJobData>(CLOUDFLARE_TUNNEL_QUEUE, processor, { connection });
 }
 
 export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {

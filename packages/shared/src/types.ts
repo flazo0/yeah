@@ -68,6 +68,10 @@ export interface ServerDto {
   metricsCheckedAt: string | null;
   /** Off switch for the periodic docker-stats-over-SSH poll — see servers.metrics_enabled in packages/db. */
   metricsEnabled: boolean;
+  /** Whether a Cloudflare Tunnel token is set — the token itself never leaves the server. */
+  cloudflareTunnelConfigured: boolean;
+  cloudflareTunnelStatus: ProxyStatus;
+  cloudflareTunnelError: string | null;
   /** Set when the server's key was copied in from an existing entry in Keys & Tokens. */
   sshKeyId: string | null;
   createdAt: string;

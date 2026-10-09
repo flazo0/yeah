@@ -20,6 +20,7 @@ import {
   createTlsCheckWorker,
   createLogRetentionQueue,
   createLogRetentionWorker,
+  createCloudflareTunnelWorker,
   ensureServerMetricsScheduler,
   ensureTlsCheckScheduler,
   ensureLogRetentionScheduler,
@@ -40,6 +41,7 @@ import { makePlatformOperationProcessor } from "./jobs/platformOperation";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
 import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
 import { makeLogRetentionProcessor } from "./jobs/logRetention";
+import { makeCloudflareTunnelProcessor } from "./jobs/cloudflareTunnel";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -61,6 +63,7 @@ const serviceJobConnection = createRedisConnection(redisUrl);
 const metricsJobConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
 const logRetentionJobConnection = createRedisConnection(redisUrl);
+const cloudflareTunnelConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
 const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
@@ -134,6 +137,9 @@ logRetentionWorker.on("failed", (job, err) => console.error(`[worker] log-retent
 const logRetentionSchedulerQueue = createLogRetentionQueue(sharedConnection);
 await ensureLogRetentionScheduler(logRetentionSchedulerQueue);
 
+const cloudflareTunnelWorker = createCloudflareTunnelWorker(cloudflareTunnelConnection, makeCloudflareTunnelProcessor());
+cloudflareTunnelWorker.on("failed", (job, err) => console.error(`[worker] cloudflare-tunnel ${job?.id} failed:`, err.message));
+
 const platformOperationSelfQueue = createPlatformOperationQueue(sharedConnection);
 const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
@@ -148,5 +154,5 @@ const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, m
 caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate and log-retention jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention and cloudflare-tunnel jobs",
 );

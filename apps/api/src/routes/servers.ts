@@ -5,7 +5,7 @@ import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
 import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
-import { serverCheckQueue, proxyProvisionQueue } from "../lib/queue";
+import { serverCheckQueue, proxyProvisionQueue, cloudflareTunnelQueue } from "../lib/queue";
 import { assertMember } from "../lib/access";
 
 function toServerDto(server: Server): ServerDto {
@@ -29,6 +29,9 @@ function toServerDto(server: Server): ServerDto {
     metricsCheckedAt: server.metricsCheckedAt ? server.metricsCheckedAt.toISOString() : null,
     metricsEnabled: server.metricsEnabled,
     sshKeyId: server.sshKeyId,
+    cloudflareTunnelConfigured: server.cloudflareTunnelToken !== null,
+    cloudflareTunnelStatus: server.cloudflareTunnelStatus,
+    cloudflareTunnelError: server.cloudflareTunnelError,
     createdAt: server.createdAt.toISOString(),
   };
 }
@@ -265,6 +268,58 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
     },
     { body: t.Object({ metricsEnabled: t.Boolean() }) },
   )
+  .put(
+    "/:serverId/cloudflare-tunnel",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!body.token.trim()) {
+        set.status = 400;
+        return { error: "token vazio" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ cloudflareTunnelToken: body.token.trim(), cloudflareTunnelStatus: "provisioning", cloudflareTunnelError: null })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      await cloudflareTunnelQueue.add("install", { serverId: server.id, action: "install", token: body.token.trim() });
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ token: t.String({ minLength: 1, maxLength: 2000 }) }) },
+  )
+  .delete("/:serverId/cloudflare-tunnel", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const [server] = await db
+      .update(servers)
+      .set({ cloudflareTunnelStatus: "provisioning", cloudflareTunnelError: null })
+      .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+      .returning();
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    await cloudflareTunnelQueue.add("remove", { serverId: server.id, action: "remove" });
+    return { server: toServerDto(server) };
+  })
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

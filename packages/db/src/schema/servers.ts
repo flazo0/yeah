@@ -32,6 +32,13 @@ export const servers = pgTable("servers", {
   // Required by Let's Encrypt to register the ACME account that issues certs on this server.
   acmeEmail: varchar("acme_email", { length: 255 }),
   proxyStatus: proxyStatusEnum("proxy_status").default("inactive").notNull(),
+  // A Cloudflare Tunnel into this server's own proxy (yeah-proxy) — an alternative/complement to a
+  // public IP + Let's Encrypt for reaching whatever's deployed here. The token is the one thing
+  // Cloudflare's dashboard gives you when creating the tunnel; which public hostnames it answers for
+  // (wildcard or a single resource) is configured entirely on Cloudflare's side, not here.
+  cloudflareTunnelToken: encryptedText("cloudflare_tunnel_token"),
+  cloudflareTunnelStatus: proxyStatusEnum("cloudflare_tunnel_status").default("inactive").notNull(),
+  cloudflareTunnelError: varchar("cloudflare_tunnel_error", { length: 1000 }),
   // Latest snapshot from the periodic `server-metrics` job — null until the first check runs.
   cpuPercent: real("cpu_percent"),
   memPercent: real("mem_percent"),

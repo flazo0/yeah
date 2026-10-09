@@ -17,6 +17,39 @@ const containerRunning = ref<boolean | null>(null);
 const loadingLogs = ref(false);
 let poll: ReturnType<typeof setInterval> | undefined;
 
+const cfToken = ref("");
+const cfSaving = ref(false);
+const cfRemoving = ref(false);
+
+async function saveCloudflareTunnel() {
+  if (!server.value || !cfToken.value.trim()) return;
+  cfSaving.value = true;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: ServerDto }>(`/teams/${teamId}/servers/${server.value.id}/cloudflare-tunnel`, { token: cfToken.value.trim() });
+    replaceServer(res.server);
+    cfToken.value = "";
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar o token";
+  } finally {
+    cfSaving.value = false;
+  }
+}
+
+async function removeCloudflareTunnel() {
+  if (!server.value) return;
+  cfRemoving.value = true;
+  error.value = "";
+  try {
+    const res = await api.delete<{ server: ServerDto }>(`/teams/${teamId}/servers/${server.value.id}/cloudflare-tunnel`);
+    replaceServer(res.server);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao remover o túnel";
+  } finally {
+    cfRemoving.value = false;
+  }
+}
+
 async function save() {
   if (!server.value) return;
   saving.value = true;
@@ -136,6 +169,45 @@ watch(() => server.value?.proxyStatus, (status, prev) => {
           {{ restarting ? "reiniciando..." : "Reiniciar" }}
         </button>
       </div>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">cloud</span>
+      Cloudflare Tunnel
+      <StatusBadge :status="server.cloudflareTunnelStatus" style="margin-left: auto" />
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Alternativa (ou complemento) ao domínio + Let's Encrypt acima: um túnel da Cloudflare direto pra esse servidor,
+        sem precisar de IP público nem abrir porta. Cria o túnel em Cloudflare (Zero Trust → Networks → Tunnels), aponte
+        o(s) hostname(s) públicos (um específico ou um wildcard — os dois funcionam igual) pra
+        <span class="mono">http://yeah-proxy:80</span>, e cole o token abaixo. Cobre só tráfego HTTP(S) dos recursos deste
+        servidor — pra acessar o próprio painel sem IP público, ou pra SSH sem porta aberta, veja
+        <span class="mono">docs/INSTALLATION.md</span> (Cloudflare Tunnel do painel / Tailscale).
+      </p>
+      <div v-if="server.cloudflareTunnelStatus === 'error' && server.cloudflareTunnelError" class="callout mb-16" style="border-left-color: var(--bad); display: flex; gap: 8px; align-items: flex-start">
+        <span class="material-symbols-outlined" style="font-size: 18px; color: var(--bad)">error</span>
+        <span>{{ server.cloudflareTunnelError }}</span>
+      </div>
+      <div v-if="server.cloudflareTunnelConfigured" class="btn-row">
+        <span class="hint" style="align-self: center">Token configurado.</span>
+        <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="cfRemoving" @click="removeCloudflareTunnel">
+          <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
+          {{ cfRemoving ? "removendo..." : "Remover túnel" }}
+        </button>
+      </div>
+      <form v-else class="form-row" @submit.prevent="saveCloudflareTunnel">
+        <div class="form-group" style="margin-bottom: 0; flex: 1">
+          <label for="cf-token">Token do túnel</label>
+          <input id="cf-token" v-model="cfToken" type="password" class="form-control mono" placeholder="colado do painel da Cloudflare" />
+        </div>
+        <button type="submit" class="btn" style="align-self: flex-end" :disabled="cfSaving || !cfToken.trim()">
+          <span class="material-symbols-outlined" style="font-size: 18px">bolt</span>
+          {{ cfSaving ? "ativando..." : "Ativar túnel" }}
+        </button>
+      </form>
     </div>
   </div>
 

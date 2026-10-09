@@ -746,3 +746,15 @@ Puxa o mesmo tema da Fase 9 (eficiência de recursos): log de texto sem limite c
 ## Fase 5: Tailscale como forma alternativa de acesso — documentação apenas
 
 Próximo item em ordem. Não precisou de nenhuma mudança de código: o painel já é agnóstico a que rede um host está em — `WEB_BIND` (docker-compose.prod.yml) aceita qualquer IP pra escutar, e o campo "Host" de um servidor aceita qualquer IP/hostname alcançável por SSH. O Tailscale só dá um IP (`100.x.y.z`) ou nome MagicDNS nessas duas pontas, então documentei o uso em `docs/INSTALLATION.md` (seção nova "Alternativa: Tailscale", logo depois do Cloudflare Tunnel): acessar o painel sem abrir porta, e conectar um servidor gerenciado pela tailnet em vez da internet pública — com uma nota de quando cada opção (Tunnel vs Tailscale) faz mais sentido.
+
+## Fase 5: Cloudflare Tunnel por servidor — **não testado numa VPS real**
+
+Próximo item em ordem. O item original juntava quatro coisas (wildcard, recurso único, SSH pelo túnel, HTTPS até o painel) — a última já existe desde a Fase 2 (túnel do próprio painel). Pra wildcard vs. recurso único: descobri que não precisam de nenhuma diferença de código — um túnel aponta pra `http://yeah-proxy:80` (o Traefik que já roteia por Host header pra qualquer coisa deployada no servidor), e "é wildcard ou é um recurso só" é inteiramente uma escolha de quais *public hostnames* você configura do lado da Cloudflare, não algo que o `yeah` precisa saber ou diferenciar.
+
+Implementação: `servers.cloudflare_tunnel_token` (criptografado) + `cloudflare_tunnel_status`/`cloudflare_tunnel_error` (migração 0042, reaproveitando o enum `proxy_status` — são os mesmos 4 estados). Fila nova `cloudflare-tunnel` (BullMQ) com job `install`/`remove`, seguindo exatamente o padrão do `ca-certificate` (SSH efêmero, sem exceção nova à regra "só o worker fala SSH"): `docker run -d --name yeah-cf-tunnel --network yeah-proxy-net --restart unless-stopped cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <token>`. Cartão novo na aba Proxy do servidor (`ServerProxyPage.vue`, logo abaixo do proxy em si) — cola o token, o worker sobe o container, status muda pra `active`/`error`.
+
+**SSH pelo túnel não foi implementado**: precisaria rodar o cliente WARP do lado do worker (pra ele discar pela rede privada do túnel em vez da internet pública), que é uma peça de infraestrutura adicional bem mais arriscada de validar sem uma VPS de teste. Documentei o Tailscale (feito no item anterior) como a alternativa já pronta pra exatamente esse caso.
+
+**Testado**: `cloudflareTunnel.commands.test.ts` (2 testes: o comando monta certo, o token é escapado corretamente mesmo com aspas simples dentro). O `docker run` de verdade contra uma VPS com uma conta Cloudflare real, não — ver [[feedback-no-local-docker-testing]].
+
+397 testes, `tsc`/`vue-tsc` limpos nos quatro apps.
