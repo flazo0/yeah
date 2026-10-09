@@ -65,6 +65,24 @@ curl -fsSL https://raw.githubusercontent.com/flazo0/yeah/main/install.sh | sudo 
 
 O rate limit da API usa o IP real do visitante: atrás do túnel o nginx lê o cabeçalho `CF-Connecting-IP`, mas só quando a conexão vem da rede interna do Docker — quem acessa a porta exposta direto não consegue forjar esse cabeçalho.
 
+#### Alternativa: Tailscale
+
+[Tailscale](https://tailscale.com/) cria uma rede privada (tailnet) entre as máquinas que você autoriza, cada uma com um IP fixo (`100.x.y.z`) e um nome MagicDNS — sem abrir porta nenhuma no roteador/firewall, diferente do Cloudflare Tunnel não depende de um domínio público nem de conta na Cloudflare. O `yeah` não precisa de nenhum suporte especial pra isso: tanto o painel quanto um servidor gerenciado são só "uma máquina com um host/IP", e o Tailscale só muda qual IP é esse.
+
+**Pra acessar o painel sem expô-lo à internet:**
+
+1. Instale o Tailscale na máquina do painel (`curl -fsSL https://tailscale.com/install.sh | sh && tailscale up`) e em qualquer dispositivo seu que vai acessar o painel.
+2. Em vez de `--cloudflare-tunnel-token`, use `WEB_BIND=<IP tailscale da máquina>` no `.env` (ou simplesmente deixe `0.0.0.0` e bloqueie a porta no firewall pra qualquer origem que não seja a sub-rede `100.64.0.0/10` do Tailscale) — veja a variável `WEB_BIND` em `docker-compose.prod.yml`.
+3. Acesse pelo IP ou nome MagicDNS da máquina (ex.: `http://meu-painel:8080`), de qualquer outro dispositivo com Tailscale ligado.
+
+**Pra conectar um servidor gerenciado sem IP público (ou sem querer expor a porta SSH):**
+
+1. Instale o Tailscale também na VPS/servidor (`tailscale up`).
+2. Em **Servidores → Adicionar servidor**, use o IP tailscale (`100.x.y.z`) ou o nome MagicDNS do servidor no campo "Host" em vez do IP público — a porta SSH continua a mesma (22 por padrão), só muda a rede por onde ela é alcançada.
+3. O worker conecta por SSH igual sempre conectou; a única diferença é que o tráfego nunca passa pela internet pública, então não precisa nem liberar a porta 22 no firewall da VPS pra fora da tailnet.
+
+Cloudflare Tunnel e Tailscale resolvem o mesmo problema (expor sem IP público/porta aberta) de formas diferentes — Tunnel é melhor quando você já tem um domínio e quer um link HTTPS público de verdade; Tailscale é melhor quando só você (e seus dispositivos) precisam acessar, sem necessidade de domínio nenhum. Dá pra usar os dois ao mesmo tempo (painel atrás do Tunnel, servidores conectados via Tailscale).
+
 ### Atualizando
 
 ```bash

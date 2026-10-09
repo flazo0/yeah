@@ -742,3 +742,7 @@ Puxa o mesmo tema da Fase 9 (eficiência de recursos): log de texto sem limite c
 **Testado**: a única lógica pura (`retentionCutoff()` — calcula a data de corte a partir da env var, trata vazio/zero/negativo/não-numérico) tem 5 testes unitários. A parte que de fato roda a query (`makeLogRetentionProcessor`) não tem como testar sem um Postgres de verdade — ver [[feedback-no-local-docker-testing]].
 
 394 testes, `tsc`/`vue-tsc` limpos.
+
+## Fase 5: Tailscale como forma alternativa de acesso — documentação apenas
+
+Próximo item em ordem. Não precisou de nenhuma mudança de código: o painel já é agnóstico a que rede um host está em — `WEB_BIND` (docker-compose.prod.yml) aceita qualquer IP pra escutar, e o campo "Host" de um servidor aceita qualquer IP/hostname alcançável por SSH. O Tailscale só dá um IP (`100.x.y.z`) ou nome MagicDNS nessas duas pontas, então documentei o uso em `docs/INSTALLATION.md` (seção nova "Alternativa: Tailscale", logo depois do Cloudflare Tunnel): acessar o painel sem abrir porta, e conectar um servidor gerenciado pela tailnet em vez da internet pública — com uma nota de quando cada opção (Tunnel vs Tailscale) faz mais sentido.
