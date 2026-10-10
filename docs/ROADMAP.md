@@ -173,8 +173,8 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 ## Fase 8 — Polimento, documentação e extras
 
 - [ ] **i18n** PT/EN: `vue-i18n`, `pt.json` + `en.json`, seletor de idioma junto do tema; migrar página por página.
-- [ ] Doc **"Escalar app Node/Bun em múltiplos cores"**: `pm2-runtime -i max` (Node) e `reusePort: true` + um processo por core (Bun/Deno); avisar que sessão/cache/rate-limit vão pro Redis.
-- [ ] Doc de **troubleshooting** (502/503/504, OOM em build, firewall, Let's Encrypt, token GitHub expirado).
+- [x] Doc **"Escalar app Node/Bun em múltiplos cores"** → `docs/SCALING.md` (`pm2-runtime -i max`, `reusePort: true`, e o que vai pro Redis). Só documentação, não validado numa VPS.
+- [x] Doc de **troubleshooting** → `docs/TROUBLESHOOTING.md` (502/503/504, OOM em build, firewall, Let's Encrypt, token GitHub, servidor offline). Escrito a partir do comportamento do código; não validado em VPS real.
 - [ ] **2FA** pra conta única do admin.
 - [ ] Ícone customizado por projeto.
 - [ ] **Criar VPS de dentro do painel** (Hetzner / Vultr / DigitalOcean via API do provedor, incluindo firewall).

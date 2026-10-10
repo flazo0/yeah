@@ -830,3 +830,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 7 — mover recurso entre ambientes
 
 `moveResource()` em `ciActions.ts`: confirma que o ambiente alvo pertence a um projeto do mesmo time e faz `UPDATE ... SET environment_id` com filtro por `teamId` (um id de outro time simplesmente dá 404). Exposto como `POST .../move-resource` na API de CI/v1 e documentado no OpenAPI. Sem efeito no servidor, por isso sem redeploy. **Não testado** ([[feedback-no-local-docker-testing]]); falta botão na UI. Fase 7 fechada.
+
+## Fase 8 — docs de escalonamento e troubleshooting
+
+`docs/SCALING.md` e `docs/TROUBLESHOOTING.md`. Só texto; as dicas vêm do comportamento conhecido do Traefik/BullMQ/Let's Encrypt, sem teste em VPS real ([[feedback-no-local-docker-testing]]).
