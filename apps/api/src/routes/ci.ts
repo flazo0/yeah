@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { applications, backupSchedules, databases, deployments, servers, services } from "@yeah/db";
 import { db } from "../lib/db";
 import { resolveApiToken } from "../lib/apiTokenAuth";
+import { ipAllowed } from "../lib/ipAllowlist";
+import { clientIp } from "../lib/rateLimit";
 import { overloadReason } from "../lib/serverLoad";
 import { applicationDeployQueue, databaseBackupQueue } from "../lib/queue";
 
@@ -19,9 +21,10 @@ import { applicationDeployQueue, databaseBackupQueue } from "../lib/queue";
  */
 const makeCiRoutes = (prefix: string) =>
   new Elysia({ prefix: prefix as "/teams/:teamId/ci" }) // cast keeps the :teamId param typing; the runtime prefix differs for v1
-  .derive(async ({ headers, params }) => {
+  .derive(async ({ headers, params, request, server }) => {
     const token = await resolveApiToken(headers.authorization);
     if (!token || token.teamId !== params.teamId) return { ci: { error: "unauthorized" as const, status: 401 } };
+    if (!ipAllowed(clientIp(request.headers, server?.requestIP(request)?.address), token.allowedIps)) return { ci: { error: "ip não permitido para este token" as const, status: 403 } };
     return { ci: { token } };
   })
   .get("/applications", async ({ ci, params, set }) => {

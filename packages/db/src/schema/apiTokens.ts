@@ -25,6 +25,8 @@ export const apiTokens = pgTable("api_tokens", {
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
   // Set once an expiry-warning notification has gone out, so the daily check never sends it twice.
+  /** Comma-separated exact IPs / IPv4 CIDRs; null = any address. */
+  allowedIps: varchar("allowed_ips", { length: 500 }),
   expiryWarningSentAt: timestamp("expiry_warning_sent_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

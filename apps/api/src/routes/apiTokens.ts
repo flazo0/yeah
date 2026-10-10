@@ -6,6 +6,7 @@ import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { generateApiToken, hashApiToken } from "../lib/apiTokenAuth";
+import { isValidIpList } from "../lib/ipAllowlist";
 
 // Personal API tokens (Fase 7) — a thin credential for the CI-only surface in routes/ci.ts. Created
 // and listed here under the normal session-cookie auth (same as every other settings screen); only
@@ -21,6 +22,7 @@ function toDto(token: ApiToken): ApiTokenDto {
     name: token.name,
     tokenPrefix: token.tokenPrefix,
     permission: token.permission,
+    allowedIps: token.allowedIps,
     expiresAt: token.expiresAt ? token.expiresAt.toISOString() : null,
     lastUsedAt: token.lastUsedAt ? token.lastUsedAt.toISOString() : null,
     createdAt: token.createdAt.toISOString(),
@@ -53,6 +55,11 @@ export const apiTokenRoutes = new Elysia({ prefix: "/teams/:teamId/api-tokens" }
         set.status = 400;
         return { error: `expiração entre 1 e ${MAX_EXPIRY_DAYS} dias` };
       }
+      const allowedIps = body.allowedIps?.trim() || undefined;
+      if (allowedIps && !isValidIpList(allowedIps)) {
+        set.status = 400;
+        return { error: "allowlist inválida — use IPs ou CIDRs IPv4 separados por vírgula" };
+      }
       const raw = generateApiToken();
       const [token] = await db
         .insert(apiTokens)
@@ -63,6 +70,7 @@ export const apiTokenRoutes = new Elysia({ prefix: "/teams/:teamId/api-tokens" }
           tokenHash: hashApiToken(raw),
           tokenPrefix: raw.slice(0, 12),
           permission: body.permission,
+          allowedIps: allowedIps ?? null,
           expiresAt: body.expiresInDays ? new Date(Date.now() + body.expiresInDays * 24 * 60 * 60 * 1000) : null,
         })
         .returning();
@@ -73,7 +81,7 @@ export const apiTokenRoutes = new Elysia({ prefix: "/teams/:teamId/api-tokens" }
       // The only moment the raw token exists outside this process — never logged, never stored.
       return { token: raw, apiToken: toDto(token) };
     },
-    { body: t.Object({ name: t.String({ minLength: 1, maxLength: 255 }), permission: t.Union([t.Literal("read"), t.Literal("full")]), expiresInDays: t.Optional(t.Number()) }) },
+    { body: t.Object({ name: t.String({ minLength: 1, maxLength: 255 }), permission: t.Union([t.Literal("read"), t.Literal("full")]), expiresInDays: t.Optional(t.Number()), allowedIps: t.Optional(t.String({ maxLength: 500 })) }) },
   )
   .delete("/:tokenId", async ({ atctx, params, set }) => {
     if ("error" in atctx) {

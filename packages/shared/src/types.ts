@@ -100,6 +100,7 @@ export interface ApiTokenDto {
   /** First 12 characters of the raw token, kept so the list screen can help tell tokens apart. */
   tokenPrefix: string;
   permission: ApiTokenPermission;
+  allowedIps: string | null;
   expiresAt: string | null;
   lastUsedAt: string | null;
   createdAt: string;

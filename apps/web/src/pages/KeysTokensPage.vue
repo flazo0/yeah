@@ -85,7 +85,7 @@ onMounted(load);
 const tokens = ref<ApiTokenDto[]>([]);
 const tokensLoading = ref(true);
 const tokenFormOpen = ref(false);
-const tokenForm = ref({ name: "", permission: "read" as ApiTokenPermission, expiresInDays: "" });
+const tokenForm = ref({ name: "", permission: "read" as ApiTokenPermission, expiresInDays: "", allowedIps: "" });
 const tokenSubmitting = ref(false);
 const justCreatedToken = ref<{ token: string; apiToken: ApiTokenDto } | null>(null);
 const tokenCopied = ref(false);
@@ -102,7 +102,7 @@ async function loadTokens() {
 }
 
 function openTokenForm() {
-  tokenForm.value = { name: "", permission: "read", expiresInDays: "" };
+  tokenForm.value = { name: "", permission: "read", expiresInDays: "", allowedIps: "" };
   justCreatedToken.value = null;
   tokenFormOpen.value = true;
 }
@@ -115,6 +115,7 @@ async function submitToken() {
       name: tokenForm.value.name,
       permission: tokenForm.value.permission,
       expiresInDays: tokenForm.value.expiresInDays ? Number(tokenForm.value.expiresInDays) : undefined,
+      allowedIps: tokenForm.value.allowedIps || undefined,
     });
     tokens.value = [res.apiToken, ...tokens.value];
     justCreatedToken.value = res;
@@ -292,6 +293,10 @@ onMounted(loadTokens);
               <label for="token-exp">Expira em (dias, opcional)</label>
               <input id="token-exp" v-model="tokenForm.expiresInDays" type="number" min="1" class="form-control" placeholder="sem expiração" />
             </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="token-ips">IPs permitidos (opcional)</label>
+              <input id="token-ips" v-model="tokenForm.allowedIps" class="form-control" placeholder="203.0.113.5, 10.0.0.0/8" />
+            </div>
           </div>
           <p class="hint mb-16">
             Usado pela API de CI/CD (<span class="mono">/teams/{{ teamId }}/ci/...</span>) — listar e disparar deploy/backup de aplicações e bancos, sem sessão de navegador.
@@ -313,12 +318,13 @@ onMounted(loadTokens);
       </div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Prefixo</th><th>Permissão</th><th>Expira</th><th>Último uso</th><th></th></tr></thead>
+          <thead><tr><th>Nome</th><th>Prefixo</th><th>Permissão</th><th>IPs</th><th>Expira</th><th>Último uso</th><th></th></tr></thead>
           <tbody>
             <tr v-for="token in tokens" :key="token.id">
               <td>{{ token.name }}</td>
               <td class="mono">{{ token.tokenPrefix }}…</td>
               <td>{{ token.permission === "full" ? "Leitura e escrita" : "Só leitura" }}</td>
+              <td class="mono">{{ token.allowedIps ?? "qualquer" }}</td>
               <td>{{ token.expiresAt ? new Date(token.expiresAt).toLocaleDateString("pt-BR") : "nunca" }}</td>
               <td>{{ token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString("pt-BR") : "nunca" }}</td>
               <td>
