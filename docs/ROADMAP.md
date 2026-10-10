@@ -164,8 +164,8 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 - [ ] API REST versionada (`/api/v1`) cobrindo aplicações, bancos, serviços, servidores, deploys, projetos, notificações, storages, tarefas agendadas. *(A API de CI acima não substitui isso — é deliberadamente pequena; esse item continua em aberto.)*
 - [ ] Documentação OpenAPI + **Swagger UI ao vivo** (`/swagger`).
 - [x] Rate limit na API de CI: as rotas novas caem na regra `WRITE_RULE` já existente (qualquer POST/PUT/PATCH/DELETE, 120/min) sem precisar de código novo — `ruleFor()` em `apps/api/src/lib/rateLimit.ts` é por método HTTP, não por path. Leituras (`GET`) continuam sem limite, igual o resto da API hoje; não é uma lacuna nova, é o padrão já estabelecido (um token de 256 bits não é força-bruta-ável por rate limit de qualquer forma).
-- [ ] Allowlist de IP e rate limit **documentado** (headers + retry) na API. *(O rate limit em si já existe desde a Fase 0; falta só documentar os headers de resposta — `retry-after` — e a allowlist de IP continua sem existir.)*
-- [ ] **CLI oficial** (`yeah`): cliente fino sobre a API, contexto = URL + token; deploy, criar/listar recursos, backup — pensado pra CI/CD. *(A API de CI acima é exatamente a base que esse CLI consumiria — ainda falta o binário/cliente em si.)*
+- [ ] Allowlist de IP e rate limit **documentado**. *(Parcial: rate limit e `Retry-After` agora documentados em `docs/API.md`; a allowlist de IP continua sem existir.)*
+- [x] **CLI oficial** (`yeah`, `apps/cli`): cliente fino sobre a API de CI (URL+token+time por env); `list`, `deploy [--force]`, `backup`. Sem dependências, `fetch` injetável; 3 testes unitários (formato da requisição, erros/429/env faltando). **Não testado** contra um painel real nem o binário compilado (`bun build --compile`). Criar recursos pela CLI não existe (a API de CI só lista/dispara).
 - [ ] **Servidor MCP** (`/mcp`, HTTP) com Tools, Resources (read-only) e Prompts (ex.: "debugar esse deploy"), modo read-only opcional, sem contornar escopo/redação de segredos.
 - [ ] Mover recurso entre ambientes via API.
 - [ ] Toggle "MCP server" nas configurações do time.

@@ -141,3 +141,19 @@ Qualquer imagem pública do catálogo (`packages/shared/src/serviceCatalog.ts` �
 ## WebSocket (`ws`, porta separada — `WS_PORT`)
 
 Conecta em `ws://<host>:<WS_PORT>`. Sem autenticação própria — o socket só recebe eventos já públicos-pro-usuário-logado no sentido de que o frontend filtra por IDs que ele já tem carregados na tela (não há canal privado por usuário ainda; ver `docs/ROADMAP.md`). Mensagens são o JSON de `WsServerEvent` (ver `docs/ARCHITECTURE.md`), que inclui `server.status`, `server.proxy`, `server.metrics`, `deployment.log`, `deployment.status`, `database.status`, `service.status` e `backup.status`.
+
+## API de CI e CLI (`yeah`)
+
+Autenticação por token pessoal (`Authorization: Bearer yeah_…`, criado em Keys & Tokens). Prefixo `/teams/:teamId/ci`:
+
+| Método | Rota | Permissão | Descrição |
+|---|---|---|---|
+| GET | `/applications`, `/databases`, `/services` | read | Lista recursos do time |
+| POST | `/applications/:id/deploy?force=true` | full | Enfileira deploy (409 `server_overloaded` sem `force`) |
+| POST | `/databases/:id/backup` | full | Dispara backup (precisa de agendamento existente) |
+
+CLI (`apps/cli`, `bun run --cwd apps/cli build` gera o binário `dist/yeah`): `yeah list apps|databases|services`, `yeah deploy <id> [--force]`, `yeah backup <id>`. Config por env: `YEAH_URL`, `YEAH_TOKEN`, `YEAH_TEAM`.
+
+## Rate limit
+
+Mutações (POST/PUT/PATCH/DELETE) são limitadas por IP (120/min; login/registro têm regra própria mais estrita). Ao estourar: HTTP `429` com corpo `{ "error": … }` e header `Retry-After: <segundos>` (exposto via CORS). O CLI mostra esse valor. Não há headers `X-RateLimit-*` em respostas de sucesso.

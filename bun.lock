@@ -30,6 +30,16 @@
         "typescript": "^5.7.3",
       },
     },
+    "apps/cli": {
+      "name": "@yeah/cli",
+      "version": "0.0.1",
+      "bin": {
+        "yeah": "src/index.ts",
+      },
+      "devDependencies": {
+        "typescript": "^5.7.3",
+      },
+    },
     "apps/web": {
       "name": "@yeah/web",
       "version": "0.0.1",
@@ -378,6 +388,8 @@
     "@xterm/xterm": ["@xterm/xterm@6.0.0", "", {}, "sha512-TQwDdQGtwwDt+2cgKDLn0IRaSxYu1tSUjgKarSDkUM0ZNiSRXFpjxEsvc/Zgc5kq5omJ+V0a8/kIM2WD3sMOYg=="],
 
     "@yeah/api": ["@yeah/api@workspace:apps/api"],
+
+    "@yeah/cli": ["@yeah/cli@workspace:apps/cli"],
 
     "@yeah/db": ["@yeah/db@workspace:packages/db"],
 

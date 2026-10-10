@@ -808,3 +808,9 @@ Entrando na Fase 7. O primeiro item ("tokens de API pessoais") é o que todo o r
 **Ainda em aberto na Fase 7**: API REST versionada (`/api/v1`) cobrindo o resto dos recursos, OpenAPI/Swagger UI, allowlist de IP, documentação dos headers de rate limit, o binário do CLI em si, o servidor MCP, mover recurso entre ambientes, e o toggle de MCP nas configurações do time.
 
 409 testes, `tsc`/`vue-tsc` limpos nos quatro apps.
+
+## Fase 7 — CLI oficial `yeah` + doc de rate limit
+
+`apps/cli`: cliente fino e sem dependências sobre a API de CI (`list apps|databases|services`, `deploy <id> [--force]`, `backup <id>`), configurado por `YEAH_URL`/`YEAH_TOKEN`/`YEAH_TEAM`. A lógica fica em `run.ts` com `fetch` injetável, então os 3 testes unitários cobrem sem rede: header Bearer, URL, `--force`, erro da API, 429 com `Retry-After` e env faltando. Documentei também o rate limit (`429` + `Retry-After`) em `docs/API.md`.
+
+**Não testado**: contra um painel de verdade e o binário compilado com `bun build --compile`. Ver [[feedback-no-local-docker-testing]]. Allowlist de IP segue em aberto.
