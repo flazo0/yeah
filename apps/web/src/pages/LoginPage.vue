@@ -7,6 +7,8 @@ import Logo from "../components/Logo.vue";
 
 const email = ref("");
 const password = ref("");
+const code = ref("");
+const needsCode = ref(false);
 const error = ref("");
 const loading = ref(false);
 const auth = useAuthStore();
@@ -16,9 +18,10 @@ async function submit() {
   error.value = "";
   loading.value = true;
   try {
-    await auth.login(email.value, password.value);
+    await auth.login(email.value, password.value, code.value || undefined);
     router.push("/dashboard");
   } catch (err) {
+    if (err instanceof ApiError && err.code === "totp_required") needsCode.value = true;
     error.value = err instanceof ApiError ? err.message : "não foi possível entrar";
   } finally {
     loading.value = false;
@@ -67,6 +70,10 @@ async function submit() {
               autocomplete="current-password"
             />
           </div>
+        </div>
+        <div v-if="needsCode" class="form-group">
+          <label for="totp-code">Código de verificação</label>
+          <input id="totp-code" v-model="code" class="form-control form-control-lg" placeholder="123456 ou código de recuperação" autocomplete="one-time-code" autofocus />
         </div>
         <div v-if="error" class="alert alert-error">{{ error }}</div>
         <button type="submit" class="btn btn-lg btn-block" :disabled="loading">

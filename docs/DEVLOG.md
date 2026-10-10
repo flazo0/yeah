@@ -834,3 +834,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 8 — docs de escalonamento e troubleshooting
 
 `docs/SCALING.md` e `docs/TROUBLESHOOTING.md`. Só texto; as dicas vêm do comportamento conhecido do Traefik/BullMQ/Let's Encrypt, sem teste em VPS real ([[feedback-no-local-docker-testing]]).
+
+## Fase 8 — 2FA (TOTP)
+
+`lib/totp.ts` implementa TOTP à mão com `node:crypto` (sem dependência) e passa nos vetores oficiais do RFC 6238. `users.totp_secret` (criptografado), `totp_enabled`, `totp_recovery_hashes`. Fluxo: `/auth/2fa/setup` grava o segredo ainda inerte → `/auth/2fa/enable` só liga depois de um código válido (prova que o app tem a chave) e devolve os códigos de recuperação uma vez → `/auth/login` passa a exigir `code` (resposta `totp_required` faz a tela mostrar o campo). Recuperação existe porque é conta única: sem ela, perder o celular trancaria o painel. Desativar exige senha + código; `/2fa/disable` entra na regra de rate limit de auth. **Não testado** ponta a ponta nem com app real ([[feedback-no-local-docker-testing]]); sem QR. 424 testes.

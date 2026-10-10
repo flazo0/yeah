@@ -11,6 +11,7 @@ export interface SafeUser {
   id: string;
   email: string;
   name: string | null;
+  totpEnabled: boolean;
   createdAt: string;
 }
 

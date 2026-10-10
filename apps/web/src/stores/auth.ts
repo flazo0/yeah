@@ -38,8 +38,8 @@ export const useAuthStore = defineStore("auth", {
       const { teams } = await api.get<{ teams: TeamDto[] }>("/teams");
       this.teams = teams;
     },
-    async login(email: string, password: string) {
-      const { user } = await api.post<{ user: SafeUser }>("/auth/login", { email, password });
+    async login(email: string, password: string, code?: string) {
+      const { user } = await api.post<{ user: SafeUser }>("/auth/login", { email, password, code });
       this.user = user;
       this.loaded = true;
       await this.fetchTeams();

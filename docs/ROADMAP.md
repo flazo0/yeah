@@ -175,7 +175,7 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 - [ ] **i18n** PT/EN: `vue-i18n`, `pt.json` + `en.json`, seletor de idioma junto do tema; migrar página por página.
 - [x] Doc **"Escalar app Node/Bun em múltiplos cores"** → `docs/SCALING.md` (`pm2-runtime -i max`, `reusePort: true`, e o que vai pro Redis). Só documentação, não validado numa VPS.
 - [x] Doc de **troubleshooting** → `docs/TROUBLESHOOTING.md` (502/503/504, OOM em build, firewall, Let's Encrypt, token GitHub, servidor offline). Escrito a partir do comportamento do código; não validado em VPS real.
-- [ ] **2FA** pra conta única do admin.
+- [x] **2FA** (TOTP, RFC 6238) pra conta do admin: ativar em Configurações (chave + URI `otpauth://`, confirmação com um código, 8 códigos de recuperação de uso único mostrados uma vez), pedido no login, desativar exige senha + código. Segredo criptografado em repouso; recuperação guardada só como hash; migração 0047. Núcleo TOTP testado contra os vetores do RFC 6238 (4 testes). **Não testado**: fluxo completo no navegador/API nem com um app autenticador real; sem QR code (só chave/URI em texto). Brute force do código limitado pela regra de rate limit de auth no login.
 - [ ] Ícone customizado por projeto.
 - [ ] **Criar VPS de dentro do painel** (Hetzner / Vultr / DigitalOcean via API do provedor, incluindo firewall).
 - [ ] Encaminhar notificações também por outros canais conforme demanda.

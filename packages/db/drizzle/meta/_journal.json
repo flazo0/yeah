@@ -330,6 +330,13 @@
       "when": 1791605679244,
       "tag": "0046_team_mcp_enabled",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791606114529,
+      "tag": "0047_user_totp",
+      "breakpoints": true
     }
   ]
 }

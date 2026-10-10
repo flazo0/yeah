@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
-import { api } from "../lib/api";
+import { api, ApiError } from "../lib/api";
 import { isDark, toggleTheme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 
@@ -15,6 +15,45 @@ interface PlatformInfo {
   updateAvailable?: boolean;
 }
 const platform = ref<PlatformInfo | null>(null);
+
+const twoFa = ref<{ secret: string; otpauthUri: string } | null>(null);
+const twoFaCode = ref("");
+const twoFaPassword = ref("");
+const recoveryCodes = ref<string[]>([]);
+const twoFaError = ref("");
+
+async function startTwoFa() {
+  twoFaError.value = "";
+  try {
+    twoFa.value = await api.post<{ secret: string; otpauthUri: string }>("/auth/2fa/setup");
+  } catch (err) {
+    twoFaError.value = err instanceof ApiError ? err.message : "falha ao iniciar";
+  }
+}
+
+async function enableTwoFa() {
+  twoFaError.value = "";
+  try {
+    recoveryCodes.value = (await api.post<{ recoveryCodes: string[] }>("/auth/2fa/enable", { code: twoFaCode.value })).recoveryCodes;
+    twoFa.value = null;
+    twoFaCode.value = "";
+    await auth.fetchMe();
+  } catch (err) {
+    twoFaError.value = err instanceof ApiError ? err.message : "falha ao ativar";
+  }
+}
+
+async function disableTwoFa() {
+  twoFaError.value = "";
+  try {
+    await api.post("/auth/2fa/disable", { password: twoFaPassword.value, code: twoFaCode.value });
+    twoFaCode.value = "";
+    twoFaPassword.value = "";
+    await auth.fetchMe();
+  } catch (err) {
+    twoFaError.value = err instanceof ApiError ? err.message : "falha ao desativar";
+  }
+}
 
 onMounted(async () => {
   try {
@@ -82,6 +121,43 @@ onMounted(async () => {
           <div><dt>Nome</dt><dd>{{ auth.user?.name || "-" }}</dd></div>
           <div><dt>E-mail</dt><dd>{{ auth.user?.email }}</dd></div>
         </dl>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">shield_lock</span>
+        Verificação em duas etapas
+      </div>
+      <div class="card-body">
+        <div v-if="twoFaError" class="alert alert-error">{{ twoFaError }}</div>
+        <div v-if="recoveryCodes.length">
+          <p class="hint">Guarde estes códigos de recuperação num lugar seguro — cada um vale uma vez e não serão mostrados de novo:</p>
+          <pre class="mono">{{ recoveryCodes.join(' ') }}</pre>
+        </div>
+        <template v-if="auth.user?.totpEnabled">
+          <p>Ativa. O login pede o código do app autenticador.</p>
+          <div class="form-group">
+            <label for="tf-pass">Senha</label>
+            <input id="tf-pass" v-model="twoFaPassword" type="password" class="form-control" autocomplete="current-password" />
+          </div>
+          <div class="form-group">
+            <label for="tf-code-off">Código atual (ou de recuperação)</label>
+            <input id="tf-code-off" v-model="twoFaCode" class="form-control" autocomplete="one-time-code" />
+          </div>
+          <button type="button" class="btn btn-secondary" @click="disableTwoFa">Desativar</button>
+        </template>
+        <template v-else-if="twoFa">
+          <p class="hint">Adicione no app autenticador (Google Authenticator, Authy, 1Password...) usando a chave abaixo ou a URI otpauth, e digite o código gerado.</p>
+          <p>Chave: <code class="mono">{{ twoFa.secret }}</code></p>
+          <p class="hint mono" style="word-break: break-all">{{ twoFa.otpauthUri }}</p>
+          <div class="form-group">
+            <label for="tf-code-on">Código de 6 dígitos</label>
+            <input id="tf-code-on" v-model="twoFaCode" class="form-control" inputmode="numeric" autocomplete="one-time-code" />
+          </div>
+          <button type="button" class="btn" @click="enableTwoFa">Ativar</button>
+        </template>
+        <button v-else type="button" class="btn" @click="startTwoFa">Configurar</button>
       </div>
     </div>
   </div>

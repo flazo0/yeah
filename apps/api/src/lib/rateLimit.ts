@@ -49,7 +49,7 @@ export const WRITE_RULE: RateRule = { name: "write", limit: 120, windowMs: 60_00
 
 /** Picks the rule for a request, or null when the request isn't limited (plain reads). */
 export function ruleFor(method: string, pathname: string): RateRule | null {
-  if (method === "POST" && (pathname.endsWith("/auth/login") || pathname.endsWith("/auth/register"))) return AUTH_RULE;
+  if (method === "POST" && (pathname.endsWith("/auth/login") || pathname.endsWith("/auth/register") || pathname.endsWith("/auth/2fa/disable"))) return AUTH_RULE;
   if (method === "POST" && pathname.endsWith("/webhooks/github")) return WEBHOOK_RULE;
   if (method === "POST" || method === "PUT" || method === "PATCH" || method === "DELETE") return WRITE_RULE;
   return null;

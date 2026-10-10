@@ -5,11 +5,22 @@ import type { SafeUser } from "@yeah/shared";
 import { db } from "../lib/db";
 import { hashPassword, verifyPassword } from "../lib/password";
 import { createSession, destroySession, getUserFromSessionId, sessionCookieOptions, SESSION_COOKIE } from "../lib/session";
+import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, otpauthUri, verifyTotp } from "../lib/totp";
 import { createDefaultProject } from "../lib/projects";
 import { createLocalhostServerIfConfigured } from "../lib/localhostServer";
 
 function toSafeUser(user: User): SafeUser {
-  return { id: user.id, email: user.email, name: user.name, createdAt: user.createdAt.toISOString() };
+  return { id: user.id, email: user.email, name: user.name, totpEnabled: user.totpEnabled, createdAt: user.createdAt.toISOString() };
+}
+
+/** A valid authenticator code, or an unused recovery code (which is consumed). */
+async function checkSecondFactor(user: User, code: string): Promise<boolean> {
+  if (user.totpSecret && verifyTotp(user.totpSecret, code.trim())) return true;
+  const hashes: string[] = user.totpRecoveryHashes ? JSON.parse(user.totpRecoveryHashes) : [];
+  const hash = hashRecoveryCode(code);
+  if (!hashes.includes(hash)) return false;
+  await db.update(users).set({ totpRecoveryHashes: JSON.stringify(hashes.filter((h) => h !== hash)) }).where(eq(users.id, user.id));
+  return true;
 }
 
 /** yeah is single-admin, not a multi-tenant signup product — registration only works to create
@@ -81,6 +92,17 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
         return { error: "invalid credentials" };
       }
 
+      if (user.totpEnabled && user.totpSecret) {
+        if (!body.code) {
+          set.status = 401;
+          return { error: "informe o código de verificação em duas etapas", code: "totp_required" };
+        }
+        if (!(await checkSecondFactor(user, body.code))) {
+          set.status = 401;
+          return { error: "código inválido", code: "totp_invalid" };
+        }
+      }
+
       const session = await createSession(user.id);
       cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
 
@@ -90,8 +112,68 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       body: t.Object({
         email: t.String({ format: "email" }),
         password: t.String(),
+        code: t.Optional(t.String()),
       }),
     },
+  )
+  .post("/2fa/setup", async ({ cookie, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (user.totpEnabled) {
+      set.status = 409;
+      return { error: "a verificação em duas etapas já está ativa" };
+    }
+    // Stored but inert until /2fa/enable proves the authenticator app actually has it.
+    const secret = generateTotpSecret();
+    await db.update(users).set({ totpSecret: secret }).where(eq(users.id, user.id));
+    return { secret, otpauthUri: otpauthUri(secret, user.email) };
+  })
+  .post(
+    "/2fa/enable",
+    async ({ cookie, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (user.totpEnabled || !user.totpSecret) {
+        set.status = 409;
+        return { error: "inicie a configuração de novo" };
+      }
+      if (!verifyTotp(user.totpSecret, body.code)) {
+        set.status = 400;
+        return { error: "código inválido" };
+      }
+      const recoveryCodes = generateRecoveryCodes();
+      await db
+        .update(users)
+        .set({ totpEnabled: true, totpRecoveryHashes: JSON.stringify(recoveryCodes.map(hashRecoveryCode)) })
+        .where(eq(users.id, user.id));
+      // Shown once — only the hashes are kept.
+      return { recoveryCodes };
+    },
+    { body: t.Object({ code: t.String() }) },
+  )
+  .post(
+    "/2fa/disable",
+    async ({ cookie, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!user.totpEnabled) return { ok: true };
+      if (!(await verifyPassword(body.password, user.passwordHash)) || !(await checkSecondFactor(user, body.code))) {
+        set.status = 400;
+        return { error: "senha ou código inválido" };
+      }
+      await db.update(users).set({ totpEnabled: false, totpSecret: null, totpRecoveryHashes: null }).where(eq(users.id, user.id));
+      return { ok: true };
+    },
+    { body: t.Object({ password: t.String(), code: t.String() }) },
   )
   .post("/logout", async ({ cookie, set }) => {
     await destroySession(cookie[SESSION_COOKIE]?.value);
@@ -106,3 +188,4 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     }
     return { user: toSafeUser(user) };
   });
+
