@@ -35,5 +35,26 @@
     "title": "Configurações",
     "subtitle": "Preferências desta instância e da sua conta.",
     "language": "Idioma"
+  },
+  "common": {
+    "teams": "Times",
+    "logout": "Sair",
+    "loading": "carregando...",
+    "newTeam": "Novo time",
+    "teamName": "Nome do time",
+    "creating": "criando...",
+    "create": "Criar",
+    "viewMode": "Modo de exibição",
+    "list": "Lista",
+    "grid": "Grade",
+    "openMenu": "Abrir menu",
+    "expandMenu": "Expandir menu",
+    "collapseMenu": "Recolher menu"
+  },
+  "search": {
+    "label": "Buscar",
+    "global": "Busca global",
+    "placeholder": "Buscar projetos, servidores, recursos e páginas",
+    "empty": "Nada encontrado."
   }
 }

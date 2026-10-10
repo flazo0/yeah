@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 
 const props = defineProps<{ currentName: string }>();
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
@@ -84,13 +86,13 @@ async function createTeam() {
       <template v-if="!showCreateForm">
         <button type="button" class="account-menu-item" @click="showCreateForm = true">
           <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          Novo time
+          {{ t("common.newTeam") }}
         </button>
       </template>
       <form v-else class="account-menu-create-form" @submit.prevent="createTeam">
-        <input v-model="newTeamName" class="form-control" placeholder="Nome do time" autofocus />
+        <input v-model="newTeamName" class="form-control" :placeholder="t('common.teamName')" autofocus />
         <button type="submit" class="btn btn-secondary btn-sm" :disabled="creating">
-          {{ creating ? "criando..." : "Criar" }}
+          {{ creating ? t("common.creating") : t("common.create") }}
         </button>
       </form>
       <div v-if="error" class="alert alert-error" style="margin: 6px; font-size: 12px; padding: 6px 8px">{{ error }}</div>

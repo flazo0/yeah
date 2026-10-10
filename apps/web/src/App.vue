@@ -170,14 +170,14 @@ const breadcrumb = computed(() => {
 
     <div class="main">
       <header v-if="auth.user" class="topbar">
-        <button type="button" class="topbar-menu-btn" aria-label="Abrir menu" @click="sidebarOpen = !sidebarOpen">
+        <button type="button" class="topbar-menu-btn" :aria-label="t('common.openMenu')" @click="sidebarOpen = !sidebarOpen">
           <span class="material-symbols-outlined">menu</span>
         </button>
         <button
           type="button"
           class="topbar-collapse-btn"
-          :aria-label="sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'"
-          :title="sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'"
+          :aria-label="sidebarCollapsed ? t('common.expandMenu') : t('common.collapseMenu')"
+          :title="sidebarCollapsed ? t('common.expandMenu') : t('common.collapseMenu')"
           @click="sidebarCollapsed = !sidebarCollapsed"
         >
           <span class="material-symbols-outlined">{{ sidebarCollapsed ? 'menu' : 'menu_open' }}</span>

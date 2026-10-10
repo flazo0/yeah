@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import type { SearchResultDto } from "@yeah/shared";
 import { api } from "../lib/api";
 
 const props = defineProps<{ teamId: string | null }>();
+const { t } = useI18n();
 const router = useRouter();
 
 const open = ref(false);
@@ -147,27 +149,27 @@ defineExpose({ show });
 <template>
   <button type="button" class="search-trigger" @click="show">
     <span class="material-symbols-outlined">search</span>
-    <span class="search-trigger-label">Buscar</span>
+    <span class="search-trigger-label">{{ t("search.label") }}</span>
     <kbd>Ctrl K</kbd>
   </button>
 
   <Teleport to="body">
     <div v-if="open" class="palette-backdrop" @mousedown.self="hide">
-      <div class="palette" role="dialog" aria-modal="true" aria-label="Busca global">
+      <div class="palette" role="dialog" aria-modal="true" :aria-label="t('search.global')">
         <div class="palette-input">
           <span class="material-symbols-outlined">search</span>
           <input
             ref="input"
             v-model="query"
             type="text"
-            placeholder="Buscar projetos, servidores, recursos e páginas"
+            :placeholder="t('search.placeholder')"
             aria-label="Buscar"
             autocomplete="off"
             @keydown="onInputKey"
           />
         </div>
         <ul class="palette-list">
-          <li v-if="entries.length === 0" class="palette-empty">Nada encontrado.</li>
+          <li v-if="entries.length === 0" class="palette-empty">{{ t("search.empty") }}</li>
           <li
             v-for="(entry, i) in entries"
             :key="entry.key"

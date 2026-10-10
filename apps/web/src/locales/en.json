@@ -35,5 +35,26 @@
     "title": "Settings",
     "subtitle": "Preferences for this instance and your account.",
     "language": "Language"
+  },
+  "common": {
+    "teams": "Teams",
+    "logout": "Log out",
+    "loading": "loading...",
+    "newTeam": "New team",
+    "teamName": "Team name",
+    "creating": "creating...",
+    "create": "Create",
+    "viewMode": "View mode",
+    "list": "List",
+    "grid": "Grid",
+    "openMenu": "Open menu",
+    "expandMenu": "Expand menu",
+    "collapseMenu": "Collapse menu"
+  },
+  "search": {
+    "label": "Search",
+    "global": "Global search",
+    "placeholder": "Search projects, servers, resources and pages",
+    "empty": "Nothing found."
   }
 }

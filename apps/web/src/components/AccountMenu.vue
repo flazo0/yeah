@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../stores/auth";
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const router = useRouter();
 const open = ref(false);
@@ -46,11 +48,11 @@ const initial = () => (auth.user?.name?.charAt(0) || auth.user?.email?.charAt(0)
       <div class="account-menu-divider"></div>
       <RouterLink to="/dashboard" class="account-menu-item" @click="open = false">
         <span class="material-symbols-outlined" style="font-size: 18px">space_dashboard</span>
-        Times
+        {{ t("common.teams") }}
       </RouterLink>
       <button type="button" class="account-menu-item danger" @click="handleLogout">
         <span class="material-symbols-outlined" style="font-size: 18px">logout</span>
-        Sair
+        {{ t("common.logout") }}
       </button>
     </div>
   </div>
