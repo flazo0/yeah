@@ -8,6 +8,7 @@ export const notificationChannelTypeEnum = pgEnum("notification_channel_type", [
   "telegram",
   "webhook",
   "email",
+  "ntfy",
 ]);
 
 export const notificationChannels = pgTable("notification_channels", {

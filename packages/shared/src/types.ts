@@ -482,7 +482,7 @@ export interface ServiceContainerDto {
   status: string;
 }
 
-export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email";
+export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy";
 
 export type NotificationEventType =
   | "deploy.success"

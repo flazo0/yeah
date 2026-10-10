@@ -37,6 +37,7 @@ const typeLabel: Record<NotificationChannelType, string> = {
   telegram: "Telegram",
   webhook: "Webhook genérico",
   email: "Email",
+  ntfy: "ntfy",
 };
 
 const EVENT_TYPES = Object.keys(NOTIFICATION_EVENT_LABELS) as NotificationEventType[];
@@ -70,7 +71,7 @@ async function saveEvents(channelId: string) {
   }
 }
 
-const needsUrl = computed(() => form.value.type === "discord" || form.value.type === "slack" || form.value.type === "webhook");
+const needsUrl = computed(() => form.value.type === "discord" || form.value.type === "slack" || form.value.type === "webhook" || form.value.type === "ntfy");
 const needsTelegram = computed(() => form.value.type === "telegram");
 const needsEmail = computed(() => form.value.type === "email");
 
@@ -264,6 +265,7 @@ onMounted(loadChannels);
                 <option value="telegram">Telegram</option>
                 <option value="webhook">Webhook genérico</option>
                 <option value="email">Email</option>
+                <option value="ntfy">ntfy</option>
               </select>
             </div>
           </div>
@@ -273,7 +275,7 @@ onMounted(loadChannels);
               id="notif-url"
               v-model="form.url"
               class="form-control mono"
-              :placeholder="form.type === 'discord' ? 'https://discord.com/api/webhooks/...' : form.type === 'slack' ? 'https://hooks.slack.com/services/...' : 'https://...'"
+              :placeholder="form.type === 'discord' ? 'https://discord.com/api/webhooks/...' : form.type === 'slack' ? 'https://hooks.slack.com/services/...' : form.type === 'ntfy' ? 'https://ntfy.sh/meu-topico' : 'https://...'"
               required
             />
           </div>

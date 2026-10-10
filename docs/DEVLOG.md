@@ -842,3 +842,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 8 — ícone por projeto
 
 Escolhi uma lista curta e fixa de Material Symbols (já carregado no painel) em vez de upload de imagem/emoji: zero armazenamento de arquivos, nada de conteúdo arbitrário vindo do cliente (o servidor valida contra `PROJECT_ICONS`). `projects.icon` nulo cai em `layers`. **Não testado** no navegador ([[feedback-no-local-docker-testing]]).
+
+## Fase 8 — canal ntfy
+
+Novo tipo de canal `ntfy` (enum do Postgres + `ALTER TYPE ... ADD VALUE`, migração 0049). Usa a API JSON do ntfy (POST na raiz do servidor com `topic`) em vez de headers, porque headers HTTP com título acentuado quebram. Reaproveita o campo `url` (já criptografado em repouso). Teste unitário do payload. **Não testado** contra um servidor real ([[feedback-no-local-docker-testing]]).

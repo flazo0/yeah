@@ -9,7 +9,7 @@ export interface NotificationMessage {
 }
 
 export interface NotificationChannelConfig {
-  type: "discord" | "slack" | "telegram" | "webhook" | "email";
+  type: "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy";
   url: string | null;
   telegramBotToken: string | null;
   telegramChatId: string | null;
@@ -43,6 +43,8 @@ export async function sendNotification(channel: NotificationChannelConfig, messa
         return await sendWebhook(channel.url, message);
       case "email":
         return await sendEmail(channel, message);
+      case "ntfy":
+        return await sendNtfy(channel.url, message);
     }
   } catch (err) {
     console.error(`[notifications] failed to send via ${channel.type}:`, err);
@@ -81,6 +83,22 @@ async function sendTelegram(botToken: string | null, chatId: string | null, mess
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: chatId, text, parse_mode: "MarkdownV2" }),
+  });
+  return res.ok;
+}
+
+const NTFY_PRIORITY: Record<NotificationLevel, number> = { info: 3, warning: 4, error: 5 };
+
+/** `url` is the topic URL (https://ntfy.sh/my-topic or a self-hosted server); published via ntfy's JSON API so non-ASCII titles are safe. */
+export async function sendNtfy(url: string | null, message: NotificationMessage): Promise<boolean> {
+  if (!url) return false;
+  const parsed = new URL(url);
+  const topic = parsed.pathname.replace(/^\/+|\/+$/g, "");
+  if (!topic || topic.includes("/")) return false;
+  const res = await fetch(parsed.origin, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ topic, title: message.title, message: message.body, priority: NTFY_PRIORITY[message.level] }),
   });
   return res.ok;
 }

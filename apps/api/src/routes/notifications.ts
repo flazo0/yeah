@@ -103,6 +103,7 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
           t.Literal("telegram"),
           t.Literal("webhook"),
           t.Literal("email"),
+          t.Literal("ntfy"),
         ]),
         url: t.Optional(t.String()),
         telegramBotToken: t.Optional(t.String()),

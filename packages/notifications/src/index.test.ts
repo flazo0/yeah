@@ -119,6 +119,18 @@ describe("sendNotification", () => {
     });
   });
 
+  test("publishes to ntfy's JSON API using the topic from the URL", async () => {
+    let captured: { url: string; body: unknown } | undefined;
+    globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+      captured = { url, body: JSON.parse(init.body as string) };
+      return new Response(null, { status: 200 });
+    }) as unknown as typeof fetch;
+    expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/meu-topico" }), message)).toBe(true);
+    expect(captured!.url).toBe("https://ntfy.example.com");
+    expect(captured!.body).toMatchObject({ topic: "meu-topico", title: message.title, message: message.body });
+    expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/" }), message)).toBe(false);
+  });
+
   test("escapes telegram text and returns false on a non-2xx response", async () => {
     let capturedBody: unknown;
     globalThis.fetch = mock(async (_url: string, init: RequestInit) => {

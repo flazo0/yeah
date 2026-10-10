@@ -178,7 +178,7 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 - [x] **2FA** (TOTP, RFC 6238) pra conta do admin: ativar em Configurações (chave + URI `otpauth://`, confirmação com um código, 8 códigos de recuperação de uso único mostrados uma vez), pedido no login, desativar exige senha + código. Segredo criptografado em repouso; recuperação guardada só como hash; migração 0047. Núcleo TOTP testado contra os vetores do RFC 6238 (4 testes). **Não testado**: fluxo completo no navegador/API nem com um app autenticador real; sem QR code (só chave/URI em texto). Brute force do código limitado pela regra de rate limit de auth no login.
 - [x] Ícone customizado por projeto: 16 ícones Material Symbols (`PROJECT_ICONS`, também a allowlist do servidor), botão de paleta no card do projeto, `PUT .../projects/:id/icon`, `projects.icon` (migração 0048). Aparece nos cards e na tabela. Só typecheck; **não testado** no navegador; sem upload de imagem/emoji livre.
 - [ ] **Criar VPS de dentro do painel** (Hetzner / Vultr / DigitalOcean via API do provedor, incluindo firewall).
-- [ ] Encaminhar notificações também por outros canais conforme demanda.
+- [x] Encaminhar notificações por outros canais: adicionado **ntfy** (push no celular, ntfy.sh ou self-hosted; URL do tópico, publicação via API JSON) — migração 0049, tela de notificações, teste do payload. É "conforme demanda": outros (Teams, Gotify, Pushover) ficam pra quando alguém precisar; o canal Webhook genérico já cobre a maioria. **Não testado** contra um servidor ntfy real.
 
 ## Fase 9 — Eficiência de recursos (rodar bem numa VPS 1 vCPU / 4GB, melhor que o Coolify)
 
