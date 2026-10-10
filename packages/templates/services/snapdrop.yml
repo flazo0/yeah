@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Snapdrop"
+description: "A self-hosted file-sharing service for secure and convenient file transfers, whether on a local network or the internet."
+icon: task_alt
+category: productivity
+tags: ["file", "sharing", "transfer", "local", "network", "internet"]
+docs: "https://github.com/RobinLinus/snapdrop"
+main: "snapdrop"
+port: 80
+env: {}
+compose: |
+  services:
+    snapdrop:
+      image: 'linuxserver/snapdrop:version-b8b78cc2'
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - snapdrop-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

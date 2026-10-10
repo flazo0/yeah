@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Dokuwiki"
+description: "A lightweight and easy-to-use wiki platform for creating and managing documentation and knowledge bases."
+icon: language
+logo: "dokuwiki.png"
+category: cms
+tags: ["wiki", "documentation", "knowledge", "base"]
+docs: "https://www.dokuwiki.org/"
+main: "dokuwiki"
+port: 80
+env: {}
+compose: |
+  services:
+    dokuwiki:
+      image: lscr.io/linuxserver/dokuwiki:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - dokuwiki-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

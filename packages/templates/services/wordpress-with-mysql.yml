@@ -1,0 +1,46 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Wordpress With Mysql"
+description: "WordPress is open source software you can use to create a beautiful website, blog, or app."
+icon: language
+logo: "wordpress-with-mysql.svg"
+category: cms
+tags: ["cms", "blog", "content", "management", "mysql"]
+docs: "https://wordpress.org"
+main: "wordpress"
+port: 80
+env:
+  SERVICE_USER_WORDPRESS: "$generate:user"
+  SERVICE_PASSWORD_WORDPRESS: "$generate:password"
+  SERVICE_PASSWORD_ROOT: "$generate:password"
+compose: |
+  services:
+    wordpress:
+      image: wordpress:latest
+      volumes:
+        - wordpress-files:/var/www/html
+      environment:
+        - WORDPRESS_DB_HOST=mysql
+        - WORDPRESS_DB_USER=$SERVICE_USER_WORDPRESS
+        - WORDPRESS_DB_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
+        - WORDPRESS_DB_NAME=wordpress
+      depends_on:
+        - mysql
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1"]
+        interval: 2s
+        timeout: 10s
+        retries: 10
+    mysql:
+      image: mysql:8
+      volumes:
+        - mysql-data:/var/lib/mysql
+      environment:
+        - MYSQL_ROOT_PASSWORD=$SERVICE_PASSWORD_ROOT
+        - MYSQL_DATABASE=wordpress
+        - MYSQL_USER=$SERVICE_USER_WORDPRESS
+        - MYSQL_PASSWORD=$SERVICE_PASSWORD_WORDPRESS
+      healthcheck:
+        test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

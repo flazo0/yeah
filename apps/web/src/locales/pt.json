@@ -656,7 +656,10 @@
     "falhaAoListarOsRepositorios": "falha ao listar os repositórios",
     "repositorioDoGithub": "Repositório do GitHub",
     "falhaAoCriarAplicacao": "falha ao criar aplicação",
-    "falhaAoCriarRecurso": "falha ao criar recurso"
+    "falhaAoCriarRecurso": "falha ao criar recurso",
+    "catAi": "IA",
+    "catFinance": "Finanças",
+    "catGames": "Jogos"
   },
   "serverNew": {
     "servidores": "Servidores",

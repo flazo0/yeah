@@ -1,0 +1,50 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Zipline"
+description: "A ShareX/file upload server that is easy to use, packed with features, and with an easy setup!"
+icon: movie
+logo: "zipline.png"
+category: media
+tags: ["zipline", "file-sharing", "upload", "sharing"]
+docs: "https://zipline.diced.sh/docs/config"
+main: "zipline"
+port: 3000
+env:
+  SERVICE_PASSWORD_64_ZIPLINE: "$generate:hex"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    zipline:
+      image: ghcr.io/diced/zipline:latest
+      environment:
+        - CORE_RETURN_HTTPS=${CORE_RETURN_HTTPS:-false}
+        - CORE_SECRET=${SERVICE_PASSWORD_64_ZIPLINE}
+        - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres/${POSTGRES_DB:-zipline-db}
+        - CORE_LOGGER=${CORE_LOGGER:-true}
+        # Default credentials are "administrator" and "password"
+      volumes:
+        - zipline-uploads:/zipline/uploads
+        - zipline-public:/zipline/public
+      depends_on:
+        postgres:
+          condition: service_healthy
+      healthcheck:
+        test:
+          ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/auth/login"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+
+    postgres:
+      image: postgres:16-alpine
+      volumes:
+        - zipline-postgres-data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-zipline-db}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

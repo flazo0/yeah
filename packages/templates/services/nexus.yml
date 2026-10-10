@@ -1,0 +1,27 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Nexus"
+description: "Open source Universal Repository Manager (x86_64 version, official), default credentials: admin/admin123"
+icon: code
+logo: "nexus.png"
+category: dev
+tags: ["repository", "manager", "open source", "docker", "docker", "registry", "container"]
+docs: "https://help.sonatype.com/en/sonatype-nexus-repository.html"
+main: "nexus"
+port: 8081
+env: {}
+compose: |
+  services:
+    nexus:
+      image: sonatype/nexus3
+      platform: linux/amd64
+      environment:
+        - NEXUS_SECURITY_RANDOMPASSWORD=${NEXUS_SECURITY_RANDOMPASSWORD:-false}
+        - INSTALL4J_ADD_VM_PARAMS=-Xms2703m -Xmx2703m -XX:MaxDirectMemorySize=2703m -Djava.util.prefs.userRoot=/nexus-data/javaprefs
+      volumes:
+        - nexus_data:/nexus-data
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8081/service/rest/v1/status"]
+        interval: 10s
+        timeout: 10s
+        retries: 3
+        start_period: 60s

@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Gotenberg"
+description: "Gotenberg is a Docker-powered stateless API for PDF files."
+icon: code
+logo: "gotenberg.png"
+category: dev
+tags: ["api", "backend", "pdf", "tool"]
+docs: "https://gotenberg.dev/docs/getting-started/introduction"
+main: "gotenberg"
+port: 3000
+env:
+  SERVICE_USER_GOTENBERG: "$generate:user"
+  SERVICE_PASSWORD_GOTENBERG: "$generate:password"
+compose: |
+  services:
+    gotenberg:
+      image: gotenberg/gotenberg:latest
+      environment:
+        # NOTE: requires the --api-enable-basic-auth option in "command"
+        - GOTENBERG_API_BASIC_AUTH_USERNAME=${SERVICE_USER_GOTENBERG}
+        - GOTENBERG_API_BASIC_AUTH_PASSWORD=${SERVICE_PASSWORD_GOTENBERG}
+      command:
+        - gotenberg
+        # See the full list of options at https://gotenberg.dev/docs/configuration
+
+        # Examples:
+        # - --api-timeout=60s
+        # - --chromium-auto-start
+        - --api-enable-basic-auth
+        - --api-disable-health-check-logging
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/health"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

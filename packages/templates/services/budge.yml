@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Budge"
+description: "A budgeting personal finance app."
+icon: payments
+logo: "budge.png"
+category: finance
+tags: ["personal finance", "budgeting", "expense tracking"]
+docs: "https://github.com/linuxserver/budge"
+main: "budge"
+port: 80
+env: {}
+compose: |
+  services:
+    budge:
+      image: lscr.io/linuxserver/budge:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - budge-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

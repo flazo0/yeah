@@ -1,0 +1,24 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Libretranslate"
+description: "Free and open-source machine translation API, entirely self-hosted."
+icon: psychology
+logo: "libretranslate.svg"
+category: ai
+tags: ["translate", "api"]
+docs: "https://libretranslate.com/docs/"
+main: "libretranslate"
+port: 5000
+env: {}
+compose: |
+  services:
+    libretranslate:
+      image: "libretranslate/libretranslate:latest"
+      environment:
+        - LT_SSL=${LT_SSL:-true}
+        - LT_UPDATE_MODELS=${LT_UPDATE_MODELS:-true}
+        - LT_LOAD_ONLY=${LT_LOAD_ONLY:-en,es,fr,de,ja}
+      volumes:
+        - libretranslate-api-keys:/app/db
+        - libretranslate-models:/home/libretranslate/.local
+      healthcheck:
+        test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]

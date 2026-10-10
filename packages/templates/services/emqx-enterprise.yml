@@ -1,0 +1,33 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Emqx Enterprise"
+description: "Open-source MQTT broker for IoT, IIoT, and connected vehicles."
+icon: terminal
+logo: "emqx-enterprise.svg"
+category: devops
+tags: ["mqtt", "broker", "iot", "messaging", "emqx", "iiot"]
+docs: "https://www.emqx.io/docs/en/latest/deploy/install-docker.html"
+notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos."
+main: "emqx"
+port: 18083
+env:
+  SERVICE_PASSWORD_EMQX: "$generate:password"
+compose: |
+  services:
+    emqx:
+      image: emqx/emqx-enterprise:6.2.0
+      environment:
+        - EMQX_DASHBOARD__DEFAULT_PASSWORD=${SERVICE_PASSWORD_EMQX}
+      ports:
+        - "1883:1883"
+        - "8083:8083"
+        - "8084:8084"
+        - "8883:8883"
+      volumes:
+        - emqx_data:/opt/emqx/data
+        - emqx_log:/opt/emqx/log
+      healthcheck:
+        test: ["CMD", "/opt/emqx/bin/emqx", "ctl", "status"]
+        interval: 10s
+        timeout: 30s
+        retries: 5
+        start_period: 30s

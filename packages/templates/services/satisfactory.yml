@@ -1,0 +1,44 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Satisfactory"
+description: "Satisfactory Dedicated Server for hosting your own Satisfactory game sessions."
+icon: sports_esports
+category: games
+tags: ["satisfactory", "game-server", "dedicated-server", "steam", "self-hosted", "gaming"]
+docs: "https://github.com/wolveix/satisfactory-server"
+notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos."
+main: "satisfactory-server"
+port: 80
+env:
+  SERVER_GAME_PORT: ""
+  SERVER_MESSAGING_PORT: ""
+  MAX_OBJECTS: ""
+  MAX_PLAYERS: ""
+  PGID: ""
+  PUID: ""
+compose: |
+  services:
+    satisfactory-server:
+      image: wolveix/satisfactory-server:v1.9.10
+      ports:
+        - ${SERVER_GAME_PORT}:7777/tcp
+        - ${SERVER_GAME_PORT}:7777/udp
+        - ${SERVER_MESSAGING_PORT}:8888/tcp
+      volumes:
+        - satisfactory-server:/config
+      environment:
+        - AUTOSAVENUM=${AUTOSAVE_NUM:-5}
+        - DEBUG=${DEBUG:-false}
+        - DISABLESEASONALEVENTS=${DISABLE_SEASONAL_EVENTS:-false}
+        - LOG=${LOG:-false}
+        - MAXOBJECTS=${MAX_OBJECTS:?2162688}
+        - MAXPLAYERS=${MAX_PLAYERS:?4}
+        - MAXTICKRATE=${MAX_TICK_RATE:-30}
+        - MULTIHOME=${MULTI_HOME:-::}
+        - PGID=${PGID:?1000}
+        - PUID=${PUID:?1000}
+        - SERVERGAMEPORT=${SERVER_GAME_PORT:-7777}
+        - SERVERMESSAGINGPORT=${SERVER_MESSAGING_PORT:-8888}
+        - SERVERSTREAMING=${SERVER_STREAMING:-true}
+        - SKIPUPDATE=${SKIP_UPDATE:-false}
+        - STEAMBETA=${STEAM_BETA:-false}
+        - TIMEOUT=${TIMEOUT:-30}

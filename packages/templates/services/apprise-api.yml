@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Apprise Api"
+description: "Push Notifications API"
+icon: bolt
+logo: "apprise-api.png"
+category: automation
+tags: ["api", "apprise"]
+docs: "https://docs.linuxserver.io/images/docker-apprise-api/"
+main: "apprise-api"
+port: 8000
+env: {}
+compose: |
+  services:
+    apprise-api:
+      image: linuxserver/apprise-api:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=UTC
+      volumes:
+        - '/apprise-api/config:/config'
+      healthcheck:
+        test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

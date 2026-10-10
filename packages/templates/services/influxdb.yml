@@ -1,0 +1,42 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Influxdb"
+description: "Open source time series database for metrics, events, and analytics."
+icon: database
+category: database
+tags: ["influxdb", "time series", "metrics", "iot", "monitoring", "telegraf"]
+docs: "https://docs.influxdata.com/influxdb/"
+main: "influxdb"
+port: 8086
+env:
+  SERVICE_USER_INFLUXDB: "$generate:user"
+  SERVICE_PASSWORD_INFLUXDB: "$generate:password"
+  SERVICE_ORG_INFLUXDB: ""
+  SERVICE_BUCKET_INFLUXDB: ""
+  SERVICE_PASSWORD_INFLUXDB_TOKEN: "$generate:password"
+compose: |
+  services:
+    influxdb:
+      image: influxdb:2.7-alpine
+      environment:
+        - INFLUXDB_HTTP_BIND_ADDRESS=:8086
+        - INFLUXDB_INIT_MODE=setup
+        - INFLUXDB_INIT_USERNAME=$SERVICE_USER_INFLUXDB
+        - INFLUXDB_INIT_PASSWORD=$SERVICE_PASSWORD_INFLUXDB
+        - INFLUXDB_INIT_ORG=$SERVICE_ORG_INFLUXDB
+        - INFLUXDB_INIT_BUCKET=$SERVICE_BUCKET_INFLUXDB
+        - INFLUXDB_INIT_RETENTION=0
+        - INFLUXDB_INIT_ADMIN_TOKEN=$SERVICE_PASSWORD_INFLUXDB_TOKEN
+      volumes:
+        - influxdb-data:/var/lib/influxdb2
+        - influxdb-config:/etc/influxdb2
+      healthcheck:
+        test:
+          - CMD
+          - influx
+          - ping
+          - --host
+          - http://127.0.0.1:8086
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 20s

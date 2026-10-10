@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Gitea Runner"
+description: "Gitea Actions runner for docker"
+icon: code
+logo: "gitea-runner.svg"
+category: dev
+tags: ["gitea", "actions", "runner", "docker"]
+docs: "https://github.com/go-gitea/gitea"
+main: "runner"
+port: 80
+env:
+  GITEA_INSTANCE_URL: ""
+  GITEA_RUNNER_REGISTRATION_TOKEN: ""
+  GITEA_TOKEN: ""
+compose: |
+  services:
+    runner:
+      image: 'docker.io/gitea/runner:1.0.8'
+      environment:
+        - 'GITEA_INSTANCE_URL=${GITEA_INSTANCE_URL}'
+        - 'GITEA_RUNNER_REGISTRATION_TOKEN=${GITEA_RUNNER_REGISTRATION_TOKEN}'
+        - 'GITEA_RUNNER_NAME=${GITEA_RUNNER_NAME:-gitea-runner}'
+        - 'GITEA_RUNNER_LABELS=${GITEA_RUNNER_LABELS:-ubuntu-latest:docker://node:22}'
+        - 'GITEA_TOKEN=${GITEA_TOKEN}'
+      working_dir: /data
+      volumes:
+        - 'runner-data:/data'
+        - '/var/run/docker.sock:/var/run/docker.sock'
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "ps aux | grep '[R]unner' > /dev/null || exit 1"
+        interval: 5s
+        timeout: 10s
+        retries: 15

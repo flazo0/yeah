@@ -691,7 +691,10 @@ export interface ServiceTemplateDto {
   name: string;
   description: string;
   icon: string;
+  /** File under /template-logos/ (the project's real logo), when there is one; `icon` is the fallback. */
+  logo?: string;
   category: string;
+  tags?: string[];
   website?: string;
   docsUrl?: string;
   notes?: string;

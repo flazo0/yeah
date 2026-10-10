@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Grocy"
+description: "Grocy is a web-based household management and grocery list application."
+icon: task_alt
+logo: "grocy.svg"
+category: productivity
+tags: ["groceries", "household", "management", "grocery", "shopping"]
+docs: "https://github.com/grocy/grocy"
+main: "grocy"
+port: 80
+env: {}
+compose: |
+  services:
+    grocy:
+      image: lscr.io/linuxserver/grocy:4.6.0
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - grocy-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

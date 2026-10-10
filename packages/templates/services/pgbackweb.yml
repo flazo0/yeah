@@ -1,0 +1,40 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Pgbackweb"
+description: "Effortless PostgreSQL backups with a user-friendly web interface!"
+icon: code
+category: dev
+tags: ["backup", "postgresql", "web-interface"]
+docs: "https://github.com/eduardolat/pgbackweb"
+main: "pgbackweb"
+port: 8085
+env:
+  SERVICE_PASSWORD_64_PGBACKWEB: "$generate:hex"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    pgbackweb:
+      image: eduardolat/pgbackweb:latest
+      volumes:
+        - pgbackweb_backups:/backups
+      environment:
+        - PBW_ENCRYPTION_KEY=${SERVICE_PASSWORD_64_PGBACKWEB}
+        - PBW_POSTGRES_CONN_STRING=postgresql://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-pgbackweb-db}?sslmode=disable
+        - TZ=${TIME_ZONE:-UTC}
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    postgres:
+      image: postgres:17
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-pgbackweb-db}
+      volumes:
+        - pgbackweb_postgres_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${SERVICE_USER_POSTGRES} -d pgbackweb"]
+        interval: 5s
+        timeout: 5s
+        retries: 5

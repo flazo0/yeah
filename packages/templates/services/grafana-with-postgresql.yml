@@ -1,0 +1,51 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Grafana With Postgresql"
+description: "Grafana is the open source analytics & monitoring solution for every database."
+icon: monitor_heart
+logo: "grafana-with-postgresql.svg"
+category: monitoring
+tags: ["grafana", "analytics", "monitoring", "dashboard"]
+docs: "https://grafana.com"
+main: "grafana"
+port: 3000
+env:
+  SERVICE_URL_GRAFANA: "http://localhost"
+  SERVICE_FQDN_GRAFANA: "localhost"
+  SERVICE_PASSWORD_GRAFANA: "$generate:password"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    grafana:
+      image: grafana/grafana-oss
+      environment:
+        - GF_SERVER_ROOT_URL=${SERVICE_URL_GRAFANA}
+        - GF_SERVER_DOMAIN=${SERVICE_FQDN_GRAFANA}
+        - GF_SECURITY_ADMIN_PASSWORD=${SERVICE_PASSWORD_GRAFANA}
+        - GF_DATABASE_TYPE=postgres
+        - GF_DATABASE_HOST=postgresql
+        - GF_DATABASE_USER=$SERVICE_USER_POSTGRES
+        - GF_DATABASE_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - GF_DATABASE_NAME=${POSTGRES_DB:-grafana}
+      volumes:
+        - grafana-data:/var/lib/grafana
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/api/health"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        - postgresql
+    postgresql:
+      image: postgres:16-alpine
+      volumes:
+        - postgresql-data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_DB=${POSTGRES_DB:-grafana}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

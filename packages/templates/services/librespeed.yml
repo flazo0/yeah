@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Librespeed"
+description: "Self-hosted lightweight Speed Test."
+icon: code
+logo: "librespeed.png"
+category: dev
+tags: ["speedtest", "internet-speed"]
+docs: "https://github.com/librespeed/speedtest"
+main: "librespeed"
+port: 82
+env: {}
+compose: |
+  services:
+    librespeed:
+      container_name: librespeed
+      image: 'ghcr.io/librespeed/speedtest:latest'
+      environment:
+        - MODE=standalone
+        - TELEMETRY=false
+        - DISTANCE=km
+        - WEBPORT=82
+      healthcheck:
+        test: 'curl 127.0.0.1:82 || exit 1'
+        timeout: 1s
+        interval: 1m0s
+        retries: 1

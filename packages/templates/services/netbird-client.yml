@@ -1,0 +1,36 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Netbird Client"
+description: "Connect your devices into a secure WireGuard®-based overlay network with SSO, MFA and granular access controls."
+icon: shield
+logo: "netbird-client.png"
+category: security
+tags: ["wireguard", "mesh-networks", "vpn", "zero-trust-network-access", "open source"]
+docs: "https://docs.netbird.io/how-to/examples#net-bird-client-in-docker"
+notes: "Usa `network_mode: host`: o container compartilha a rede do servidor."
+main: "netbird-client"
+port: 80
+env:
+  NB_SETUP_KEY: ""
+compose: |
+  services:
+    netbird-client:
+      image: 'netbirdio/netbird:latest'
+      network_mode: host
+      environment:
+        - 'NB_SETUP_KEY=${NB_SETUP_KEY}'
+        - 'NB_ENABLE_ROSENPASS=${NB_ENABLE_ROSENPASS:-false}'
+        - 'NB_ENABLE_EXPERIMENTAL_LAZY_CONN=${NB_ENABLE_EXPERIMENTAL_LAZY_CONN:-false}'
+      volumes:
+        - 'netbird-client:/var/lib/netbird'
+      cap_add:
+        - NET_ADMIN
+        - SYS_ADMIN
+        - SYS_RESOURCE
+      healthcheck:
+        test:
+          - CMD
+          - netbird
+          - 'version'
+        interval: 5s
+        timeout: 20s
+        retries: 10

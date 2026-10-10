@@ -1,0 +1,36 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Pingvinshare With Clamav"
+description: "A self-hosted file sharing platform that combines lightness and beauty, perfect for seamless and efficient file sharing."
+icon: folder
+logo: "pingvinshare-with-clamav.svg"
+category: storage
+tags: ["self-hosted", "file-sharing", "files", "cloud", "sharing"]
+docs: "https://github.com/stonith404/pingvin-share"
+main: "pingvinshare"
+port: 3000
+env: {}
+compose: |
+  services:
+    pingvinshare:
+      image: ghcr.io/stonith404/pingvin-share
+      environment:
+        - TRUST_PROXY=${TRUST_PROXY:-true}
+      volumes:
+        - pingvinshare_data:/opt/app/backend/data
+        - pingvinshare_images:/opt/app/frontend/public/img
+      healthcheck:
+        test:
+          [
+            "CMD-SHELL",
+            "wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1",
+          ]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        clamav:
+          condition: service_healthy
+
+    clamav:
+      image: clamav/clamav
+      platform: linux/amd64

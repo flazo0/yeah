@@ -1,0 +1,29 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Open WebUI"
+description: "User-friendly AI Interface (Supports Ollama, OpenAI API, ...)"
+icon: psychology
+logo: "open-webui.svg"
+category: ai
+tags: ["ai", "models", "deployment", "open-web-ui", "integration"]
+docs: "https://docs.openwebui.com"
+main: "open-webui"
+port: 8080
+env: {}
+compose: |
+  services:
+    open-webui:
+      image: "ghcr.io/open-webui/open-webui:main"
+      volumes:
+        - "open-webui:/app/backend/data"
+      environment:
+      healthcheck:
+        test:
+          - CMD
+          - curl
+          - "-f"
+          - "http://127.0.0.1:8080"
+        interval: 5s
+        timeout: 30s
+        retries: 10
+  volumes:
+    open-webui: null

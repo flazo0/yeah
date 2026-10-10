@@ -1,0 +1,73 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Castopod"
+description: "Castopod is a free & open-source hosting platform made for podcasters who want engage and interact with their audience."
+icon: movie
+logo: "castopod.svg"
+category: media
+tags: ["podcast", "media", "audio", "video", "streaming", "hosting", "platform", "castopod"]
+docs: "https://docs.castopod.org/main/en/"
+main: "castopod"
+port: 8080
+env:
+  SERVICE_USER_MYSQL: "$generate:user"
+  SERVICE_PASSWORD_MYSQL: "$generate:password"
+  SERVICE_URL_CASTOPOD: "http://localhost"
+  SERVICE_REALBASE64_64_SALT: "$generate:realbase64"
+  SERVICE_PASSWORD_REDIS: "$generate:password"
+compose: |
+  services:
+    castopod:
+      image: castopod/castopod:1.15.4
+      volumes:
+        - castopod-media:/var/www/castopod/public/media
+      environment:
+        - MYSQL_DATABASE=castopod
+        - MYSQL_USER=$SERVICE_USER_MYSQL
+        - MYSQL_PASSWORD=$SERVICE_PASSWORD_MYSQL
+        - CP_DISABLE_HTTPS=${CP_DISABLE_HTTPS:-1}
+        - CP_BASEURL=$SERVICE_URL_CASTOPOD
+        - CP_ANALYTICS_SALT=$SERVICE_REALBASE64_64_SALT
+        - CP_CACHE_HANDLER=redis
+        - CP_REDIS_HOST=redis
+        - CP_REDIS_PASSWORD=$SERVICE_PASSWORD_REDIS
+      healthcheck:
+        test:
+          [
+            "CMD",
+            "curl",
+            "-f",
+            "http://localhost:8080/health"
+          ]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        mariadb:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+    mariadb:
+      image: mariadb:11.2
+      volumes:
+        - castopod-db:/var/lib/mysql
+      environment:
+        - MYSQL_ROOT_PASSWORD=$SERVICE_PASSWORD_MYSQL
+        - MYSQL_DATABASE=castopod
+        - MYSQL_USER=$SERVICE_USER_MYSQL
+        - MYSQL_PASSWORD=$SERVICE_PASSWORD_MYSQL
+      healthcheck:
+        test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+
+    redis:
+      image: redis:7.2-alpine
+      command: --requirepass $SERVICE_PASSWORD_REDIS
+      volumes:
+        - castopod-cache:/data
+      healthcheck:
+        test: ["CMD-SHELL", "redis-cli -a $SERVICE_PASSWORD_REDIS ping | grep PONG"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

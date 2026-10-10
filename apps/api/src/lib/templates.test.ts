@@ -19,7 +19,7 @@ describe("the shipped templates", () => {
   });
   test("every ${VAR} used by a compose has a value in the template's env (or a default)", () => {
     for (const t of loadTemplates()) {
-      const used = [...t.compose.matchAll(/\$\{([A-Za-z_][A-Za-z0-9_]*)(:-[^}]*)?\}/g)].filter((m) => !m[2]).map((m) => m[1]!);
+      const used = [...t.compose.matchAll(/(?<!\$)\$\{([A-Za-z_][A-Za-z0-9_]*)(:-[^}]*)?\}/g)].filter((m) => !m[2]).map((m) => m[1]!);
       for (const v of used) expect(Object.keys(t.env)).toContain(v);
     }
   });
@@ -61,5 +61,22 @@ describe("secrets", () => {
     expect(a).not.toBe(b);
     const n8n = renderTemplateEnv(loadTemplates().find((x) => x.key === "n8n")!);
     expect(n8n).toContain("N8N_PROTOCOL=http\n");
+  });
+});
+
+describe("the extra secret kinds used by imported templates", () => {
+  const fixed = (n: number) => Buffer.alloc(n, 7);
+  test("user is 12 lowercase letters; base64long is 64 bytes; realbase64 is standard base64", () => {
+    expect(generateSecret("user", fixed)).toMatch(/^[a-z]{12}$/);
+    expect(generateSecret("base64long", fixed)!.length).toBe(86);
+    expect(generateSecret("realbase64", fixed)).toMatch(/^[A-Za-z0-9+/]+=*$/);
+  });
+  test("imported templates carry logo files that exist in the web app", async () => {
+    const { existsSync } = await import("node:fs");
+    const { join, resolve } = await import("node:path");
+    const logos = resolve(import.meta.dir, "../../../web/public/template-logos");
+    const withLogo = loadTemplates().filter((t) => t.logo);
+    expect(withLogo.length).toBeGreaterThan(100);
+    for (const t of withLogo) expect(existsSync(join(logos, t.logo!))).toBe(true);
   });
 });

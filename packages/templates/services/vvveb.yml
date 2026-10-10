@@ -1,0 +1,23 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Vvveb"
+description: "Powerful and easy to use cms to build websites, blogs or ecommerce stores."
+icon: language
+logo: "vvveb.svg"
+category: cms
+tags: ["cms", "blog", "content", "management", "ecommerce", "page-builder", "nocode", "mysql"]
+docs: "https://docs.vvveb.com"
+main: "vvveb"
+port: 80
+env: {}
+compose: |
+  services:
+    vvveb:
+      image: vvveb/vvvebcms:latest
+      volumes:
+        - vvveb-data:/var/www/html
+      environment:
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1"]
+        interval: 2s
+        timeout: 10s
+        retries: 10

@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Overseerr"
+description: "Overseerr is a request management and media discovery tool built to work with your existing Plex ecosystem."
+icon: movie
+logo: "overseerr.svg"
+category: media
+tags: ["media", "request", "plex", "sonarr", "radarr"]
+docs: "https://docs.overseerr.dev/getting-started/installation#docker"
+main: "overseerr"
+port: 5055
+env: {}
+compose: |
+  services:
+    overseerr:
+      image: sctx/overseerr:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=${TZ:-America/Toronto}
+      volumes:
+        - overseerr-config:/app/config
+      healthcheck:
+        test:
+          [
+            "CMD",
+            "wget",
+            "--tries",
+            "1",
+            "--no-verbose",
+            "--spider",
+            "http://localhost:5055/api/v1/status",
+          ]
+        interval: 2s
+        timeout: 10s
+        retries: 15

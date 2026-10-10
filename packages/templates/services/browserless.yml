@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Browserless"
+description: "A headless Chrome browser as a service."
+icon: code
+logo: "browserless.svg"
+category: dev
+tags: ["chrome", "headless", "browser", "service"]
+docs: "https://docs.browserless.io/"
+main: "browserless"
+port: 3000
+env:
+  SERVICE_PASSWORD_BROWSERLESS: "$generate:password"
+compose: |
+  services:
+    browserless:
+      image: ghcr.io/browserless/chromium
+      environment:
+        - TOKEN=$SERVICE_PASSWORD_BROWSERLESS
+      expose:
+        - 3000
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:3000/docs"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

@@ -1,0 +1,51 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Langflow"
+description: "Langflow is an open-source, Python-based, customizable framework for building AI applications."
+icon: psychology
+logo: "langflow.svg"
+category: ai
+tags: ["langflow", "ai", "openai", "gpt", "llm", "workflow", "automation", "open source"]
+docs: "https://docs.langflow.org"
+main: "langflow"
+port: 7860
+env:
+  SERVICE_USER_LANGFLOW: "$generate:user"
+  SERVICE_PASSWORD_LANGFLOW: "$generate:password"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    langflow:
+      image: langflowai/langflow:1.7.2
+      environment:
+        - LANGFLOW_AUTO_LOGIN=${LANGFLOW_AUTO_LOGIN:-false}
+        - LANGFLOW_SUPERUSER=$SERVICE_USER_LANGFLOW
+        - LANGFLOW_SUPERUSER_PASSWORD=$SERVICE_PASSWORD_LANGFLOW
+        - LANGFLOW_DATABASE_URL=postgresql://$SERVICE_USER_POSTGRES:$SERVICE_PASSWORD_POSTGRES@postgres:5432/${POSTGRES_DB:-langflow-db}
+        - LANGFLOW_CONFIG_DIR=app/langflow
+        - LANGFLOW_HOST=0.0.0.0
+        - PORT=7860
+      healthcheck:
+        test: ["CMD-SHELL", "curl -f http://127.0.0.1:7860/health"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        postgres:
+          condition: service_healthy
+      volumes:
+        - langflow-data:/app/langflow
+
+    postgres:
+      image: postgres:18-alpine
+      environment:
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_DB=${POSTGRES_DB:-langflow-db}
+      volumes:
+        - langflow-postgres:/var/lib/postgres/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

@@ -13,6 +13,7 @@ import { loadEnvironment } from "../lib/projects";
 import { serviceProvisionQueue } from "../lib/queue";
 import { claimedHosts } from "../lib/hosts";
 import { findTemplate, renderTemplateEnv } from "../lib/templates";
+import { syncDomainEnv } from "../lib/serviceDomainEnv";
 
 function toServiceDto(service: Service, serverName: string): ServiceDto {
   return {
@@ -403,7 +404,11 @@ export const serviceRoutes = new Elysia({
           return { error: `o domínio ${d.domain} já é usado por ${owner}` };
         }
       }
-      const [updated] = await db.update(services).set({ domains }).where(eq(services.id, row.service.id)).returning();
+      const [updated] = await db
+        .update(services)
+        .set({ domains, envContent: syncDomainEnv(row.service.envContent, domains) })
+        .where(eq(services.id, row.service.id))
+        .returning();
       return { service: toServiceDto(updated ?? row.service, row.serverName) };
     },
     { body: t.Object({ domains: t.Array(t.Object({ service: t.String(), domain: t.String(), port: t.Number() })) }) },

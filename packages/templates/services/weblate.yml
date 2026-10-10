@@ -1,0 +1,68 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Weblate"
+description: "Weblate is a libre software web-based continuous localization system."
+icon: task_alt
+logo: "weblate.webp"
+category: productivity
+tags: ["localization", "translation", "web", "web-based", "continuous", "libre", "software"]
+docs: "https://weblate.org"
+main: "weblate"
+port: 8080
+env:
+  SERVICE_FQDN_WEBLATE: "localhost"
+  SERVICE_PASSWORD_WEBLATE: "$generate:password"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_REDIS: "$generate:password"
+compose: |
+  services:
+    weblate:
+      image: weblate/weblate:latest
+      environment:
+        - WEBLATE_SITE_DOMAIN=$SERVICE_FQDN_WEBLATE
+        - WEBLATE_ADMIN_NAME=${WEBLATE_ADMIN_NAME:-Admin}
+        - WEBLATE_ADMIN_EMAIL=${WEBLATE_ADMIN_EMAIL:-admin@example.com}
+        - WEBLATE_ADMIN_PASSWORD=$SERVICE_PASSWORD_WEBLATE
+        - DEFAULT_FROM_EMAIL=${WEBLATE_ADMIN_EMAIL:-admin@example.com}
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_DATABASE=${POSTGRES_DB:-weblate}
+        - POSTGRES_HOST=postgresql
+        - POSTGRES_PORT=5432
+        - REDIS_HOST=redis
+        - REDIS_PORT=6379
+        - REDIS_PASSWORD=$SERVICE_PASSWORD_REDIS
+      volumes:
+        - weblate-data:/app/data
+        - weblate-cache:/app/cache
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:8080"]
+        interval: 2s
+        timeout: 10s
+        retries: 30
+    postgresql:
+      image: postgres:16-alpine
+      volumes:
+        - postgresql-data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_DB=${POSTGRES_DB:-weblate}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+    redis:
+      image: redis:7-alpine
+      command: >
+        --appendonly yes --requirepass ${SERVICE_PASSWORD_REDIS}
+      environment:
+        - REDIS_PASSWORD=$SERVICE_PASSWORD_REDIS
+      volumes:
+        - weblate-redis-data:/data
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

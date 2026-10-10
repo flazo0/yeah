@@ -1,0 +1,42 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Anythingllm"
+description: "AnythingLLM is the easiest to use, all-in-one AI application that can do RAG, AI Agents, and much more with no code or infrastructure headaches."
+icon: psychology
+logo: "anythingllm.svg"
+category: ai
+tags: ["lowcode", "nocode", "llm", "openai", "anthropic", "machine-learning", "rag", "agents"]
+docs: "https://docs.anythingllm.com/installation-docker/overview"
+main: "anything-llm"
+port: 3001
+env:
+  SERVICE_PASSWORD_SIGKEY: "$generate:password"
+  SERVICE_PASSWORD_SIGSALT: "$generate:password"
+  SERVICE_PASSWORD_JWTSECRET: "$generate:password"
+  SERVICE_PASSWORD_AUTHTOKEN: "$generate:password"
+compose: |
+  services:
+    anything-llm:
+      image: mintplexlabs/anythingllm
+      environment:
+        - STORAGE_DIR=/app/server/storage
+        - DISABLE_TELEMETRY=${DISABLE_TELEMETRY:-true}
+        - PASSWORDLOWERCASE=${PASSWORDLOWERCASE:-1}
+        - PASSWORDMAXCHAR=${PASSWORDMAXCHAR:-250}
+        - PASSWORDMINCHAR=${PASSWORDMINCHAR:-6}
+        - PASSWORDNUMERIC=${PASSWORDNUMERIC:-1}
+        - PASSWORDREQUIREMENTS=${PASSWORDREQUIREMENTS:-1}
+        - PASSWORDSYMBOL=${PASSWORDSYMBOL:-1}
+        - PASSWORDUPPERCASE=${PASSWORDUPPERCASE:-1}
+        - SIG_KEY=${SERVICE_PASSWORD_SIGKEY}
+        - SIG_SALT=${SERVICE_PASSWORD_SIGSALT}
+        - JWT_SECRET=${SERVICE_PASSWORD_JWTSECRET}
+        - AUTH_TOKEN=${SERVICE_PASSWORD_AUTHTOKEN}
+        - SERVER_PORT=${SERVER_PORT:-3001}
+        - VECTOR_DB=lancedb
+      cap_add:
+        - SYS_ADMIN
+      volumes:
+        - "anythingllm-storage:/app/server/storage"
+        - "anythingllm-hot:/app/collector/hotdir"
+        - "anythingllm-outputs:/app/collector/outputs"
+      user: "${UID:-1000}:${GID:-1000}"

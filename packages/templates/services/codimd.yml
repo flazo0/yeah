@@ -1,0 +1,55 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Codimd"
+description: "Realtime collaborative markdown notes on all platforms"
+icon: task_alt
+logo: "codimd.png"
+category: productivity
+tags: ["markdown", "md", "editor", "opensource", "collaborative", "realtime-collaboration", "notes"]
+docs: "https://hackmd.io/c/codimd-documentation"
+main: "codimd"
+port: 3000
+env:
+  SERVICE_FQDN_CODIMD: "localhost"
+  SERVICE_PASSWORD_SESSIONSECRET: "$generate:password"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    codimd:
+      image: nabo.codimd.dev/hackmdio/hackmd:latest
+      environment:
+        - CMD_DOMAIN=${SERVICE_FQDN_CODIMD}
+        - CMD_PROTOCOL_USESSL=${CMD_PROTOCOL_USESSL:-true}
+        - CMD_SESSION_SECRET=${SERVICE_PASSWORD_SESSIONSECRET}
+        - CMD_USECDN=${CMD_USECDN:-false}
+        - CMD_DB_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/${POSTGRES_DB:-codimd-db}
+        - CMD_EMAIL=${CMD_EMAIL:-true}
+        - CMD_ALLOW_EMAIL_REGISTER=${CMD_ALLOW_EMAIL_REGISTER:-true}
+      depends_on:
+        postgres:
+          condition: service_healthy
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "curl -f http://localhost:3000/ || exit 1"
+        interval: 5s
+        timeout: 20s
+        retries: 5
+      volumes:
+        - uploads_data:/home/hackmd/app/public/uploads
+
+    postgres:
+      image: postgres:16-alpine
+      volumes:
+        - codimd_postgres_data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-codimd-db}
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        interval: 5s
+        timeout: 20s
+        retries: 10

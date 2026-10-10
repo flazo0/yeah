@@ -1,0 +1,24 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Databasus"
+description: "Databasus is a free, open source and self-hosted tool to backup PostgreSQL, MySQL, and MongoDB."
+icon: code
+logo: "databasus.svg"
+category: dev
+tags: ["postgres", "mysql", "mongo", "backup"]
+docs: "https://databasus.com/installation"
+main: "databasus"
+port: 4005
+env: {}
+compose: |
+  services:
+    databasus:
+      image: 'databasus/databasus:v3.16.2' # Released on 23 February, 2026
+      environment:
+      volumes:
+        - 'databasus-data:/databasus-data'
+      healthcheck:
+        test:
+          ['CMD', 'wget', '-qO-', 'http://localhost:4005/api/v1/system/health']
+        interval: 5s
+        timeout: 10s
+        retries: 5

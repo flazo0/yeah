@@ -1,0 +1,33 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Elasticsearch"
+description: "Elasticsearch is free and Open Source, Distributed, RESTful Search Engine."
+icon: search
+logo: "elasticsearch.svg"
+category: search
+tags: ["search", "engine", "fulltext", "full", "text", "elasticsearch"]
+docs: "https://www.elastic.co/products/elasticsearch"
+main: "elasticsearch"
+port: 9200
+env:
+  SERVICE_PASSWORD_ELASTICSEARCH: "$generate:password"
+compose: |
+  services:
+    elasticsearch:
+      image: docker.elastic.co/elasticsearch/elasticsearch-wolfi:8.19.0
+      environment:
+        - ELASTIC_PASSWORD=${SERVICE_PASSWORD_ELASTICSEARCH}
+        - ES_JAVA_OPTS=-Xms512m -Xmx512m # memory set to 512MB
+        - discovery.type=single-node
+        - bootstrap.memory_lock=true
+        - xpack.security.http.ssl.enabled=false # Coolify handles SSL
+      volumes:
+        - elasticsearch-data:/usr/share/elasticsearch/data
+      healthcheck:
+        test:
+          [
+            "CMD-SHELL",
+            "curl --user elastic:${SERVICE_PASSWORD_ELASTICSEARCH} --silent --fail http://localhost:9200/_cluster/health",
+          ]
+        interval: 10s
+        timeout: 10s
+        retries: 24

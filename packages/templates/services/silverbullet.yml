@@ -1,0 +1,31 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Silverbullet"
+description: "SilverBullet is a tool to develop, organize, and structure your personal knowledge and to make it universally accessible across all your devices."
+icon: task_alt
+logo: "silverbullet.png"
+category: productivity
+tags: ["note-taking", "markdown", "pkm"]
+docs: "https://v2.silverbullet.md/Install/Configuration"
+main: "silverbullet"
+port: 3000
+env:
+  SERVICE_USER_SILVERBULLET: "$generate:user"
+  SERVICE_PASSWORD_SILVERBULLET: "$generate:password"
+compose: |
+  services:
+    silverbullet:
+      image: ghcr.io/silverbulletmd/silverbullet:v2
+      environment:
+      - SB_USER=${SERVICE_USER_SILVERBULLET}:${SERVICE_PASSWORD_SILVERBULLET}
+      volumes:
+        - silverbullet-space:/space
+      healthcheck:
+        test:
+          - CMD
+          - wget
+          - '--spider'
+          - '--quiet'
+          - 'http://127.0.0.1:3000'
+        interval: 2s
+        timeout: 10s
+        retries: 5

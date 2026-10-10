@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Embystat"
+description: "EmbyStat is a web analytics tool, designed to provide insight into website traffic and user behavior."
+icon: analytics
+category: analytics
+tags: ["analytics", "insights", "statistics", "web", "traffic"]
+docs: "https://github.com/mregni/EmbyStat"
+main: "embystat"
+port: 6555
+env: {}
+compose: |
+  services:
+    embystat:
+      image: lscr.io/linuxserver/embystat:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - embystat-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:6555"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

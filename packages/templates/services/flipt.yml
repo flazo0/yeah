@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Flipt"
+description: "Flipt is a fully managed feature flag solution that enables you to keep your feature flags and remote config next to your code in Git."
+icon: dns
+logo: "flipt.svg"
+category: backend
+tags: ["feature flags", "devops", "CI", "CD"]
+docs: "https://docs.flipt.io/cloud/overview"
+main: "flipt"
+port: 8080
+env: {}
+compose: |
+  services:
+    flipt:
+      image: 'docker.flipt.io/flipt/flipt:latest'
+      volumes:
+        - 'flipt-data:/var/opt/flipt'
+      environment:
+      healthcheck:
+        test:
+          - CMD
+          - wget
+          - '--spider'
+          - '--quiet'
+          - 'http://127.0.0.1:8080'
+        interval: 2s
+        timeout: 10s
+        retries: 15

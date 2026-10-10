@@ -1,0 +1,63 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Listmonk"
+description: "Self-hosted newsletter and mailing list manager"
+icon: forum
+logo: "listmonk.svg"
+category: messaging
+tags: ["newsletter", "mailing list", "self-hosted", "open source"]
+docs: "https://listmonk.app/"
+main: "listmonk"
+port: 9000
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    listmonk:
+      image: listmonk/listmonk:v6.0.0
+      environment:
+        - LISTMONK_app__address=0.0.0.0:9000
+        - LISTMONK_db__host=postgres
+        - LISTMONK_db__database=listmonk
+        - LISTMONK_db__user=$SERVICE_USER_POSTGRES
+        - LISTMONK_db__password=$SERVICE_PASSWORD_POSTGRES
+        - LISTMONK_db__port=5432
+        - TZ=Etc/UTC
+      volumes:
+        - listmonk-data:/listmonk/uploads
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9000"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    listmonk-initial-database-setup:
+      image: listmonk/listmonk:v6.0.0
+      command: "./listmonk --install --yes --idempotent"
+      restart: "no"
+      depends_on:
+        postgres:
+          condition: service_healthy
+      environment:
+        - LISTMONK_db__host=postgres
+        - LISTMONK_db__database=listmonk
+        - LISTMONK_db__user=$SERVICE_USER_POSTGRES
+        - LISTMONK_db__password=$SERVICE_PASSWORD_POSTGRES
+        - LISTMONK_db__port=5432
+
+    postgres:
+      image: postgres:18-alpine
+      environment:
+        - POSTGRES_DB=listmonk
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+      volumes:
+        - postgres-data:/var/lib/postgresql
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

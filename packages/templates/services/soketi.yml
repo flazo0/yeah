@@ -1,0 +1,32 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Soketi"
+description: "Soketi is your simple, fast, and resilient open-source WebSockets server."
+icon: forum
+logo: "soketi.jpeg"
+category: messaging
+tags: ["websockets", "open", "source", "messaging"]
+docs: "https://docs.soketi.app"
+main: "soketi"
+port: 6001
+env:
+  SERVICE_USER_SOKETI: "$generate:user"
+  SERVICE_REALBASE64_64_SOKETIKEY: "$generate:realbase64"
+  SERVICE_REALBASE64_64_SOKETISECRET: "$generate:realbase64"
+  DEFAULT_APP_ENABLE_CLIENT_MESSAGES: ""
+compose: |
+  services:
+    soketi:
+      image: "quay.io/soketi/soketi:1.6-16-debian"
+      environment:
+        - SOKETI_DEBUG=${DEBUG:-0}
+        - SOKETI_DEFAULT_APP_ID=${SERVICE_USER_SOKETI}
+        - SOKETI_DEFAULT_APP_KEY=${SERVICE_REALBASE64_64_SOKETIKEY}
+        - SOKETI_DEFAULT_APP_SECRET=${SERVICE_REALBASE64_64_SOKETISECRET}
+        - SOKETI_PUSHER_SCHEME=${SOKETI_PUSHER_SCHEME:-https}
+        - SOKETI_DEFAULT_APP_ENABLE_CLIENT_MESSAGES=${DEFAULT_APP_ENABLE_CLIENT_MESSAGES}
+
+      healthcheck:
+        test: ["CMD-SHELL", "bash -c ':> /dev/tcp/127.0.0.1/6001' || exit 1"]
+        interval: 5s
+        timeout: 20s
+        retries: 3

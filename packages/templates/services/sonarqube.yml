@@ -1,0 +1,48 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Sonarqube"
+description: "SonarQube is a self-managed, automatic code review tool that systematically helps you deliver Clean Code"
+icon: task_alt
+category: productivity
+tags: ["sonarqube", "code-review", "clean-code", "quality", "code-quality", "code-analysis", "code-smells", "code-coverage"]
+docs: "https://hub.docker.com/_/sonarqube/"
+main: "sonarqube"
+port: 9000
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    sonarqube:
+      image: sonarqube:community
+      environment:
+        - SONAR_JDBC_URL=jdbc:postgresql://postgresql:5432/${POSTGRES_DB:-sonar}
+        - SONAR_JDBC_USERNAME=$SERVICE_USER_POSTGRES
+        - SONAR_JDBC_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      volumes:
+        - sonarqube-data:/opt/sonarqube
+        - sonarqube-conf:/opt/sonarqube/conf
+        - sonarqube-extensions:/opt/sonarqube/extensions
+        - sonarqube-logs:/opt/sonarqube/logs
+        - sonarqube-bundled-plugins:/opt/sonarqube/lib/bundled-plugins
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:9000"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+      depends_on:
+        postgresql:
+          condition: service_healthy
+    postgresql:
+      image: postgres:16-alpine
+      volumes:
+        - postgresql-data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+        - POSTGRES_DB=${POSTGRES_DB:-sonar}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

@@ -1,0 +1,9 @@
+yeah
+Copyright (c) the yeah authors.
+
+The one-click service templates in packages/templates/services/ whose first line says
+"Importado do catálogo de templates do Coolify" were converted by scripts/import-coolify-templates.ts
+from the Coolify project's template catalog (https://github.com/coollabsio/coolify, templates/compose),
+which is licensed under the Apache License 2.0. The logos in apps/web/public/template-logos/ come from the
+same catalog and belong to their respective projects and companies; they are shown only to identify the
+software a template installs, with no affiliation or endorsement implied.

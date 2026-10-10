@@ -1,0 +1,30 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Appsmith"
+description: "A low-code application platform for building internal tools."
+icon: task_alt
+logo: "appsmith.svg"
+category: productivity
+tags: ["lowcode", "nocode", "no", "low", "platform"]
+docs: "https://appsmith.com"
+main: "appsmith"
+port: 80
+env:
+  APPSMITH_SENTRY_DSN: ""
+  APPSMITH_SMART_LOOK_ID: ""
+compose: |
+  services:
+    appsmith:
+      image: index.docker.io/appsmith/appsmith-ce:latest
+      environment:
+        - APPSMITH_MAIL_ENABLED=${APPSMITH_MAIL_ENABLED:-false}
+        - APPSMITH_DISABLE_TELEMETRY=${APPSMITH_DISABLE_TELEMETRY:-false}
+        - APPSMITH_DISABLE_INTERCOM=${APPSMITH_DISABLE_INTERCOM:-true}
+        - APPSMITH_SENTRY_DSN=${APPSMITH_SENTRY_DSN}
+        - APPSMITH_SMART_LOOK_ID=${APPSMITH_SMART_LOOK_ID}
+      volumes:
+        - stacks-data:/appsmith-stacks
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

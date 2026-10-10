@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Redis Insight"
+description: "Redis Insight lets you do both GUI- and CLI-based interactions in a fully-featured desktop GUI client."
+icon: database
+logo: "redis-insight.png"
+category: database
+tags: ["redis", "gui", "database", "monitoring", "analytics"]
+docs: "https://redis.io/docs/latest/operate/redisinsight/"
+main: "redisinsight"
+port: 5540
+env:
+  SERVICE_PASSWORD_RI_ENCRYPTION_KEY: "$generate:password"
+compose: |
+  services:
+    redisinsight:
+      image: 'redis/redisinsight:2.70' # Released on Jul 11, 2025
+      environment:
+        - RI_APP_HOST=0.0.0.0
+        - RI_APP_PORT=5540
+        - 'RI_ENCRYPTION_KEY=${SERVICE_PASSWORD_RI_ENCRYPTION_KEY}'
+        - 'RI_LOG_LEVEL=${RI_LOG_LEVEL:-info}'
+        - 'RI_FILES_LOGGER=${RI_FILES_LOGGER:-true}'
+        - 'RI_STDOUT_LOGGER=${RI_STDOUT_LOGGER:-true}'
+      volumes:
+        - 'redis_insight_data:/data'
+      healthcheck:
+        test:
+          - CMD
+          - wget
+          - '--spider'
+          - 'http://0.0.0.0:5540/api/health'
+        interval: 10s
+        retries: 3
+        timeout: 10s
+        start_period: 10s

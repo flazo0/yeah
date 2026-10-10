@@ -1,0 +1,31 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Celld"
+description: "Self-hosted, distributed Durable Objects powered by Deno."
+icon: dns
+logo: "celld.svg"
+category: backend
+tags: ["deno", "durable-objects", "workers", "sqlite", "distributed", "backend", "serverless"]
+docs: "https://celld.dev/docs"
+main: "celld"
+port: 8080
+env:
+  CELLD_BUCKET: ""
+  AWS_ACCESS_KEY_ID: ""
+  AWS_SECRET_ACCESS_KEY: ""
+compose: |
+  services:
+    celld:
+      image: 'ghcr.io/denoland/celld:${CELLD_VERSION:-latest}'
+      environment:
+        - CELLD_BUCKET=${CELLD_BUCKET:?}
+        - S3_ENDPOINT=${S3_ENDPOINT:-}
+        - AWS_REGION=${AWS_REGION:-us-east-1}
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:?}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:?}
+        - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN:-}
+        - CELLD_ADDR=0.0.0.0:8080
+        - CELLD_ADVERTISE=celld:8080
+        - CELLD_WATCH=/var/lib/celld/state
+        - RUST_LOG=${RUST_LOG:-info}
+      volumes:
+        - celld-data:/var/lib/celld

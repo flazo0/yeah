@@ -1,0 +1,58 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Freescout"
+description: "FreeScout is the super lightweight and powerful free open source help desk and shared inbox written in PHP (Laravel framework)."
+icon: task_alt
+logo: "freescout.png"
+category: productivity
+tags: ["helpdesk", "support", "ticketing", "customer-support"]
+docs: "https://github.com/freescout-help-desk/freescout/wiki/"
+main: "freescout"
+port: 80
+env:
+  SERVICE_USER_MARIADB: "$generate:user"
+  SERVICE_PASSWORD_MARIADB: "$generate:password"
+  SERVICE_URL_FREESCOUT: "http://localhost"
+  SERVICE_PASSWORD_ADMIN: "$generate:password"
+  SERVICE_PASSWORD_ROOT: "$generate:password"
+  MARIADB_DATABASE: ""
+compose: |
+  services:
+    freescout:
+      image: tiredofit/freescout:latest
+      volumes:
+        - freescout-data:/data
+        - freescout-logs:/www/logs
+      depends_on:
+        mariadb:
+          condition: service_healthy
+      environment:
+        - DB_HOST=mariadb
+        - DB_NAME=${MARIADB_DATABASE:-freescout}
+        - DB_USER=${SERVICE_USER_MARIADB:-freescout}
+        - DB_PASS=${SERVICE_PASSWORD_MARIADB}
+        - SITE_URL=${SERVICE_URL_FREESCOUT}
+        - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+        - ADMIN_PASS=${SERVICE_PASSWORD_ADMIN}
+        - DISPLAY_ERRORS=${DISPLAY_ERRORS:-FALSE}
+        - TIMEZONE=${TIMEZONE:-UTC}
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1"]
+        start_period: 10s
+        interval: 5s
+        timeout: 10s
+        retries: 15
+    mariadb:
+      image: mariadb
+      volumes:
+        - mariadb-data:/var/lib/mysql
+      environment:
+        - MARIADB_ROOT_PASSWORD=${SERVICE_PASSWORD_ROOT}
+        - MARIADB_DATABASE=${MARIADB_DATABASE}
+        - MARIADB_USER=${SERVICE_USER_MARIADB}
+        - MARIADB_PASSWORD=${SERVICE_PASSWORD_MARIADB}
+      healthcheck:
+        test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+        start_period: 10s
+        interval: 5s
+        timeout: 10s
+        retries: 15

@@ -1,0 +1,22 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Slash"
+description: "An open source, self-hosted links shortener and sharing platform."
+icon: task_alt
+category: productivity
+tags: ["links", "shortener", "sharing", "url", "short", "link", "sharing"]
+docs: "https://github.com/yourselfhosted/slash"
+main: "slash"
+port: 5231
+env: {}
+compose: |
+  services:
+    slash:
+      image: yourselfhosted/slash
+      environment:
+      volumes:
+        - slash-data:/var/opt/slash
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:5231"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

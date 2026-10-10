@@ -1,0 +1,24 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Organizr"
+description: "Homelab Services Organizer"
+icon: task_alt
+logo: "organizr.png"
+category: productivity
+tags: ["tool"]
+docs: "https://docs.organizr.app/"
+main: "organizr"
+port: 80
+env: {}
+compose: |
+  services:
+    organizr:
+      image: organizr/organizr:latest
+      environment:
+        - branch=${branch:-v2-master}
+      volumes:
+        - organizr-data:/config
+      healthcheck:
+        test: ["CMD-SHELL", "curl -sf http://localhost:80 || exit 1"]
+        interval: 10s
+        timeout: 1s
+        retries: 3

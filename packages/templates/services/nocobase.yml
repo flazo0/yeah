@@ -1,0 +1,45 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Nocobase"
+description: "NocoBase is the most extensible AI-powered no-code/low-code platform."
+icon: code
+logo: "nocobase.png"
+category: dev
+tags: ["nocode", "lowcode", "database", "builder"]
+docs: "https://docs.nocobase.com/"
+main: "nocobase"
+port: 13000
+env:
+  SERVICE_BASE64_64_APPKEY: "$generate:base64long"
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    nocobase:
+      image: nocobase/nocobase:1.9.33
+      environment:
+        - APP_KEY=${SERVICE_BASE64_64_APPKEY}
+        - DB_DIALECT=postgres
+        - DB_HOST=postgres
+        - DB_PORT=5432
+        - DB_DATABASE=${POSTGRES_DB:-nocobase-db}
+        - DB_USER=$SERVICE_USER_POSTGRES
+        - DB_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+      volumes:
+        - nocobase-storage:/app/nocobase/storage
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    postgres:
+      image: postgres:17-alpine
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-nocobase-db}
+      volumes:
+        - postgres-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

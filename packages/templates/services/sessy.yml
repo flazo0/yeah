@@ -1,0 +1,29 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Sessy"
+description: "Email observability platform for monitoring and analyzing email systems."
+icon: monitor_heart
+logo: "sessy.svg"
+category: monitoring
+tags: ["email", "observability", "monitoring", "analytics"]
+docs: "https://github.com/marckohlbrugge/sessy/blob/main/docs/docker-deployment.md"
+main: "sessy"
+port: 80
+env:
+  SERVICE_HEX_64_SESSYSECRET: ""
+  SERVICE_USER_SESSY: "$generate:user"
+  SERVICE_PASSWORD_SESSY: "$generate:password"
+compose: |
+  services:
+    sessy:
+      image: ghcr.io/marckohlbrugge/sessy:main
+      environment:
+        - SECRET_KEY_BASE=$SERVICE_HEX_64_SESSYSECRET
+        - HTTP_AUTH_USERNAME=$SERVICE_USER_SESSY
+        - HTTP_AUTH_PASSWORD=$SERVICE_PASSWORD_SESSY
+      volumes:
+        - sessy-data:/rails/storage
+      healthcheck:
+        test: ["CMD-SHELL", "curl -sf http://127.0.0.1:80 || [ $? -eq 22 ]"]
+        interval: 5s
+        timeout: 10s
+        retries: 10

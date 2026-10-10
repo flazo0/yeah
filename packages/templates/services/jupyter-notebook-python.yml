@@ -1,0 +1,24 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Jupyter Notebook Python"
+description: "Jupyter Notebook is an open-source web application that allows you to create and share documents that contain live code, equations, visualizations, and narrative text."
+icon: code
+logo: "jupyter-notebook-python.svg"
+category: dev
+tags: ["notebook", "python", "data", "analysis"]
+docs: "https://jupyter.org/"
+main: "jupyter-notebook-python"
+port: 8888
+env: {}
+compose: |
+  services:
+    jupyter-notebook-python:
+      image: quay.io/jupyter/base-notebook:latest
+      environment:
+      volumes:
+        - '/jupyter:/home/jovyan/work'
+      command: start-notebook.sh
+      healthcheck:
+        test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8888/"]
+        interval: 30s
+        timeout: 20s
+        retries: 10

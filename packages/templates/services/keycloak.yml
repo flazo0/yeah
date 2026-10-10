@@ -1,0 +1,39 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Keycloak"
+description: "Keycloak is an open-source Identity and Access Management tool."
+icon: shield
+logo: "keycloak.svg"
+category: security
+tags: ["keycloak", "identity", "access", "management", "iam", "authentication", "authorization", "security"]
+docs: "https://www.keycloak.org"
+main: "keycloak"
+port: 8080
+env:
+  SERVICE_USER_ADMIN: "$generate:user"
+  SERVICE_PASSWORD_ADMIN: "$generate:password"
+  SERVICE_URL_KEYCLOAK: "http://localhost"
+compose: |
+  services:
+    keycloak:
+      image: quay.io/keycloak/keycloak:26.1
+      command:
+        - start
+      environment:
+        - TZ=${TIMEZONE:-UTC}
+        - KC_BOOTSTRAP_ADMIN_USERNAME=${SERVICE_USER_ADMIN}
+        - KC_BOOTSTRAP_ADMIN_PASSWORD=${SERVICE_PASSWORD_ADMIN}
+        - KC_HOSTNAME=${SERVICE_URL_KEYCLOAK}
+        - KC_HTTP_ENABLED=${KC_HTTP_ENABLED:-true}
+        - KC_HEALTH_ENABLED=${KC_HEALTH_ENABLED:-true}
+        - KC_PROXY_HEADERS=${KC_PROXY_HEADERS:-xforwarded}
+      volumes:
+        - keycloak-data:/opt/keycloak/data
+      healthcheck:
+        test:
+          [
+            "CMD-SHELL",
+            "exec 3<>/dev/tcp/127.0.0.1/9000; echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost:9000\r\nConnection: close\r\n\r\n' >&3;cat <&3 | grep -q '\"status\": \"UP\"' && exit 0 || exit 1",
+          ]
+        interval: 5s
+        timeout: 20s
+        retries: 10

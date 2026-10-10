@@ -1,0 +1,31 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Rivet Engine"
+description: "Build and scale stateful workloads with long-lived processes"
+icon: code
+logo: "rivet-engine.svg"
+category: dev
+tags: ["stateful", "actors", "realtime", "backend", "serverless", "postgresql"]
+docs: "https://www.rivet.dev/docs"
+main: "rivet-engine"
+port: 6420
+env:
+  SERVICE_BASE64_TOKEN: "$generate:base64"
+compose: |
+  services:
+    rivet-engine:
+      image: rivetdev/engine:2.2.0
+      environment:
+        - RIVET__FILE_SYSTEM__PATH=/data
+        - 'RIVET__AUTH__ADMIN_TOKEN=${SERVICE_BASE64_TOKEN}'
+      volumes:
+        - 'rivet-data:/data'
+      healthcheck:
+        test:
+          - CMD
+          - curl
+          - '-f'
+          - http://127.0.0.1:6420/health
+        interval: 2s
+        timeout: 10s
+        retries: 10
+        start_period: 30s

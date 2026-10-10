@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Cloudflare Ddns"
+description: "A small, feature-rich, and robust Cloudflare DDNS updater."
+icon: bolt
+logo: "cloudflare-ddns.svg"
+category: automation
+tags: ["cloud", "ddns"]
+docs: "https://github.com/favonia/cloudflare-ddns"
+notes: "Usa `network_mode: host`: o container compartilha a rede do servidor."
+main: "cloudflare-ddns"
+port: 80
+env:
+  CLOUDFLARE_API_TOKEN: ""
+  DOMAINS: ""
+compose: |
+  services:
+    cloudflare-ddns:
+      image: favonia/cloudflare-ddns:1.16.2
+      network_mode: host
+      user: "1000:1000"
+      read_only: true
+      cap_drop: [all]
+      security_opt: [no-new-privileges:true]
+      environment:
+        - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:?}
+        - DOMAINS=${DOMAINS:?}
+        - PROXIED=${PROXIED:-false}
+        - IP6_PROVIDER=${IP6_PROVIDER:-none}

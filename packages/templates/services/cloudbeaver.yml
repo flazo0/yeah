@@ -1,0 +1,23 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Cloudbeaver"
+description: "CloudBeaver is a lightweight web application designed for comprehensive data management."
+icon: code
+logo: "cloudbeaver.svg"
+category: dev
+tags: ["dbeaver", "data management", "data", "database", "mysql", "postgres", "sqlite", "sql"]
+docs: "https://dbeaver.com/docs/cloudbeaver/"
+main: "cloudbeaver"
+port: 8978
+env: {}
+compose: |
+  services:
+    cloudbeaver:
+      image: dbeaver/cloudbeaver:24
+      volumes:
+        - cloudbeaver-data:/opt/cloudbeaver/workspace
+      environment:
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8978/"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

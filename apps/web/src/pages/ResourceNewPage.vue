@@ -35,6 +35,10 @@ interface CatalogCard {
   subtitle: string;
   description: string;
   icon: string;
+  /** Real project logo under /template-logos/, shown instead of the Material icon. */
+  logo?: string;
+  /** Templates only: extra search terms. */
+  tags?: string[];
   website?: string;
   docsUrl?: string;
   /** Templates only: the sub-category used by the service filter. */
@@ -48,9 +52,10 @@ const error = ref("");
 const templates = ref<ServiceTemplateDto[]>([]);
 const serviceCategory = ref("");
 const CATEGORY_LABELS: Record<string, string> = {
-  monitoring: "Monitoramento", automation: i18n.global.t("resourceNew.automacao"), storage: "Arquivos", messaging: "Mensageria", search: "Busca", cms: i18n.global.t("resourceNew.cmsESites"),
+  ai: i18n.global.t("resourceNew.catAi"), finance: i18n.global.t("resourceNew.catFinance"), games: i18n.global.t("resourceNew.catGames"), backend: "Backend", monitoring: "Monitoramento", automation: i18n.global.t("resourceNew.automacao"), storage: "Arquivos", messaging: "Mensageria", search: "Busca", cms: i18n.global.t("resourceNew.cmsESites"),
   analytics: "Analytics", devops: "DevOps", database: i18n.global.t("resourceNew.bancoDeDados"), dev: "Dev", security: i18n.global.t("resourceNew.seguranca"), media: i18n.global.t("resourceNew.midia"), productivity: "Produtividade", other: "Outros",
 };
+const logoUrl = (file: string) => `${import.meta.env.BASE_URL}template-logos/${file}`;
 const templateCategories = computed(() => [...new Set(templates.value.map((t) => t.category))].sort((a, b) => (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b)));
 const search = ref("");
 const categoryFilter = ref<"" | Category>("");
@@ -175,6 +180,8 @@ const cards = computed<CatalogCard[]>(() => [
     subtitle: `${t.services.length} container${t.services.length === 1 ? "" : "s"} · ${CATEGORY_LABELS[t.category] ?? t.category}`,
     description: t.description,
     icon: t.icon,
+    logo: t.logo,
+    tags: t.tags,
     serviceCategory: t.category,
     website: t.website,
     docsUrl: t.docsUrl,
@@ -187,7 +194,7 @@ const visibleCards = computed(() => {
     (c) =>
       (!categoryFilter.value || c.category === categoryFilter.value) &&
       (!serviceCategory.value || c.category !== 'service' || c.serviceCategory === serviceCategory.value) &&
-      (!q || `${c.name} ${c.description} ${c.subtitle}`.toLowerCase().includes(q)),
+      (!q || `${c.name} ${c.description} ${c.subtitle} ${(c.tags ?? []).join(" ")}`.toLowerCase().includes(q)),
   );
 });
 
@@ -529,7 +536,10 @@ onMounted(() => {
             <div class="catalog-grid">
               <div v-for="card in visibleCards.filter((c) => c.category === section.category)" :key="card.id" class="catalog-card">
                 <div class="catalog-card-head">
-                  <span class="rtable-icon"><span class="material-symbols-outlined">{{ card.icon }}</span></span>
+                  <span class="rtable-icon">
+                    <img v-if="card.logo" :src="logoUrl(card.logo)" :alt="card.name" class="template-logo" loading="lazy" @error="($event.target as HTMLImageElement).style.display = 'none'" />
+                    <span v-else class="material-symbols-outlined">{{ card.icon }}</span>
+                  </span>
                   <div class="rtable-name-text">
                     <strong>{{ card.name }}</strong>
                     <small class="muted mono">{{ card.subtitle }}</small>

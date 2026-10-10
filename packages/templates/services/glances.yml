@@ -1,0 +1,37 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Glances"
+description: "An Eye on your system"
+icon: monitor_heart
+logo: "glances.png"
+category: monitoring
+tags: ["monitoring tool python cross platform"]
+docs: "https://nicolargo.github.io/glances/"
+notes: "Este serviço roda com `privileged: true`: dá ao container poder sobre o servidor."
+main: "glances"
+port: 61208
+env: {}
+compose: |
+  services:
+    glances:
+      image: nicolargo/glances:latest
+      restart: unless-stopped
+      environment:
+        - GLANCES_OPT=-w
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro
+        - /run/user/1000/podman/podman.sock:/run/user/1000/podman/podman.sock:ro
+      pid: "host"
+      privileged: true
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:61208"]
+        interval: 2s
+        timeout: 10s
+        retries: 30
+      # Uncomment for GPU compatibilty (Nvidia) inside the container
+      # deploy:
+      #   resources:
+      #     reservations:
+      #       devices:
+      #         - driver: nvidia
+      #           count: 1
+      #           capabilities: [gpu]

@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Homarr"
+description: "Homarr is a self-hosted homepage for your services."
+icon: task_alt
+logo: "homarr.svg"
+category: productivity
+tags: ["homarr", "self-hosted", "homepage"]
+docs: "https://homarr.dev"
+main: "homarr"
+port: 7575
+env:
+  SERVICE_HEX_64_HOMARR: ""
+compose: |
+  services:
+    homarr:
+      image: ghcr.io/homarr-labs/homarr:v1.40.0
+      environment:
+        - 'SECRET_ENCRYPTION_KEY=${SERVICE_HEX_64_HOMARR}'
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - ./homarr/appdata:/appdata
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:7575"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

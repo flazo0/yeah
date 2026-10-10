@@ -656,7 +656,10 @@
     "falhaAoListarOsRepositorios": "failed to list the repositories",
     "repositorioDoGithub": "GitHub repository",
     "falhaAoCriarAplicacao": "failed to create application",
-    "falhaAoCriarRecurso": "failed to create resource"
+    "falhaAoCriarRecurso": "failed to create resource",
+    "catAi": "AI",
+    "catFinance": "Finance",
+    "catGames": "Games"
   },
   "serverNew": {
     "servidores": "Servers",

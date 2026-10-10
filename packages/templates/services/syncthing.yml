@@ -1,0 +1,33 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Syncthing"
+description: "Syncthing synchronizes files between two or more computers in real time."
+icon: folder
+logo: "syncthing.svg"
+category: storage
+tags: ["filestorage", "data", "synchronization"]
+docs: "https://syncthing.net/"
+notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos."
+main: "syncthing"
+port: 8384
+env: {}
+compose: |
+  services:
+    syncthing:
+      image: lscr.io/linuxserver/syncthing:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=${TZ:-Etc/UTC}
+      volumes:
+        - syncthing_config:/config
+        - syncthing_data1:/data1
+        - syncthing_data2:/data2
+      ports:
+        - 22000:22000/tcp
+        - 22000:22000/udp
+        - 21027:21027/udp
+      healthcheck:
+        test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8384/"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

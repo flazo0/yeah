@@ -1,0 +1,32 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Terraria Server"
+description: "Docker multi-arch Image for Terraria Server."
+icon: sports_esports
+logo: "terraria-server.svg"
+category: games
+tags: ["terraria"]
+docs: "https://github.com/hexlo/terraria-server-docker"
+notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos."
+main: "terraria-server"
+port: 7777
+env: {}
+compose: |
+  services:
+    terraria-server:
+      image: 'hexlo/terraria-server-docker:1.4.4.9'
+      stdin_open: true
+      tty: true
+      ports:
+        - '7777:7777'
+      volumes:
+        - 'terraria-server:/root/.local/share/Terraria/Worlds'
+      environment:
+        - 'WORLD=${WORLD:-/root/.local/share/Terraria/Worlds/world1.wld}'
+        - 'AUTOCREATE=${AUTOCREATE:-2}'
+        - 'WORLDNAME=${WORLDNAME:-world1}'
+        - 'DIFFICULTY=${DIFFICULTY:-1}'
+        - 'MAXPLAYERS=${MAXPLAYERS:-8}'
+        - 'PASSWORD=${PASSWORD:-mypassword}'
+        - 'MOTD=${MOTD:-Welcome to the server!}'
+        - 'LANGUAGE=${LANGUAGE:-en/US}'
+        - 'SECURE=${SECURE:-1}'

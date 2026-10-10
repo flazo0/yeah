@@ -1,0 +1,22 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Goatcounter"
+description: "Lightweight web analytics platform."
+icon: analytics
+category: analytics
+tags: ["analytics", "insights", "privacy"]
+docs: "https://www.goatcounter.com/help"
+main: "goatcounter"
+port: 8080
+env: {}
+compose: |
+  services:
+    goatcounter:
+      image: arp242/goatcounter:2.7
+      environment:
+      volumes:
+        - goatcounter-data:/home/goatcounter/goatcounter-data
+      healthcheck:
+        test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/status >/dev/null 2>&1 || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 10

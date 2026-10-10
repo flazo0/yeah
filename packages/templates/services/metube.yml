@@ -1,0 +1,24 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Metube"
+description: "A web GUI for youtube-dl with playlist support. It enables you to effortlessly download videos from YouTube and dozens of other sites."
+icon: movie
+category: media
+tags: ["youtube", "download", "videos", "playlist"]
+docs: "https://github.com/alexta69/metube"
+main: "metube"
+port: 8081
+env: {}
+compose: |
+  services:
+    metube:
+      image: ghcr.io/alexta69/metube:latest
+      environment:
+        - UID=1000
+        - GID=1000
+      volumes:
+        - metube-downloads:/downloads
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:8081"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

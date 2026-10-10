@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Lobe Chat"
+description: "An open-source, modern-design AI chat framework."
+icon: psychology
+logo: "lobe-chat.png"
+category: ai
+tags: ["ai", "chat", "openai", "llm", "chatbot"]
+docs: "https://github.com/lobehub/lobe-chat?tab=readme-ov-file#b-deploying-with-docker"
+main: "lobe-chat"
+port: 3210
+env:
+  OPENAI_API_KEY: ""
+  SERVICE_PASSWORD_ACCESSCODE: "$generate:password"
+compose: |
+  services:
+    lobe-chat:
+      image: "lobehub/lobe-chat:1.135.5"
+      environment:
+        - OPENAI_API_KEY=${OPENAI_API_KEY}
+        - OPENAI_PROXY_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+        - ACCESS_CODE=${SERVICE_PASSWORD_ACCESSCODE}
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "wget -qO- http://localhost:3210/ || exit 1"
+        interval: 5s
+        timeout: 20s
+        retries: 10

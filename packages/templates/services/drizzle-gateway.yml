@@ -1,0 +1,21 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Drizzle Gateway"
+description: "Free self-hosted Drizzle Studio on steroids"
+icon: code
+logo: "drizzle-gateway.jpeg"
+category: dev
+tags: ["drizzle", "gateway", "self-hosted", "open-source", "low-code"]
+docs: "https://gateway.drizzle.team/"
+main: "drizzle-gateway"
+port: 4983
+env:
+  SERVICE_PASSWORD_DRIZZLE: "$generate:password"
+compose: |
+  services:
+    drizzle-gateway:
+      image: ghcr.io/drizzle-team/gateway:latest
+      environment:
+        - STORE_PATH=/app
+        - MASTERPASS=$SERVICE_PASSWORD_DRIZZLE
+      volumes:
+        - drizzle-gateway-data:/app

@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Jenkins"
+description: "Jenkins is an open source automation server, Jenkins provides hundreds of plugins to support building, deploying and automating any project."
+icon: code
+logo: "jenkins.svg"
+category: dev
+tags: ["jenkins", "automation", "open-source"]
+docs: "https://www.jenkins.io/doc/"
+main: "jenkins"
+port: 8080
+env: {}
+compose: |
+  services:
+    jenkins:
+      image: jenkins/jenkins:latest
+      environment:
+      volumes:
+        - jenkins-home:/var/jenkins_home
+        - /var/run/docker.sock:/var/run/docker.sock
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8080/login"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s

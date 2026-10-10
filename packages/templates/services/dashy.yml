@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Dashy"
+description: "A self-hostable personal dashboard built for you. Includes status-checking, widgets, themes, icon packs, a UI editor and tons more!"
+icon: task_alt
+logo: "dashy.png"
+category: productivity
+tags: ["dashboard", "personal", "self-hostable"]
+docs: "https://dashy.to/docs"
+main: "dashy"
+port: 8080
+env: {}
+compose: |
+  services:
+    dashy:
+      image: lissy93/dashy
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=${TIMEZONE:-UTC}
+      volumes:
+        - './dashy/conf.yml:/app/public/conf.yml'
+      healthcheck:
+        test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

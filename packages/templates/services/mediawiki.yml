@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Mediawiki"
+description: "MediaWiki is a collaboration and documentation platform brought to you by a vibrant community."
+icon: language
+logo: "mediawiki.ico"
+category: cms
+tags: ["wiki", "collaboration", "documentation"]
+docs: "https://www.mediawiki.org"
+main: "mediawiki"
+port: 80
+env: {}
+compose: |
+  services:
+    mediawiki:
+      image: mediawiki:latest
+      environment:
+      volumes:
+        - mediawiki-images:/var/www/html/images
+        - mediawiki-sqlite:/var/www/html/data
+      # Follow the instructions in https://coolify.io/docs/services/mediawiki#installation-steps for the following line
+      # - ./LocalSettings.php:/var/www/html/LocalSettings.php
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:80"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

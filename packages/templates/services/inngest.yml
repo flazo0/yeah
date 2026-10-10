@@ -1,0 +1,71 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Inngest"
+description: "Durable workflow engine for background jobs, queues and scheduled tasks."
+icon: bolt
+logo: "inngest.png"
+category: automation
+tags: ["queue", "workflow", "jobs", "events", "background", "automation"]
+docs: "https://www.inngest.com/docs/self-hosting"
+main: "inngest"
+port: 8288
+env:
+  SERVICE_HEX_32_EVENTKEY: ""
+  SERVICE_HEX_32_SIGNINGKEY: ""
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    inngest:
+      image: 'inngest/inngest:v1.27.0'
+      command: 'inngest start --host 0.0.0.0'
+      environment:
+        - 'INNGEST_EVENT_KEY=${SERVICE_HEX_32_EVENTKEY}'
+        - 'INNGEST_SIGNING_KEY=${SERVICE_HEX_32_SIGNINGKEY}'
+        - 'INNGEST_POSTGRES_URI=postgres://inngest:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/inngest'
+        - 'INNGEST_REDIS_URI=redis://redis:6379'
+      depends_on:
+        postgres:
+          condition: service_healthy
+        redis:
+          condition: service_healthy
+      healthcheck:
+        test:
+          - CMD
+          - inngest
+          - alpha
+          - doctor
+          - healthcheck
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
+      restart: unless-stopped
+    postgres:
+      image: 'postgres:17'
+      environment:
+        - POSTGRES_DB=inngest
+        - POSTGRES_USER=inngest
+        - 'POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}'
+      volumes:
+        - 'postgres-data:/var/lib/postgresql/data'
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - 'pg_isready -U inngest -d inngest'
+        interval: 5s
+        timeout: 5s
+        retries: 5
+      restart: unless-stopped
+    redis:
+      image: 'redis:7-alpine'
+      command: 'redis-server --appendonly yes'
+      volumes:
+        - 'redis-data:/data'
+      healthcheck:
+        test:
+          - CMD
+          - redis-cli
+          - ping
+        interval: 5s
+        timeout: 3s
+        retries: 5
+      restart: unless-stopped

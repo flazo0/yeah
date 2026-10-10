@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Statusnook"
+description: "Effortlessly deploy a status page and start monitoring endpoints in minutes"
+icon: monitor_heart
+logo: "statusnook.svg"
+category: monitoring
+tags: ["go", "html", "monitoring", "sqlite", "self", "hosted", "status", "page"]
+docs: "https://statusnook.com"
+main: "statusnook"
+port: 8000
+env: {}
+compose: |
+  services:
+    statusnook:
+      environment:
+      volumes:
+        - "statusnook-data:/app/statusnook-data"
+      image: goksan/statusnook
+      healthcheck:
+        test:
+          - CMD
+          - wget
+          - "-q"
+          - "--spider"
+          - "http://127.0.0.1:8000"
+        interval: 2s
+        timeout: 10s
+        retries: 15

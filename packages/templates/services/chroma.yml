@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Chroma"
+description: "Chroma is the open-source search and retrieval database for AI applications."
+icon: psychology
+logo: "chroma.svg"
+category: ai
+tags: ["ai", "vector-database", "semantic-search", "machine-learning", "bm25", "embeddings", "llm"]
+docs: "https://cookbook.chromadb.dev/"
+main: "chromadb"
+port: 8000
+env: {}
+compose: |
+  services:
+    chromadb:
+      image: chromadb/chroma:1.0.15
+      volumes:
+        - chroma-data:/data
+      environment:
+        - IS_PERSISTENT=TRUE
+        - PERSIST_DIRECTORY=/data
+      healthcheck:
+        test: [ "CMD", "/bin/bash", "-c", "cat < /dev/null > /dev/tcp/localhost/8000" ]
+        interval: 30s
+        timeout: 10s
+        retries: 3

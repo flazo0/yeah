@@ -1,0 +1,48 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Edgedb"
+description: "An open-source database designed as a spiritual successor to SQL and the relational paradigm. Powered by the Postgres query engine under the hood."
+icon: database
+logo: "edgedb.svg"
+category: database
+tags: ["db", "database", "sql"]
+docs: "https://www.edgedb.com"
+main: "edgedb"
+port: 5656
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+  SERVICE_PASSWORD_EDGEDB: "$generate:password"
+compose: |
+  services:
+    edgedb:
+      image: edgedb/edgedb
+      environment:
+        - EDGEDB_SERVER_ADMIN_UI=${EDGEDB_SERVER_ADMIN_UI:-enabled}
+        - EDGEDB_SERVER_BACKEND_DSN=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgresql:5432/${POSTGRES_DB:-edgedb}
+        - EDGEDB_SERVER_SECURITY=${EDGEDB_SERVER_SECURITY:-strict}
+        - EDGEDB_SERVER_PASSWORD=${SERVICE_PASSWORD_EDGEDB}
+        - POSTGRES_DB=${POSTGRES_DB:-edgedb}
+      depends_on:
+        postgresql:
+          condition: service_healthy
+      volumes:
+        - edgedb-data:/dbschema
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:5656/server/status/alive"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+
+    postgresql:
+      image: postgres:16-alpine
+      volumes:
+        - edgedb-postgresql-data:/var/lib/postgresql/data
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-edgedb}
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

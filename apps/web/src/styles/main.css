@@ -1093,6 +1093,11 @@ tr:hover td {
 .rtable-icon .material-symbols-outlined {
   font-size: 18px;
 }
+.rtable-icon .template-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
 .rtable-name-text {
   display: flex;
   flex-direction: column;

@@ -56,6 +56,8 @@ export function parseTemplate(key: string, text: string): { template: ServiceTem
       name,
       description,
       icon: str("icon") ?? "widgets",
+      logo: str("logo") ?? undefined,
+      tags: Array.isArray(doc.tags) ? (doc.tags as unknown[]).filter((x): x is string => typeof x === "string") : undefined,
       category: str("category") ?? "other",
       website: str("website") ?? undefined,
       docsUrl: str("docs") ?? undefined,
@@ -96,7 +98,7 @@ export function findTemplate(key: string): ServiceTemplate | undefined {
   return loadTemplates().find((t) => t.key === key);
 }
 
-/** The "$generate:<kind>" markers: password (24 hex chars), hex (64), base64 (32 random bytes, url-safe). */
+/** The "$generate:<kind>" markers: password (24 hex), hex (64 hex), base64 / base64long (url-safe, 32 / 64 bytes), realbase64 (standard, 32 bytes), user (12 letters). */
 export function generateSecret(kind: string, bytes: (n: number) => Buffer = randomBytes): string | null {
   switch (kind) {
     case "password":
@@ -105,6 +107,13 @@ export function generateSecret(kind: string, bytes: (n: number) => Buffer = rand
       return bytes(32).toString("hex");
     case "base64":
       return bytes(32).toString("base64url");
+    case "base64long":
+      return bytes(64).toString("base64url");
+    case "realbase64":
+      return bytes(32).toString("base64");
+    case "user":
+      // 12 lowercase letters: valid as a database/user name everywhere (no digit first, no symbols).
+      return Array.from(bytes(12), (b) => String.fromCharCode(97 + (b % 26))).join("");
     default:
       return null;
   }

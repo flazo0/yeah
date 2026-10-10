@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Esphome"
+description: "Smart Home Made Simple."
+icon: bolt
+logo: "esphome.svg"
+category: automation
+tags: ["home", "smart", "assistant", "microcontroller"]
+docs: "https://esphome.io/guides/getting_started_command_line/"
+notes: "Este serviço roda com `privileged: true`: dá ao container poder sobre o servidor. Usa `network_mode: host`: o container compartilha a rede do servidor."
+main: "esphome"
+port: 6052
+env:
+  SERVICE_USER_ADMIN: "$generate:user"
+  SERVICE_PASSWORD_ADMIN: "$generate:password"
+compose: |
+  services:
+    esphome:
+      image: ghcr.io/esphome/esphome:2025.12.4
+      volumes:
+        - esp_config:/config
+        - /etc/localtime:/etc/localtime:ro
+      privileged: true
+      network_mode: host
+      environment:
+        - USERNAME=${SERVICE_USER_ADMIN}
+        - PASSWORD=${SERVICE_PASSWORD_ADMIN}

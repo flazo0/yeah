@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Prowlarr"
+description: "Prowlarr⁠ is a indexer manager/proxy built on the popular arr .net/reactjs base stack to integrate with your various PVR apps."
+icon: movie
+logo: "prowlarr.svg"
+category: media
+tags: ["media", "server", "movies", "tv", "indexer", "torrent", "nzb", "usenet"]
+docs: "https://hub.docker.com/r/linuxserver/prowlarr"
+main: "prowlarr"
+port: 9696
+env:
+  SERVICE_URL_PROWLARR: "http://localhost"
+compose: |
+  services:
+    prowlarr:
+      image: lscr.io/linuxserver/prowlarr:latest
+      environment:
+        - _APP_URL=$SERVICE_URL_PROWLARR
+        - PUID=1000
+        - PGID=1000
+        - TZ=${TZ:-America/Toronto}
+      volumes:
+        - prowlarr-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:9696/ping"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

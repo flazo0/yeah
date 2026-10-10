@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Once Campfire"
+description: "Super simple group chat, without a subscription."
+icon: forum
+logo: "once-campfire.png"
+category: messaging
+tags: ["campfire", "chat", "communication", "rails", "once", "basecamp", "37signals"]
+docs: "https://github.com/basecamp/once-campfire"
+main: "campfire"
+port: 80
+env:
+  SERVICE_BASE64_64_CAMPFIRE: "$generate:base64long"
+  VAPID_PUBLIC_KEY: ""
+  VAPID_PRIVATE_KEY: ""
+  SENTRY_DSN: ""
+compose: |
+  services:
+    campfire:
+      image: ghcr.io/basecamp/once-campfire:${TAG:-main}
+      restart: unless-stopped
+      volumes:
+        - campfire-storage:/rails/storage
+      environment:
+        - SECRET_KEY_BASE=${SERVICE_BASE64_64_CAMPFIRE}    # required, set this to a secure random value
+        - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}             # optional, for notifications
+        - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}           # optional, for notifications
+        - DISABLE_SSL=${DISABLE_SSL:-true}                 # optional, disable SSL
+        - SSL_DOMAIN=${SSL_DOMAIN:-false}                  # optional, for SSL
+        - SKIP_TELEMETRY=${SKIP_TELEMETRY:-true}           # optional, set to disable telemetry
+        - SENTRY_DSN=${SENTRY_DSN}                         # optional, for error reporting
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost/up"]
+        interval: 10s
+        timeout: 5s
+        retries: 5

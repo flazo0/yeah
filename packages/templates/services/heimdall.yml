@@ -1,0 +1,26 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Heimdall"
+description: "Heimdall is a dashboard for managing and organizing your server applications."
+icon: task_alt
+logo: "heimdall.svg"
+category: productivity
+tags: ["dashboard", "server", "applications", "interface"]
+docs: "https://github.com/linuxserver/Heimdall"
+main: "heimdall"
+port: 80
+env: {}
+compose: |
+  services:
+    heimdall:
+      image: lscr.io/linuxserver/heimdall:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+      volumes:
+        - heimdall-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:80"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

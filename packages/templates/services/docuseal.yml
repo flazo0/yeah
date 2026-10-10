@@ -1,0 +1,25 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Docuseal"
+description: "Document Signing for Everyone free forever for individuals, extensible for businesses and developers. Open Source Alternative to DocuSign, PandaDoc and more."
+icon: task_alt
+logo: "docuseal.png"
+category: productivity
+tags: ["documentation"]
+docs: "https://www.docuseal.co/"
+main: "docuseal"
+port: 3000
+env:
+  SERVICE_URL_DOCUSEAL: "http://localhost"
+compose: |
+  services:
+    docuseal:
+      image: docuseal/docuseal:latest
+      environment:
+        - HOST=${SERVICE_URL_DOCUSEAL}
+      volumes:
+        - docuseal-data:/data
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

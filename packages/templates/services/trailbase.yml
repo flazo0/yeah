@@ -1,0 +1,18 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Trailbase"
+description: "A blazingly fast Rust/SQLite/Wasmtime app server with type-safe APIs"
+icon: dns
+logo: "trailbase.svg"
+category: backend
+tags: ["trailbase", "backend", "saas", "mobile", "api"]
+docs: "https://trailbase.io/"
+main: "trailbase"
+port: 4000
+env: {}
+compose: |
+  services:
+    trailbase:
+      image: trailbase/trailbase:0.22.6
+      environment:
+      volumes:
+        - trailbase-data:/app/traildepot

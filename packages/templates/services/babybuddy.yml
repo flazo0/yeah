@@ -1,0 +1,28 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Babybuddy"
+description: "It helps parents track their baby's daily activities, growth, and health with ease."
+icon: task_alt
+logo: "babybuddy.png"
+category: productivity
+tags: ["baby", "parents", "health", "growth", "activities"]
+docs: "https://docs.baby-buddy.net"
+main: "babybuddy"
+port: 8000
+env:
+  SERVICE_URL_BABYBUDDY: "http://localhost"
+compose: |
+  services:
+    babybuddy:
+      image: lscr.io/linuxserver/babybuddy:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+        - CSRF_TRUSTED_ORIGINS=$SERVICE_URL_BABYBUDDY
+      volumes:
+        - babybuddy-config:/config
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:8000"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

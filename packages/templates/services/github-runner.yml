@@ -1,0 +1,37 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Github Runner"
+description: "A GitHub Actions runner for Docker"
+icon: code
+logo: "github-runner.png"
+category: dev
+tags: ["github", "actions", "runner", "docker"]
+docs: "https://github.com/myoung34/docker-github-actions-runner/wiki/Usage"
+main: "runner"
+port: 80
+env:
+  REPO_URL: ""
+  ACCESS_TOKEN: ""
+  ORG_NAME: ""
+compose: |
+  services:
+    runner:
+      image: myoung34/github-runner:latest
+      environment:
+        - REPO_URL=${REPO_URL}
+        - RUNNER_NAME_PREFIX=${RUNNER_NAME_PREFIX:-coolify-runner}
+        - RUNNER_NAME_SUFFIX=${RUNNER_NAME_SUFFIX:-false}
+        - ACCESS_TOKEN=${ACCESS_TOKEN}
+        - RUNNER_WORKDIR=/runner/work
+        - RUNNER_SCOPE=${RUNNER_SCOPE:-repo}
+        - LABELS=${LABELS:-default}
+        - ORG_NAME=${ORG_NAME}
+      security_opt:
+        - label:disable
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - runner-data:/runner
+      healthcheck:
+        test: ["CMD-SHELL", "ps aux | grep '[R]unner' > /dev/null || exit 1"]
+        interval: 5s
+        timeout: 10s
+        retries: 15

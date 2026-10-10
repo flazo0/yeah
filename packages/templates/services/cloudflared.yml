@@ -1,0 +1,27 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Cloudflared"
+description: "Client for Cloudflare Tunnel, a daemon that exposes private services through the Cloudflare edge."
+icon: terminal
+logo: "cloudflared.svg"
+category: devops
+docs: "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/"
+notes: "Usa `network_mode: host`: o container compartilha a rede do servidor."
+main: "cloudflared"
+port: 80
+env:
+  CLOUDFLARE_TUNNEL_TOKEN: ""
+compose: |
+  services:
+    cloudflared:
+      container_name: cloudflare-tunnel
+      image: cloudflare/cloudflared:latest
+      restart: unless-stopped
+      network_mode: host
+      command: tunnel --no-autoupdate run
+      environment:
+        - 'TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}'
+      healthcheck:
+        test: ["CMD", "cloudflared", "--version"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
