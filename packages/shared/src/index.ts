@@ -1,4 +1,5 @@
 export * from "./types";
+export * from "./logger";
 export * from "./serviceCatalog";
 export * from "./shell";
 export * from "./constants";

@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { createRedisConnection, subscribeServerEvents } from "@yeah/queue";
-import type { WsServerEvent } from "@yeah/shared";
+import { createLogger, parseLogLevel, type WsServerEvent } from "@yeah/shared";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -39,4 +39,7 @@ function broadcast(event: WsServerEvent) {
 const subscriber = createRedisConnection(redisUrl);
 subscribeServerEvents(subscriber, broadcast);
 
-console.log(`[ws] listening on ws://localhost:${server.port}`);
+createLogger("ws", {
+  format: process.env.LOG_FORMAT === "text" ? "text" : "json",
+  minLevel: parseLogLevel(process.env.LOG_LEVEL),
+}).info("listening", { port: server.port });

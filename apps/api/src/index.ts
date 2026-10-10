@@ -37,6 +37,7 @@ import { apiTokenRoutes } from "./routes/apiTokens";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
 import { clientIp, RateLimiter, ruleFor } from "./lib/rateLimit";
+import { createLogger, parseLogLevel } from "@yeah/shared";
 
 const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3000;
 
@@ -47,7 +48,29 @@ const webOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:5173,http://loca
 
 const limiter = new RateLimiter();
 
+const log = createLogger("api", {
+  format: process.env.LOG_FORMAT === "text" ? "text" : "json",
+  minLevel: parseLogLevel(process.env.LOG_LEVEL),
+});
+// Correlates the onRequest/onAfterResponse/onError hooks of one request without touching Elysia's store typing.
+const requests = new WeakMap<Request, { id: string; start: number }>();
+
 const app = new Elysia()
+  .onRequest(({ request, set }) => {
+    const id = request.headers.get("x-request-id")?.slice(0, 64) || crypto.randomUUID();
+    requests.set(request, { id, start: performance.now() });
+    set.headers["x-request-id"] = id;
+  })
+  .onAfterResponse(({ request, set }) => {
+    const info = requests.get(request);
+    const path = new URL(request.url).pathname;
+    if (!info || path.endsWith("/health")) return;
+    log.info("request", { requestId: info.id, method: request.method, path, status: Number(set.status ?? 200), ms: Math.round(performance.now() - info.start) });
+  })
+  .onError(({ request, error }) => {
+    const info = requests.get(request);
+    log.error("unhandled error", { requestId: info?.id, method: request.method, path: new URL(request.url).pathname, err: error });
+  })
   .onRequest(({ request, server }) => {
     const rule = ruleFor(request.method, new URL(request.url).pathname);
     if (!rule) return;
@@ -109,10 +132,10 @@ const app = new Elysia()
 // Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.
 encryptExistingSecrets(db)
   .then((count) => {
-    if (count > 0) console.log(`[api] encrypted ${count} plaintext secret(s) at rest`);
+    if (count > 0) log.info("encrypted plaintext secrets at rest", { count });
   })
-  .catch((err) => console.error("[api] encrypting existing secrets failed:", err instanceof Error ? err.message : err));
+  .catch((err) => log.error("encrypting existing secrets failed", { err }));
 
-console.log(`[api] listening on http://localhost:${port}`);
+log.info("listening", { port });
 
 export type App = typeof app;

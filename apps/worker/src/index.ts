@@ -52,6 +52,7 @@ import { makeCloudflareTunnelProcessor } from "./jobs/cloudflareTunnel";
 import { makeTrafficAnalyticsProcessor } from "./jobs/trafficAnalytics";
 import { makeApplicationRoutingProcessor } from "./jobs/applicationRouting";
 import { makeApiTokenExpiryProcessor } from "./jobs/apiTokenExpiry";
+import { log, logJobEvents } from "./lib/logger";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -88,82 +89,76 @@ const platformOperationJobConnection = createRedisConnection(redisUrl);
 const sharedConnection = createRedisConnection(redisUrl);
 
 const serverCheckWorker = createServerCheckWorker(jobConnection, makeCheckServerProcessor(sharedConnection));
-serverCheckWorker.on("completed", (job) => console.log(`[worker] server-check ${job.id} completed`));
-serverCheckWorker.on("failed", (job, err) => console.error(`[worker] server-check ${job?.id} failed:`, err.message));
+logJobEvents(serverCheckWorker, "server-check", true);
 
 const deployWorker = createApplicationDeployWorker(
   deployJobConnection,
   makeDeployApplicationProcessor(sharedConnection),
 );
-deployWorker.on("completed", (job) => console.log(`[worker] application-deploy ${job.id} completed`));
-deployWorker.on("failed", (job, err) => console.error(`[worker] application-deploy ${job?.id} failed:`, err.message));
+logJobEvents(deployWorker, "application-deploy", true);
 
 const lifecycleWorker = createApplicationLifecycleWorker(lifecycleJobConnection, makeLifecycleApplicationProcessor(sharedConnection));
-lifecycleWorker.on("failed", (job, err) => console.error(`[worker] application-lifecycle ${job?.id} failed:`, err.message));
+logJobEvents(lifecycleWorker, "application-lifecycle");
 
 const taskWorker = createScheduledTaskWorker(taskJobConnection, makeScheduledTaskProcessor());
-taskWorker.on("failed", (job, err) => console.error(`[worker] scheduled-task ${job?.id} failed:`, err.message));
+logJobEvents(taskWorker, "scheduled-task");
 
 const provisionWorker = createDatabaseProvisionWorker(
   provisionJobConnection,
   makeProvisionDatabaseProcessor(sharedConnection),
 );
-provisionWorker.on("completed", (job) => console.log(`[worker] database-provision ${job.id} completed`));
-provisionWorker.on("failed", (job, err) => console.error(`[worker] database-provision ${job?.id} failed:`, err.message));
+logJobEvents(provisionWorker, "database-provision", true);
 
 const restoreWorker = createDatabaseRestoreWorker(restoreConnection, makeRestoreDatabaseProcessor());
-restoreWorker.on("failed", (job, err) => console.error(`[worker] database-restore ${job?.id} failed:`, err.message));
+logJobEvents(restoreWorker, "database-restore");
 
 const volumeBackupWorker = createVolumeBackupWorker(volumeBackupConnection, makeVolumeBackupProcessor());
-volumeBackupWorker.on("failed", (job, err) => console.error(`[worker] volume-backup ${job?.id} failed:`, err.message));
+logJobEvents(volumeBackupWorker, "volume-backup");
 
 const backupWorker = createDatabaseBackupWorker(
   backupJobConnection,
   makeBackupDatabaseProcessor(sharedConnection),
 );
-backupWorker.on("completed", (job) => console.log(`[worker] database-backup ${job.id} completed`));
-backupWorker.on("failed", (job, err) => console.error(`[worker] database-backup ${job?.id} failed:`, err.message));
+logJobEvents(backupWorker, "database-backup", true);
 
 const proxyWorker = createProxyProvisionWorker(proxyJobConnection, makeProvisionProxyProcessor(sharedConnection));
-proxyWorker.on("completed", (job) => console.log(`[worker] proxy-provision ${job.id} completed`));
-proxyWorker.on("failed", (job, err) => console.error(`[worker] proxy-provision ${job?.id} failed:`, err.message));
+logJobEvents(proxyWorker, "proxy-provision", true);
 
 const serviceWorker = createServiceProvisionWorker(serviceJobConnection, makeProvisionServiceProcessor(sharedConnection));
-serviceWorker.on("completed", (job) => console.log(`[worker] service-provision ${job.id} completed`));
-serviceWorker.on("failed", (job, err) => console.error(`[worker] service-provision ${job?.id} failed:`, err.message));
+logJobEvents(serviceWorker, "service-provision", true);
 
 const metricsWorker = createServerMetricsWorker(metricsJobConnection, makeServerMetricsProcessor(sharedConnection));
-metricsWorker.on("failed", (job, err) => console.error(`[worker] server-metrics ${job?.id} failed:`, err.message));
+logJobEvents(metricsWorker, "server-metrics");
 
 const metricsSchedulerQueue = createServerMetricsQueue(sharedConnection);
 await ensureServerMetricsScheduler(metricsSchedulerQueue);
 
 const tlsWorker = createTlsCheckWorker(tlsJobConnection, makeTlsCheckProcessor());
-tlsWorker.on("failed", (job, err) => console.error(`[worker] tls-check ${job?.id} failed:`, err.message));
+logJobEvents(tlsWorker, "tls-check");
 
 const tlsSchedulerQueue = createTlsCheckQueue(sharedConnection);
 await ensureTlsCheckScheduler(tlsSchedulerQueue);
 
 const logRetentionWorker = createLogRetentionWorker(logRetentionJobConnection, makeLogRetentionProcessor());
-logRetentionWorker.on("failed", (job, err) => console.error(`[worker] log-retention ${job?.id} failed:`, err.message));
+logJobEvents(logRetentionWorker, "log-retention");
 
 const logRetentionSchedulerQueue = createLogRetentionQueue(sharedConnection);
 await ensureLogRetentionScheduler(logRetentionSchedulerQueue);
 
 const cloudflareTunnelWorker = createCloudflareTunnelWorker(cloudflareTunnelConnection, makeCloudflareTunnelProcessor());
-cloudflareTunnelWorker.on("failed", (job, err) => console.error(`[worker] cloudflare-tunnel ${job?.id} failed:`, err.message));
+logJobEvents(cloudflareTunnelWorker, "cloudflare-tunnel");
 
 const trafficAnalyticsWorker = createTrafficAnalyticsWorker(trafficAnalyticsConnection, makeTrafficAnalyticsProcessor());
-trafficAnalyticsWorker.on("failed", (job, err) => console.error(`[worker] traffic-analytics ${job?.id} failed:`, err.message));
+logJobEvents(trafficAnalyticsWorker, "traffic-analytics");
 
 const trafficAnalyticsSchedulerQueue = createTrafficAnalyticsQueue(sharedConnection);
 await ensureTrafficAnalyticsScheduler(trafficAnalyticsSchedulerQueue);
 
 const applicationRoutingWorker = createApplicationRoutingWorker(applicationRoutingConnection, makeApplicationRoutingProcessor());
-applicationRoutingWorker.on("failed", (job, err) => console.error(`[worker] application-routing ${job?.id} failed:`, err.message));
+logJobEvents(applicationRoutingWorker, "application-routing");
 
 const apiTokenExpiryWorker = createApiTokenExpiryWorker(apiTokenExpiryConnection, makeApiTokenExpiryProcessor());
-apiTokenExpiryWorker.on("failed", (job, err) => console.error(`[worker] api-token-expiry ${job?.id} failed:`, err.message));
+logJobEvents(apiTokenExpiryWorker, "api-token-expiry");
 
 const apiTokenExpirySchedulerQueue = createApiTokenExpiryQueue(sharedConnection);
 await ensureApiTokenExpiryScheduler(apiTokenExpirySchedulerQueue);
@@ -173,14 +168,12 @@ const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
   makePlatformOperationProcessor(sharedConnection, platformOperationSelfQueue),
 );
-platformOperationWorker.on("failed", (job, err) => console.error(`[worker] platform-operation ${job?.id} failed:`, err.message));
+logJobEvents(platformOperationWorker, "platform-operation");
 
 const dockerCleanupWorker = createDockerCleanupWorker(dockerCleanupConnection, makeDockerCleanupProcessor());
-dockerCleanupWorker.on("failed", (job, err) => console.error(`[worker] docker-cleanup ${job?.id} failed:`, err.message));
+logJobEvents(dockerCleanupWorker, "docker-cleanup");
 
 const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, makeCaCertificateProcessor());
-caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
+logJobEvents(caCertificateWorker, "ca-certificate");
 
-console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention, cloudflare-tunnel, traffic-analytics, application-routing and api-token-expiry jobs",
-);
+log.info("listening for jobs", { queues: "server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention, cloudflare-tunnel, traffic-analytics, application-routing and api-token-expiry jobs" });

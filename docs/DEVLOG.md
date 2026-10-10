@@ -854,3 +854,7 @@ Novo tipo de canal `ntfy` (enum do Postgres + `ALTER TYPE ... ADD VALUE`, migra�
 ## Fase 8 — i18n (infra + primeiras telas)
 
 `vue-i18n` 10 em modo composition. Escolhi migrar só o esqueleto (sidebar, login, configurações) e deixar o resto em PT com fallback — migrar ~40 páginas de uma vez, sem como conferir visualmente, geraria regressões silenciosas. Teste de paridade de chaves pt/en + `pickLocale`. Item segue aberto até as demais páginas migrarem. **Não testado** no navegador ([[feedback-no-local-docker-testing]]).
+
+## Fase 5 (pendência antiga) — logs estruturados
+
+Item que ficou esquecido na Fase 5. Logger próprio mínimo (sem pino/winston: zero dependência e testável com sink injetável). Correlação: `requestId` na API (propagado via header `x-request-id`) e `jobId`/`queue` no worker. Não troquei os ~100 `console.*` espalhados — só pontos de entrada, pra não arriscar regressão sem poder subir os serviços ([[feedback-no-local-docker-testing]]).
