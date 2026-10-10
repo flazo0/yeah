@@ -6,6 +6,7 @@ import {
   createDatabaseRestoreWorker,
   createVolumeBackupWorker,
   createDatabaseProvisionWorker,
+  createDockerCleanupQueue,
   createDockerCleanupWorker,
   createCaCertificateWorker,
   createPlatformOperationQueue,
@@ -54,6 +55,7 @@ import { makeApplicationRoutingProcessor } from "./jobs/applicationRouting";
 import { makeApiTokenExpiryProcessor } from "./jobs/apiTokenExpiry";
 import { log, logJobEvents } from "./lib/logger";
 import { intervalMsFromEnv } from "./lib/intervals";
+import { ensureDefaultCleanups } from "./lib/defaultCleanup";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -171,6 +173,16 @@ const platformOperationWorker = createPlatformOperationWorker(
   makePlatformOperationProcessor(sharedConnection, platformOperationSelfQueue),
 );
 logJobEvents(platformOperationWorker, "platform-operation");
+
+// Daily cleanup is on by default for every server (including ones added later): backfill at boot, then
+// re-check every 10 minutes — one cheap join, and a server added from the panel gets its schedule soon.
+const dockerCleanupSelfQueue = createDockerCleanupQueue(sharedConnection);
+const reconcileCleanups = () =>
+  ensureDefaultCleanups(dockerCleanupSelfQueue)
+    .then((n) => n > 0 && log.info("default daily cleanup enabled", { servers: n }))
+    .catch((err) => log.error("default cleanup reconcile failed", { err }));
+await reconcileCleanups();
+setInterval(reconcileCleanups, 10 * 60 * 1000);
 
 const dockerCleanupWorker = createDockerCleanupWorker(dockerCleanupConnection, makeDockerCleanupProcessor());
 logJobEvents(dockerCleanupWorker, "docker-cleanup");

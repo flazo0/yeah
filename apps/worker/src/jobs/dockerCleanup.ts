@@ -5,13 +5,13 @@ import type { DockerCleanupJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
-import { buildDockerPruneCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
+import { buildHostCleanupCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
 
-export { buildDockerPruneCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
+export { buildDockerPruneCommand, buildHostCleanupCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
 
 const KEEP_EXECUTIONS = 20;
 
-/** Runs `docker system prune` on one server and records the execution — scheduled or "run now". */
+/** Runs the daily cleanup (docker prune + old build cache + journal/apt) on one server and records the execution — scheduled or "run now". */
 export function makeDockerCleanupProcessor() {
   return async function dockerCleanup(job: Job<DockerCleanupJobData>) {
     const { serverId, manual = false } = job.data;
@@ -30,10 +30,10 @@ export function makeDockerCleanupProcessor() {
       try {
         const opts = { pruneImages: schedule?.pruneImages ?? false, pruneVolumes: schedule?.pruneVolumes ?? false };
         let output = "";
-        const result = await execStream(conn, buildDockerPruneCommand(opts), (chunk) => {
+        const result = await execStream(conn, buildHostCleanupCommand(opts), (chunk) => {
           output += chunk;
         });
-        if (result.exitCode !== 0) throw new Error(`"docker system prune" saiu com código ${result.exitCode}: ${output.trim().slice(-500)}`);
+        if (result.exitCode !== 0) throw new Error(`a limpeza saiu com código ${result.exitCode}: ${output.trim().slice(-500)}`);
         await db
           .update(dockerCleanupExecutions)
           .set({ status: "success", log: output, reclaimedBytes: parseReclaimedBytes(output), finishedAt: new Date() })

@@ -16,15 +16,34 @@ export function buildDockerPruneCommand(opts: DockerCleanupOptions): string {
   return cmd;
 }
 
-const RECLAIMED_LINE = /Total reclaimed space:\s*([\d.]+)\s*(B|KB|MB|GB|TB)/i;
+/**
+ * The whole daily housekeeping, in one SSH command: the prune above, then build cache older than 3 days
+ * (a plain `system prune` leaves most of it — `yeah update` builds alone pile up gigabytes), then the
+ * host's own journal older than 14 days and the apt package cache. Each extra step is best-effort so
+ * a missing `journalctl`/`apt-get` (non-Debian host) never fails the run.
+ */
+export function buildHostCleanupCommand(opts: DockerCleanupOptions): string {
+  return [
+    buildDockerPruneCommand(opts),
+    "docker builder prune -f --filter until=72h",
+    "(journalctl --vacuum-time=14d >/dev/null 2>&1 || true)",
+    "(apt-get clean >/dev/null 2>&1 || true)",
+  ].join(" ; ");
+}
+
+const RECLAIMED_LINE = /Total reclaimed space:\s*([\d.]+)\s*(B|KB|MB|GB|TB)/gi;
 const UNITS: Record<string, number> = { B: 1, KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 };
 
-/** Parses `docker system prune`'s closing "Total reclaimed space: X MB" line into bytes; null if not found. */
+/** Sums every "Total reclaimed space: X MB" line (system prune and builder prune each print one) into bytes; null if none. */
 export function parseReclaimedBytes(output: string): number | null {
-  const match = RECLAIMED_LINE.exec(output);
-  if (!match) return null;
-  const amount = Number.parseFloat(match[1]!);
-  const unit = UNITS[match[2]!.toUpperCase()];
-  if (!Number.isFinite(amount) || !unit) return null;
-  return Math.round(amount * unit);
+  let total = 0;
+  let found = false;
+  for (const match of output.matchAll(RECLAIMED_LINE)) {
+    const amount = Number.parseFloat(match[1]!);
+    const unit = UNITS[match[2]!.toUpperCase()];
+    if (!Number.isFinite(amount) || !unit) continue;
+    total += amount * unit;
+    found = true;
+  }
+  return found ? Math.round(total) : null;
 }
