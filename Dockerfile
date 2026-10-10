@@ -16,6 +16,8 @@ COPY apps/api/package.json ./apps/api/package.json
 COPY apps/worker/package.json ./apps/worker/package.json
 COPY apps/ws/package.json ./apps/ws/package.json
 COPY apps/web/package.json ./apps/web/package.json
+# The CLI is a workspace too: the lockfile lists it, so --frozen-lockfile needs its manifest even though no image runs it.
+COPY apps/cli/package.json ./apps/cli/package.json
 RUN bun install --frozen-lockfile
 
 # ---------------------------------------------------------------------------
