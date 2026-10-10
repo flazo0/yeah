@@ -63,3 +63,7 @@ compose: |
         retries: 3
       volumes:
         - osticket-mariadb-data:/var/lib/mysql
+
+  volumes:
+    osticket-data: {}
+    osticket-mariadb-data: {}

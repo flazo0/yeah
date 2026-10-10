@@ -145,3 +145,9 @@ compose: |
           mc mb minio/scw-eu-fr-v3 --ignore-existing;
           echo 'MinIO buckets and CORS configured';
         "
+
+  volumes:
+    museum-data: {}
+    museum-config: {}
+    postgres-data: {}
+    minio-data: {}

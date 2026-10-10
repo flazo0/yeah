@@ -54,3 +54,10 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 5
+
+  volumes:
+    redmine-config: {}
+    redmine-files: {}
+    redmine-themes: {}
+    redmine-plugins: {}
+    postgresql-data: {}

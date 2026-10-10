@@ -33,3 +33,6 @@ compose: |
         retries: 3
         timeout: 10s
         start_period: 10s
+
+  volumes:
+    redis_insight_data: {}

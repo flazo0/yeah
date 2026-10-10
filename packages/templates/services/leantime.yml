@@ -71,3 +71,10 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 3
+
+  volumes:
+    public-userfiles: {}
+    userfiles: {}
+    plugins: {}
+    leantime_mysql_data: {}
+    leantime_redis_data: {}

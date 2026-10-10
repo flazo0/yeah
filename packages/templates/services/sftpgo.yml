@@ -52,3 +52,8 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    sftpgo-data: {}
+    sftpgo-keys: {}
+    postgresql-data: {}

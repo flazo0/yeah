@@ -243,3 +243,10 @@ compose: |
         interval: 10s
         timeout: 5s
         retries: 5
+
+  volumes:
+    shared-data: {}
+    postgresql-data: {}
+    redis-data: {}
+    clickhouse-data: {}
+    clickhouse-logs: {}

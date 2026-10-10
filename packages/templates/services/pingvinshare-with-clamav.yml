@@ -34,3 +34,7 @@ compose: |
     clamav:
       image: clamav/clamav
       platform: linux/amd64
+
+  volumes:
+    pingvinshare_data: {}
+    pingvinshare_images: {}

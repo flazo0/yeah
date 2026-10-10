@@ -181,3 +181,9 @@ compose: |
           mc anonymous set private local/formbricks
         "
       restart: "no"
+
+  volumes:
+    formbricks-uploads: {}
+    formbricks-postgresql-data: {}
+    formbricks-valkey: {}
+    formbricks-minio-data: {}

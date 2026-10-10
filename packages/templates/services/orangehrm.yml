@@ -55,3 +55,7 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    orangehrm-data: {}
+    orangehrm_mariadb_data: {}

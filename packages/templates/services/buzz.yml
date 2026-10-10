@@ -137,3 +137,9 @@ compose: |
           mc mb --ignore-existing "local/$${BUZZ_S3_BUCKET}"
           mc anonymous set none "local/$${BUZZ_S3_BUCKET}"
       restart: 'no'
+
+  volumes:
+    buzz-git-data: {}
+    buzz-postgres-data: {}
+    buzz-redis-data: {}
+    buzz-minio-data: {}

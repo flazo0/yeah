@@ -51,3 +51,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    onedev-docker-sock: {}
+    onedev-data: {}
+    onedev-postgresql-data: {}

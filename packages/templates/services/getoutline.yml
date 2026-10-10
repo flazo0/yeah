@@ -151,3 +151,7 @@ compose: |
         interval: 30s
         timeout: 20s
         retries: 3
+
+  volumes:
+    storage-data: {}
+    database-data: {}

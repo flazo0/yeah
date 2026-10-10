@@ -19,3 +19,6 @@ compose: |
         - MASTERPASS=$SERVICE_PASSWORD_DRIZZLE
       volumes:
         - drizzle-gateway-data:/app
+
+  volumes:
+    drizzle-gateway-data: {}

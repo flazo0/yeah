@@ -24,3 +24,6 @@ compose: |
       environment:
         - USERNAME=${SERVICE_USER_ADMIN}
         - PASSWORD=${SERVICE_PASSWORD_ADMIN}
+
+  volumes:
+    esp_config: {}

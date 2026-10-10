@@ -26,3 +26,9 @@ compose: |
         timeout: 10s
         retries: 3
         start_period: 15s
+
+  volumes:
+    audiobookshelf-audiobooks: {}
+    audiobookshelf-podcasts: {}
+    audiobookshelf-config: {}
+    audiobookshelf-metadata: {}

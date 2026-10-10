@@ -89,3 +89,9 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    strapi-config: {}
+    strapi-src: {}
+    strapi-uploads: {}
+    strapi-postgresql-data: {}

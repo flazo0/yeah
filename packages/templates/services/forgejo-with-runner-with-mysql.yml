@@ -148,3 +148,11 @@ compose: |
         bash -c '
         while : ; do test -w .runner && forgejo-runner --config config.yml daemon ; sleep 1 ; done
         '
+
+  volumes:
+    forgejo-data: {}
+    forgejo-timezone: {}
+    forgejo-localtime: {}
+    forgejo-mysql-data: {}
+    forgejo-did-certs: {}
+    forgejo-runner-data: {}

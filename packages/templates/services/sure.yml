@@ -99,3 +99,8 @@ compose: |
         timeout: 5s
         retries: 5
         start_period: 3s
+
+  volumes:
+    sure-app-storage: {}
+    sure-postgresql-data: {}
+    sure-valkey: {}

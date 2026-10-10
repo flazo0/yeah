@@ -59,3 +59,9 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    forgejo-data: {}
+    forgejo-timezone: {}
+    forgejo-localtime: {}
+    forgejo-postgresql-data: {}

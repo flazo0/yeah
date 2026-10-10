@@ -44,3 +44,6 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    ryot_postgresql_data: {}

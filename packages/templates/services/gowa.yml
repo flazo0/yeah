@@ -28,3 +28,6 @@ compose: |
         - WHATSAPP_WEBHOOK_SECRET=${WHATSAPP_WEBHOOK_SECRET}
       volumes:
         - gowa_data:/app/storages
+
+  volumes:
+    gowa_data: {}

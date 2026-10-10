@@ -55,3 +55,9 @@ compose: |
         interval: 10s
         timeout: 5s
         retries: 10
+
+  volumes:
+    grimmory-data: {}
+    grimmory-books: {}
+    grimmory-bookdrop: {}
+    mariadb-data: {}

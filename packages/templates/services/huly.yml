@@ -124,3 +124,8 @@ compose: |
         resources:
           limits:
             memory: 500M
+
+  volumes:
+    huly-db: {}
+    huly-files: {}
+    huly-elastic: {}

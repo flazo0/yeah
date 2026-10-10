@@ -158,3 +158,8 @@ compose: |
         - WATCHTOWER_CLEANUP=true
       labels:
         - "com.centurylinklabs.watchtower.enable=false"
+
+  volumes:
+    minio_data: {}
+    couchdb3_data: {}
+    redis_data: {}

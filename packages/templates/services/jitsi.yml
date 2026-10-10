@@ -145,3 +145,9 @@ compose: |
 
   networks:
     meet.jitsi:
+
+  volumes:
+    jitsi-web: {}
+    jitsi-prosody: {}
+    jitsi-jicofo: {}
+    jitsi-jvb: {}

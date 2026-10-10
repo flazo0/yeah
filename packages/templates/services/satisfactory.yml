@@ -42,3 +42,6 @@ compose: |
         - SKIPUPDATE=${SKIP_UPDATE:-false}
         - STEAMBETA=${STEAM_BETA:-false}
         - TIMEOUT=${TIMEOUT:-30}
+
+  volumes:
+    satisfactory-server: {}

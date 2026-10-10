@@ -27,3 +27,6 @@ compose: |
         interval: 30s
         timeout: 2s
         retries: 3
+
+  volumes:
+    readeck_data: {}

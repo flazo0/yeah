@@ -106,3 +106,8 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    grist-data: {}
+    grist_postgres_data: {}
+    grist_redis_data: {}

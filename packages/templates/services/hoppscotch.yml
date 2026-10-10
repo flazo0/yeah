@@ -71,3 +71,6 @@ compose: |
         - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
         - POSTGRES_DB=${POSTGRES_DB:-hoppscotch}
         - DATABASE_URL=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@hoppscotch-db:5432/${POSTGRES_DB:-hoppscotch}
+
+  volumes:
+    postgres_data: {}

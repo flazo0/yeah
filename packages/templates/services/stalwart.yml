@@ -13,7 +13,6 @@ compose: |
   services:
     stalwart:
       image: 'stalwartlabs/stalwart:v0.16.13'
-      environment:
       expose:
       - '8080'
       ports:
@@ -34,3 +33,7 @@ compose: |
         interval: 30s
         timeout: 10s
         retries: 3
+
+  volumes:
+    stalwart-mail: {}
+    stalwart-data: {}

@@ -65,3 +65,6 @@ compose: |
       depends_on:
         autobase-db:
           condition: service_healthy
+
+  volumes:
+    autobase-db-data: {}

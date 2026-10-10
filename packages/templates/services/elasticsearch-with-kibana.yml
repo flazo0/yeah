@@ -98,3 +98,7 @@ compose: |
             exit 1
           fi
       restart: 'no' # Run once to generate token, then exit
+
+  volumes:
+    elasticsearch-data: {}
+    kibana-data: {}

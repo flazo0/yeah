@@ -30,3 +30,6 @@ compose: |
         - 'MOTD=${MOTD:-Welcome to the server!}'
         - 'LANGUAGE=${LANGUAGE:-en/US}'
         - 'SECURE=${SECURE:-1}'
+
+  volumes:
+    terraria-server: {}

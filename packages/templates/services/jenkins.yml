@@ -13,7 +13,6 @@ compose: |
   services:
     jenkins:
       image: jenkins/jenkins:latest
-      environment:
       volumes:
         - jenkins-home:/var/jenkins_home
         - /var/run/docker.sock:/var/run/docker.sock
@@ -23,3 +22,6 @@ compose: |
         timeout: 10s
         retries: 3
         start_period: 40s
+
+  volumes:
+    jenkins-home: {}

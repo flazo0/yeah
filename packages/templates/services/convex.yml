@@ -68,3 +68,6 @@ compose: |
         test: curl -f http://127.0.0.1:6791/
         interval: 5s
         start_period: 5s
+
+  volumes:
+    data: {}

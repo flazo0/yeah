@@ -119,3 +119,11 @@ compose: |
           condition: service_healthy
         postgres:
           condition: service_healthy
+
+  volumes:
+    hatchet-certs: {}
+    hatchet-config: {}
+    postgresql-data: {}
+    rabbitmq-data: {}
+    hatchet_certs: {}
+    hatchet_config: {}

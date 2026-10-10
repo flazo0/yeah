@@ -35,3 +35,6 @@ compose: |
         - NET_ADMIN
         # Required if you are using Pi-hole as your NTP client to be able to set the host's system time
         - SYS_TIME
+
+  volumes:
+    pihole-data: {}

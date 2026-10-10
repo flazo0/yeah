@@ -13,6 +13,8 @@ compose: |
   services:
     trailbase:
       image: trailbase/trailbase:0.22.6
-      environment:
       volumes:
         - trailbase-data:/app/traildepot
+
+  volumes:
+    trailbase-data: {}

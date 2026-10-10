@@ -244,3 +244,6 @@ compose: |
         - 'BOX64_DYNAREC_FASTROUND=${BOX64_DYNAREC_FASTROUND:-}'
         - 'BOX64_DYNAREC_FASTNAN=${BOX64_DYNAREC_FASTNAN:-}'
         - 'BOX64_DYNAREC_X87DOUBLE=${BOX64_DYNAREC_X87DOUBLE:-}'
+
+  volumes:
+    palworld-data: {}

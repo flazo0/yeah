@@ -104,3 +104,9 @@ compose: |
         - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
         - POSTGRES_DB=${POSTGRES_DB:-affine}
         - PGDATA=/var/lib/postgresql/data/pgdata
+
+  volumes:
+    affine-config: {}
+    affine-storage: {}
+    affine-redis-data: {}
+    affine-postgres-data: {}

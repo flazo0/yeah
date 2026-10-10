@@ -158,3 +158,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    twenty-local-storage: {}
+    postgres-data: {}
+    redis-data: {}

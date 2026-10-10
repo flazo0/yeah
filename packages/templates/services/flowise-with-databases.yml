@@ -86,3 +86,9 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 3
+
+  volumes:
+    flowise-data: {}
+    pg-record-manager-data: {}
+    flowise-redis-cache-data: {}
+    flowise-qdrant-data: {}

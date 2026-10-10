@@ -30,3 +30,6 @@ compose: |
           ]
         retries: 5
         timeout: 7s
+
+  volumes:
+    typesense_data: {}

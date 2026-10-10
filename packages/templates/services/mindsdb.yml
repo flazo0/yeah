@@ -56,3 +56,7 @@ compose: |
         interval: 10s
         timeout: 5s
         retries: 15
+
+  volumes:
+    mindsdb-data: {}
+    mindsdb-postgresql-data: {}

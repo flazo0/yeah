@@ -34,3 +34,6 @@ compose: |
         timeout: 5s
         retries: 12
         start_period: 15s
+
+  volumes:
+    jean-data: {}

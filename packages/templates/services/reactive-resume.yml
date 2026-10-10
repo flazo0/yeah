@@ -114,3 +114,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    postgres-data: {}
+    minio-data: {}
+    redis_data: {}

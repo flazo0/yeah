@@ -22,3 +22,6 @@ compose: |
         interval: 10s
         timeout: 1s
         retries: 3
+
+  volumes:
+    organizr-data: {}

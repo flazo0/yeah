@@ -33,3 +33,6 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 3
+
+  volumes:
+    diun_data: {}

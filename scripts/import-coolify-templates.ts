@@ -124,7 +124,8 @@ function convert(key: string, raw: string): Result {
   const declared = new Set(Object.keys((doc as { volumes?: Record<string, unknown> }).volumes ?? {}));
   const missingVolumes = new Set<string>();
   for (const def of Object.values(services)) {
-    for (const v of (def.volumes as unknown[] | undefined) ?? []) {
+    const vols = Array.isArray(def.volumes) ? (def.volumes as unknown[]) : [];
+    for (const v of vols) {
       const src =
         typeof v === "string"
           ? v.split(":")[0]!

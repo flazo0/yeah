@@ -88,3 +88,10 @@ compose: |
         interval: 5s
         timeout: 3s
         retries: 3
+
+  volumes:
+    limesurvey_plugins_data: {}
+    limesurvey_upload_data: {}
+    limesurvey_config_data: {}
+    limesurvey_sessions_data: {}
+    limesurvey_mariadb_data: {}

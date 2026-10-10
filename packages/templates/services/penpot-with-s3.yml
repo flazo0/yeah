@@ -166,9 +166,13 @@ compose: |
    
     mailpit:
       image: axllent/mailpit:v1.28 # Released on 26 Nov 2025
-      environment:
       healthcheck:
         test: ['CMD', '/mailpit', 'readyz']
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    minio-data: {}
+    penpot-postgresql-data: {}
+    penpot-valkey-data: {}

@@ -25,3 +25,6 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 3
+
+  volumes:
+    qdrant-storage: {}

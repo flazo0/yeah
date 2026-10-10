@@ -15,7 +15,6 @@ compose: |
   services:
     nodebb:
       image: ghcr.io/nodebb/nodebb:latest
-      environment:
       volumes:
         - nodebb_build:/usr/src/app/build
         - nodebb_uploads:/usr/src/app/public/uploads
@@ -59,3 +58,9 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    nodebb_build: {}
+    nodebb_uploads: {}
+    nodebb_config: {}
+    nodebb_postgres_data: {}

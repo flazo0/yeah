@@ -64,3 +64,8 @@ compose: |
           - '--raw'
           - incr
           - ping
+
+  volumes:
+    mixpost-storage: {}
+    mixpost-logs: {}
+    mixpost-mysql: {}

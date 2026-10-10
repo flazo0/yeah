@@ -38,3 +38,7 @@ compose: |
         interval: 5s
         timeout: 30s
         retries: 10
+
+  volumes:
+    ollama: {}
+    open-webui: {}

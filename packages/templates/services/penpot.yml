@@ -82,7 +82,6 @@ compose: |
 
     mailpit:
       image: axllent/mailpit:v1.28 # Released on 26 Nov 2025
-      environment:
       healthcheck:
         test: ['CMD', '/mailpit', 'readyz']
         interval: 5s
@@ -118,3 +117,8 @@ compose: |
         timeout: 3s
         retries: 5
         start_period: 3s
+
+  volumes:
+    penpot-assets: {}
+    penpot-postgresql-data: {}
+    penpot-valkey-data: {}

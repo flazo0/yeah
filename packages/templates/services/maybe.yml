@@ -98,3 +98,8 @@ compose: |
         interval: 10s
         timeout: 3s
         retries: 3
+
+  volumes:
+    app_storage: {}
+    maybe_postgres_data: {}
+    redis_data: {}

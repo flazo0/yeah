@@ -81,3 +81,8 @@ compose: |
         retries: 10
       volumes:
         - 'sparkyfitness-db-postgresql:/var/lib/postgresql'
+
+  volumes:
+    sparkyfitness-server-backup: {}
+    sparkyfitness-server-uploads: {}
+    sparkyfitness-db-postgresql: {}

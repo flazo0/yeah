@@ -75,3 +75,7 @@ compose: |
         interval: 5s
         retries: 10
         timeout: 2s
+
+  volumes:
+    usesend-postgres-data: {}
+    usesend-redis-data: {}

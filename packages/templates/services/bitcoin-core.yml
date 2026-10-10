@@ -37,3 +37,6 @@ compose: |
           "-txindex=${BITCOIN_TXINDEX}",
           "-server=${BITCOIN_SERVER}"
         ]
+
+  volumes:
+    blockchain-data: {}

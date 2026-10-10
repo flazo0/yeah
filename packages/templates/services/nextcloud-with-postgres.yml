@@ -65,3 +65,9 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    nextcloud-config: {}
+    nextcloud-data: {}
+    nextcloud-postgresql-data: {}
+    nextcloud-redis-data: {}

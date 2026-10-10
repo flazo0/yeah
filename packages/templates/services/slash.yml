@@ -12,7 +12,6 @@ compose: |
   services:
     slash:
       image: yourselfhosted/slash
-      environment:
       volumes:
         - slash-data:/var/opt/slash
       healthcheck:
@@ -20,3 +19,6 @@ compose: |
         interval: 2s
         timeout: 10s
         retries: 15
+
+  volumes:
+    slash-data: {}

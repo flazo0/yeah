@@ -13,7 +13,6 @@ compose: |
   services:
     databasus:
       image: 'databasus/databasus:v3.16.2' # Released on 23 February, 2026
-      environment:
       volumes:
         - 'databasus-data:/databasus-data'
       healthcheck:
@@ -22,3 +21,6 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 5
+
+  volumes:
+    databasus-data: {}

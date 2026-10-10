@@ -48,3 +48,12 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    mattermost-data-config: {}
+    mattermost-data-data: {}
+    mattermost-data-logs: {}
+    mattermost-data-plugins: {}
+    mattermost-data-client-plugins: {}
+    mattermost-data-bleve-indexes: {}
+    postgresql-data: {}

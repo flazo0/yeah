@@ -48,3 +48,6 @@ compose: |
         interval: 20s
         timeout: 5s
         retries: 3
+
+  volumes:
+    tailscale-client: {}

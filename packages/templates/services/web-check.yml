@@ -13,7 +13,6 @@ compose: |
   services:
     web-check:
       image: lissy93/web-check
-      environment:
       healthcheck:
         test:
           - CMD-SHELL

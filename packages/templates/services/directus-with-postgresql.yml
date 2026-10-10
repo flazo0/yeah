@@ -76,3 +76,10 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    directus-uploads: {}
+    directus-extensions: {}
+    directus-templates: {}
+    directus-postgresql-data: {}
+    directus-redis-data: {}

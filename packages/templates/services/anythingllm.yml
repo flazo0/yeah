@@ -40,3 +40,8 @@ compose: |
         - "anythingllm-hot:/app/collector/hotdir"
         - "anythingllm-outputs:/app/collector/outputs"
       user: "${UID:-1000}:${GID:-1000}"
+
+  volumes:
+    anythingllm-storage: {}
+    anythingllm-hot: {}
+    anythingllm-outputs: {}

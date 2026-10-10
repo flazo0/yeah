@@ -83,3 +83,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    immich-uploads: {}
+    immich-model-cache: {}
+    immich-postgres-data: {}

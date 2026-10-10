@@ -260,3 +260,15 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    proxy_config: {}
+    proxy_data: {}
+    logs_api: {}
+    logs_worker: {}
+    logs_beat-worker: {}
+    logs_migrator: {}
+    pgdata: {}
+    redisdata: {}
+    rabbitmq_data: {}
+    uploads: {}

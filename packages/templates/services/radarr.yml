@@ -28,3 +28,6 @@ compose: |
         interval: 2s
         timeout: 10s
         retries: 15
+
+  volumes:
+    radarr-config: {}

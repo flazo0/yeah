@@ -22,3 +22,7 @@ compose: |
         - libretranslate-models:/home/libretranslate/.local
       healthcheck:
         test: ["CMD-SHELL", "./venv/bin/python scripts/healthcheck.py"]
+
+  volumes:
+    libretranslate-api-keys: {}
+    libretranslate-models: {}

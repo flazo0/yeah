@@ -50,3 +50,8 @@ compose: |
         - "gitlab-logs:/var/log/gitlab"
         - "gitlab-data:/var/opt/gitlab"
       shm_size: 256m
+
+  volumes:
+    gitlab-config: {}
+    gitlab-logs: {}
+    gitlab-data: {}

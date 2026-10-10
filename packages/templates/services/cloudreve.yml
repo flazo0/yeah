@@ -62,3 +62,8 @@ compose: |
         interval: 10s
         timeout: 5s
         retries: 5
+
+  volumes:
+    cloudreve-data: {}
+    postgres-data: {}
+    redis-data: {}

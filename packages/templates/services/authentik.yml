@@ -96,3 +96,6 @@ compose: |
         - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRESQL}
         - POSTGRES_USER=${SERVICE_USER_POSTGRESQL}
         - POSTGRES_DB=authentik
+
+  volumes:
+    authentik-db: {}

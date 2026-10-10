@@ -79,3 +79,7 @@ compose: |
         interval: 10s
         timeout: 20s
         retries: 5
+
+  volumes:
+    seafile-data: {}
+    seafile_mariadb_data: {}

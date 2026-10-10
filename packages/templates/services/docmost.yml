@@ -83,3 +83,8 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    docmost: {}
+    postgresql-data: {}
+    redis-data: {}

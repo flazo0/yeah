@@ -24,3 +24,6 @@ compose: |
 
     guacd:
       image: guacamole/guacd:1.6.0
+
+  volumes:
+    termix-data: {}

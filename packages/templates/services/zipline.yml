@@ -48,3 +48,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    zipline-uploads: {}
+    zipline-public: {}
+    zipline-postgres-data: {}

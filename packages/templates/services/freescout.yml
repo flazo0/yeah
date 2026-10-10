@@ -56,3 +56,8 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 15
+
+  volumes:
+    freescout-data: {}
+    freescout-logs: {}
+    mariadb-data: {}

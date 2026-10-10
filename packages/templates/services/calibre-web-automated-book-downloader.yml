@@ -47,3 +47,9 @@ compose: |
       volumes:
         - cwa-book-ingest:/cwa-book-ingest
         - cwa-config:/cwa-config
+
+  volumes:
+    cwa-config: {}
+    cwa-book-ingest: {}
+    calibre-library: {}
+    calibre-plugins: {}

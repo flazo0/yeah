@@ -191,3 +191,8 @@ compose: |
         timeout: 3s
         retries: 20
         start_period: 10s
+
+  volumes:
+    evolution_instances: {}
+    evolution_redis: {}
+    postgres_data: {}

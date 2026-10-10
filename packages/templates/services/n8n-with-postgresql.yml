@@ -84,3 +84,7 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    n8n-data: {}
+    postgresql-data: {}

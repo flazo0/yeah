@@ -52,3 +52,9 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    qbittorrent-config: {}
+    qbittorrent-downloads: {}
+    qbittorrent-torrents: {}
+    vuetorrent-config: {}

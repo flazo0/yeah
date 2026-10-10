@@ -73,3 +73,7 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    pg-data: {}
+    redis_data: {}

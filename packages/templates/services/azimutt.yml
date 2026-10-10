@@ -119,3 +119,7 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    azimutt-postgres-data: {}
+    azimutt-minio-data: {}

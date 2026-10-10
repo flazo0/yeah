@@ -62,3 +62,8 @@ compose: |
         interval: 20s
         timeout: 10s
         retries: 5
+
+  volumes:
+    mariadb-data: {}
+    moodle-data: {}
+    moodledata-data: {}

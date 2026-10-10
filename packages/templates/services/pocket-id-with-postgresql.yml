@@ -66,3 +66,7 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    pocket-id-data: {}
+    pocket-id-postgresql-data: {}

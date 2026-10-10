@@ -13,7 +13,6 @@ compose: |
   services:
     jupyter-notebook-python:
       image: quay.io/jupyter/base-notebook:latest
-      environment:
       volumes:
         - '/jupyter:/home/jovyan/work'
       command: start-notebook.sh

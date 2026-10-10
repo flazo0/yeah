@@ -49,3 +49,6 @@ compose: |
         interval: 2s
         timeout: 10s
         retries: 15
+
+  volumes:
+    mongodb_data: {}

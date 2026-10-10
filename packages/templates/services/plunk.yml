@@ -72,3 +72,7 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    plunk-postgresql-data: {}
+    plunk-redis-data: {}

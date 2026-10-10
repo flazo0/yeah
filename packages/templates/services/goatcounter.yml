@@ -12,7 +12,6 @@ compose: |
   services:
     goatcounter:
       image: arp242/goatcounter:2.7
-      environment:
       volumes:
         - goatcounter-data:/home/goatcounter/goatcounter-data
       healthcheck:
@@ -20,3 +19,6 @@ compose: |
         interval: 10s
         timeout: 5s
         retries: 10
+
+  volumes:
+    goatcounter-data: {}

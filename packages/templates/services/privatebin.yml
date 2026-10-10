@@ -13,7 +13,6 @@ compose: |
   services:
     privatebin:
       image: privatebin/nginx-fpm-alpine
-      environment:
       volumes:
         - privatebin_data:/srv/data
       healthcheck:
@@ -21,3 +20,6 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    privatebin_data: {}

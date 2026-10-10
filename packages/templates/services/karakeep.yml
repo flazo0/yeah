@@ -53,3 +53,7 @@ compose: |
         interval: 2s
         timeout: 10s
         retries: 15
+
+  volumes:
+    karakeep-data: {}
+    karakeep-meilisearch: {}

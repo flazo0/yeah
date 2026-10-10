@@ -15,7 +15,6 @@ compose: |
       image: "ghcr.io/open-webui/open-webui:main"
       volumes:
         - "open-webui:/app/backend/data"
-      environment:
       healthcheck:
         test:
           - CMD

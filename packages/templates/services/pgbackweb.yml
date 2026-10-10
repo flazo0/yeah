@@ -38,3 +38,7 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 5
+
+  volumes:
+    pgbackweb_backups: {}
+    pgbackweb_postgres_data: {}

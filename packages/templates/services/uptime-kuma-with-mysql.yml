@@ -43,3 +43,7 @@ compose: |
         retries: 10
       volumes:
         - mysql-data:/var/lib/mysql
+
+  volumes:
+    uptime-kuma-data: {}
+    mysql-data: {}

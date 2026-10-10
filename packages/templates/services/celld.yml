@@ -29,3 +29,6 @@ compose: |
         - RUST_LOG=${RUST_LOG:-info}
       volumes:
         - celld-data:/var/lib/celld
+
+  volumes:
+    celld-data: {}

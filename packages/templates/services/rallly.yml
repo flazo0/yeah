@@ -58,3 +58,6 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    rallly_db_data: {}

@@ -45,3 +45,6 @@ compose: |
           - localhost
         timeout: 20s
         retries: 10
+
+  volumes:
+    supertokens-mysql-data: {}

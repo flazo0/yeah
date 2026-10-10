@@ -239,7 +239,6 @@ compose: |
     appwrite-console:
       image: appwrite/console:6.1.28
       container_name: appwrite-console
-      environment:
       healthcheck:
         test: ["CMD-SHELL", "curl -fsI http://localhost:80 | head -n 1 | grep -E '^HTTP/.* 3[0-9]{2} ' || exit 1"]
         interval: 20s
@@ -1030,3 +1029,15 @@ compose: |
   networks:
     runtimes:
       name: runtimes
+
+  volumes:
+    appwrite-uploads: {}
+    appwrite-imports: {}
+    appwrite-cache: {}
+    appwrite-config: {}
+    appwrite-certificates: {}
+    appwrite-functions: {}
+    appwrite-sites: {}
+    appwrite-builds: {}
+    appwrite-mariadb: {}
+    appwrite-redis: {}

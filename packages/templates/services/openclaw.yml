@@ -122,3 +122,7 @@ compose: |
         interval: 5s
         timeout: 5s
         retries: 10
+
+  volumes:
+    openclaw-data: {}
+    browser-data: {}

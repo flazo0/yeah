@@ -81,3 +81,11 @@ compose: |
         interval: 10s
         timeout: 1s
         retries: 3
+
+  volumes:
+    app_logs: {}
+    extenstions: {}
+    themes: {}
+    app_storage: {}
+    app_public_storage: {}
+    paymenter_mariadb_data: {}

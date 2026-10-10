@@ -31,3 +31,8 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    syncthing_config: {}
+    syncthing_data1: {}
+    syncthing_data2: {}

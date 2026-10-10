@@ -194,3 +194,9 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    postiz_config: {}
+    postiz_uploads: {}
+    postiz_postgresql_data: {}
+    postiz_redis_data: {}

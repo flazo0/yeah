@@ -37,3 +37,6 @@ compose: |
         - |
           eval "wgpw '${SERVICE_PASSWORD_ADMIN}' > /pass-hash"
           eval "$(cat /pass-hash) dumb-init node server.js"
+
+  volumes:
+    wg-easy: {}

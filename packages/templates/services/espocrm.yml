@@ -100,3 +100,9 @@ compose: |
         start_period: 10s
         timeout: 10s
         retries: 3
+
+  volumes:
+    espocrm-data: {}
+    espocrm-custom: {}
+    espocrm-custom-client: {}
+    espocrm-db: {}

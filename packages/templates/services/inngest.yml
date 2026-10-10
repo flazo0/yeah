@@ -69,3 +69,7 @@ compose: |
         timeout: 3s
         retries: 5
       restart: unless-stopped
+
+  volumes:
+    postgres-data: {}
+    redis-data: {}

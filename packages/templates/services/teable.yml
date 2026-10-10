@@ -106,3 +106,8 @@ compose: |
         interval: 10s
         timeout: 3s
         retries: 3
+
+  volumes:
+    teable_data: {}
+    teable_db_data: {}
+    teable_cache_data: {}

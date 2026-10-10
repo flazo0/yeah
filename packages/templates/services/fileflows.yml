@@ -32,3 +32,9 @@ compose: |
         interval: 2s
         timeout: 10s
         retries: 15
+
+  volumes:
+    fileflows_temp: {}
+    fileflows_configs: {}
+    fileflows_logs: {}
+    fileflows_common: {}

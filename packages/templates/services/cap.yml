@@ -68,3 +68,6 @@ compose: |
         retries: 5
       volumes:
         - 'cap_db:/var/lib/mysql'
+
+  volumes:
+    cap_db: {}

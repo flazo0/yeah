@@ -135,3 +135,9 @@ compose: |
         interval: 10s
         timeout: 10s
         retries: 5
+
+  volumes:
+    argilla-data: {}
+    pg-data: {}
+    redis-data: {}
+    elasticsearch-data: {}

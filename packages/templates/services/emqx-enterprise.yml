@@ -31,3 +31,7 @@ compose: |
         timeout: 30s
         retries: 5
         start_period: 30s
+
+  volumes:
+    emqx_data: {}
+    emqx_log: {}

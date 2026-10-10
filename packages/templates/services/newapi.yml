@@ -61,3 +61,7 @@ compose: |
         interval: 5s
         timeout: 10s
         retries: 20
+
+  volumes:
+    postgresql-data: {}
+    redis-data: {}

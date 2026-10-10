@@ -46,3 +46,11 @@ compose: |
         interval: 5s
         timeout: 20s
         retries: 10
+
+  volumes:
+    sonarqube-data: {}
+    sonarqube-conf: {}
+    sonarqube-extensions: {}
+    sonarqube-logs: {}
+    sonarqube-bundled-plugins: {}
+    postgresql-data: {}

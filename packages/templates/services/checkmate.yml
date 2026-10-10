@@ -50,3 +50,6 @@ compose: |
         interval: 5s
         timeout: 30s
         start_period: 10s
+
+  volumes:
+    checkmate-mongo: {}
