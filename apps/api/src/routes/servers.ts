@@ -4,7 +4,7 @@ import { applications, databases, serverMetricSamples, servers, services, sshKey
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
 import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
-import { createHetznerServer } from "../lib/hetzner";
+import { createVps } from "../lib/vpsProviders";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { serverCheckQueue, proxyProvisionQueue, cloudflareTunnelQueue } from "../lib/queue";
 import { assertMember } from "../lib/access";
@@ -157,9 +157,9 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       }),
     },
   )
-  // "Create a VPS from the panel": the Hetzner API token is used for this one request and never stored.
+  // "Create a VPS from the panel" (Hetzner / DigitalOcean / Vultr): the provider API token is used for this one request and never stored.
   .post(
-    "/create-hetzner",
+    "/create-vps",
     async ({ cookie, params, body, set }) => {
       const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
       if (!user) {
@@ -177,17 +177,17 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       }
       let created;
       try {
-        created = await createHetznerServer({
+        created = await createVps(body.provider, {
           apiToken: body.apiToken,
           name: body.name,
-          serverType: body.serverType,
-          location: body.location,
+          size: body.size,
+          region: body.region,
           image: body.image,
           sshPublicKey: key.publicKey,
         });
       } catch (err) {
         set.status = 502;
-        return { error: err instanceof Error ? err.message : "falha ao criar o servidor na Hetzner" };
+        return { error: err instanceof Error ? err.message : "falha ao criar o servidor no provedor" };
       }
       const [server] = await db
         .insert(servers)
@@ -195,7 +195,7 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
         .returning();
       if (!server) {
         set.status = 500;
-        return { error: `servidor criado na Hetzner (${created.ipv4}) mas falhou ao registrar aqui — adicione-o manualmente` };
+        return { error: `servidor criado no provedor (${created.ipv4}) mas falhou ao registrar aqui — adicione-o manualmente` };
       }
       return { server: toServerDto(server) };
     },
@@ -203,8 +203,9 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       body: t.Object({
         apiToken: t.String({ minLength: 1 }),
         name: t.String({ minLength: 1, maxLength: 63, pattern: "^[a-zA-Z0-9][a-zA-Z0-9.-]*$" }),
-        serverType: t.String({ minLength: 1 }),
-        location: t.String({ minLength: 1 }),
+        provider: t.Union([t.Literal("hetzner"), t.Literal("digitalocean"), t.Literal("vultr")]),
+        size: t.String({ minLength: 1 }),
+        region: t.String({ minLength: 1 }),
         image: t.String({ minLength: 1 }),
         sshKeyId: t.String(),
       }),

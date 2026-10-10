@@ -55,7 +55,18 @@ async function copyCommand() {
   }
 }
 
-const hz = ref({ apiToken: "", name: "", serverType: "cx22", location: "nbg1", image: "ubuntu-24.04", sshKeyId: "" });
+const PROVIDER_DEFAULTS = {
+  hetzner: { size: "cx22", region: "nbg1", image: "ubuntu-24.04", label: "Hetzner Cloud" },
+  digitalocean: { size: "s-1vcpu-2gb", region: "nyc3", image: "ubuntu-24-04-x64", label: "DigitalOcean" },
+  vultr: { size: "vc2-1c-2gb", region: "ewr", image: "2284", label: "Vultr (imagem = os_id)" },
+} as const;
+const hz = ref({ provider: "hetzner" as keyof typeof PROVIDER_DEFAULTS, apiToken: "", name: "", size: "cx22", region: "nbg1", image: "ubuntu-24.04", sshKeyId: "" });
+function pickProvider() {
+  const d = PROVIDER_DEFAULTS[hz.value.provider];
+  hz.value.size = d.size;
+  hz.value.region = d.region;
+  hz.value.image = d.image;
+}
 const hzSubmitting = ref(false);
 const hzError = ref("");
 
@@ -63,10 +74,10 @@ async function createOnHetzner() {
   hzSubmitting.value = true;
   hzError.value = "";
   try {
-    const res = await api.post<{ server: ServerDto }>(`/teams/${teamId}/servers/create-hetzner`, hz.value);
+    const res = await api.post<{ server: ServerDto }>(`/teams/${teamId}/servers/create-vps`, hz.value);
     router.push(`/teams/${teamId}/servers/${res.server.id}/general`);
   } catch (err) {
-    hzError.value = err instanceof ApiError ? err.message : "falha ao criar na Hetzner";
+    hzError.value = err instanceof ApiError ? err.message : "falha ao criar a VPS";
   } finally {
     hzSubmitting.value = false;
   }
@@ -107,14 +118,20 @@ async function addServer() {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add_circle</span>
-        Criar uma VPS nova na Hetzner Cloud
+        Criar uma VPS nova (Hetzner, DigitalOcean ou Vultr)
       </div>
       <div class="card-body">
         <p class="hint">
-          Cria a máquina, um firewall (só 22, 80 e 443) e autoriza uma chave de Keys &amp; Tokens. O token da API da Hetzner (projeto → Security → API tokens, com escrita) é usado só nesta requisição e não é guardado. Isso gera custo na sua conta Hetzner.
+          Cria a máquina, um firewall (só 22, 80 e 443) e autoriza uma chave de Keys &amp; Tokens. O token da API do provedor (com permissão de escrita) é usado só nesta requisição e não é guardado. Isso gera custo na sua conta no provedor. DigitalOcean e Vultr podem levar um minuto até a máquina ter IP.
         </p>
         <p v-if="savedKeys.length === 0" class="hint">Crie uma chave em Keys &amp; Tokens primeiro.</p>
         <form v-else @submit.prevent="createOnHetzner">
+          <div class="form-group">
+            <label for="hz-provider">Provedor</label>
+            <select id="hz-provider" v-model="hz.provider" class="form-control" @change="pickProvider">
+              <option v-for="(d, key) in PROVIDER_DEFAULTS" :key="key" :value="key">{{ d.label }}</option>
+            </select>
+          </div>
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
               <label for="hz-name">Nome</label>
@@ -131,11 +148,11 @@ async function addServer() {
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
               <label for="hz-type">Tipo</label>
-              <input id="hz-type" v-model="hz.serverType" class="form-control mono" required />
+              <input id="hz-type" v-model="hz.size" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
               <label for="hz-loc">Local</label>
-              <input id="hz-loc" v-model="hz.location" class="form-control mono" required />
+              <input id="hz-loc" v-model="hz.region" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
               <label for="hz-image">Imagem</label>
@@ -143,7 +160,7 @@ async function addServer() {
             </div>
           </div>
           <div class="form-group">
-            <label for="hz-token">Token da API Hetzner</label>
+            <label for="hz-token">Token da API do provedor</label>
             <input id="hz-token" v-model="hz.apiToken" type="password" class="form-control mono" autocomplete="off" required />
           </div>
           <div v-if="hzError" class="alert alert-error mb-16">{{ hzError }}</div>

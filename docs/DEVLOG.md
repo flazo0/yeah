@@ -866,3 +866,7 @@ Item que ficou esquecido na Fase 5. Logger próprio mínimo (sem pino/winston: z
 ## Fase 7 — `/api/v1` mais ampla
 
 Listagens read-only de servidores, projetos, storages, canais de notificação, tarefas agendadas e deploys por app em `ciActions.ts`, expostas pela mesma factory (CI + v1) e no OpenAPI. Cada `select` nomeia colunas explicitamente, nunca `*`, pra um campo secreto novo numa tabela não vazar por acidente. Não virou CRUD completo de propósito: o blast radius de mutações com token é maior e não dá pra testar aqui ([[feedback-no-local-docker-testing]]). 435 testes.
+
+## Fase 8 — DigitalOcean e Vultr
+
+`vpsProviders.ts` generaliza a criação de VPS (Hetzner delegando ao cliente existente). DO e Vultr devolvem o IP só depois do boot, então há polling com `sleep` injetável (testes sem espera). Firewall: DO anexa por tag (cobre a máquina desde o primeiro boot); Vultr cria grupo e 6 regras. Rota virou `POST /servers/create-vps` com `provider`. Falha após criar a máquina nunca apaga nada sozinho (destrutivo, custa dinheiro). **Não testado** contra as APIs reais ([[feedback-no-local-docker-testing]]).
