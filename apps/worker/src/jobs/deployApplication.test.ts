@@ -375,7 +375,8 @@ describe("railpack and storage kinds", () => {
     const app = makeApplication({ buildPack: "railpack" });
     const steps = buildImageSteps(app, "/r", "/i", "img", [{ key: "K", value: "v w", availability: "build" }]);
     expect(steps[0]!.command).toContain("railpack.com/install.sh");
-    expect(steps[1]!.command).toBe("railpack build '/r' --name 'img' --env 'K=v w'");
+    expect(steps[1]!.command).toContain("yeah-buildkit");
+    expect(steps[2]!.command).toBe("BUILDKIT_HOST=docker-container://yeah-buildkit railpack build '/r' --name 'img' --env 'K=v w'");
   });
   test("file and bind volumes reach docker run as -v flags", () => {
     const app = makeApplication({ id: "app-1" });

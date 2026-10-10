@@ -174,7 +174,15 @@ export function buildImageSteps(
           label: "garantindo o railpack no servidor",
           command: "command -v railpack >/dev/null 2>&1 || (curl -sSL https://railpack.com/install.sh | sh)",
         },
-        { label: "construindo com railpack (detecta a linguagem)", command: `railpack build ${shellQuote(repoDir)} --name ${image}${railEnv}` },
+        {
+          // railpack talks to a BuildKit daemon (BUILDKIT_HOST) instead of the Docker builder; one long-lived container is shared by every build.
+          label: "garantindo o BuildKit do railpack",
+          command: "(docker inspect yeah-buildkit >/dev/null 2>&1 && docker start yeah-buildkit >/dev/null 2>&1) || docker run -d --restart unless-stopped --privileged --name yeah-buildkit moby/buildkit >/dev/null",
+        },
+        {
+          label: "construindo com railpack (detecta a linguagem)",
+          command: `BUILDKIT_HOST=docker-container://yeah-buildkit railpack build ${shellQuote(repoDir)} --name ${image}${railEnv}`,
+        },
       ];
     default:
       return [{ label: "construindo a imagem", command: `cd ${shellQuote(repoDir)} && docker build ${buildArgs}-t ${image} .` }];
