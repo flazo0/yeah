@@ -178,9 +178,18 @@ function convert(key: string, raw: string): Result {
     else if (/^SERVICE_BASE64_/.test(name)) env[name] = "$generate:base64";
     else if (modifier === "" || modifier.startsWith(":?")) {
       // a plain ${VAR} / ${VAR:?msg}: surface it (empty) so it shows up in the env editor.
-      if (!/^(HOME|PATH|PWD|USER)$/.test(name)) env[name] = "";
+      // A database/schema name left empty breaks the database image's own healthcheck (pg_isready -d ""), so default it to the template key.
+      if (/(^|_)(DATABASE|DB|DB_NAME)$/.test(name) && !/PASSWORD|USER|HOST|PORT|TYPE|ENGINE/.test(name)) env[name] = key.replace(/[^a-z0-9_]/gi, "_");
+      else if (!/^(HOME|PATH|PWD|USER)$/.test(name)) env[name] = "";
     }
   }
+  // Known upstream gaps (the image moved on after Coolify wrote the template).
+  const PATCH_ENV: Record<string, string[]> = { homebox: ["HBOX_AUTH_API_KEY_PEPPER=${SERVICE_BASE64_64_PEPPER}"] };
+  for (const line of PATCH_ENV[key] ?? []) {
+    // insert as the first entry of the first `environment:` list, keeping that list's indentation
+    compose = compose.replace(/^(\s*)environment:[ \t]*\n(\s*)- /m, (_m, keyIndent: string, dash: string) => `${keyIndent}environment:\n${dash}- ${line}\n${dash}- `);
+  }
+
   // Magic variables anywhere in the text — also nested ones such as ${KEY:?${SERVICE_PASSWORD_X}} and bare $SERVICE_X.
   for (const m of compose.matchAll(/SERVICE_[A-Z0-9_]+/g)) {
     const name = m[0];

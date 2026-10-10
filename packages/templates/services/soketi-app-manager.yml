@@ -14,7 +14,7 @@ env:
   DB_CONNECTION: ""
   DB_HOST: ""
   DB_PORT: ""
-  DB_DATABASE: ""
+  DB_DATABASE: "soketi_app_manager"
   DB_USERNAME: ""
   DB_PASSWORD: ""
   PUSHER_HOST: ""

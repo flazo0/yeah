@@ -11,7 +11,7 @@ port: 15672
 env:
   SERVICE_USER_POSTGRES: "$generate:user"
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
-  POSTGRES_DB: ""
+  POSTGRES_DB: "hatchet"
   SERVICE_USER_RABBITMQ: "$generate:user"
   SERVICE_PASSWORD_RABBITMQ: "$generate:password"
 compose: |

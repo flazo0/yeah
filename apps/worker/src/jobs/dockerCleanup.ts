@@ -38,6 +38,8 @@ export function makeDockerCleanupProcessor() {
           .update(dockerCleanupExecutions)
           .set({ status: "success", log: output, reclaimedBytes: parseReclaimedBytes(output), finishedAt: new Date() })
           .where(eq(dockerCleanupExecutions.id, execution.id));
+        const freed = parseReclaimedBytes(output);
+        await notifyTeam(server.teamId, "docker-cleanup.success", `Limpeza concluída em ${server.name}`, freed === null ? "Limpeza concluída." : `${(freed / 1024 ** 2).toFixed(0)} MB liberados.`, "info");
       } finally {
         conn.end();
       }

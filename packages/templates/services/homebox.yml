@@ -13,11 +13,13 @@ env:
   HBOX_MAILER_USERNAME: ""
   HBOX_MAILER_PASSWORD: ""
   HBOX_MAILER_FROM: ""
+  SERVICE_BASE64_64_PEPPER: "$generate:base64long"
 compose: |
   services:
     homebox:
       image: ghcr.io/sysadminsmedia/homebox:latest
       environment:
+        - HBOX_AUTH_API_KEY_PEPPER=${SERVICE_BASE64_64_PEPPER}
         - HBOX_OPTIONS_ALLOW_REGISTRATION=${HBOX_OPTIONS_ALLOW_REGISTRATION:-false}
         - HBOX_LOG_LEVEL=${HBOX_LOG_LEVEL:-info}
         - HBOX_LOG_FORMAT=${HBOX_LOG_FORMAT:-text}

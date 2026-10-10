@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { Server, Service } from "@yeah/db";
 import { SERVICE_CATALOG } from "@yeah/shared";
-import { buildRunCommand, buildStackPullCommand, buildStackUpCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
+import { buildRunCommand, buildStackPullCommand, buildStackStateCommand, buildStackUpCommand, containerNameForService, everyContainerUp, resolveDomain } from "./provisionService.commands";
 
 function makeService(overrides: Partial<Service> = {}): Service {
   return {
@@ -137,5 +137,21 @@ describe("stack commands", () => {
     const cmd = buildStackPullCommand("svc-1");
     expect(cmd).toContain("pull --quiet");
     expect(cmd).not.toContain("override");
+  });
+});
+
+describe("unhealthy-but-running stacks", () => {
+  const lines = (...l: string[]) => l.join("\n");
+  test("the state command lists every container of the compose project, stopped ones included", () => {
+    const cmd = buildStackStateCommand("svc-1");
+    expect(cmd).toContain("docker ps -a");
+    expect(cmd).toContain("com.docker.compose.project=yeah-svc-svc-1");
+  });
+  test("counts as up only when every container is running (or restarting)", () => {
+    expect(everyContainerUp(lines("a|running", "b|running", ""))).toBe(true);
+    expect(everyContainerUp(lines("a|running", "b|restarting", ""))).toBe(true);
+    expect(everyContainerUp(lines("a|running", "b|exited", ""))).toBe(false);
+    expect(everyContainerUp(lines("a|created", ""))).toBe(false);
+    expect(everyContainerUp("")).toBe(false);
   });
 });

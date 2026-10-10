@@ -15,7 +15,7 @@ env:
   TIMEZONE: ""
   SERVICE_USER_POSTGRES: "$generate:user"
   POSTGRES_PORT: ""
-  POSTGRES_DB: ""
+  POSTGRES_DB: "teable"
   SERVICE_PASSWORD_REDIS: "$generate:password"
   BACKEND_MAIL_HOST: ""
   BACKEND_MAIL_PORT: ""

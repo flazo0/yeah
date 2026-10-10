@@ -25,7 +25,7 @@ env:
   INF_APP_CONNECTION_GITHUB_APP_PRIVATE_KEY: ""
   SERVICE_USER_POSTGRES: "$generate:user"
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
-  POSTGRES_DB: ""
+  POSTGRES_DB: "infisical"
 compose: |
   services:
     backend:

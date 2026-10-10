@@ -11,7 +11,7 @@ port: 6900
 env:
   SERVICE_USER_POSTGRES: "$generate:user"
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
-  POSTGRES_DB: ""
+  POSTGRES_DB: "argilla"
   SERVICE_PASSWORD_AUTHSECRET: "$generate:password"
   SERVICE_PASSWORD_ARGILLA: "$generate:password"
   SERVICE_PASSWORD_APIKEY: "$generate:password"

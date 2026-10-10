@@ -9,6 +9,7 @@ export const notificationChannelTypeEnum = pgEnum("notification_channel_type", [
   "webhook",
   "email",
   "ntfy",
+  "pushover",
 ]);
 
 export const notificationChannels = pgTable("notification_channels", {
@@ -23,6 +24,9 @@ export const notificationChannels = pgTable("notification_channels", {
   url: encryptedText("url"),
   telegramBotToken: encryptedText("telegram_bot_token"),
   telegramChatId: varchar("telegram_chat_id", { length: 255 }),
+  // pushover: the user key and the application token from pushover.net (both secrets).
+  pushoverUserKey: encryptedText("pushover_user_key"),
+  pushoverApiToken: encryptedText("pushover_api_token"),
   // email: any SMTP server works (Gmail, SES, SendGrid, a self-hosted Postfix, ...) — no
   // proprietary provider API, matching how Coolify's own email notifications work.
   smtpHost: varchar("smtp_host", { length: 255 }),

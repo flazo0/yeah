@@ -510,7 +510,9 @@
     "todosOsEventos": "todos os eventos",
     "falhaAoSalvarEventos": "falha ao salvar eventos",
     "falhaAoCarregarCanais": "falha ao carregar canais",
-    "falhaAoCriarCanal": "falha ao criar canal"
+    "falhaAoCriarCanal": "falha ao criar canal",
+    "pushoverApiToken": "Token da aplicação (Pushover)",
+    "pushoverUserKey": "Chave do usuário (Pushover)"
   },
   "project": {
     "ambientes": "Ambientes",

@@ -18,6 +18,9 @@ const EVENT_TYPE_SCHEMA = t.Union([
   t.Literal("tls.expiring"),
   t.Literal("docker-cleanup.failed"),
   t.Literal("api-token.expiring"),
+  t.Literal("backup.success"),
+  t.Literal("task.success"),
+  t.Literal("docker-cleanup.success"),
 ]);
 
 function toChannelDto(channel: NotificationChannel): NotificationChannelDto {
@@ -77,6 +80,8 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
           url: body.url ?? null,
           telegramBotToken: body.telegramBotToken ?? null,
           telegramChatId: body.telegramChatId ?? null,
+          pushoverUserKey: body.pushoverUserKey ?? null,
+          pushoverApiToken: body.pushoverApiToken ?? null,
           smtpHost: body.smtpHost ?? null,
           smtpPort: body.smtpPort ?? null,
           smtpSecure: body.smtpSecure ?? null,
@@ -104,10 +109,13 @@ export const notificationRoutes = new Elysia({ prefix: "/teams/:teamId/notificat
           t.Literal("webhook"),
           t.Literal("email"),
           t.Literal("ntfy"),
+          t.Literal("pushover"),
         ]),
         url: t.Optional(t.String()),
         telegramBotToken: t.Optional(t.String()),
         telegramChatId: t.Optional(t.String()),
+        pushoverUserKey: t.Optional(t.String()),
+        pushoverApiToken: t.Optional(t.String()),
         smtpHost: t.Optional(t.String()),
         smtpPort: t.Optional(t.Number()),
         smtpSecure: t.Optional(t.Boolean()),

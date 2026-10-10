@@ -14,7 +14,7 @@ env:
   SERVICE_PASSWORD_ROOT: "$generate:password"
   SERVICE_PASSWORD_APPSECRET: "$generate:password"
   SERVICE_PASSWORD_ADMINPASS: "$generate:password"
-  MYSQL_DATABASE: ""
+  MYSQL_DATABASE: "kimai"
   TRUSTED_HOSTS: ""
 compose: |
   services:

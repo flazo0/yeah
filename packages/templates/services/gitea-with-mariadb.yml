@@ -10,7 +10,7 @@ notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outr
 main: "gitea"
 port: 3000
 env:
-  MYSQL_DATABASE: ""
+  MYSQL_DATABASE: "gitea_with_mariadb"
   SERVICE_USER_MYSQL: "$generate:user"
   SERVICE_PASSWORD_MYSQL: "$generate:password"
   SERVICE_PASSWORD_MYSQLROOT: "$generate:password"

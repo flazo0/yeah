@@ -6,7 +6,7 @@ import { composeLifecycleCommand, composeStackOverride, ensureNetworkCommand, en
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
-import { buildRunCommand, buildStackPullCommand, buildStackUpCommand, containerNameForService, resolveDomain, stackDir, stackProject, STACK_OVERRIDE_FILE } from "./provisionService.commands";
+import { buildRunCommand, buildStackPullCommand, buildStackStateCommand, buildStackUpCommand, containerNameForService, everyContainerUp, resolveDomain, stackDir, stackProject, STACK_OVERRIDE_FILE } from "./provisionService.commands";
 
 export { buildRunCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
 
@@ -117,7 +117,17 @@ async function provisionStack(service: typeof services.$inferSelect, server: typ
     );
     await run(ensureNetworkCommand(envNetwork), "rede do ambiente");
     await run(buildStackPullCommand(service.id), "baixando as imagens");
-    await run(buildStackUpCommand(service.id), "subindo a stack");
+    try {
+      await run(buildStackUpCommand(service.id), "subindo a stack");
+    } catch (upErr) {
+      let state = "";
+      await execStream(conn, buildStackStateCommand(service.id), (chunk) => {
+        state += chunk;
+      });
+      // Unhealthy-but-running is a warning (see everyContainerUp); an exited/missing container is still a failure.
+      if (!everyContainerUp(state)) throw upErr;
+      log += "\nAviso: algum container não ficou \"healthy\" no prazo, mas todos estão em execução — confira a aba Logs. Se o app responde, o healthcheck do template provavelmente está desatualizado.\n";
+    }
     await run(stackNetworkJoinCommand(stackProject(service.id), envNetwork, internalHostName(service.name), service.mainService), "entrando na rede do ambiente");
     await setStatus("running", log + "\nStack no ar.\n");
   } catch (err) {

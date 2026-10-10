@@ -56,6 +56,22 @@ export function buildStackUpCommand(serviceId: string, waitSeconds = 300): strin
   );
 }
 
+/** One `name|state` line per container of the project, including stopped ones. */
+export function buildStackStateCommand(serviceId: string): string {
+  return `docker ps -a --filter ${shellQuote(`label=com.docker.compose.project=${stackProject(serviceId)}`)} --format '{{.Names}}|{{.State}}'`;
+}
+
+/**
+ * `up --wait` fails when ANY container is unhealthy — which also happens to apps that work fine but whose
+ * (third-party) healthcheck is wrong, e.g. it calls a `wget` the image no longer ships. After such a
+ * failure the stack still counts as running when every container is up; one that exited or never started
+ * is a real failure.
+ */
+export function everyContainerUp(stateOutput: string): boolean {
+  const states = stateOutput.split(/\r?\n/).map((l) => l.trim().split("|")[1]).filter(Boolean);
+  return states.length > 0 && states.every((s) => s === "running" || s === "restarting");
+}
+
 /** Pulls the images first so a slow download is not counted against the "wait for healthy" timeout. */
 export function buildStackPullCommand(serviceId: string): string {
   const dir = stackDir(serviceId);

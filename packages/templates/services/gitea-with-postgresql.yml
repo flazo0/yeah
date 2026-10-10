@@ -10,7 +10,7 @@ notes: "Publica portas direto no servidor (`ports:`); confira conflitos com outr
 main: "gitea"
 port: 3000
 env:
-  POSTGRESQL_DATABASE: ""
+  POSTGRESQL_DATABASE: "gitea_with_postgresql"
   SERVICE_USER_POSTGRESQL: "$generate:user"
   SERVICE_PASSWORD_POSTGRESQL: "$generate:password"
 compose: |

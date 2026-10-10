@@ -510,7 +510,9 @@
     "todosOsEventos": "all events",
     "falhaAoSalvarEventos": "failed to save events",
     "falhaAoCarregarCanais": "failed to load channels",
-    "falhaAoCriarCanal": "failed to create channel"
+    "falhaAoCriarCanal": "failed to create channel",
+    "pushoverApiToken": "Application token (Pushover)",
+    "pushoverUserKey": "User key (Pushover)"
   },
   "project": {
     "ambientes": "Environments",

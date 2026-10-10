@@ -351,6 +351,13 @@
       "when": 1791606769437,
       "tag": "0049_notification_ntfy",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791668990115,
+      "tag": "0050_notification_pushover",
+      "breakpoints": true
     }
   ]
 }

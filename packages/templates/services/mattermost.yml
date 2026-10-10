@@ -12,7 +12,7 @@ env:
   SERVICE_URL_MATTERMOST: "http://localhost"
   SERVICE_USER_POSTGRES: "$generate:user"
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
-  POSTGRES_DB: ""
+  POSTGRES_DB: "mattermost"
 compose: |
   services:
     mattermost:

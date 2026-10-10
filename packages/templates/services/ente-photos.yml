@@ -31,7 +31,7 @@ env:
   ENTE_SMTP_ENCRYPTION: ""
   SERVICE_URL_MUSEUM: "http://localhost"
   POSTGRES_USER: ""
-  POSTGRES_DB: ""
+  POSTGRES_DB: "ente_photos"
 compose: |
   services:
     museum:

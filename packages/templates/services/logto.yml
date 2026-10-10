@@ -14,7 +14,7 @@ env:
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
   LOGTO_ENDPOINT: ""
   LOGTO_ADMIN_ENDPOINT: ""
-  POSTGRES_DB: ""
+  POSTGRES_DB: "logto"
 compose: |
   services:
     logto:

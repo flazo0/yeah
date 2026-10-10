@@ -13,7 +13,7 @@ env:
   SERVICE_URL_FORGEJO: "http://localhost"
   FORGEJO__migrations__ALLOWED_DOMAINS: ""
   FORGEJO__migrations__ALLOW_LOCALNETWORKS: ""
-  MYSQL_DATABASE: ""
+  MYSQL_DATABASE: "forgejo_with_mysql"
   SERVICE_USER_MYSQL: "$generate:user"
   SERVICE_PASSWORD_MYSQL: "$generate:password"
   SERVICE_PASSWORD_MYSQLROOT: "$generate:password"

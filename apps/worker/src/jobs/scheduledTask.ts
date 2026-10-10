@@ -80,6 +80,8 @@ export function makeScheduledTaskProcessor() {
 
     if (failure) {
       await notifyTeam(application.teamId, "task.failed", `Tarefa "${task.name}" falhou em ${application.name}`, failure, "error");
+    } else {
+      await notifyTeam(application.teamId, "task.success", `Tarefa "${task.name}" concluída em ${application.name}`, `Código de saída ${exitCode ?? 0}.`, "info");
     }
     await forwardJobLog(application.teamId, log, { app: application.name, task: task.name, job: "scheduled-task", status: failure ? "failed" : "success" });
   };

@@ -9,10 +9,12 @@ export interface NotificationMessage {
 }
 
 export interface NotificationChannelConfig {
-  type: "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy";
+  type: "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy" | "pushover";
   url: string | null;
   telegramBotToken: string | null;
   telegramChatId: string | null;
+  pushoverUserKey: string | null;
+  pushoverApiToken: string | null;
   smtpHost: string | null;
   smtpPort: number | null;
   smtpSecure: boolean | null;
@@ -45,6 +47,8 @@ export async function sendNotification(channel: NotificationChannelConfig, messa
         return await sendEmail(channel, message);
       case "ntfy":
         return await sendNtfy(channel.url, message);
+      case "pushover":
+        return await sendPushover(channel.pushoverApiToken, channel.pushoverUserKey, message);
     }
   } catch (err) {
     console.error(`[notifications] failed to send via ${channel.type}:`, err);
@@ -99,6 +103,19 @@ export async function sendNtfy(url: string | null, message: NotificationMessage)
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ topic, title: message.title, message: message.body, priority: NTFY_PRIORITY[message.level] }),
+  });
+  return res.ok;
+}
+
+const PUSHOVER_PRIORITY: Record<NotificationLevel, number> = { info: 0, warning: 0, error: 1 };
+
+/** https://pushover.net/api — a form-encoded POST with the application token and the user key. */
+export async function sendPushover(apiToken: string | null, userKey: string | null, message: NotificationMessage): Promise<boolean> {
+  if (!apiToken || !userKey) return false;
+  const res = await fetch("https://api.pushover.net/1/messages.json", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({ token: apiToken, user: userKey, title: message.title, message: message.body, priority: String(PUSHOVER_PRIORITY[message.level]) }).toString(),
   });
   return res.ok;
 }

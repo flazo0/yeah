@@ -72,6 +72,8 @@ function baseChannel(overrides: Partial<NotificationChannelConfig>): Notificatio
     url: null,
     telegramBotToken: null,
     telegramChatId: null,
+    pushoverUserKey: null,
+    pushoverApiToken: null,
     smtpHost: null,
     smtpPort: null,
     smtpSecure: null,
@@ -129,6 +131,22 @@ describe("sendNotification", () => {
     expect(captured!.url).toBe("https://ntfy.example.com");
     expect(captured!.body).toMatchObject({ topic: "meu-topico", title: message.title, message: message.body });
     expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/" }), message)).toBe(false);
+  });
+
+  test("pushover posts a form with the token, user key and a higher priority for errors", async () => {
+    let captured: { url: string; body: string } | undefined;
+    globalThis.fetch = mock(async (url: string, init: RequestInit) => {
+      captured = { url, body: String(init.body) };
+      return new Response(null, { status: 200 });
+    }) as unknown as typeof fetch;
+    const channel = baseChannel({ type: "pushover", pushoverApiToken: "app-token", pushoverUserKey: "user-key" });
+    expect(await sendNotification(channel, { ...message, level: "error" })).toBe(true);
+    expect(captured!.url).toBe("https://api.pushover.net/1/messages.json");
+    const form = new URLSearchParams(captured!.body);
+    expect(form.get("token")).toBe("app-token");
+    expect(form.get("user")).toBe("user-key");
+    expect(form.get("priority")).toBe("1");
+    expect(await sendNotification(baseChannel({ type: "pushover", pushoverApiToken: "x" }), message)).toBe(false);
   });
 
   test("escapes telegram text and returns false on a non-2xx response", async () => {

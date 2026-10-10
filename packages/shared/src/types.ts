@@ -490,7 +490,7 @@ export interface ServiceContainerDto {
   status: string;
 }
 
-export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy";
+export type NotificationChannelType = "discord" | "slack" | "telegram" | "webhook" | "email" | "ntfy" | "pushover";
 
 export type NotificationEventType =
   | "deploy.success"
@@ -502,7 +502,10 @@ export type NotificationEventType =
   | "server.metrics"
   | "tls.expiring"
   | "docker-cleanup.failed"
-  | "api-token.expiring";
+  | "api-token.expiring"
+  | "backup.success"
+  | "task.success"
+  | "docker-cleanup.success";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -515,7 +518,16 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "tls.expiring": "Certificado TLS perto de expirar",
   "docker-cleanup.failed": "Limpeza do Docker falhou",
   "api-token.expiring": "Token de API perto de expirar",
+  "backup.success": "Backup concluído",
+  "task.success": "Tarefa agendada concluída",
+  "docker-cleanup.success": "Limpeza do Docker concluída",
 };
+
+/**
+ * Success events are chatty (every nightly backup, every daily cleanup): a channel with no explicit event
+ * list (events = null, "everything") does NOT receive them — it has to opt in by listing them.
+ */
+export const OPT_IN_NOTIFICATION_EVENTS: readonly NotificationEventType[] = ["backup.success", "task.success", "docker-cleanup.success"];
 
 export interface NotificationChannelDto {
   id: string;

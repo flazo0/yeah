@@ -13,7 +13,7 @@ env:
   SERVICE_PASSWORD_JWTSECRET: "$generate:password"
   SERVICE_PASSWORD_POSTGRESQL: "$generate:password"
   SERVICE_USER_POSTGRESQL: "$generate:user"
-  POSTGRESQL_DATABASE: ""
+  POSTGRESQL_DATABASE: "vikunja_with_postgresql"
 compose: |
   services:
     vikunja:

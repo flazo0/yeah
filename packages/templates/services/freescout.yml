@@ -14,7 +14,7 @@ env:
   SERVICE_URL_FREESCOUT: "http://localhost"
   SERVICE_PASSWORD_ADMIN: "$generate:password"
   SERVICE_PASSWORD_ROOT: "$generate:password"
-  MARIADB_DATABASE: ""
+  MARIADB_DATABASE: "freescout"
 compose: |
   services:
     freescout:

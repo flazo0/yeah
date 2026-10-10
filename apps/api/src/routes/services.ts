@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
 import { resourceTags, services, servers, volumeBackups, type Service } from "@yeah/db";
-import { composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, normalizeHost, parseComposeStack, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
+import { composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, isValidHostname, normalizeHost, parseComposeStack, resourceSlug, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
 import { loadResourceMetricHistory } from "../lib/metricsHistory";
@@ -151,17 +151,27 @@ export const serviceRoutes = new Elysia({
         return { error: overload, code: "server_overloaded" };
       }
 
+      // Like Coolify's generated domains: with an active proxy and a wildcard on the server, a stack comes up
+      // already reachable at <name>.<wildcard>, and its SERVICE_FQDN_*/SERVICE_URL_* variables point there.
+      let autoDomains: StackDomain[] = [];
+      if (stack && server.wildcardDomain && server.proxyStatus === "active") {
+        const candidate = normalizeHost(`${resourceSlug(body.name)}.${server.wildcardDomain}`);
+        const claimed = await claimedHosts(params.teamId);
+        if (isValidHostname(candidate) && !claimed.has(candidate)) autoDomains = [{ service: stack.mainService, domain: candidate, port: stack.port }];
+      }
+
       const [service] = await db
         .insert(services)
         .values({
           teamId: params.teamId,
           environmentId: params.environmentId,
           serverId: body.serverId,
+          domains: autoDomains,
           name: body.name,
           catalogKey: stack ? (stack.templateKey ? `template:${stack.templateKey}` : "custom") : catalogEntry!.key,
           image: stack ? stack.image : catalogEntry!.image,
           port: stack ? stack.port : (body.port ?? catalogEntry!.port),
-          envContent: stack ? stack.envContent : catalogEntry!.envTemplate,
+          envContent: stack ? syncDomainEnv(stack.envContent, autoDomains) : catalogEntry!.envTemplate,
           composeContent: stack?.composeContent ?? null,
           templateKey: stack?.templateKey ?? null,
           mainService: stack?.mainService ?? null,

@@ -19,6 +19,8 @@ const form = ref({
   url: "",
   telegramBotToken: "",
   telegramChatId: "",
+  pushoverUserKey: "",
+  pushoverApiToken: "",
   smtpHost: "",
   smtpPort: 587,
   smtpSecure: false,
@@ -39,6 +41,7 @@ const typeLabel: Record<NotificationChannelType, string> = {
   webhook: i18n.global.t("notifications.webhookGenerico"),
   email: "Email",
   ntfy: "ntfy",
+  pushover: "Pushover",
 };
 
 const EVENT_TYPES = Object.keys(NOTIFICATION_EVENT_LABELS) as NotificationEventType[];
@@ -74,6 +77,7 @@ async function saveEvents(channelId: string) {
 
 const needsUrl = computed(() => form.value.type === "discord" || form.value.type === "slack" || form.value.type === "webhook" || form.value.type === "ntfy");
 const needsTelegram = computed(() => form.value.type === "telegram");
+const needsPushover = computed(() => form.value.type === "pushover");
 const needsEmail = computed(() => form.value.type === "email");
 
 async function loadChannels() {
@@ -98,6 +102,8 @@ async function addChannel() {
       url: needsUrl.value ? form.value.url : undefined,
       telegramBotToken: needsTelegram.value ? form.value.telegramBotToken : undefined,
       telegramChatId: needsTelegram.value ? form.value.telegramChatId : undefined,
+      pushoverUserKey: needsPushover.value ? form.value.pushoverUserKey : undefined,
+      pushoverApiToken: needsPushover.value ? form.value.pushoverApiToken : undefined,
       smtpHost: needsEmail.value ? form.value.smtpHost : undefined,
       smtpPort: needsEmail.value ? form.value.smtpPort : undefined,
       smtpSecure: needsEmail.value ? form.value.smtpSecure : undefined,
@@ -114,6 +120,8 @@ async function addChannel() {
       url: "",
       telegramBotToken: "",
       telegramChatId: "",
+      pushoverUserKey: "",
+      pushoverApiToken: "",
       smtpHost: "",
       smtpPort: 587,
       smtpSecure: false,
@@ -267,6 +275,7 @@ onMounted(loadChannels);
                 <option value="webhook">{{ $t("notifications.webhookGenerico") }}</option>
                 <option value="email">{{ $t("notifications.email") }}</option>
                 <option value="ntfy">{{ $t("notifications.ntfy") }}</option>
+                <option value="pushover">Pushover</option>
               </select>
             </div>
           </div>
@@ -279,6 +288,16 @@ onMounted(loadChannels);
               :placeholder="form.type === 'discord' ? 'https://discord.com/api/webhooks/...' : form.type === 'slack' ? 'https://hooks.slack.com/services/...' : form.type === 'ntfy' ? 'https://ntfy.sh/meu-topico' : 'https://...'"
               required
             />
+          </div>
+          <div v-else-if="needsPushover" class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="notif-po-token">{{ $t("notifications.pushoverApiToken") }}</label>
+              <input id="notif-po-token" v-model="form.pushoverApiToken" class="form-control mono" autocomplete="off" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="notif-po-user">{{ $t("notifications.pushoverUserKey") }}</label>
+              <input id="notif-po-user" v-model="form.pushoverUserKey" class="form-control mono" autocomplete="off" required />
+            </div>
           </div>
           <div v-else-if="needsTelegram" class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">

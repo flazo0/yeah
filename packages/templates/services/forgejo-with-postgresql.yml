@@ -13,7 +13,7 @@ env:
   SERVICE_URL_FORGEJO: "http://localhost"
   FORGEJO__migrations__ALLOWED_DOMAINS: ""
   FORGEJO__migrations__ALLOW_LOCALNETWORKS: ""
-  POSTGRESQL_DATABASE: ""
+  POSTGRESQL_DATABASE: "forgejo_with_postgresql"
   SERVICE_USER_POSTGRESQL: "$generate:user"
   SERVICE_PASSWORD_POSTGRESQL: "$generate:password"
 compose: |
