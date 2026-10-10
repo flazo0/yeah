@@ -1,6 +1,6 @@
 import type { Application, Server } from "@yeah/db";
 import type { EnvEntry, VolumeKind } from "@yeah/shared";
-import { composeProjectName, computeRouting, normalizeHost, PROXY_NETWORK_NAME, traefikLabels, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
+import { composeProjectName, normalizeHost, PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -115,8 +115,11 @@ export function buildRunCommand(
     return base + `-p ${application.port}:${application.port} ` + restart;
   }
 
-  const labels = traefikLabels(containerName, computeRouting(domain, application.extraDomains, application.wwwRedirect), application.port);
-  return base + `--network ${shellQuote(PROXY_NETWORK_NAME)} ` + labels.map((l) => `--label ${shellQuote(l)} `).join("") + restart;
+  // Routing for a plain (non-compose) app lives in the Traefik File Provider (deployApplication writes
+  // ${PROXY_DIR}/dynamic/<name>.yml, applicationRouting rewrites it). Labels here would make the Docker
+  // provider create a SECOND router (`<name>@docker` next to `<name>@file`) that keeps answering for
+  // domains already removed — found testing on a real VPS — so the container opts out of the Docker provider.
+  return base + `--network ${shellQuote(PROXY_NETWORK_NAME)} --label traefik.enable=false ` + restart;
 }
 
 export interface BuildStep {

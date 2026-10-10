@@ -9,7 +9,7 @@ export function buildFetchTrafficMetricsCommand(): string {
 const ROUTER_LINE = /^traefik_router_requests_total\{([^}]*)\}\s+([0-9eE.+-]+)\s*$/;
 const ROUTER_LABEL = /router="([^"]*)"/;
 /** Traefik's docker provider suffixes every router/service name with "@docker" — strip that back off. */
-const APP_ROUTER_NAME = /^(yeah-app-[0-9a-f-]{36})(@docker)?$/;
+const APP_ROUTER_NAME = /^(yeah-app-[0-9a-f-]{36})(@docker|@file)?$/;
 
 /**
  * Sums `traefik_router_requests_total` across every status-code/method line for each `yeah-app-<id>`

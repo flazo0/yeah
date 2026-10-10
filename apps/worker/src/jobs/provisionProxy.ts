@@ -25,9 +25,9 @@ providers:
   docker:
     exposedByDefault: false
     network: ${PROXY_NETWORK_NAME}
-  # Fase 6: a router/service written here for a name that also exists via the Docker provider wins
-  # (higher priority, see traefikDynamicConfig in packages/shared) — lets a domain-only change update
-  # routing without recreating the container. Empty until a deploy or a domain edit writes into it.
+  # Fase 6: routing of plain apps is written here (traefikDynamicConfig in packages/shared), so a
+  # domain-only change updates routing without recreating the container. Empty until a deploy or a
+  # domain edit writes into it. Without addRoutersLabels (metrics below) Traefik exports no per-router counters.
   file:
     directory: /etc/traefik/dynamic
     watch: true
@@ -39,7 +39,7 @@ certificatesResolvers:
       storage: /etc/traefik/acme.json
       httpChallenge:
         entryPoint: web
-${trafficAnalyticsEnabled ? `\nmetrics:\n  prometheus:\n    entryPoint: metrics\n` : ""}`;
+${trafficAnalyticsEnabled ? `\nmetrics:\n  prometheus:\n    entryPoint: metrics\n    addRoutersLabels: true\n` : ""}`;
 }
 
 export function makeProvisionProxyProcessor(publishConnection: Redis) {

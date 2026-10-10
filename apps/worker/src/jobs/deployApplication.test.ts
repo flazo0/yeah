@@ -135,14 +135,14 @@ describe("buildRunCommand", () => {
     expect(cmd).not.toContain("traefik");
   });
 
-  test("uses Traefik labels and the proxy network when a domain is set", () => {
+  test("joins the proxy network without Docker-provider routing labels when a domain is set (File Provider routes it)", () => {
     const app = makeApplication({ port: 4000 });
     const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", "my-app.example.com");
     expect(cmd).not.toContain("-p 4000:4000");
     expect(cmd).toContain("--network");
-    expect(cmd).toContain("traefik.enable=true");
-    expect(cmd).toContain("Host(`my-app.example.com`)");
-    expect(cmd).toContain("loadbalancer.server.port=4000");
+    expect(cmd).toContain("traefik.enable=false");
+    expect(cmd).not.toContain("Host(");
+    expect(cmd).not.toContain("loadbalancer.server.port");
   });
 
   test("includes resource limit flags when set", () => {
@@ -357,12 +357,12 @@ describe("docker compose", () => {
 });
 
 describe("buildRunCommand routing", () => {
-  test("extra domains join the router rule and a www redirect adds the redirect router", () => {
+  test("extra domains and the www redirect are NOT baked into labels (the File Provider config carries them)", () => {
     const app = makeApplication({ port: 4000, extraDomains: ["other.example.com"], wwwRedirect: "root_to_www" });
     const cmd = buildRunCommand(app, "/opt/yeah-apps/app-1", "yeah-app-1", "example.com");
-    expect(cmd).toContain("Host(`www.example.com`) || Host(`other.example.com`)");
-    expect(cmd).toContain("routers.yeah-app-1-redir.rule=Host(`example.com`)");
-    expect(cmd).toContain("redirectregex.permanent=true");
+    expect(cmd).not.toContain("Host(");
+    expect(cmd).not.toContain("redirectregex");
+    expect(cmd).toContain("traefik.enable=false");
   });
   test("a domain typed with a scheme is normalized", () => {
     const app = makeApplication({ domain: "HTTPS://Shop.Example.com/" });
