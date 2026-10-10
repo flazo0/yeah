@@ -160,6 +160,12 @@ export interface ResourceLimits {
   cpuLimit: number | null;
 }
 
+/**
+ * json-file logs are unbounded by default and a chatty container can fill a small VPS disk; every
+ * container yeah starts rotates at 3 x 10 MB (`docker logs` still shows the recent tail).
+ */
+export const LOG_ROTATION_FLAGS = "--log-opt max-size=10m --log-opt max-file=3 ";
+
 /** Builds the `docker run` flags for whichever limits are set — empty string if neither is. */
 export function resourceLimitFlags(limits: ResourceLimits): string {
   const flags: string[] = [];

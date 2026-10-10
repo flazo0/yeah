@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { Database } from "@yeah/db";
-import { buildRunCommand, clickhouseBackupsConfig, healthFlags, healthProbe, healthWaitSeconds, postgresHbaConfig } from "./provisionDatabase.commands";
+import { buildRunCommand, clickhouseBackupsConfig, healthFlags, healthProbe, healthWaitSeconds, memoryTuningArgs, postgresHbaConfig } from "./provisionDatabase.commands";
 
 function db(overrides: Partial<Database> = {}): Database {
   return {
@@ -123,5 +123,25 @@ describe("healthcheck", () => {
   });
   test("the provisioning wait covers start period + all retries", () => {
     expect(healthWaitSeconds(db({ healthIntervalSeconds: 10, healthRetries: 3 }))).toBe(120);
+  });
+});
+
+describe("memory profile and log rotation", () => {
+  test("every database container rotates its logs", () => {
+    expect(buildRunCommand(db(), "c", "v")).toContain("--log-opt max-size=10m --log-opt max-file=3");
+  });
+  test("mysql/mariadb get a small fixed profile, or one sized from the memory limit", () => {
+    expect(memoryTuningArgs(db({ engine: "mysql" }))).toBe(" --performance-schema=OFF --innodb-buffer-pool-size=128M --max-connections=100");
+    expect(memoryTuningArgs(db({ engine: "mariadb", memoryLimitMb: 1000 }))).toContain("--innodb-buffer-pool-size=400M");
+    expect(buildRunCommand(db({ engine: "mysql", image: "mysql:8" }), "c", "v")).toContain("--performance-schema=OFF");
+  });
+  test("mongodb cache is never below WiredTiger's 0.25 GB minimum", () => {
+    expect(memoryTuningArgs(db({ engine: "mongodb" }))).toBe(" --wiredTigerCacheSizeGB=0.25");
+    expect(memoryTuningArgs(db({ engine: "mongodb", memoryLimitMb: 256 }))).toBe(" --wiredTigerCacheSizeGB=0.25");
+    expect(memoryTuningArgs(db({ engine: "mongodb", memoryLimitMb: 4096 }))).toBe(" --wiredTigerCacheSizeGB=1.6");
+  });
+  test("postgres and redis: postgres tuned, redis untouched", () => {
+    expect(memoryTuningArgs(db())).toContain("shared_buffers=64MB");
+    expect(memoryTuningArgs(db({ engine: "redis" }))).toBe("");
   });
 });

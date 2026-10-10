@@ -1,5 +1,5 @@
 import type { Server, Service } from "@yeah/db";
-import { composeProjectName, findServiceCatalogEntry, PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote } from "@yeah/shared";
+import { composeProjectName, findServiceCatalogEntry, LOG_ROTATION_FLAGS, PROXY_NETWORK_NAME, resourceLimitFlags, shellQuote } from "@yeah/shared";
 
 // Pure command-building logic, kept separate from provisionService.ts's SSH execution for the
 // same reason as deployApplication.commands.ts — see that file's comment.
@@ -21,6 +21,7 @@ export function buildRunCommand(service: Service, containerName: string, envFile
   const volumeFlag = catalogEntry?.volumePath ? `-v ${shellQuote(`${containerName}-data`)}:${shellQuote(catalogEntry.volumePath)} ` : "";
   const base =
     `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(envFilePath)} ${volumeFlag}` +
+    LOG_ROTATION_FLAGS +
     resourceLimitFlags(service);
   const restart = `--restart unless-stopped ${shellQuote(service.image)}`;
 

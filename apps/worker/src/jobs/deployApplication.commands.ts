@@ -1,6 +1,6 @@
 import type { Application, Server } from "@yeah/db";
 import type { EnvEntry, VolumeKind } from "@yeah/shared";
-import { composeProjectName, normalizeHost, PROXY_NETWORK_NAME, isSafePublishDirectory, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
+import { composeProjectName, normalizeHost, PROXY_NETWORK_NAME, isSafePublishDirectory, LOG_ROTATION_FLAGS, parseDockerOptions, resourceLimitFlags, resourceSlug, shellQuote, volumeFlags } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from deployApplication.ts's actual
 // SSH execution — importing @yeah/ssh (even just for shellQuote, which has zero SSH dependency of
@@ -105,6 +105,7 @@ export function buildRunCommand(
 ): string {
   const base =
     `docker run -d --name ${shellQuote(containerName)} --env-file ${shellQuote(`${appDir}/.env`)} ` +
+    LOG_ROTATION_FLAGS +
     resourceLimitFlags(application) +
     volumeFlags(volumes, application.id) +
     healthFlags(application) +

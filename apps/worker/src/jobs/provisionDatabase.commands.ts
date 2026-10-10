@@ -1,5 +1,5 @@
 import type { Database } from "@yeah/db";
-import { DATABASE_ENGINES, resourceLimitFlags, shellQuote } from "@yeah/shared";
+import { DATABASE_ENGINES, LOG_ROTATION_FLAGS, resourceLimitFlags, shellQuote } from "@yeah/shared";
 
 // Pure command-building logic, kept separate from provisionDatabase.ts's SSH execution for the
 // same reason as deployApplication.commands.ts — see that file's comment.
@@ -89,13 +89,40 @@ export function healthWaitSeconds(database: Database): number {
   return 60 + database.healthIntervalSeconds * database.healthRetries + 30;
 }
 
+/**
+ * Memory-conscious server flags. Measured on a 1 vCPU / 4 GB VPS with stock settings: MySQL 8 sat at
+ * ~440 MB idle (performance_schema + a large buffer pool) and MongoDB at ~150 MB. With a container
+ * memory limit the caches are sized from it (about 40%); without one a small fixed profile applies.
+ */
+export function memoryTuningArgs(database: Database): string {
+  const limit = database.memoryLimitMb;
+  switch (database.engine) {
+    case "mysql":
+    case "mariadb": {
+      const pool = limit ? Math.max(32, Math.floor(limit * 0.4)) : 128;
+      return ` --performance-schema=OFF --innodb-buffer-pool-size=${pool}M --max-connections=100`;
+    }
+    case "mongodb": {
+      // WiredTiger's cache cannot go below 0.25 GB.
+      const gb = limit ? Math.max(0.25, Math.round(((limit * 0.4) / 1024) * 100) / 100) : 0.25;
+      return ` --wiredTigerCacheSizeGB=${gb}`;
+    }
+    case "postgresql": {
+      const shared = limit ? Math.max(16, Math.floor(limit * 0.25)) : 64;
+      return ` -c shared_buffers=${shared}MB -c max_connections=100`;
+    }
+    default:
+      return "";
+  }
+}
+
 export function buildRunCommand(database: Database, containerName: string, volumeName: string, options?: RunOptions): string {
   const info = DATABASE_ENGINES[database.engine];
   const internal = info.internalPort;
   const publish = database.publicAccess ? `-p ${database.port}:${internal} ` : "";
   const network = options ? `--network ${shellQuote(options.networkName)} --network-alias ${shellQuote(options.alias)} ` : "";
   const certs = database.ssl ? `-v ${shellQuote(dbCertDir(database.id))}:/certs:ro ` : "";
-  const base = `docker run -d --name ${shellQuote(containerName)} ` + resourceLimitFlags(database) + network + healthFlags(database);
+  const base = `docker run -d --name ${shellQuote(containerName)} ` + LOG_ROTATION_FLAGS + resourceLimitFlags(database) + network + healthFlags(database);
   const restart = `--restart unless-stopped ${shellQuote(database.image)}`;
   const password = shellQuote(database.password);
 
@@ -110,6 +137,7 @@ export function buildRunCommand(database: Database, containerName: string, volum
         certs +
         `-v ${shellQuote(volumeName)}:/var/lib/postgresql/data ` +
         restart +
+        memoryTuningArgs(database) +
         (database.ssl ? " -c ssl=on -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key -c hba_file=/certs/pg_hba.conf" : "")
       );
     case "mysql":
@@ -123,6 +151,7 @@ export function buildRunCommand(database: Database, containerName: string, volum
         certs +
         `-v ${shellQuote(volumeName)}:/var/lib/mysql ` +
         restart +
+        memoryTuningArgs(database) +
         (database.ssl ? " --ssl-cert=/certs/server.crt --ssl-key=/certs/server.key --require-secure-transport=ON" : "")
       );
     case "mariadb":
@@ -136,6 +165,7 @@ export function buildRunCommand(database: Database, containerName: string, volum
         certs +
         `-v ${shellQuote(volumeName)}:/var/lib/mysql ` +
         restart +
+        memoryTuningArgs(database) +
         (database.ssl ? " --ssl-cert=/certs/server.crt --ssl-key=/certs/server.key --require-secure-transport=ON" : "")
       );
     case "redis":
@@ -183,6 +213,7 @@ export function buildRunCommand(database: Database, containerName: string, volum
         certs +
         `-v ${shellQuote(volumeName)}:/data/db ` +
         restart +
+        memoryTuningArgs(database) +
         (database.ssl ? " --tlsMode requireTLS --tlsCertificateKeyFile /certs/server.pem --tlsCAFile /certs/server.crt --tlsAllowConnectionsWithoutCertificates" : "")
       );
     case "clickhouse":
