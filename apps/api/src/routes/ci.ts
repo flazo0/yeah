@@ -17,7 +17,8 @@ import { applicationDeployQueue, databaseBackupQueue } from "../lib/queue";
  * a resource is looked up directly by (teamId, id), which `applications`/`databases`/`services` all
  * support since each row already carries its own teamId.
  */
-export const ciRoutes = new Elysia({ prefix: "/teams/:teamId/ci" })
+const makeCiRoutes = (prefix: string) =>
+  new Elysia({ prefix: prefix as "/teams/:teamId/ci" }) // cast keeps the :teamId param typing; the runtime prefix differs for v1
   .derive(async ({ headers, params }) => {
     const token = await resolveApiToken(headers.authorization);
     if (!token || token.teamId !== params.teamId) return { ci: { error: "unauthorized" as const, status: 401 } };
@@ -110,3 +111,8 @@ export const ciRoutes = new Elysia({ prefix: "/teams/:teamId/ci" })
     await databaseBackupQueue.add("backup", { scheduleId: schedule.id, manual: true });
     return { queued: true };
   });
+
+/** Original path, kept so existing scripts/CLI keep working. */
+export const ciRoutes = makeCiRoutes("/teams/:teamId/ci");
+/** Versioned alias: same handlers under `/api/v1/teams/:teamId/...` (documented in the OpenAPI spec). */
+export const apiV1Routes = makeCiRoutes("/api/v1/teams/:teamId");

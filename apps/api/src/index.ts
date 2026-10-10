@@ -30,7 +30,8 @@ import { serviceTemplateRoutes } from "./routes/serviceTemplates";
 import { gitSourceRoutes } from "./routes/gitSources";
 import { gitSourceWebhookRoutes } from "./routes/gitSourceWebhook";
 import { terminalRoutes } from "./routes/terminal";
-import { ciRoutes } from "./routes/ci";
+import { ciRoutes, apiV1Routes } from "./routes/ci";
+import { buildOpenApiSpec, SWAGGER_HTML } from "./lib/openapi";
 import { apiTokenRoutes } from "./routes/apiTokens";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
@@ -94,6 +95,12 @@ const app = new Elysia()
   .use(gitSourceWebhookRoutes)
   .use(terminalRoutes)
   .use(ciRoutes)
+  .use(apiV1Routes)
+  .get("/api/v1/openapi.json", () => buildOpenApiSpec())
+  .get("/swagger", ({ set }) => {
+    set.headers["content-type"] = "text/html; charset=utf-8";
+    return SWAGGER_HTML;
+  })
   .use(apiTokenRoutes)
   .listen(port);
 

@@ -814,3 +814,7 @@ Entrando na Fase 7. O primeiro item ("tokens de API pessoais") é o que todo o r
 `apps/cli`: cliente fino e sem dependências sobre a API de CI (`list apps|databases|services`, `deploy <id> [--force]`, `backup <id>`), configurado por `YEAH_URL`/`YEAH_TOKEN`/`YEAH_TEAM`. A lógica fica em `run.ts` com `fetch` injetável, então os 3 testes unitários cobrem sem rede: header Bearer, URL, `--force`, erro da API, 429 com `Retry-After` e env faltando. Documentei também o rate limit (`429` + `Retry-After`) em `docs/API.md`.
 
 **Não testado**: contra um painel de verdade e o binário compilado com `bun build --compile`. Ver [[feedback-no-local-docker-testing]]. Allowlist de IP segue em aberto.
+
+## Fase 7 — `/api/v1` + OpenAPI + Swagger
+
+As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): no caminho antigo (`/teams/:teamId/ci`, usado pela CLI) e em `/api/v1/teams/:teamId`. Spec OpenAPI 3 escrita à mão em `openapi.ts` (evitei adicionar `@elysiajs/swagger` — gerar do esquema das rotas exigiria tipar todas e expor as de sessão), servida em `/api/v1/openapi.json`; `/swagger` devolve um HTML mínimo com Swagger UI via CDN. Honesto: o v1 ainda é só a superfície de CI, não "todos os recursos". **Não testado** em runtime/navegador ([[feedback-no-local-docker-testing]]). 413 testes, typecheck ok.
