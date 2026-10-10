@@ -49,12 +49,40 @@
     "grid": "Grid",
     "openMenu": "Open menu",
     "expandMenu": "Expand menu",
-    "collapseMenu": "Collapse menu"
+    "collapseMenu": "Collapse menu",
+    "cancel": "Cancel"
   },
   "search": {
     "label": "Search",
     "global": "Global search",
     "placeholder": "Search projects, servers, resources and pages",
     "empty": "Nothing found."
+  },
+  "projects": {
+    "title": "Projects",
+    "subtitle": "Each project groups environments (production, staging...) with their own resources.",
+    "new": "New project",
+    "search": "Search projects",
+    "colProject": "Project",
+    "colEnvironments": "Environments",
+    "colResources": "Resources",
+    "colCreated": "Created",
+    "changeIcon": "Change icon",
+    "environmentsOf": "Project environments",
+    "addResource": "Add resource",
+    "sortName": "Sort: name",
+    "sortRecent": "Sort: newest",
+    "sortResources": "Sort: most resources",
+    "sortBy": "Sort by",
+    "name": "Name",
+    "namePlaceholder": "e.g. My SaaS",
+    "createAction": "Create project",
+    "noMatch": "No project matches the search.",
+    "empty": "No projects yet. Create the first one with the button above.",
+    "iconOf": "Icon of {name}",
+    "loadFailed": "failed to load projects",
+    "createFailed": "failed to create project",
+    "iconFailed": "failed to change the icon",
+    "summary": "{env} env · {count} resource | {env} env · {count} resources"
   }
 }

@@ -49,12 +49,40 @@
     "grid": "Grade",
     "openMenu": "Abrir menu",
     "expandMenu": "Expandir menu",
-    "collapseMenu": "Recolher menu"
+    "collapseMenu": "Recolher menu",
+    "cancel": "Cancelar"
   },
   "search": {
     "label": "Buscar",
     "global": "Busca global",
     "placeholder": "Buscar projetos, servidores, recursos e páginas",
     "empty": "Nada encontrado."
+  },
+  "projects": {
+    "title": "Projetos",
+    "subtitle": "Cada projeto agrupa ambientes (production, staging...) com seus próprios recursos.",
+    "new": "Novo projeto",
+    "search": "Buscar projetos",
+    "colProject": "Projeto",
+    "colEnvironments": "Ambientes",
+    "colResources": "Recursos",
+    "colCreated": "Criado em",
+    "changeIcon": "Trocar ícone",
+    "environmentsOf": "Ambientes do projeto",
+    "addResource": "Adicionar recurso",
+    "sortName": "Ordenar: nome",
+    "sortRecent": "Ordenar: mais recentes",
+    "sortResources": "Ordenar: mais recursos",
+    "sortBy": "Ordenar por",
+    "name": "Nome",
+    "namePlaceholder": "Ex: Meu SaaS",
+    "createAction": "Criar projeto",
+    "noMatch": "Nenhum projeto bate com a busca.",
+    "empty": "Nenhum projeto ainda. Crie o primeiro pelo botão acima.",
+    "iconOf": "Ícone de {name}",
+    "loadFailed": "falha ao carregar projetos",
+    "createFailed": "falha ao criar projeto",
+    "iconFailed": "falha ao trocar o ícone",
+    "summary": "{env} env · {count} recurso | {env} env · {count} recursos"
   }
 }

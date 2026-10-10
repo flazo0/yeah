@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { PROJECT_ICONS, type EnvironmentDto, type ProjectDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
@@ -8,6 +9,7 @@ import ViewToggle from "../components/ViewToggle.vue";
 import ListPager from "../components/ListPager.vue";
 import Modal from "../components/Modal.vue";
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const teamId = route.params.teamId as string;
@@ -40,7 +42,7 @@ const filtered = computed(() => {
 const paged = computed(() => filtered.value.slice((page.value - 1) * pageSize.value, page.value * pageSize.value));
 
 function summary(project: ProjectDto): string {
-  return `${project.environmentCount} env · ${project.resourceCount} ${project.resourceCount === 1 ? "recurso" : "recursos"}`;
+  return t("projects.summary", { env: project.environmentCount, count: project.resourceCount }, project.resourceCount);
 }
 
 async function load() {
@@ -49,7 +51,7 @@ async function load() {
     const res = await api.get<{ projects: ProjectDto[] }>(`/teams/${teamId}/projects`);
     projects.value = res.projects;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar projetos";
+    error.value = err instanceof ApiError ? err.message : t("projects.loadFailed");
   } finally {
     loading.value = false;
   }
@@ -65,7 +67,7 @@ async function setIcon(icon: string) {
     project.icon = icon;
     iconProject.value = null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao trocar o ícone";
+    error.value = err instanceof ApiError ? err.message : t("projects.iconFailed");
   }
 }
 
@@ -79,7 +81,7 @@ async function createProject() {
     name.value = "";
     showCreate.value = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar projeto";
+    error.value = err instanceof ApiError ? err.message : t("projects.createFailed");
   } finally {
     creating.value = false;
   }
@@ -108,12 +110,12 @@ onMounted(load);
   <div>
     <div class="page-header">
       <div>
-        <h1>Projetos</h1>
-        <p>Cada projeto agrupa ambientes (production, staging...) com seus próprios recursos.</p>
+        <h1>{{ t("projects.title") }}</h1>
+        <p>{{ t("projects.subtitle") }}</p>
       </div>
       <button type="button" class="btn" @click="showCreate = true">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Novo projeto
+        {{ t("projects.new") }}
       </button>
     </div>
 
@@ -122,20 +124,20 @@ onMounted(load);
     <div class="rtable-toolbar">
       <div class="rtable-search input-icon">
         <span class="material-symbols-outlined">search</span>
-        <input v-model="search" class="form-control" type="search" placeholder="Buscar projetos" aria-label="Buscar projetos" />
+        <input v-model="search" class="form-control" type="search" :placeholder="t('projects.search')" :aria-label="t('projects.search')" />
       </div>
       <div class="rtable-filters">
-        <select v-model="sortBy" class="form-control" aria-label="Ordenar por">
-          <option value="name">Ordenar: nome</option>
-          <option value="recent">Ordenar: mais recentes</option>
-          <option value="resources">Ordenar: mais recursos</option>
+        <select v-model="sortBy" class="form-control" :aria-label="t('projects.sortBy')">
+          <option value="name">{{ t("projects.sortName") }}</option>
+          <option value="recent">{{ t("projects.sortRecent") }}</option>
+          <option value="resources">{{ t("projects.sortResources") }}</option>
         </select>
       </div>
       <ViewToggle v-model="view" storage-key="yeah:projects-view" />
     </div>
 
-    <PageState :loading="loading" :empty="projects.length === 0" empty-icon="layers" empty-text="Nenhum projeto ainda. Crie o primeiro pelo botão acima.">
-      <div v-if="filtered.length === 0" class="empty-state">Nenhum projeto bate com a busca.</div>
+    <PageState :loading="loading" :empty="projects.length === 0" empty-icon="layers" :empty-text="t('projects.empty')">
+      <div v-if="filtered.length === 0" class="empty-state">{{ t("projects.noMatch") }}</div>
 
       <div v-else-if="view === 'grid'" class="project-grid">
         <div v-for="project in paged" :key="project.id" class="project-card" tabindex="0" @click="open(project)" @keydown.enter="open(project)">
@@ -146,13 +148,13 @@ onMounted(load);
           <div class="project-card-foot">
             <span class="muted">{{ summary(project) }}</span>
             <span class="project-card-actions">
-              <button type="button" class="card-icon-btn" title="Adicionar recurso" aria-label="Adicionar recurso" @click.stop="quickAdd(project)">
+              <button type="button" class="card-icon-btn" :title="t('projects.addResource')" :aria-label="t('projects.addResource')" @click.stop="quickAdd(project)">
                 <span class="material-symbols-outlined">add</span>
               </button>
-              <button type="button" class="card-icon-btn" title="Trocar ícone" aria-label="Trocar ícone" @click.stop="iconProject = project">
+              <button type="button" class="card-icon-btn" :title="t('projects.changeIcon')" :aria-label="t('projects.changeIcon')" @click.stop="iconProject = project">
                 <span class="material-symbols-outlined">palette</span>
               </button>
-              <button type="button" class="card-icon-btn" title="Ambientes do projeto" aria-label="Ambientes do projeto" @click.stop="open(project)">
+              <button type="button" class="card-icon-btn" :title="t('projects.environmentsOf')" :aria-label="t('projects.environmentsOf')" @click.stop="open(project)">
                 <span class="material-symbols-outlined">settings</span>
               </button>
             </span>
@@ -164,23 +166,23 @@ onMounted(load);
         <table class="rtable">
           <thead>
             <tr>
-              <th>Projeto</th>
-              <th>Ambientes</th>
-              <th>Recursos</th>
-              <th>Criado em</th>
+              <th>{{ t("projects.colProject") }}</th>
+              <th>{{ t("projects.colEnvironments") }}</th>
+              <th>{{ t("projects.colResources") }}</th>
+              <th>{{ t("projects.colCreated") }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="project in paged" :key="project.id">
-              <td data-label="Projeto">
+              <td :data-label="t('projects.colProject')">
                 <RouterLink :to="`/teams/${teamId}/projects/${project.id}`" class="rtable-name">
                   <span class="rtable-icon"><span class="material-symbols-outlined">{{ project.icon }}</span></span>
                   <strong>{{ project.name }}</strong>
                 </RouterLink>
               </td>
-              <td data-label="Ambientes">{{ project.environmentCount }}</td>
-              <td data-label="Recursos">{{ project.resourceCount }}</td>
-              <td data-label="Criado em">{{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</td>
+              <td :data-label="t('projects.colEnvironments')">{{ project.environmentCount }}</td>
+              <td :data-label="t('projects.colResources')">{{ project.resourceCount }}</td>
+              <td :data-label="t('projects.colCreated')">{{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</td>
             </tr>
           </tbody>
         </table>
@@ -189,7 +191,7 @@ onMounted(load);
       <ListPager v-if="filtered.length > 0" v-model:page="page" v-model:page-size="pageSize" :total="filtered.length" :sizes="[12, 24, 48]" size-key="yeah:projects-page-size" />
     </PageState>
 
-    <Modal v-if="iconProject" :title="`Ícone de ${iconProject.name}`" @close="iconProject = null">
+    <Modal v-if="iconProject" :title="t('projects.iconOf', { name: iconProject.name })" @close="iconProject = null">
       <div class="btn-row" style="flex-wrap: wrap">
         <button
           v-for="icon in PROJECT_ICONS"
@@ -206,16 +208,16 @@ onMounted(load);
       </div>
     </Modal>
 
-    <Modal v-if="showCreate" title="Novo projeto" @close="showCreate = false">
+    <Modal v-if="showCreate" :title="t('projects.new')" @close="showCreate = false">
       <form @submit.prevent="createProject">
         <div class="form-group">
-          <label for="project-name">Nome</label>
-          <input id="project-name" v-model="name" class="form-control" placeholder="Ex: Meu SaaS" required autofocus />
+          <label for="project-name">{{ t("projects.name") }}</label>
+          <input id="project-name" v-model="name" class="form-control" :placeholder="t('projects.namePlaceholder')" required autofocus />
         </div>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="creating">{{ creating ? "criando..." : "Criar projeto" }}</button>
-          <button type="button" class="btn btn-secondary" @click="showCreate = false">Cancelar</button>
+          <button type="submit" class="btn" :disabled="creating">{{ creating ? t("common.creating") : t("projects.createAction") }}</button>
+          <button type="button" class="btn btn-secondary" @click="showCreate = false">{{ t("common.cancel") }}</button>
         </div>
       </form>
     </Modal>
