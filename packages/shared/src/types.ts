@@ -51,6 +51,8 @@ export interface TeamInvitationDto {
 
 export interface ServerDto {
   id: string;
+  /** True for the machine the panel itself runs on ("Servidor local"). */
+  isPlatformHost: boolean;
   teamId: string;
   name: string;
   host: string;

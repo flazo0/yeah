@@ -12,6 +12,7 @@ import { assertMember } from "../lib/access";
 function toServerDto(server: Server): ServerDto {
   return {
     id: server.id,
+    isPlatformHost: server.isPlatformHost,
     teamId: server.teamId,
     name: server.name,
     host: server.host,

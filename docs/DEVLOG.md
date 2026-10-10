@@ -858,3 +858,7 @@ Novo tipo de canal `ntfy` (enum do Postgres + `ALTER TYPE ... ADD VALUE`, migra�
 ## Fase 5 (pendência antiga) — logs estruturados
 
 Item que ficou esquecido na Fase 5. Logger próprio mínimo (sem pino/winston: zero dependência e testável com sink injetável). Correlação: `requestId` na API (propagado via header `x-request-id`) e `jobId`/`queue` no worker. Não troquei os ~100 `console.*` espalhados — só pontos de entrada, pra não arriscar regressão sem poder subir os serviços ([[feedback-no-local-docker-testing]]).
+
+## Fase 9 — pool configurável e UX local-first
+
+`DB_POOL_MAX` opcional em `createDb` (sem valor = idêntico ao antes). `install.sh` explica a pergunta de onde o painel roda. `ServerDto.isPlatformHost`: a tela de novo recurso pré-seleciona o servidor local conectado e o marca "(esta máquina)". Falta o botão "Promover pra servidor real". Sem testes de runtime ([[feedback-no-local-docker-testing]]).

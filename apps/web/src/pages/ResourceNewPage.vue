@@ -202,6 +202,9 @@ async function load() {
     const res = await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`);
     teamServers.value = res.servers;
     serverId.value = (res.servers.find((s) => s.status === "connected") ?? res.servers[0])?.id ?? "";
+    // "Local first": when the panel host is registered and healthy it is the default target — no extra step to try things on this machine.
+    const local = res.servers.find((s) => s.isPlatformHost && s.status === "connected");
+    if (local) serverId.value = local.id;
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
   } finally {
@@ -505,7 +508,7 @@ onMounted(() => {
             <option v-for="c in templateCategories" :key="c" :value="c">{{ CATEGORY_LABELS[c] ?? c }}</option>
           </select>
           <select v-model="serverId" class="form-control" aria-label="Servidor de destino">
-            <option v-for="s in teamServers" :key="s.id" :value="s.id">Servidor: {{ s.name }}</option>
+            <option v-for="s in teamServers" :key="s.id" :value="s.id">Servidor: {{ s.name }}{{ s.isPlatformHost ? " (esta máquina)" : "" }}</option>
           </select>
         </div>
       </div>

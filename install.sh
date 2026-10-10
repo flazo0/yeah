@@ -196,7 +196,11 @@ else
     read -rp "Porta pra expor o dashboard web [${DEFAULT_WEB_PORT}]: " WEB_PORT < /dev/tty 2>/dev/null || true
     if [ -z "$CONTROL_PLANE_ONLY" ]; then
       ANSWER=""
-      read -rp "Esta máquina também vai rodar os apps (servidor de deploy)? Responda 'n' pra instalar só o painel [S/n]: " ANSWER < /dev/tty 2>/dev/null || true
+      printf '
+%s
+%s
+' "Onde o painel vai rodar?" "  S = nesta mesma máquina, que também hospeda os apps (mais simples)  |  n = painel separado: aqui só o painel, os apps ficam em outras VPS (poupa RAM/CPU do servidor de apps)" >&2
+      read -rp "Esta máquina também vai rodar os apps (servidor de deploy)? [S/n]: " ANSWER < /dev/tty 2>/dev/null || true
       case "$ANSWER" in [nN]*) CONTROL_PLANE_ONLY=1 ;; esac
     fi
     if [ -z "$CF_TUNNEL_TOKEN" ]; then
