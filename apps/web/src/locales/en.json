@@ -1,0 +1,39 @@
+{
+  "nav": {
+    "workspace": "Workspace",
+    "dashboard": "Dashboard",
+    "projects": "Projects",
+    "infrastructure": "Infrastructure",
+    "servers": "Servers",
+    "sources": "Sources",
+    "keysTokens": "Keys & Tokens",
+    "variables": "Variables",
+    "storage": "Storage",
+    "registries": "Registries",
+    "manage": "Manage",
+    "team": "Team",
+    "notifications": "Notifications",
+    "logDrains": "Log Drains",
+    "updates": "Updates",
+    "settings": "Settings",
+    "themeDark": "dark theme",
+    "themeLight": "light theme"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Welcome back! Access your platform.",
+    "email": "Email",
+    "password": "Password",
+    "passwordPlaceholder": "Your password",
+    "code": "Verification code",
+    "codePlaceholder": "123456 or recovery code",
+    "submit": "Sign in",
+    "submitting": "signing in...",
+    "failed": "could not sign in"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Preferences for this instance and your account.",
+    "language": "Language"
+  }
+}

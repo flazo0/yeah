@@ -5,6 +5,7 @@ import EditorWorker from "monaco-editor/editor/editor.worker?worker";
 import App from "./App.vue";
 import { router } from "./router";
 import { initTheme } from "./lib/theme";
+import { i18n } from "./lib/i18n";
 import "./styles/main.css";
 
 // Monaco needs a worker for tokenization/layout even for plain-text buffers.
@@ -39,4 +40,4 @@ monaco.editor.defineTheme("yeah-dark", {
 // Applied before mount to avoid a flash of the wrong theme on load.
 initTheme();
 
-createApp(App).use(createPinia()).use(router).mount("#app");
+createApp(App).use(createPinia()).use(router).use(i18n).mount("#app");

@@ -850,3 +850,7 @@ Novo tipo de canal `ntfy` (enum do Postgres + `ALTER TYPE ... ADD VALUE`, migra�
 ## Fase 8 — criar VPS pela Hetzner
 
 `lib/hetzner.ts`: ssh key → firewall (22/80/443) → server, na ordem, com a chave pública de Keys & Tokens. A rota `POST /servers/create-hetzner` registra o servidor com o IPv4 devolvido, reaproveitando a chave privada guardada. Decisão: o token da Hetzner não é persistido (menos um segredo pra proteger; custa só digitar de novo). Se o registro local falhar depois da máquina existir, a mensagem informa o IP pra adicionar à mão — não tento apagar a máquina automaticamente (destrutivo e custa dinheiro errar). Só Hetzner; Vultr/DO ficam em aberto. **Não testado** contra a API real ([[feedback-no-local-docker-testing]]).
+
+## Fase 8 — i18n (infra + primeiras telas)
+
+`vue-i18n` 10 em modo composition. Escolhi migrar só o esqueleto (sidebar, login, configurações) e deixar o resto em PT com fallback — migrar ~40 páginas de uma vez, sem como conferir visualmente, geraria regressões silenciosas. Teste de paridade de chaves pt/en + `pickLocale`. Item segue aberto até as demais páginas migrarem. **Não testado** no navegador ([[feedback-no-local-docker-testing]]).

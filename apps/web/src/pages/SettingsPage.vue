@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { api, ApiError } from "../lib/api";
+import { LOCALES, setLocale, type Locale } from "../lib/i18n";
 import { isDark, toggleTheme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 
+const { t, locale } = useI18n();
 const route = useRoute();
 const auth = useAuthStore();
 const teamId = (route.params.teamId as string | undefined) ?? auth.teams[0]?.id;
@@ -68,8 +71,8 @@ onMounted(async () => {
   <div>
     <div class="page-header">
       <div>
-        <h1>Configurações</h1>
-        <p>Preferências desta instância e da sua conta.</p>
+        <h1>{{ t("settings.title") }}</h1>
+        <p>{{ t("settings.subtitle") }}</p>
       </div>
     </div>
 
@@ -121,6 +124,19 @@ onMounted(async () => {
           <div><dt>Nome</dt><dd>{{ auth.user?.name || "-" }}</dd></div>
           <div><dt>E-mail</dt><dd>{{ auth.user?.email }}</dd></div>
         </dl>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">translate</span>
+        {{ t("settings.language") }}
+      </div>
+      <div class="card-body">
+        <label for="locale-select" class="hint">{{ t("settings.language") }}</label>
+        <select id="locale-select" class="form-control" :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as Locale)">
+          <option v-for="loc in LOCALES" :key="loc" :value="loc">{{ loc === "pt" ? "Português" : "English" }}</option>
+        </select>
       </div>
     </div>
 

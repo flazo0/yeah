@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "../stores/auth";
 import { ApiError } from "../lib/api";
 import Logo from "../components/Logo.vue";
 
+const { t } = useI18n();
 const email = ref("");
 const password = ref("");
 const code = ref("");
@@ -22,7 +24,7 @@ async function submit() {
     router.push("/dashboard");
   } catch (err) {
     if (err instanceof ApiError && err.code === "totp_required") needsCode.value = true;
-    error.value = err instanceof ApiError ? err.message : "não foi possível entrar";
+    error.value = err instanceof ApiError ? err.message : t("login.failed");
   } finally {
     loading.value = false;
   }
@@ -36,12 +38,12 @@ async function submit() {
         <Logo :height="44" />
       </div>
       <div class="auth-form-head">
-        <h1>Entrar</h1>
-        <p>Bem-vindo de volta! Acesse sua plataforma.</p>
+        <h1>{{ t("login.title") }}</h1>
+        <p>{{ t("login.subtitle") }}</p>
       </div>
       <form @submit.prevent="submit">
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">{{ t("login.email") }}</label>
           <div class="input-icon">
             <span class="material-symbols-outlined">mail</span>
             <input
@@ -57,7 +59,7 @@ async function submit() {
           </div>
         </div>
         <div class="form-group">
-          <label for="password">Senha</label>
+          <label for="password">{{ t("login.password") }}</label>
           <div class="input-icon">
             <span class="material-symbols-outlined">lock</span>
             <input
@@ -65,19 +67,19 @@ async function submit() {
               v-model="password"
               type="password"
               class="form-control form-control-lg"
-              placeholder="Sua senha"
+              :placeholder="t('login.passwordPlaceholder')"
               required
               autocomplete="current-password"
             />
           </div>
         </div>
         <div v-if="needsCode" class="form-group">
-          <label for="totp-code">Código de verificação</label>
-          <input id="totp-code" v-model="code" class="form-control form-control-lg" placeholder="123456 ou código de recuperação" autocomplete="one-time-code" autofocus />
+          <label for="totp-code">{{ t("login.code") }}</label>
+          <input id="totp-code" v-model="code" class="form-control form-control-lg" :placeholder="t('login.codePlaceholder')" autocomplete="one-time-code" autofocus />
         </div>
         <div v-if="error" class="alert alert-error">{{ error }}</div>
         <button type="submit" class="btn btn-lg btn-block" :disabled="loading">
-          {{ loading ? "entrando..." : "Entrar" }}
+          {{ loading ? t("login.submitting") : t("login.submit") }}
         </button>
       </form>
     </div>

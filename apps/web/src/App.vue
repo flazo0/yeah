@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
 import { useAuthStore } from "./stores/auth";
 import { isDark, toggleTheme } from "./lib/theme";
 import Logo from "./components/Logo.vue";
@@ -8,6 +9,7 @@ import AccountMenu from "./components/AccountMenu.vue";
 import TeamSwitcher from "./components/TeamSwitcher.vue";
 import GlobalSearch from "./components/GlobalSearch.vue";
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const route = useRoute();
 
@@ -93,65 +95,65 @@ const breadcrumb = computed(() => {
       </div>
       <div class="sidebar-search"><GlobalSearch :team-id="teamId ?? auth.teams[0]?.id ?? null" /></div>
       <nav class="sidebar-nav">
-        <div class="sidebar-section">Workspace</div>
+        <div class="sidebar-section">{{ t("nav.workspace") }}</div>
         <RouterLink to="/dashboard" class="sidebar-link" :class="{ active: route.path === '/dashboard' }">
           <span class="material-symbols-outlined">space_dashboard</span>
-          Dashboard
+          {{ t("nav.dashboard") }}
         </RouterLink>
 
         <template v-if="teamId">
           <RouterLink :to="`/teams/${teamId}`" class="sidebar-link" :class="{ active: isProjectsRoute }">
             <span class="material-symbols-outlined">layers</span>
-            Projetos
+            {{ t("nav.projects") }}
           </RouterLink>
 
-          <div class="sidebar-section">Infraestrutura</div>
+          <div class="sidebar-section">{{ t("nav.infrastructure") }}</div>
           <RouterLink :to="`/teams/${teamId}/servers`" class="sidebar-link" :class="{ active: isServersRoute }">
             <span class="material-symbols-outlined">dns</span>
-            Servidores
+            {{ t("nav.servers") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/sources`" class="sidebar-link" :class="{ active: isSourcesRoute }">
             <span class="material-symbols-outlined">hub</span>
-            Fontes
+            {{ t("nav.sources") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/keys-tokens`" class="sidebar-link" :class="{ active: isKeysTokensRoute }">
             <span class="material-symbols-outlined">key</span>
-            Keys &amp; Tokens
+            {{ t("nav.keysTokens") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/variables`" class="sidebar-link" :class="{ active: isVariablesRoute }">
             <span class="material-symbols-outlined">data_object</span>
-            Variáveis
+            {{ t("nav.variables") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
             <span class="material-symbols-outlined">cloud</span>
-            Armazenamento
+            {{ t("nav.storage") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/registries`" class="sidebar-link" :class="{ active: isRegistriesRoute }">
             <span class="material-symbols-outlined">inventory_2</span>
-            Registries
+            {{ t("nav.registries") }}
           </RouterLink>
 
 
-          <div class="sidebar-section">Gerenciar</div>
+          <div class="sidebar-section">{{ t("nav.manage") }}</div>
           <RouterLink :to="`/teams/${teamId}/team`" class="sidebar-link" :class="{ active: isTeamRoute }">
             <span class="material-symbols-outlined">group</span>
-            Time
+            {{ t("nav.team") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/notifications`" class="sidebar-link" :class="{ active: isNotificationsRoute }">
             <span class="material-symbols-outlined">notifications</span>
-            Notificações
+            {{ t("nav.notifications") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/log-drains`" class="sidebar-link" :class="{ active: isLogDrainsRoute }">
             <span class="material-symbols-outlined">receipt_long</span>
-            Log Drains
+            {{ t("nav.logDrains") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
             <span class="material-symbols-outlined">deployed_code_update</span>
-            Atualizações
+            {{ t("nav.updates") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/settings`" class="sidebar-link" :class="{ active: isSettingsRoute }">
             <span class="material-symbols-outlined">settings</span>
-            Configurações
+            {{ t("nav.settings") }}
           </RouterLink>
         </template>
       </nav>
@@ -160,7 +162,7 @@ const breadcrumb = computed(() => {
         <div class="muted">{{ auth.user.email }}</div>
         <div class="sidebar-legal">
           <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="toggleTheme">
-            {{ isDark ? "tema escuro" : "tema claro" }}
+            {{ isDark ? t("nav.themeDark") : t("nav.themeLight") }}
           </button>
         </div>
       </div>
