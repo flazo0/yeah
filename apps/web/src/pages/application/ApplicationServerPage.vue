@@ -25,6 +25,7 @@ onMounted(async () => {
 });
 
 const current = () => servers.value.find((s) => s.id === app.value?.serverId);
+const onLocalMachine = () => current()?.isPlatformHost === true;
 
 async function move(force = false) {
   if (!target.value) return;
@@ -61,6 +62,9 @@ async function move(force = false) {
       <dl class="kv-list mb-16">
         <div><dt>Servidor atual</dt><dd>{{ app.serverName }} <StatusBadge v-if="current()" :status="current()!.status" /></dd></div>
       </dl>
+      <div v-if="onLocalMachine()" class="callout mb-16">
+        Esta aplicação roda na máquina do próprio painel. Quando estiver pronta pra produção, escolha abaixo uma VPS real pra <strong>promovê-la</strong>: faça backup dos volumes antes (os dados não são copiados) e depois um deploy no novo servidor.
+      </div>
       <p class="hint mb-16">
         Trocar de servidor <strong>remove</strong> o container, os arquivos e os volumes dessa aplicação do servidor atual e deixa ela parada, sem deploy.
         Os dados dos volumes <strong>não</strong> são copiados pro novo servidor. Depois é só fazer um deploy.
@@ -83,7 +87,7 @@ async function move(force = false) {
       </div>
       <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="busy || !target" @click="move(false)">
         <span class="material-symbols-outlined" style="font-size: 18px">swap_horiz</span>
-        {{ confirming ? "Confirmar troca de servidor?" : "Trocar de servidor" }}
+        {{ confirming ? "Confirmar troca de servidor?" : onLocalMachine() ? "Promover pra servidor real" : "Trocar de servidor" }}
       </button>
     </div>
   </div>
