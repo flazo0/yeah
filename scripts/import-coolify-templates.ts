@@ -67,8 +67,19 @@ function header(text: string, name: string): string | null {
   return m ? m[1]!.trim() : null;
 }
 
+/** Rejected by `docker compose config` on a real Docker host — they lean on Coolify-only behavior or are malformed upstream. */
+const KNOWN_BROKEN: Record<string, string> = {
+  denoKV: "usa COOLIFY_VOLUME_APP (volume implícito do Coolify)",
+  executor: "healthcheck com YAML quebrado no original",
+  "forgejo-with-runner": "environment mal formado no original",
+  "gramps-web": "usa âncoras YAML (<<:) que o compose recusa depois da conversão",
+  langfuse: "usa âncoras YAML (<<:) que o compose recusa depois da conversão",
+  mautic5: "volumes com subpasta (mautic_data/config) — recurso do Coolify",
+};
+
 function convert(key: string, raw: string): Result {
   const text = raw.replace(/\r\n/g, "\n");
+  if (KNOWN_BROKEN[key]) return { key, skip: KNOWN_BROKEN[key] };
   if (/^\s+content:/m.test(text)) return { key, skip: "usa montagem de arquivo com `content:` (recurso próprio do Coolify)" };
   if (/^\s+is_directory:/m.test(text)) return { key, skip: "usa `is_directory` (recurso próprio do Coolify)" };
   if (/^\s+build:/m.test(text)) return { key, skip: "usa `build:` (aqui só vale image)" };
