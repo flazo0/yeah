@@ -107,9 +107,39 @@ function convert(key: string, raw: string): Result {
     if (/^\s*exclude_from_hc:\s*(true|false)\s*$/.test(line)) continue;
     kept.push(line);
   }
+  // `environment:` / `labels:` left with no entries (they only held the dropped declarations) is invalid compose: drop the key.
+  for (let i = kept.length - 1; i >= 0; i--) {
+    const m = /^(\s*)(environment|labels):\s*$/.exec(kept[i]!);
+    if (!m) continue;
+    let j = i + 1;
+    while (j < kept.length && kept[j]!.trim() === "") j++;
+    const nextIndent = j < kept.length ? /^(\s*)/.exec(kept[j]!)![1]!.length : -1;
+    if (nextIndent <= m[1]!.length) kept.splice(i, 1);
+  }
   // strip the leading comment header (metadata lives in the yeah fields)
   while (kept.length && (kept[0]!.startsWith("#") || kept[0]!.trim() === "")) kept.shift();
   let compose = kept.join("\n").trimEnd() + "\n";
+
+  // Coolify declares named volumes implicitly; plain compose needs a top-level `volumes:` entry for each.
+  const declared = new Set(Object.keys((doc as { volumes?: Record<string, unknown> }).volumes ?? {}));
+  const missingVolumes = new Set<string>();
+  for (const def of Object.values(services)) {
+    for (const v of (def.volumes as unknown[] | undefined) ?? []) {
+      const src =
+        typeof v === "string"
+          ? v.split(":")[0]!
+          : typeof v === "object" && v !== null && (v as { type?: string }).type === "volume"
+            ? String((v as { source?: string }).source ?? "")
+            : "";
+      if (src && /^[A-Za-z0-9][A-Za-z0-9_.-]*$/.test(src) && !declared.has(src)) missingVolumes.add(src);
+    }
+  }
+  if (missingVolumes.size > 0) {
+    const entries = [...missingVolumes].map((n) => `  ${n}: {}`).join("\n");
+    if (/^volumes:\s*\{\}\s*$/m.test(compose)) compose = compose.replace(/^volumes:\s*\{\}\s*$/m, `volumes:\n${entries}`);
+    else if (/^volumes:\s*$/m.test(compose)) compose = compose.replace(/^volumes:\s*$/m, `volumes:\n${entries}`);
+    else compose = `${compose.trimEnd()}\n\nvolumes:\n${entries}\n`;
+  }
 
   const headerPort = Number(header(text, "port"));
   if (!port && Number.isInteger(headerPort) && headerPort > 0) port = headerPort;
