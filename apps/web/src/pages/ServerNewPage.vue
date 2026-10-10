@@ -55,6 +55,23 @@ async function copyCommand() {
   }
 }
 
+const hz = ref({ apiToken: "", name: "", serverType: "cx22", location: "nbg1", image: "ubuntu-24.04", sshKeyId: "" });
+const hzSubmitting = ref(false);
+const hzError = ref("");
+
+async function createOnHetzner() {
+  hzSubmitting.value = true;
+  hzError.value = "";
+  try {
+    const res = await api.post<{ server: ServerDto }>(`/teams/${teamId}/servers/create-hetzner`, hz.value);
+    router.push(`/teams/${teamId}/servers/${res.server.id}/general`);
+  } catch (err) {
+    hzError.value = err instanceof ApiError ? err.message : "falha ao criar na Hetzner";
+  } finally {
+    hzSubmitting.value = false;
+  }
+}
+
 async function addServer() {
   submitting.value = true;
   error.value = "";
@@ -84,6 +101,54 @@ async function addServer() {
       <div>
         <h1>Adicionar servidor</h1>
         <p>Conecte uma máquina via SSH pra começar a fazer deploy nela.</p>
+      </div>
+    </div>
+
+    <div class="card mb-16">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">add_circle</span>
+        Criar uma VPS nova na Hetzner Cloud
+      </div>
+      <div class="card-body">
+        <p class="hint">
+          Cria a máquina, um firewall (só 22, 80 e 443) e autoriza uma chave de Keys &amp; Tokens. O token da API da Hetzner (projeto → Security → API tokens, com escrita) é usado só nesta requisição e não é guardado. Isso gera custo na sua conta Hetzner.
+        </p>
+        <p v-if="savedKeys.length === 0" class="hint">Crie uma chave em Keys &amp; Tokens primeiro.</p>
+        <form v-else @submit.prevent="createOnHetzner">
+          <div class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="hz-name">Nome</label>
+              <input id="hz-name" v-model="hz.name" class="form-control" placeholder="vps-producao" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="hz-key">Chave SSH</label>
+              <select id="hz-key" v-model="hz.sshKeyId" class="form-control" required>
+                <option value="" disabled>escolha...</option>
+                <option v-for="k in savedKeys" :key="k.id" :value="k.id">{{ k.name }}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="hz-type">Tipo</label>
+              <input id="hz-type" v-model="hz.serverType" class="form-control mono" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="hz-loc">Local</label>
+              <input id="hz-loc" v-model="hz.location" class="form-control mono" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="hz-image">Imagem</label>
+              <input id="hz-image" v-model="hz.image" class="form-control mono" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="hz-token">Token da API Hetzner</label>
+            <input id="hz-token" v-model="hz.apiToken" type="password" class="form-control mono" autocomplete="off" required />
+          </div>
+          <div v-if="hzError" class="alert alert-error mb-16">{{ hzError }}</div>
+          <button type="submit" class="btn" :disabled="hzSubmitting">{{ hzSubmitting ? "criando..." : "Criar VPS" }}</button>
+        </form>
       </div>
     </div>
 

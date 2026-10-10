@@ -4,6 +4,7 @@ import { applications, databases, serverMetricSamples, servers, services, sshKey
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
 import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
+import { createHetznerServer } from "../lib/hetzner";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { serverCheckQueue, proxyProvisionQueue, cloudflareTunnelQueue } from "../lib/queue";
 import { assertMember } from "../lib/access";
@@ -152,6 +153,59 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
         sshUser: t.Optional(t.String()),
         privateKey: t.Optional(t.String({ minLength: 1 })),
         sshKeyId: t.Optional(t.String()),
+      }),
+    },
+  )
+  // "Create a VPS from the panel": the Hetzner API token is used for this one request and never stored.
+  .post(
+    "/create-hetzner",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const [key] = await db.select().from(sshKeys).where(and(eq(sshKeys.id, body.sshKeyId), eq(sshKeys.teamId, params.teamId))).limit(1);
+      if (!key) {
+        set.status = 404;
+        return { error: "ssh key not found" };
+      }
+      let created;
+      try {
+        created = await createHetznerServer({
+          apiToken: body.apiToken,
+          name: body.name,
+          serverType: body.serverType,
+          location: body.location,
+          image: body.image,
+          sshPublicKey: key.publicKey,
+        });
+      } catch (err) {
+        set.status = 502;
+        return { error: err instanceof Error ? err.message : "falha ao criar o servidor na Hetzner" };
+      }
+      const [server] = await db
+        .insert(servers)
+        .values({ teamId: params.teamId, name: body.name, host: created.ipv4, port: 22, sshUser: "root", privateKey: key.privateKey, sshKeyId: key.id })
+        .returning();
+      if (!server) {
+        set.status = 500;
+        return { error: `servidor criado na Hetzner (${created.ipv4}) mas falhou ao registrar aqui — adicione-o manualmente` };
+      }
+      return { server: toServerDto(server) };
+    },
+    {
+      body: t.Object({
+        apiToken: t.String({ minLength: 1 }),
+        name: t.String({ minLength: 1, maxLength: 63, pattern: "^[a-zA-Z0-9][a-zA-Z0-9.-]*$" }),
+        serverType: t.String({ minLength: 1 }),
+        location: t.String({ minLength: 1 }),
+        image: t.String({ minLength: 1 }),
+        sshKeyId: t.String(),
       }),
     },
   )

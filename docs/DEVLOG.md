@@ -846,3 +846,7 @@ Escolhi uma lista curta e fixa de Material Symbols (já carregado no painel) em 
 ## Fase 8 — canal ntfy
 
 Novo tipo de canal `ntfy` (enum do Postgres + `ALTER TYPE ... ADD VALUE`, migração 0049). Usa a API JSON do ntfy (POST na raiz do servidor com `topic`) em vez de headers, porque headers HTTP com título acentuado quebram. Reaproveita o campo `url` (já criptografado em repouso). Teste unitário do payload. **Não testado** contra um servidor real ([[feedback-no-local-docker-testing]]).
+
+## Fase 8 — criar VPS pela Hetzner
+
+`lib/hetzner.ts`: ssh key → firewall (22/80/443) → server, na ordem, com a chave pública de Keys & Tokens. A rota `POST /servers/create-hetzner` registra o servidor com o IPv4 devolvido, reaproveitando a chave privada guardada. Decisão: o token da Hetzner não é persistido (menos um segredo pra proteger; custa só digitar de novo). Se o registro local falhar depois da máquina existir, a mensagem informa o IP pra adicionar à mão — não tento apagar a máquina automaticamente (destrutivo e custa dinheiro errar). Só Hetzner; Vultr/DO ficam em aberto. **Não testado** contra a API real ([[feedback-no-local-docker-testing]]).
