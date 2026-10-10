@@ -26,6 +26,7 @@ import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardo
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
 import { loadResourceMetricHistory } from "../lib/metricsHistory";
+import { loadApplicationTrafficHistory } from "../lib/trafficHistory";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
@@ -1143,6 +1144,23 @@ export const applicationRoutes = new Elysia({
     }
     if (row.application.buildPack === "docker_compose") return { history: [], multiContainer: true };
     return { history: await loadResourceMetricHistory("application", params.applicationId, Number(query.hours)), multiContainer: false };
+  })
+  .get("/:applicationId/traffic-history", async ({ cookie, params, query, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const row = await loadApplication(params.environmentId, params.applicationId);
+    if (!row) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+    return { history: await loadApplicationTrafficHistory(params.applicationId, Number(query.hours)) };
   })
   .delete("/:applicationId/volumes/:volumeId", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

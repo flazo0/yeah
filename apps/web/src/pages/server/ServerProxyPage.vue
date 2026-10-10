@@ -50,6 +50,23 @@ async function removeCloudflareTunnel() {
   }
 }
 
+const savingTrafficAnalytics = ref(false);
+
+async function toggleTrafficAnalytics(enabled: boolean) {
+  if (!server.value) return;
+  savingTrafficAnalytics.value = true;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: ServerDto }>(`/teams/${teamId}/servers/${server.value.id}/traffic-analytics`, { enabled });
+    replaceServer(res.server);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    if (server.value) server.value.trafficAnalyticsEnabled = !enabled;
+  } finally {
+    savingTrafficAnalytics.value = false;
+  }
+}
+
 async function save() {
   if (!server.value) return;
   saving.value = true;
@@ -208,6 +225,24 @@ watch(() => server.value?.proxyStatus, (status, prev) => {
           {{ cfSaving ? "ativando..." : "Ativar túnel" }}
         </button>
       </form>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">insights</span>
+      Analytics de tráfego
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        Requisições por aplicação, lidas direto das métricas do Traefik (sem agente nem log de acesso gravado no disco)
+        — veja o gráfico na aba Métricas de cada aplicação. Desligado por padrão; precisa reativar o proxy pra entrar em
+        efeito (acontece sozinho se o proxy já estiver ativo).
+      </p>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0">
+        <input id="traffic-analytics" type="checkbox" :checked="server.trafficAnalyticsEnabled" :disabled="savingTrafficAnalytics" @change="toggleTrafficAnalytics(($event.target as HTMLInputElement).checked)" />
+        <label for="traffic-analytics" style="margin: 0">Coletar analytics de tráfego</label>
+      </div>
     </div>
   </div>
 

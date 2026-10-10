@@ -58,6 +58,31 @@ function bytes(n: number): string {
   if (n >= 1024) return `${(n / 1024).toFixed(1)} KiB`;
   return `${n} B`;
 }
+
+const TRAFFIC_PERIODS = [
+  { label: "24h", hours: 24 },
+  { label: "7d", hours: 168 },
+] as const;
+const trafficPeriod = ref<(typeof TRAFFIC_PERIODS)[number]>(TRAFFIC_PERIODS[0]);
+const trafficPoints = ref<{ at: string; requests: number }[]>([]);
+const trafficLoading = ref(true);
+const trafficError = ref("");
+
+async function loadTraffic() {
+  trafficLoading.value = true;
+  trafficError.value = "";
+  try {
+    const res = await api.get<{ history: { at: string; requests: number }[] }>(`${basePath}/traffic-history?hours=${trafficPeriod.value.hours}`);
+    trafficPoints.value = res.history;
+  } catch (err) {
+    trafficError.value = err instanceof ApiError ? err.message : "falha ao carregar o tráfego";
+  } finally {
+    trafficLoading.value = false;
+  }
+}
+onMounted(loadTraffic);
+
+const trafficTotal = computed(() => trafficPoints.value.reduce((sum, p) => sum + p.requests, 0));
 </script>
 
 <template>
@@ -95,6 +120,26 @@ function bytes(n: number): string {
     <div class="card">
       <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> Histórico</div>
       <div class="card-body"><MetricsHistoryChart :fetch-history="fetchHistory" /></div>
+    </div>
+    <div class="card mb-16">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">insights</span>
+        Tráfego
+        <div class="segmented" style="margin-left: auto" role="group" aria-label="Período">
+          <button v-for="p in TRAFFIC_PERIODS" :key="p.label" type="button" :class="{ active: trafficPeriod.label === p.label }" @click="trafficPeriod = p; loadTraffic()">{{ p.label }}</button>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="hint mb-16">Requisições por janela, lidas das métricas do Traefik — precisa ativar "Analytics de tráfego" na aba Proxy do servidor.</p>
+        <div v-if="trafficLoading" class="empty-state"><span class="spinner"></span> carregando...</div>
+        <div v-else-if="trafficError" class="empty-state">{{ trafficError }}</div>
+        <div v-else-if="trafficPoints.length < 2" class="empty-state">Sem dados ainda — ative a coleta e aguarde algumas janelas.</div>
+        <div v-else class="metric">
+          <div class="stat-label">Requisições no período</div>
+          <div class="metric-value">{{ trafficTotal.toLocaleString("pt-BR") }}</div>
+          <svg viewBox="0 0 100 30" preserveAspectRatio="none" class="spark" aria-hidden="true"><polyline :points="points(trafficPoints.map((p) => p.requests), 1)" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke" /></svg>
+        </div>
+      </div>
     </div>
   </div>
 </template>

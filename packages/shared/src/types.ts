@@ -72,6 +72,8 @@ export interface ServerDto {
   cloudflareTunnelConfigured: boolean;
   cloudflareTunnelStatus: ProxyStatus;
   cloudflareTunnelError: string | null;
+  /** Off by default — turns on Traefik's loopback-only Prometheus metrics entrypoint for the traffic-analytics job. */
+  trafficAnalyticsEnabled: boolean;
   /** Set when the server's key was copied in from an existing entry in Keys & Tokens. */
   sshKeyId: string | null;
   createdAt: string;

@@ -10,7 +10,7 @@ import { db } from "../lib/db";
 export { PROXY_NETWORK_NAME, PROXY_CONTAINER_NAME };
 const PROXY_DIR = "/opt/yeah-proxy";
 
-function traefikStaticConfig(acmeEmail: string): string {
+function traefikStaticConfig(acmeEmail: string, trafficAnalyticsEnabled: boolean): string {
   return `entryPoints:
   web:
     address: ":80"
@@ -21,7 +21,7 @@ function traefikStaticConfig(acmeEmail: string): string {
           scheme: https
   websecure:
     address: ":443"
-
+${trafficAnalyticsEnabled ? `  metrics:\n    address: ":8082"\n` : ""}
 providers:
   docker:
     exposedByDefault: false
@@ -34,7 +34,7 @@ certificatesResolvers:
       storage: /etc/traefik/acme.json
       httpChallenge:
         entryPoint: web
-`;
+${trafficAnalyticsEnabled ? `\nmetrics:\n  prometheus:\n    entryPoint: metrics\n` : ""}`;
 }
 
 export function makeProvisionProxyProcessor(publishConnection: Redis) {
@@ -84,7 +84,7 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
         const mkdirResult = await execStream(conn, `mkdir -p ${shellQuote(PROXY_DIR)}`, () => {});
         if (mkdirResult.exitCode !== 0) throw new Error(`mkdir -p ${PROXY_DIR} exited with code ${mkdirResult.exitCode}`);
 
-        await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail));
+        await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail, server.trafficAnalyticsEnabled));
 
         const command =
           `touch ${shellQuote(`${PROXY_DIR}/acme.json`)} && chmod 600 ${shellQuote(`${PROXY_DIR}/acme.json`)} && ` +
@@ -93,6 +93,10 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
           `docker run -d --name ${shellQuote(PROXY_CONTAINER_NAME)} ` +
           `--network ${shellQuote(PROXY_NETWORK_NAME)} ` +
           `-p 80:80 -p 443:443 ` +
+          // Loopback-only — never published beyond the host itself, read only via an SSH-run curl
+          // (apps/worker/src/jobs/trafficAnalytics.ts), the same "no port stays open to the world
+          // that isn't a resource's own domain" rule the rest of the proxy follows.
+          (server.trafficAnalyticsEnabled ? `-p 127.0.0.1:8082:8082 ` : "") +
           `-v /var/run/docker.sock:/var/run/docker.sock:ro ` +
           `-v ${shellQuote(`${PROXY_DIR}/traefik.yml`)}:/etc/traefik/traefik.yml:ro ` +
           `-v ${shellQuote(`${PROXY_DIR}/acme.json`)}:/etc/traefik/acme.json ` +

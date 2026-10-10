@@ -32,6 +32,7 @@ function toServerDto(server: Server): ServerDto {
     cloudflareTunnelConfigured: server.cloudflareTunnelToken !== null,
     cloudflareTunnelStatus: server.cloudflareTunnelStatus,
     cloudflareTunnelError: server.cloudflareTunnelError,
+    trafficAnalyticsEnabled: server.trafficAnalyticsEnabled,
     createdAt: server.createdAt.toISOString(),
   };
 }
@@ -320,6 +321,36 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
     await cloudflareTunnelQueue.add("remove", { serverId: server.id, action: "remove" });
     return { server: toServerDto(server) };
   })
+  .put(
+    "/:serverId/traffic-analytics",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ trafficAnalyticsEnabled: body.enabled })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      // The metrics entrypoint's port mapping only takes effect on a fresh container — re-provision
+      // now if the proxy is already up, otherwise the next activation already reads the new flag.
+      if (server.proxyStatus === "active") {
+        await proxyProvisionQueue.add("provision", { serverId: server.id, action: "provision" });
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ enabled: t.Boolean() }) },
+  )
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

@@ -39,6 +39,12 @@ export const servers = pgTable("servers", {
   cloudflareTunnelToken: encryptedText("cloudflare_tunnel_token"),
   cloudflareTunnelStatus: proxyStatusEnum("cloudflare_tunnel_status").default("inactive").notNull(),
   cloudflareTunnelError: varchar("cloudflare_tunnel_error", { length: 1000 }),
+  // Off by default (another "pay for it only if you want it" monitoring toggle, see metrics_enabled) —
+  // turns on Traefik's Prometheus metrics entrypoint (loopback-only, never published publicly) so the
+  // traffic-analytics job can read per-router request counts over SSH, the same ephemeral-connection
+  // model as every other metric this app collects. Requires re-provisioning the proxy to take effect
+  // (the port mapping can't change on a running container).
+  trafficAnalyticsEnabled: boolean("traffic_analytics_enabled").default(false).notNull(),
   // Latest snapshot from the periodic `server-metrics` job — null until the first check runs.
   cpuPercent: real("cpu_percent"),
   memPercent: real("mem_percent"),

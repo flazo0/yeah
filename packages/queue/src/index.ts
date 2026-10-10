@@ -19,6 +19,7 @@ export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
 export const CA_CERTIFICATE_QUEUE = "ca-certificate";
 export const LOG_RETENTION_QUEUE = "log-retention";
 export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
+export const TRAFFIC_ANALYTICS_QUEUE = "traffic-analytics";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -26,6 +27,8 @@ export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
 export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
 /** Fixed id for the single system-wide repeatable job that ticks the log-retention sweep. */
 export const LOG_RETENTION_SCHEDULER_ID = "system-log-retention";
+/** Fixed id for the single system-wide repeatable job that ticks the traffic-analytics poll. */
+export const TRAFFIC_ANALYTICS_SCHEDULER_ID = "system-traffic-analytics";
 
 export interface ServerCheckJobData {
   serverId: string;
@@ -80,6 +83,9 @@ export type TlsCheckJobData = Record<string, never>;
 
 /** Tick job, no per-run data — it sweeps every log-bearing execution table each time it fires. */
 export type LogRetentionJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it re-reads every opted-in server's Traefik metrics each time it fires. */
+export type TrafficAnalyticsJobData = Record<string, never>;
 
 /**
  * Each BullMQ `Worker` needs its own dedicated connection — it blocks on it waiting for jobs, which
@@ -266,6 +272,19 @@ export function createLogRetentionWorker(connection: Redis, processor: Processor
 /** Called once at worker boot — idempotent (upsert). Once a day is plenty for a day-granularity retention window. */
 export async function ensureLogRetentionScheduler(queue: Queue<LogRetentionJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
   await queue.upsertJobScheduler(LOG_RETENTION_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createTrafficAnalyticsQueue(connection: Redis): Queue<TrafficAnalyticsJobData> {
+  return new Queue<TrafficAnalyticsJobData>(TRAFFIC_ANALYTICS_QUEUE, { connection });
+}
+
+export function createTrafficAnalyticsWorker(connection: Redis, processor: Processor<TrafficAnalyticsJobData>): Worker<TrafficAnalyticsJobData> {
+  return new Worker<TrafficAnalyticsJobData>(TRAFFIC_ANALYTICS_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Every 5 minutes: it's opt-in and one more SSH round-trip, no need for CPU/mem's 60s cadence. */
+export async function ensureTrafficAnalyticsScheduler(queue: Queue<TrafficAnalyticsJobData>, everyMs = 5 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(TRAFFIC_ANALYTICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 /** A schedule's job scheduler is keyed by `scheduleId` so it can be found again to remove or edit in place. */

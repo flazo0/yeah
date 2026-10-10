@@ -758,3 +758,19 @@ Implementação: `servers.cloudflare_tunnel_token` (criptografado) + `cloudflare
 **Testado**: `cloudflareTunnel.commands.test.ts` (2 testes: o comando monta certo, o token é escapado corretamente mesmo com aspas simples dentro). O `docker run` de verdade contra uma VPS com uma conta Cloudflare real, não — ver [[feedback-no-local-docker-testing]].
 
 397 testes, `tsc`/`vue-tsc` limpos nos quatro apps.
+
+## Fase 5: Analytics de tráfego por aplicação — **não testado contra um Traefik real**
+
+Último item da Fase 5 em aberto (item marcado "baixa prioridade" no próprio roadmap). Decisão de design: descartei a ideia óbvia (parsear o log de acesso do Traefik) porque isso significa um arquivo de log crescendo pra sempre no disco do servidor — exatamente o tipo de custo que a Fase 9 (eficiência de recursos) está tentando cortar, e desse jeito seria ainda pior porque cresce com o tráfego (mais uso = mais custo = o oposto do que eu quero). Em vez disso, liguei o entrypoint Prometheus que o próprio Traefik já sabe expor (`--metrics.prometheus`), publicado só em `127.0.0.1:8082` (nunca sai do servidor) — reaproveitar um contador que o processo já mantém em memória é efetivamente de graça comparado a escrever e crescer um arquivo.
+
+`servers.traffic_analytics_enabled` (migração 0043, desligado por padrão — mais um opt-in de monitoramento, igual `metrics_enabled`): ligando, reativa o proxy (precisa recriar o container pra publicar a porta nova) com o `traefik.yml` ganhando o entrypoint `metrics`. Fila `traffic-analytics` (tick a cada 5 min — bem mais espaçado que o de CPU/mem, porque é opt-in e não crítico) roda um `curl http://127.0.0.1:8082/metrics` por SSH em cada servidor que ligou a opção, parseia o texto Prometheus procurando `traefik_router_requests_total{...router="yeah-app-<id>@docker"...}` e soma por aplicação (várias linhas por router, uma por código HTTP/método). Guarda o valor bruto cumulativo — igual o Prometheus faz — em vez de calcular uma diferença no momento da escrita; `application_traffic_samples` (retenção 30 dias, mais curta que os 7 dias de CPU/mem só por decisão de escopo, não por necessidade) e a leitura (`loadApplicationTrafficHistory` em `apps/api/src/lib/trafficHistory.ts`) é quem calcula a diferença entre amostras consecutivas — assim um tick perdido (servidor fora do ar por um momento) só aparece como uma janela um pouco maior na próxima leitura, nunca como um buraco ou um erro.
+
+UI: toggle na aba Proxy do servidor (ao lado do Cloudflare Tunnel, mesma seção de "coisas do proxy"), gráfico novo "Tráfego" na aba Métricas de cada aplicação (total do período + sparkline, reaproveitando o mesmo `points()` já usado pra CPU/memória nessa página).
+
+**Escopo**: só aplicações com domínio (um router Traefik por app) — nem banco/serviço, nem `docker_compose` (onde não existe "um router por app", e sim um por serviço da stack — mesmo corte de escopo já usado pras métricas por container).
+
+**Testado**: 5 testes unitários do parser Prometheus (`trafficAnalytics.commands.test.ts`) cobrindo soma por app, apps diferentes não se misturam, linhas de comentário/métrica errada/router de outro tipo são ignoradas, texto vazio ou garbage não quebra. **Não testado**: nunca rodou contra um Traefik de verdade com `--metrics.prometheus` ligado — o formato exato de `traefik_router_requests_total` é o documentado pelo próprio Traefik v2, mas não tive como confirmar ao vivo. Ver [[feedback-no-local-docker-testing]].
+
+Com isso a Fase 5 do roadmap está com todos os itens cobertos (os dois que sobraram — Nixpacks/Railpack — já estavam implementados e só faltam rodar numa VPS real, fora do meu alcance agora).
+
+402 testes, `tsc`/`vue-tsc` limpos nos quatro apps.

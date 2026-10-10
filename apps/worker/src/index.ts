@@ -21,9 +21,12 @@ import {
   createLogRetentionQueue,
   createLogRetentionWorker,
   createCloudflareTunnelWorker,
+  createTrafficAnalyticsQueue,
+  createTrafficAnalyticsWorker,
   ensureServerMetricsScheduler,
   ensureTlsCheckScheduler,
   ensureLogRetentionScheduler,
+  ensureTrafficAnalyticsScheduler,
 } from "@yeah/queue";
 import { makeCheckServerProcessor } from "./jobs/checkServer";
 import { makeDeployApplicationProcessor } from "./jobs/deployApplication";
@@ -42,6 +45,7 @@ import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
 import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
 import { makeLogRetentionProcessor } from "./jobs/logRetention";
 import { makeCloudflareTunnelProcessor } from "./jobs/cloudflareTunnel";
+import { makeTrafficAnalyticsProcessor } from "./jobs/trafficAnalytics";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -64,6 +68,7 @@ const metricsJobConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
 const logRetentionJobConnection = createRedisConnection(redisUrl);
 const cloudflareTunnelConnection = createRedisConnection(redisUrl);
+const trafficAnalyticsConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
 const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
@@ -140,6 +145,12 @@ await ensureLogRetentionScheduler(logRetentionSchedulerQueue);
 const cloudflareTunnelWorker = createCloudflareTunnelWorker(cloudflareTunnelConnection, makeCloudflareTunnelProcessor());
 cloudflareTunnelWorker.on("failed", (job, err) => console.error(`[worker] cloudflare-tunnel ${job?.id} failed:`, err.message));
 
+const trafficAnalyticsWorker = createTrafficAnalyticsWorker(trafficAnalyticsConnection, makeTrafficAnalyticsProcessor());
+trafficAnalyticsWorker.on("failed", (job, err) => console.error(`[worker] traffic-analytics ${job?.id} failed:`, err.message));
+
+const trafficAnalyticsSchedulerQueue = createTrafficAnalyticsQueue(sharedConnection);
+await ensureTrafficAnalyticsScheduler(trafficAnalyticsSchedulerQueue);
+
 const platformOperationSelfQueue = createPlatformOperationQueue(sharedConnection);
 const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
@@ -154,5 +165,5 @@ const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, m
 caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention and cloudflare-tunnel jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention, cloudflare-tunnel and traffic-analytics jobs",
 );

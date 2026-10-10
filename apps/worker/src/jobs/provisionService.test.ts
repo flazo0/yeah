@@ -52,6 +52,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     cloudflareTunnelToken: null,
     cloudflareTunnelStatus: "inactive",
     cloudflareTunnelError: null,
+    trafficAnalyticsEnabled: false,
     isPlatformHost: false,
     sshTimeoutSeconds: 15,
     createdAt: new Date(),
