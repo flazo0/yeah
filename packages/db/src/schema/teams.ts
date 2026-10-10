@@ -8,6 +8,7 @@ export const teams = pgTable("teams", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   personal: boolean("personal").default(false).notNull(),
+  mcpEnabled: boolean("mcp_enabled").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

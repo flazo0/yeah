@@ -1,0 +1,1 @@
+ALTER TABLE "teams" ADD COLUMN "mcp_enabled" boolean DEFAULT false NOT NULL;

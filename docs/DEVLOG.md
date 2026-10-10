@@ -822,3 +822,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 7 — allowlist de IP por token
 
 `api_tokens.allowed_ips` (migração 0045): lista separada por vírgula de IPs exatos ou CIDRs IPv4. `ipAllowlist.ts` (puro, 3 testes) valida na criação e checa no `derive` das rotas de CI/v1 (403 se fora da lista; o IP usa o mesmo `clientIp()` do rate limit). Escolhi por token e não global: o risco real é um token vazado de CI, e cada pipeline tem seu IP de saída. **Não testado** ponta a ponta ([[feedback-no-local-docker-testing]]). 416 testes.
+
+## Fase 7 — servidor MCP + toggle por time
+
+`lib/ciActions.ts` extraiu a lógica de listar/deploy/backup da API de CI para ser compartilhada com o MCP (a `ci.ts` ficou só autenticação + HTTP). `lib/mcp.ts` é o protocolo puro (JSON-RPC: initialize, tools, resources, prompts) com as operações injetadas — daí os testes sem banco. Segurança: mesmo token pessoal e allowlist de IP da CI; permissão `read` ⇒ read-only; toggle por time desligado por padrão; sem tool de logs de build (poderiam conter segredos), então o prompt `debug_deploy` trabalha só com status e pede o log ao usuário. **Não testado** com cliente MCP real ([[feedback-no-local-docker-testing]]). 420 testes.

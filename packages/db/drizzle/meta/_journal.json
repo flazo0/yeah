@@ -323,6 +323,13 @@
       "when": 1791605518802,
       "tag": "0045_api_token_allowed_ips",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791605679244,
+      "tag": "0046_team_mcp_enabled",
+      "breakpoints": true
     }
   ]
 }

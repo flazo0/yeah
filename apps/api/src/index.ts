@@ -32,6 +32,7 @@ import { gitSourceWebhookRoutes } from "./routes/gitSourceWebhook";
 import { terminalRoutes } from "./routes/terminal";
 import { ciRoutes, apiV1Routes } from "./routes/ci";
 import { buildOpenApiSpec, SWAGGER_HTML } from "./lib/openapi";
+import { mcpRoutes } from "./routes/mcp";
 import { apiTokenRoutes } from "./routes/apiTokens";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
@@ -102,6 +103,7 @@ const app = new Elysia()
     return SWAGGER_HTML;
   })
   .use(apiTokenRoutes)
+  .use(mcpRoutes)
   .listen(port);
 
 // Secrets written before encryption-at-rest existed get rewritten encrypted on the next start.

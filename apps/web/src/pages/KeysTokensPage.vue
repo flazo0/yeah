@@ -90,6 +90,25 @@ const tokenSubmitting = ref(false);
 const justCreatedToken = ref<{ token: string; apiToken: ApiTokenDto } | null>(null);
 const tokenCopied = ref(false);
 
+const mcpEnabled = ref(false);
+
+async function loadMcp() {
+  try {
+    mcpEnabled.value = (await api.get<{ mcpEnabled: boolean }>(`/teams/${teamId}/mcp-settings`)).mcpEnabled;
+  } catch {
+    /* the toggle just stays off if this fails */
+  }
+}
+
+async function toggleMcp() {
+  const next = !mcpEnabled.value;
+  try {
+    mcpEnabled.value = (await api.put<{ mcpEnabled: boolean }>(`/teams/${teamId}/mcp-settings`, { mcpEnabled: next })).mcpEnabled;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+  }
+}
+
 async function loadTokens() {
   tokensLoading.value = true;
   try {
@@ -149,7 +168,10 @@ async function deleteToken(token: ApiTokenDto) {
   }
 }
 
-onMounted(loadTokens);
+onMounted(() => {
+  void loadTokens();
+  void loadMcp();
+});
 </script>
 
 <template>
@@ -262,6 +284,22 @@ onMounted(loadTokens);
           <span class="material-symbols-outlined" style="font-size: 16px">{{ tokenCopied ? "check" : "content_copy" }}</span>
           {{ tokenCopied ? "Copiado" : "Copiar" }}
         </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">smart_toy</span>
+        Servidor MCP
+      </div>
+      <div class="card-body">
+        <label style="display: flex; gap: 8px; align-items: center">
+          <input id="mcp-enabled" type="checkbox" :checked="mcpEnabled" @change="toggleMcp" />
+          Permitir que agentes de IA usem este time via MCP
+        </label>
+        <p class="hint">
+          Endpoint: <code>POST /teams/{{ teamId }}/mcp</code> com <code>Authorization: Bearer &lt;token&gt;</code>. Token só de leitura = modo somente leitura; os logs de build nunca são expostos.
+        </p>
       </div>
     </div>
 
