@@ -142,3 +142,19 @@ export function composeNamedVolumes(content: string, project: string): StackVolu
   }
   return out;
 }
+
+/**
+ * Variables a compose file marks as mandatory (`${NAME:?message}` / `${NAME?message}`) that the .env
+ * leaves empty or doesn't define. Compose refuses to start such a stack, so the panel shows them up
+ * front instead of letting the first deploy fail.
+ */
+export function missingRequiredVars(compose: string, envContent: string): string[] {
+  const required = new Set<string>();
+  for (const m of compose.matchAll(/(?<!\$)\$\{([A-Za-z_][A-Za-z0-9_]*):?\?/g)) required.add(m[1]!);
+  const values = new Map<string, string>();
+  for (const line of envContent.split(/\r?\n/)) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line);
+    if (m) values.set(m[1]!, m[2]!.trim());
+  }
+  return [...required].filter((name) => !values.get(name));
+}

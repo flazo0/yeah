@@ -2,8 +2,10 @@ import { and, eq, isNull, lt, ne } from "drizzle-orm";
 import { applications, containerMetricSamples, databases, serverMetricSamples, servers, services, type Server } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
 import { allContainerStatsCommand, parseDockerStats } from "@yeah/shared";
-import { publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
+import { createDockerCleanupQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
+import type { Queue } from "bullmq";
+import type { DockerCleanupJobData } from "@yeah/queue";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
@@ -23,7 +25,12 @@ const DISK_THRESHOLD = 85;
 // instead of retrying and logging forever.
 const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, maxCooldownMs: 30 * 60_000 });
 
+// Set by makeServerMetricsProcessor: lets a disk that just filled up trigger the cleanup right away
+// (the daily schedule would otherwise leave it full until 04:00).
+let cleanupQueue: Queue<DockerCleanupJobData> | null = null;
+
 export function makeServerMetricsProcessor(publishConnection: Redis) {
+  cleanupQueue = createDockerCleanupQueue(publishConnection);
   return async function serverMetrics(_job: Job<ServerMetricsJobData>) {
     const allServers = await db
       .select()
@@ -95,7 +102,9 @@ async function checkOne(server: Server, publishConnection: Redis) {
       await notifyTeam(server.teamId, "server.metrics", `Memória alta em ${server.name}`, `RAM em ${metrics.mem}% (limiar: ${MEM_THRESHOLD}%) — novos deploys/provisionamentos podem falhar por falta de memória.`, "warning");
     }
     if (crossedThreshold(server.diskPercent, metrics.disk, DISK_THRESHOLD)) {
-      await notifyTeam(server.teamId, "server.metrics", `Disco cheio em ${server.name}`, `Disco em ${metrics.disk}% (limiar: ${DISK_THRESHOLD}%) — considere limpar imagens/volumes não usados.`, "error");
+      await notifyTeam(server.teamId, "server.metrics", `Disco cheio em ${server.name}`, `Disco em ${metrics.disk}% (limiar: ${DISK_THRESHOLD}%) — rodando a limpeza automática agora (se estiver ligada); considere também limpar imagens/volumes não usados.`, "error");
+      // Not a "manual" job on purpose: a server whose owner turned the cleanup off stays untouched.
+      await cleanupQueue?.add("cleanup", { serverId: server.id, manual: false });
     }
   } catch (err) {
     // A single unreachable server shouldn't break the metrics tick for every other server —

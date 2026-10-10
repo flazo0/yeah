@@ -145,6 +145,9 @@ export const applicationOpsRoutes = new Elysia({
           }
           patch.publishDirectory = dir;
         }
+        if (app.buildPack === "static" && body.staticSpa !== undefined) {
+          patch.staticSpa = body.staticSpa;
+        }
         if (app.buildPack === "docker_compose") {
           if (body.composeFile !== undefined) {
             const file = body.composeFile.trim();
@@ -186,6 +189,7 @@ export const applicationOpsRoutes = new Elysia({
         dockerImage: t.Optional(t.String({ maxLength: 512 })),
         dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
         publishDirectory: t.Optional(t.String({ maxLength: 255 })),
+        staticSpa: t.Optional(t.Boolean()),
         composeFile: t.Optional(t.String({ maxLength: 255 })),
         composeService: t.Optional(t.String({ maxLength: 64 })),
         port: t.Optional(t.Number()),

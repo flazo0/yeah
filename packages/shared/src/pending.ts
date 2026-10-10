@@ -11,6 +11,7 @@ export const DEPLOY_AFFECTING_FIELDS = {
   dockerImage: "Imagem",
   dockerfileContent: "Dockerfile",
   publishDirectory: "Pasta publicada",
+  staticSpa: "Modo SPA",
   composeFile: "Arquivo compose",
   composeService: "Serviço do compose",
   serverId: "Servidor",

@@ -339,6 +339,7 @@ const appForm = ref({
   dockerImage: "",
   dockerfileContent: "FROM node:22-alpine\nWORKDIR /app\nCOPY . .\nCMD [\"node\", \"index.js\"]\n",
   publishDirectory: ".",
+  staticSpa: false,
   composeFile: "docker-compose.yml",
   composeService: "",
   gitSourceId: "",
@@ -403,7 +404,7 @@ async function createApp() {
     else if (mode === "nixpacks") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "nixpacks" };
     else if (mode === "railpack") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "railpack" };
     else if (mode === "compose") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "docker_compose", composeFile: f.composeFile, composeService: f.composeService };
-    else if (mode === "static") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "static", publishDirectory: f.publishDirectory };
+    else if (mode === "static") payload = { ...base, branch: f.branch, repoUrl: f.repoUrl, buildPack: "static", publishDirectory: f.publishDirectory, staticSpa: f.staticSpa };
     else if (mode === "image") payload = { ...base, buildPack: "image", dockerImage: f.dockerImage };
     else payload = { ...base, buildPack: "dockerfile_inline", dockerfileContent: f.dockerfileContent };
     const res = await api.post<{ application: ApplicationDto }>(`${basePath}/applications`, payload);
@@ -698,6 +699,10 @@ onMounted(() => {
           <label for="app-publish">{{ $t("resourceNew.pastaAPublicar") }}</label>
           <input id="app-publish" v-model="appForm.publishDirectory" class="form-control mono" :placeholder="$t('resourceNew.dist')" />
           <p class="hint" style="margin-top: 6px">{{ $t("resourceNew.relativaARaizDoRepositorio") }}</p>
+          <label style="display: flex; gap: 8px; align-items: center; margin-top: 8px">
+            <input id="app-spa" v-model="appForm.staticSpa" type="checkbox" />
+            {{ $t("resourceNew.spaMode") }}
+          </label>
         </div>
 
         <div class="form-row mb-16">

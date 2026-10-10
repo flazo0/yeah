@@ -51,6 +51,8 @@ export const applications = pgTable("applications", {
   dockerfileContent: text("dockerfile_content"),
   // static: the folder (relative to the repo root) that gets served by nginx.
   publishDirectory: varchar("publish_directory", { length: 255 }).default(".").notNull(),
+  // Static sites only: unknown paths fall back to /index.html (single-page apps with client-side routing).
+  staticSpa: boolean("static_spa").default(false).notNull(),
   // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).
   extraDomains: text("extra_domains").array().default(sql`'{}'::text[]`).notNull(),
   wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),

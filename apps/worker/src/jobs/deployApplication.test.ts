@@ -28,6 +28,7 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     dockerImage: null,
     dockerfileContent: null,
     publishDirectory: ".",
+    staticSpa: false,
     composeFile: "docker-compose.yml",
     composeService: null,
     extraDomains: [],
@@ -284,6 +285,15 @@ describe("build packs", () => {
     expect(step!.command).toContain("docker build -t 'yeah-app-1' -f - .");
     expect(step!.command).toContain("COPY [\"dist\", \"/usr/share/nginx/html\"]");
     expect(staticDockerfile(".")).toContain("COPY [\".\"");
+  });
+
+  test("SPA mode adds an nginx vhost that falls back to index.html; off by default", () => {
+    expect(staticDockerfile("dist")).not.toContain("try_files");
+    const spa = staticDockerfile("dist", true);
+    expect(spa).toContain("try_files $uri $uri/ /index.html");
+    expect(spa.indexOf("default.conf")).toBeLessThan(spa.indexOf("COPY"));
+    const [step] = buildImageSteps(makeApplication({ buildPack: "static", staticSpa: true }), "/opt/r", "/opt/i", "yeah-app-1");
+    expect(step!.command).toContain("try_files");
   });
 
   test("nixpacks installs itself when missing, then builds the repo", () => {

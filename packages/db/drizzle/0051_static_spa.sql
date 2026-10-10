@@ -1,0 +1,1 @@
+ALTER TABLE "applications" ADD COLUMN "static_spa" boolean DEFAULT false NOT NULL;

@@ -131,9 +131,13 @@ export interface BuildStep {
 /** The nginx image a static site is served from. */
 export const STATIC_BASE_IMAGE = "nginx:alpine";
 
-export function staticDockerfile(publishDirectory: string): string {
+/** nginx vhost for single-page apps: anything that is not a file falls back to the app shell. */
+const SPA_NGINX_CONF = "server { listen 80; root /usr/share/nginx/html; index index.html; location / { try_files $uri $uri/ /index.html; } }";
+
+export function staticDockerfile(publishDirectory: string, spa = false): string {
   const source = publishDirectory === "" ? "." : publishDirectory;
-  return `FROM ${STATIC_BASE_IMAGE}\nCOPY ["${source}", "/usr/share/nginx/html"]\nEXPOSE 80\n`;
+  const spaStep = spa ? `RUN printf '%s' '${SPA_NGINX_CONF}' > /etc/nginx/conf.d/default.conf\n` : "";
+  return `FROM ${STATIC_BASE_IMAGE}\n${spaStep}COPY ["${source}", "/usr/share/nginx/html"]\nEXPOSE 80\n`;
 }
 
 /**
@@ -161,7 +165,7 @@ export function buildImageSteps(
       return [
         {
           label: `construindo o site estático (${application.publishDirectory || "."} → nginx)`,
-          command: `cd ${shellQuote(repoDir)} && printf %s ${shellQuote(staticDockerfile(application.publishDirectory))} | docker build -t ${image} -f - .`,
+          command: `cd ${shellQuote(repoDir)} && printf %s ${shellQuote(staticDockerfile(application.publishDirectory, application.staticSpa))} | docker build -t ${image} -f - .`,
         },
       ];
     case "nixpacks":

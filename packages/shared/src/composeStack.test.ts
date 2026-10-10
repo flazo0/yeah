@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { composeNamedVolumes, composeStackOverride, parseComposeStack, stackNetworkJoinCommand, validateStackDomains } from "./composeStack";
+import { composeNamedVolumes, composeStackOverride, missingRequiredVars, parseComposeStack, stackNetworkJoinCommand, validateStackDomains } from "./composeStack";
 
 const ok = `
 services:
@@ -114,5 +114,15 @@ describe("composeNamedVolumes", () => {
   test("no volumes or invalid yaml -> empty", () => {
     expect(composeNamedVolumes("services:\n  a:\n    image: x\n", "p")).toEqual([]);
     expect(composeNamedVolumes("a: [", "p")).toEqual([]);
+  });
+});
+
+describe("missingRequiredVars", () => {
+  const compose = "services:\n  a:\n    image: x\n    environment:\n      - M=${MAIL_DRIVER:?set it}\n      - K=${KEY?needed}\n      - O=${OPT:-d}\n      - E=$${ESCAPED:?no}\n";
+  test("lists the mandatory variables that are empty or undefined", () => {
+    expect(missingRequiredVars(compose, "MAIL_DRIVER=\nOTHER=1\n").sort()).toEqual(["KEY", "MAIL_DRIVER"]);
+  });
+  test("a filled value clears it; optional and escaped ones are never listed", () => {
+    expect(missingRequiredVars(compose, "MAIL_DRIVER=smtp\nKEY=abc\n")).toEqual([]);
   });
 });

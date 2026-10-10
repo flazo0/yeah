@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
 import { resourceTags, services, servers, volumeBackups, type Service } from "@yeah/db";
-import { composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, isValidHostname, normalizeHost, parseComposeStack, resourceSlug, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
+import { missingRequiredVars, composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, isValidHostname, normalizeHost, parseComposeStack, resourceSlug, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
 import { loadResourceMetricHistory } from "../lib/metricsHistory";
@@ -184,7 +184,10 @@ export const serviceRoutes = new Elysia({
         return { error: "failed to create service" };
       }
 
-      await serviceProvisionQueue.add("provision", { serviceId: service.id });
+      // A stack that compose would refuse to start (mandatory variables left empty) waits for the user to fill them in
+      // instead of failing its first deploy; the service page lists what is missing.
+      const missing = stack ? missingRequiredVars(stack.composeContent, service.envContent) : [];
+      if (missing.length === 0) await serviceProvisionQueue.add("provision", { serviceId: service.id });
 
       return { service: toServiceDto(service, server.name) };
     },

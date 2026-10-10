@@ -661,7 +661,8 @@
     "falhaAoCriarRecurso": "falha ao criar recurso",
     "catAi": "IA",
     "catFinance": "Finanças",
-    "catGames": "Jogos"
+    "catGames": "Jogos",
+    "spaMode": "Modo SPA (rotas desconhecidas devolvem o index.html)"
   },
   "serverNew": {
     "servidores": "Servidores",
@@ -1195,7 +1196,9 @@
     "nesteServidorPadrao": "Neste servidor (padrão)",
     "falhaAoSalvarORegistry": "falha ao salvar o registry",
     "falhaAoSalvarOServidor": "falha ao salvar o servidor de build",
-    "falhaAoSalvarAOrigem": "falha ao salvar a origem"
+    "falhaAoSalvarAOrigem": "falha ao salvar a origem",
+    "spaMode": "Modo SPA (rotas desconhecidas devolvem o index.html)",
+    "spaHint": "Ligue pra apps de página única com roteamento no navegador (React Router, Vue Router...): um refresh em /rota/interna não dá 404."
   },
   "applicationStorage": {
     "armazenamentoPersistente": "Armazenamento persistente",
@@ -1666,7 +1669,9 @@
     "salvoReimplantePraAplicar": "salvo — reimplante pra aplicar",
     "reimplantePraAplicar": "Reimplante pra aplicar.",
     "historicoDeRecursos": "Histórico de recursos",
-    "falhaAoExecutarAAcao": "falha ao executar a ação"
+    "falhaAoExecutarAAcao": "falha ao executar a ação",
+    "missingVarsTitle": "Preencha estas variáveis obrigatórias antes de subir:",
+    "missingVarsHint": "Abra a aba Variáveis de ambiente, preencha os valores e depois use Reimplantar. Enquanto isso o serviço fica parado."
   },
   "serviceLogs": {
     "logsDaStack": "Logs da stack",

@@ -74,6 +74,7 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     dockerImage: app.dockerImage,
     dockerfileContent: app.dockerfileContent,
     publishDirectory: app.publishDirectory,
+    staticSpa: app.staticSpa,
     composeFile: app.composeFile,
     composeService: app.composeService,
     deployKeyPublic: app.deployKeyPublic,
@@ -219,6 +220,7 @@ export const applicationRoutes = new Elysia({
       let dockerImage: string | null = null;
       let dockerfileContent: string | null = null;
       let publishDirectory = ".";
+      let staticSpa = false;
       let composeFile = DEFAULT_COMPOSE_FILE;
       let composeService: string | null = null;
       let deployKey: string | null = null;
@@ -313,6 +315,7 @@ export const applicationRoutes = new Elysia({
         }
         if (buildPack === "static") {
           publishDirectory = (body.publishDirectory ?? ".").trim() || ".";
+          staticSpa = body.staticSpa === true;
           if (!isSafePublishDirectory(publishDirectory)) {
             set.status = 400;
             return { error: "a pasta publicada precisa ser um caminho relativo simples dentro do repositório" };
@@ -338,6 +341,7 @@ export const applicationRoutes = new Elysia({
           dockerImage,
           dockerfileContent,
           publishDirectory,
+          staticSpa,
           composeFile,
           composeService,
           deployKey,
@@ -366,6 +370,7 @@ export const applicationRoutes = new Elysia({
         dockerImage: t.Optional(t.String({ maxLength: 512 })),
         dockerfileContent: t.Optional(t.String({ maxLength: 100000 })),
         publishDirectory: t.Optional(t.String({ maxLength: 255 })),
+        staticSpa: t.Optional(t.Boolean()),
         composeFile: t.Optional(t.String({ maxLength: 255 })),
         composeService: t.Optional(t.String({ maxLength: 64 })),
         useDeployKey: t.Optional(t.Boolean()),

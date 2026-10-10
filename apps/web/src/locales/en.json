@@ -661,7 +661,8 @@
     "falhaAoCriarRecurso": "failed to create resource",
     "catAi": "AI",
     "catFinance": "Finance",
-    "catGames": "Games"
+    "catGames": "Games",
+    "spaMode": "SPA mode (unknown routes return index.html)"
   },
   "serverNew": {
     "servidores": "Servers",
@@ -1195,7 +1196,9 @@
     "nesteServidorPadrao": "This server (default)",
     "falhaAoSalvarORegistry": "failed to save the registry",
     "falhaAoSalvarOServidor": "failed to save the build server",
-    "falhaAoSalvarAOrigem": "failed to save the source"
+    "falhaAoSalvarAOrigem": "failed to save the source",
+    "spaMode": "SPA mode (unknown routes return index.html)",
+    "spaHint": "Turn on for single-page apps with client-side routing (React Router, Vue Router...): refreshing on /some/route no longer 404s."
   },
   "applicationStorage": {
     "armazenamentoPersistente": "Persistent storage",
@@ -1666,7 +1669,9 @@
     "salvoReimplantePraAplicar": "saved — redeploy to apply",
     "reimplantePraAplicar": "Redeploy to apply.",
     "historicoDeRecursos": "Resource history",
-    "falhaAoExecutarAAcao": "failed to run the action"
+    "falhaAoExecutarAAcao": "failed to run the action",
+    "missingVarsTitle": "Fill in these required variables before starting:",
+    "missingVarsHint": "Open the Environment variables tab, fill in the values, then use Redeploy. The service stays stopped until then."
   },
   "serviceLogs": {
     "logsDaStack": "Stack logs",

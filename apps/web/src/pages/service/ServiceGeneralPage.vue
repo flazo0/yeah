@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import type { ServiceContainerDto } from "@yeah/shared";
+import { missingRequiredVars, type ServiceContainerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import DomainCard from "../../components/DomainCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
@@ -9,6 +9,7 @@ import { useServiceContext } from "../../composables/useServiceContext";
 import { i18n } from "../../lib/i18n";
 
 const { service, basePath, error, reloadService } = useServiceContext();
+const missingVars = computed(() => (service.value?.composeContent ? missingRequiredVars(service.value.composeContent, service.value.envContent) : []));
 const isStack = computed(() => Boolean(service.value?.composeContent));
 
 function fetchHistory(hours: number) {
@@ -49,6 +50,11 @@ async function lifecycle(action: "start" | "stop" | "restart") {
 </script>
 
 <template>
+  <div v-if="service && missingVars.length" class="callout mb-16">
+    <strong>{{ $t("serviceGeneral.missingVarsTitle") }}</strong>
+    <code class="mono">{{ missingVars.join(", ") }}</code>
+    <p class="hint" style="margin: 6px 0 0">{{ $t("serviceGeneral.missingVarsHint") }}</p>
+  </div>
   <div v-if="service" class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">info</span>

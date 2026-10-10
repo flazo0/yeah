@@ -9,7 +9,7 @@ import { i18n } from "../../lib/i18n";
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const teamId = useRoute().params.teamId as string;
 
-const form = ref({ gitRepo: "", repoUrl: "", branch: "", githubRepo: "", dockerImage: "", dockerfileContent: "", publishDirectory: ".", composeFile: "", composeService: "", port: 3000 });
+const form = ref({ gitRepo: "", repoUrl: "", branch: "", githubRepo: "", dockerImage: "", dockerfileContent: "", publishDirectory: ".", staticSpa: false, composeFile: "", composeService: "", port: 3000 });
 const githubRepos = ref<GithubRepoDto[]>([]);
 const saving = ref(false);
 const saved = ref(false);
@@ -34,6 +34,7 @@ onMounted(async () => {
     dockerImage: a.dockerImage ?? "",
     dockerfileContent: a.dockerfileContent ?? "",
     publishDirectory: a.publishDirectory,
+    staticSpa: a.staticSpa,
     composeFile: a.composeFile,
     composeService: a.composeService ?? "",
     port: a.port,
@@ -108,7 +109,10 @@ async function save() {
       if (a.githubRepo) body.githubRepo = f.githubRepo;
       else if (a.gitSourceId) body.gitRepo = f.gitRepo;
       else body.repoUrl = f.repoUrl;
-      if (a.buildPack === "static") body.publishDirectory = f.publishDirectory;
+      if (a.buildPack === "static") {
+        body.publishDirectory = f.publishDirectory;
+        body.staticSpa = f.staticSpa;
+      }
       if (a.buildPack === "docker_compose") {
         body.composeFile = f.composeFile;
         body.composeService = f.composeService;
@@ -174,6 +178,13 @@ async function save() {
         <div v-if="app.buildPack === 'static'" class="form-group">
           <label for="src-publish">{{ $t("applicationSource.pastaPublicada") }}</label>
           <input id="src-publish" v-model="form.publishDirectory" class="form-control mono" />
+        </div>
+        <div v-if="app.buildPack === 'static'" class="form-group">
+          <label style="display: flex; gap: 8px; align-items: center">
+            <input id="src-spa" v-model="form.staticSpa" type="checkbox" />
+            {{ $t("applicationSource.spaMode") }}
+          </label>
+          <p class="hint">{{ $t("applicationSource.spaHint") }}</p>
         </div>
         <template v-if="app.buildPack === 'docker_compose'">
           <div class="form-group">
