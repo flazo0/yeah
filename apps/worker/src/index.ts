@@ -53,6 +53,7 @@ import { makeTrafficAnalyticsProcessor } from "./jobs/trafficAnalytics";
 import { makeApplicationRoutingProcessor } from "./jobs/applicationRouting";
 import { makeApiTokenExpiryProcessor } from "./jobs/apiTokenExpiry";
 import { log, logJobEvents } from "./lib/logger";
+import { intervalMsFromEnv } from "./lib/intervals";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -131,7 +132,8 @@ const metricsWorker = createServerMetricsWorker(metricsJobConnection, makeServer
 logJobEvents(metricsWorker, "server-metrics");
 
 const metricsSchedulerQueue = createServerMetricsQueue(sharedConnection);
-await ensureServerMetricsScheduler(metricsSchedulerQueue);
+// Longer interval = fewer SSH round-trips per server; useful on a small panel host with many servers.
+await ensureServerMetricsScheduler(metricsSchedulerQueue, intervalMsFromEnv(process.env.METRICS_INTERVAL_SECONDS, 60, 15));
 
 const tlsWorker = createTlsCheckWorker(tlsJobConnection, makeTlsCheckProcessor());
 logJobEvents(tlsWorker, "tls-check");

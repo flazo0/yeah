@@ -870,3 +870,7 @@ Listagens read-only de servidores, projetos, storages, canais de notificação, 
 ## Fase 8 — DigitalOcean e Vultr
 
 `vpsProviders.ts` generaliza a criação de VPS (Hetzner delegando ao cliente existente). DO e Vultr devolvem o IP só depois do boot, então há polling com `sleep` injetável (testes sem espera). Firewall: DO anexa por tag (cobre a máquina desde o primeiro boot); Vultr cria grupo e 6 regras. Rota virou `POST /servers/create-vps` com `provider`. Falha após criar a máquina nunca apaga nada sozinho (destrutivo, custa dinheiro). **Não testado** contra as APIs reais ([[feedback-no-local-docker-testing]]).
+
+## Fase 9 — knobs chegando nos containers
+
+Achei um bug meu das rodadas anteriores: `docker-compose.prod.yml` não usa `env_file`, então `LOG_FORMAT`, `LOG_LEVEL` e `DB_POOL_MAX` documentados no `.env.example` nunca chegavam aos serviços. Agora são repassados explicitamente (api/worker/ws). Novo `METRICS_INTERVAL_SECONDS` (parser clampado, testado) e `docs/RESOURCES.md`. Compose não validado subindo ([[feedback-no-local-docker-testing]]).

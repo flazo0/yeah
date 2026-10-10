@@ -57,6 +57,10 @@ services:
       redis:
         condition: service_healthy
     environment:
+      # Opcionais (ver .env.example): formato/nível dos logs e tamanho do pool do Postgres.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
@@ -105,6 +109,11 @@ services:
       redis:
         condition: service_healthy
     environment:
+      # Opcionais (ver .env.example): formato/nível dos logs e tamanho do pool do Postgres.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      METRICS_INTERVAL_SECONDS: ${METRICS_INTERVAL_SECONDS:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
       # Chave dos segredos criptografados no banco (packages/db/src/encryption.ts). Instalações antigas,
@@ -135,6 +144,9 @@ services:
       redis:
         condition: service_healthy
     environment:
+      # Opcionais (ver .env.example): formato/nível dos logs e tamanho do pool do Postgres.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
       REDIS_URL: redis://redis:6379
       WS_PORT: 3001
     ports:
