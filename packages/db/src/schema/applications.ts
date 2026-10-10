@@ -53,6 +53,8 @@ export const applications = pgTable("applications", {
   publishDirectory: varchar("publish_directory", { length: 255 }).default(".").notNull(),
   // Static sites only: unknown paths fall back to /index.html (single-page apps with client-side routing).
   staticSpa: boolean("static_spa").default(false).notNull(),
+  // Scale-to-zero: stop the container after this many idle minutes; the server waker starts it on the next request. null = always on.
+  sleepAfterMinutes: integer("sleep_after_minutes"),
   // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).
   extraDomains: text("extra_domains").array().default(sql`'{}'::text[]`).notNull(),
   wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),

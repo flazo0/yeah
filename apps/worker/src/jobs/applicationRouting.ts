@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { applications, servers } from "@yeah/db";
-import { connectSsh, execStream, writeRemoteFile } from "@yeah/ssh";
-import { computeRouting, PROXY_DIR, shellQuote, traefikDynamicConfig } from "@yeah/shared";
+import { connectSsh } from "@yeah/ssh";
+import { writeAppRouting } from "../lib/appRouting";
 import type { ApplicationRoutingJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
@@ -23,14 +23,9 @@ export function makeApplicationRoutingProcessor() {
     if (!server) return;
 
     const containerName = `yeah-app-${application.id}`;
-    const dynamicPath = `${PROXY_DIR}/dynamic/${containerName}.yml`;
     const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
     try {
-      if (application.domain) {
-        await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, computeRouting(application.domain, application.extraDomains, application.wwwRedirect), application.port));
-      } else {
-        await execStream(conn, `rm -f ${shellQuote(dynamicPath)}`, () => undefined);
-      }
+      await writeAppRouting(conn, application, containerName, application.domain);
     } finally {
       conn.end();
     }

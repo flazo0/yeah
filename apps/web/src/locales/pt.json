@@ -1683,5 +1683,14 @@
     "1000Linhas": "1000 linhas",
     "atualizar": "Atualizar",
     "falhaAoLerOsLogs": "falha ao ler os logs"
+  },
+  "appSleepCard": {
+    "titulo": "Dormir quando ocioso",
+    "dica": "Sem acessos pelo tempo escolhido, o container é desligado para liberar memória e CPU. Na próxima requisição ele liga sozinho: o visitante espera um pouco mais naquela primeira resposta (normalmente 1 a 5 segundos, depende do app), sem tela de carregamento. Parar manualmente não adianta: o próximo acesso liga de novo.",
+    "precisaDeDominio": "Defina um domínio para usar esta opção.",
+    "ativar": "Desligar quando ninguém estiver acessando",
+    "minutos": "Minutos sem acesso antes de dormir",
+    "salvo": "salvo, aplica na hora",
+    "falha": "falha ao salvar"
   }
 }

@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { resourceSlug, type ServerDto } from "@yeah/shared";
 import { api } from "../../lib/api";
 import AppDomainsCard from "../../components/AppDomainsCard.vue";
+import AppSleepCard from "../../components/AppSleepCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
@@ -92,6 +93,15 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :suggestion="suggestion"
       :saved-message="app.buildPack === 'docker_compose' ? $t('applicationGeneral.salvoAplicaNoProximoDeploy') : 'salvo — aplica na hora, sem precisar reimplantar'"
       @saved="(v) => { app!.domain = v.domain; app!.extraDomains = v.extraDomains; app!.wwwRedirect = v.wwwRedirect; void reloadApp(); }"
+      @error="(msg) => (error = msg)"
+    />
+
+    <AppSleepCard
+      v-if="app.buildPack !== 'docker_compose'"
+      :sleep-after-minutes="app.sleepAfterMinutes"
+      :has-domain="!!app.domain"
+      :put-url="`${basePath}/sleep`"
+      @saved="(v) => { app!.sleepAfterMinutes = v; }"
       @error="(msg) => (error = msg)"
     />
 

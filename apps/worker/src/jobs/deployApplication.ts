@@ -10,6 +10,7 @@ import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot,
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { writeAppRouting } from "../lib/appRouting";
 import { notifyTeam } from "../lib/notify";
 import { forwardJobLog } from "../lib/logDrains";
 import {
@@ -347,12 +348,7 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       // can have several containers; which one owns the domain is a compose-file concern, not this
       // single-container path's).
       if (application.buildPack !== "docker_compose") {
-        const dynamicPath = `${PROXY_DIR}/dynamic/${containerName}.yml`;
-        if (domain) {
-          await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, computeRouting(domain, application.extraDomains, application.wwwRedirect), application.port));
-        } else {
-          await execStream(conn, `rm -f ${shellQuote(dynamicPath)}`, () => undefined);
-        }
+        await writeAppRouting(conn, application, containerName, domain);
       }
       if (application.healthPath && application.buildPack !== "docker_compose") {
         await runStep(

@@ -29,6 +29,7 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     dockerfileContent: null,
     publishDirectory: ".",
     staticSpa: false,
+    sleepAfterMinutes: null,
     composeFile: "docker-compose.yml",
     composeService: null,
     extraDomains: [],

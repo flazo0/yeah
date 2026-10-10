@@ -119,3 +119,11 @@ describe("serializeEnvEntries", () => {
     expect(serializeEnvEntries([])).toBe("");
   });
 });
+
+describe("traefikDynamicConfig backend override", () => {
+  test("a custom backend URL replaces the container address (scale-to-zero waker)", () => {
+    const yml = traefikDynamicConfig("yeah-app-1", computeRouting("a.example.com", [], "none"), 3000, "http://yeah-waker:8080");
+    expect(yml).toContain('url: "http://yeah-waker:8080"');
+    expect(yml).not.toContain("yeah-app-1:3000");
+  });
+});

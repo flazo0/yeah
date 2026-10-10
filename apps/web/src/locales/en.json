@@ -1683,5 +1683,14 @@
     "1000Linhas": "1000 lines",
     "atualizar": "Refresh",
     "falhaAoLerOsLogs": "failed to read the logs"
+  },
+  "appSleepCard": {
+    "titulo": "Sleep when idle",
+    "dica": "With no traffic for the chosen time, the container is stopped to free memory and CPU. The next request starts it again: the visitor waits a bit longer for that first response (usually 1 to 5 seconds, depending on the app), with no loading page. Stopping it manually does not stick: the next visit starts it again.",
+    "precisaDeDominio": "Set a domain to use this option.",
+    "ativar": "Stop when nobody is visiting",
+    "minutos": "Idle minutes before sleeping",
+    "salvo": "saved, applied right away",
+    "falha": "failed to save"
   }
 }

@@ -13,6 +13,13 @@ export const PROXY_CONTAINER_NAME = "yeah-proxy";
  * the dynamic/ directory the File Provider watches for no-redeploy domain changes. */
 export const PROXY_DIR = "/opt/yeah-proxy";
 
+/** Scale-to-zero: the tiny reverse proxy that holds a request, starts a sleeping container and forwards. */
+export const WAKER_CONTAINER_NAME = "yeah-waker";
+export const WAKER_PORT = 8080;
+/** Bounds (minutes of idle time) the API accepts for an app's sleep setting. */
+export const MIN_SLEEP_MINUTES = 1;
+export const MAX_SLEEP_MINUTES = 10080;
+
 /** `docker restart` for the proxy's own container. */
 export function buildProxyRestartCommand(): string {
   return `docker restart '${PROXY_CONTAINER_NAME}'`;

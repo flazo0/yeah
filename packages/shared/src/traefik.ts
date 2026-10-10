@@ -88,7 +88,7 @@ export function traefikLabels(name: string, routing: Routing, port: number): str
  * routing labels at all and this file is their only router — letting a domain-only change update this
  * file alone, with no container recreate and so no redeploy.
  */
-export function traefikDynamicConfig(name: string, routing: Routing, port: number): string {
+export function traefikDynamicConfig(name: string, routing: Routing, port: number, backendUrl?: string): string {
   const rule = routing.hosts.map((h) => `Host(\`${h}\`)`).join(" || ");
   const lines = [
     "http:",
@@ -117,7 +117,7 @@ export function traefikDynamicConfig(name: string, routing: Routing, port: numbe
       "      priority: 1000",
     );
   }
-  lines.push("  services:", `    ${name}:`, "      loadBalancer:", "        servers:", `          - url: "http://${name}:${port}"`);
+  lines.push("  services:", `    ${name}:`, "      loadBalancer:", "        servers:", `          - url: "${backendUrl ?? `http://${name}:${port}`}"`);
   if (routing.redirectFrom) {
     const r = `${name}-redir`;
     lines.push(

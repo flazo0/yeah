@@ -19,7 +19,7 @@ import {
   volumeBackups,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
-import { gitRepoUrl, isValidGitRepoPath } from "@yeah/shared";
+import { gitRepoUrl, isValidGitRepoPath, MAX_SLEEP_MINUTES, MIN_SLEEP_MINUTES } from "@yeah/shared";
 import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
 import { computeRouting, configSnapshot, DEPLOY_AFFECTING_FIELDS, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
@@ -75,6 +75,7 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     dockerfileContent: app.dockerfileContent,
     publishDirectory: app.publishDirectory,
     staticSpa: app.staticSpa,
+    sleepAfterMinutes: app.sleepAfterMinutes,
     composeFile: app.composeFile,
     composeService: app.composeService,
     deployKeyPublic: app.deployKeyPublic,
@@ -560,6 +561,45 @@ export const applicationRoutes = new Elysia({
       return { application: await applicationDto(updated, row.serverName) };
     },
     { body: t.Object({ memoryLimitMb: t.Optional(t.Nullable(t.Number())), cpuLimit: t.Optional(t.Nullable(t.Number())) }) },
+  )
+  .put(
+    "/:applicationId/sleep",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const minutes = body.sleepAfterMinutes ?? null;
+      if (minutes !== null) {
+        if (!Number.isInteger(minutes) || minutes < MIN_SLEEP_MINUTES || minutes > MAX_SLEEP_MINUTES) {
+          set.status = 400;
+          return { error: `informe de ${MIN_SLEEP_MINUTES} a ${MAX_SLEEP_MINUTES} minutos` };
+        }
+        if (row.application.buildPack === "docker_compose") {
+          set.status = 400;
+          return { error: "dormir quando ocioso não está disponível para aplicações docker compose" };
+        }
+      }
+      const [updated] = await db.update(applications).set({ sleepAfterMinutes: minutes }).where(eq(applications.id, params.applicationId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update sleep" };
+      }
+      // Rewrites the routing (waker vs. direct) on the server without touching the container.
+      if (updated.domain) await applicationRoutingQueue.add("update", { applicationId: updated.id });
+      return { application: await applicationDto(updated, row.serverName) };
+    },
+    { body: t.Object({ sleepAfterMinutes: t.Optional(t.Nullable(t.Number())) }) },
   )
   .put(
     "/:applicationId/advanced",

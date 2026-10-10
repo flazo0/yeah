@@ -365,6 +365,13 @@
       "when": 1791669712215,
       "tag": "0051_static_spa",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791675347703,
+      "tag": "0052_app_sleep",
+      "breakpoints": true
     }
   ]
 }

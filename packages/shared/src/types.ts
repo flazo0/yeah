@@ -191,6 +191,7 @@ export interface ApplicationDto extends ResourceLimits {
   dockerfileContent: string | null;
   publishDirectory: string;
   staticSpa: boolean;
+  sleepAfterMinutes: number | null;
   /** docker_compose only: compose file inside the repo, and the service the domain/port routes to. */
   composeFile: string;
   composeService: string | null;
