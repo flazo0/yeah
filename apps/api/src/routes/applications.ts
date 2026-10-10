@@ -21,7 +21,7 @@ import {
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { gitRepoUrl, isValidGitRepoPath } from "@yeah/shared";
 import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
-import { computeRouting, configSnapshot, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
+import { computeRouting, configSnapshot, DEPLOY_AFFECTING_FIELDS, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
 import { connectSsh, execStream, generateSshKeyPair, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
@@ -32,18 +32,25 @@ import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
-import { applicationDeployQueue, applicationLifecycleQueue, scheduledTaskQueue } from "../lib/queue";
+import { applicationDeployQueue, applicationLifecycleQueue, applicationRoutingQueue, scheduledTaskQueue } from "../lib/queue";
 import { addScheduledTask, removeScheduledTask } from "@yeah/queue";
 import { tearDownApplication } from "../lib/appTeardown";
 import { generateDeployToken, hashDeployToken, validateAdvancedSettings } from "../lib/deployRules";
 
 const sha256 = (text: string) => createHash("sha256").update(text).digest("hex");
 
+// Fase 6: for every build pack except docker_compose, a domain/extraDomains/wwwRedirect edit now
+// updates live via the Traefik File Provider (applicationRoutingQueue) instead of needing a redeploy
+// — see traefikDynamicConfig in packages/shared — so those three stop counting as "pending" there.
+const ROUTING_FIELD_LABELS = new Set<string>([DEPLOY_AFFECTING_FIELDS.domain, DEPLOY_AFFECTING_FIELDS.extraDomains, DEPLOY_AFFECTING_FIELDS.wwwRedirect]);
+
 /** Settings changed since the last deploy (null if never deployed). */
 async function pendingFor(app: Application): Promise<string[] | null> {
   if (!app.deployedConfig) return null;
   const volumes = await db.select().from(applicationVolumes).where(eq(applicationVolumes.applicationId, app.id));
-  return pendingChanges(app.deployedConfig as ConfigSnapshot, configSnapshot(app, volumes, sha256));
+  const changed = pendingChanges(app.deployedConfig as ConfigSnapshot, configSnapshot(app, volumes, sha256));
+  if (!changed || app.buildPack === "docker_compose") return changed;
+  return changed.filter((label) => !ROUTING_FIELD_LABELS.has(label));
 }
 
 export async function applicationDto(app: Application, serverName: string): Promise<ApplicationDto> {
@@ -496,6 +503,14 @@ export const applicationRoutes = new Elysia({
       if (!updated) {
         set.status = 500;
         return { error: "failed to update domain" };
+      }
+
+      // Fase 6: a single-container app that's already been deployed gets its routing updated live
+      // via the Traefik File Provider instead of needing a redeploy — docker_compose has no single
+      // container to point a dynamic-file backend at (routing there is the compose override labels,
+      // applied at `docker compose up`), so it still needs a redeploy and isn't touched here.
+      if (updated.buildPack !== "docker_compose" && updated.deployedConfig) {
+        await applicationRoutingQueue.add("update", { applicationId: updated.id });
       }
 
       return { application: await applicationDto(updated, row.serverName) };

@@ -1,5 +1,5 @@
 import { applications, type Application, type ApplicationVolume, type Server } from "@yeah/db";
-import { composeProjectName, composeTeardownCommand, volumeName } from "@yeah/shared";
+import { composeProjectName, composeTeardownCommand, PROXY_DIR, volumeName } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 
 void applications;
@@ -15,8 +15,12 @@ export async function tearDownApplication(application: Application, server: Serv
   const appDir = `/opt/yeah-apps/${application.id}`;
   const backupsDir = `/opt/yeah-backups/volumes/${application.id}`;
   const volumeRm = volumes.map((v) => `docker volume rm ${shellQuote(volumeName(v.id))} >/dev/null 2>&1 || true`).join(" && ");
+  // The Traefik File Provider routing file (Fase 6) outlives the container otherwise — compose apps
+  // never get one (see deployApplication.ts), so this is a no-op `rm -f` for them.
+  const dynamicRm = `rm -f ${shellQuote(`${PROXY_DIR}/dynamic/${containerName}.yml`)} >/dev/null 2>&1 || true`;
   const command =
     (application.buildPack === "docker_compose" ? composeTeardownCommand(composeProjectName(application.id)) : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true`) +
+    ` && ${dynamicRm}` +
     ` && rm -rf ${shellQuote(appDir)} ${shellQuote(backupsDir)} >/dev/null 2>&1 || true` +
     (volumeRm ? ` && ${volumeRm}` : "");
   try {

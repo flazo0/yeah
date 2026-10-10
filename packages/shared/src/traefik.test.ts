@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { computeRouting, isValidHostname, normalizeHost, traefikLabels } from "./traefik";
+import { computeRouting, isValidHostname, normalizeHost, traefikDynamicConfig, traefikLabels } from "./traefik";
 import { configSnapshot, pendingChanges } from "./pending";
 import { parseEnvContent, serializeEnvEntries } from "./env";
 
@@ -51,6 +51,33 @@ describe("traefikLabels", () => {
     expect(labels).toContain(String.raw`traefik.http.middlewares.app1-redir.redirectregex.regex=^https?://a\.com/(.*)`);
     expect(labels).toContain("traefik.http.middlewares.app1-redir.redirectregex.replacement=https://www.a.com/${1}");
     expect(labels).toContain("traefik.http.middlewares.app1-redir.redirectregex.permanent=true");
+  });
+});
+
+describe("traefikDynamicConfig", () => {
+  test("single host: router, high priority, and a service pointing at the container's own network alias", () => {
+    const yaml = traefikDynamicConfig("app1", computeRouting("a.com", [], "none"), 3000);
+    expect(yaml).toContain('rule: "Host(`a.com`)"');
+    expect(yaml).toContain("priority: 1000");
+    expect(yaml).toContain("certResolver: letsencrypt");
+    expect(yaml).toContain('- url: "http://app1:3000"');
+    expect(yaml).not.toContain("redirectRegex");
+  });
+  test("several hosts join with ||", () => {
+    const yaml = traefikDynamicConfig("app1", computeRouting("a.com", ["b.com"], "none"), 80);
+    expect(yaml).toContain('rule: "Host(`a.com`) || Host(`b.com`)"');
+  });
+  test("redirect adds a second router, a redirectRegex middleware and TLS for the redirected host", () => {
+    const yaml = traefikDynamicConfig("app1", computeRouting("a.com", [], "root_to_www"), 80);
+    expect(yaml).toContain('rule: "Host(`www.a.com`)"');
+    expect(yaml).toContain('app1-redir:\n      rule: "Host(`a.com`)"');
+    expect(yaml).toContain("- app1-redir");
+    expect(yaml).toContain(String.raw`regex: "^https?://a\.com/(.*)"`);
+    expect(yaml).toContain('replacement: "https://www.a.com/${1}"');
+    expect(yaml).toContain("permanent: true");
+  });
+  test("ends with a trailing newline, like the other hand-written Traefik config", () => {
+    expect(traefikDynamicConfig("app1", computeRouting("a.com", [], "none"), 80).endsWith("\n")).toBe(true);
   });
 });
 

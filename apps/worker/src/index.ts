@@ -23,6 +23,7 @@ import {
   createCloudflareTunnelWorker,
   createTrafficAnalyticsQueue,
   createTrafficAnalyticsWorker,
+  createApplicationRoutingWorker,
   ensureServerMetricsScheduler,
   ensureTlsCheckScheduler,
   ensureLogRetentionScheduler,
@@ -46,6 +47,7 @@ import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
 import { makeLogRetentionProcessor } from "./jobs/logRetention";
 import { makeCloudflareTunnelProcessor } from "./jobs/cloudflareTunnel";
 import { makeTrafficAnalyticsProcessor } from "./jobs/trafficAnalytics";
+import { makeApplicationRoutingProcessor } from "./jobs/applicationRouting";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -69,6 +71,7 @@ const tlsJobConnection = createRedisConnection(redisUrl);
 const logRetentionJobConnection = createRedisConnection(redisUrl);
 const cloudflareTunnelConnection = createRedisConnection(redisUrl);
 const trafficAnalyticsConnection = createRedisConnection(redisUrl);
+const applicationRoutingConnection = createRedisConnection(redisUrl);
 const dockerCleanupConnection = createRedisConnection(redisUrl);
 const caCertificateConnection = createRedisConnection(redisUrl);
 const platformOperationJobConnection = createRedisConnection(redisUrl);
@@ -151,6 +154,9 @@ trafficAnalyticsWorker.on("failed", (job, err) => console.error(`[worker] traffi
 const trafficAnalyticsSchedulerQueue = createTrafficAnalyticsQueue(sharedConnection);
 await ensureTrafficAnalyticsScheduler(trafficAnalyticsSchedulerQueue);
 
+const applicationRoutingWorker = createApplicationRoutingWorker(applicationRoutingConnection, makeApplicationRoutingProcessor());
+applicationRoutingWorker.on("failed", (job, err) => console.error(`[worker] application-routing ${job?.id} failed:`, err.message));
+
 const platformOperationSelfQueue = createPlatformOperationQueue(sharedConnection);
 const platformOperationWorker = createPlatformOperationWorker(
   platformOperationJobConnection,
@@ -165,5 +171,5 @@ const caCertificateWorker = createCaCertificateWorker(caCertificateConnection, m
 caCertificateWorker.on("failed", (job, err) => console.error(`[worker] ca-certificate ${job?.id} failed:`, err.message));
 
 console.log(
-  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention, cloudflare-tunnel and traffic-analytics jobs",
+  "[worker] listening for server-check, application-deploy, application-lifecycle, scheduled-task, database-restore, volume-backup, database-provision, database-backup, proxy-provision, service-provision, server-metrics, tls-check, platform-operation, docker-cleanup, ca-certificate, log-retention, cloudflare-tunnel, traffic-analytics and application-routing jobs",
 );

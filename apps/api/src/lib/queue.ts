@@ -6,6 +6,7 @@ import {
   createDockerCleanupQueue,
   createCaCertificateQueue,
   createCloudflareTunnelQueue,
+  createApplicationRoutingQueue,
   createPlatformOperationQueue,
   createProxyProvisionQueue,
   createRedisConnection,
@@ -37,3 +38,4 @@ export const volumeBackupQueue = createVolumeBackupQueue(connection);
 export const dockerCleanupQueue = createDockerCleanupQueue(connection);
 export const caCertificateQueue = createCaCertificateQueue(connection);
 export const cloudflareTunnelQueue = createCloudflareTunnelQueue(connection);
+export const applicationRoutingQueue = createApplicationRoutingQueue(connection);

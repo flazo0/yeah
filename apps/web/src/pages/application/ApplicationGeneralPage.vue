@@ -90,7 +90,7 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :www-redirect="app.wwwRedirect"
       :put-url="`${basePath}/domain`"
       :suggestion="suggestion"
-      saved-message="salvo — aplica no próximo deploy"
+      :saved-message="app.buildPack === 'docker_compose' ? 'salvo — aplica no próximo deploy' : 'salvo — aplica na hora, sem precisar reimplantar'"
       @saved="(v) => { app!.domain = v.domain; app!.extraDomains = v.extraDomains; app!.wwwRedirect = v.wwwRedirect; void reloadApp(); }"
       @error="(msg) => (error = msg)"
     />

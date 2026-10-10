@@ -20,6 +20,7 @@ export const CA_CERTIFICATE_QUEUE = "ca-certificate";
 export const LOG_RETENTION_QUEUE = "log-retention";
 export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
 export const TRAFFIC_ANALYTICS_QUEUE = "traffic-analytics";
+export const APPLICATION_ROUTING_QUEUE = "application-routing";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -352,6 +353,18 @@ export function createCloudflareTunnelQueue(connection: Redis): Queue<Cloudflare
 
 export function createCloudflareTunnelWorker(connection: Redis, processor: Processor<CloudflareTunnelJobData>): Worker<CloudflareTunnelJobData> {
   return new Worker<CloudflareTunnelJobData>(CLOUDFLARE_TUNNEL_QUEUE, processor, { connection });
+}
+
+export interface ApplicationRoutingJobData {
+  applicationId: string;
+}
+
+export function createApplicationRoutingQueue(connection: Redis): Queue<ApplicationRoutingJobData> {
+  return new Queue<ApplicationRoutingJobData>(APPLICATION_ROUTING_QUEUE, { connection });
+}
+
+export function createApplicationRoutingWorker(connection: Redis, processor: Processor<ApplicationRoutingJobData>): Worker<ApplicationRoutingJobData> {
+  return new Worker<ApplicationRoutingJobData>(APPLICATION_ROUTING_QUEUE, processor, { connection });
 }
 
 export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {

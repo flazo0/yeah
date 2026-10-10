@@ -78,3 +78,56 @@ export function traefikLabels(name: string, routing: Routing, port: number): str
   }
   return labels;
 }
+
+/**
+ * Traefik File Provider YAML equivalent of `traefikLabels()` — same routing, same backend (the
+ * container's own network alias on PROXY_NETWORK_NAME and its port, identical to what the Docker
+ * provider would resolve the label-based router to), but written to a file Traefik watches instead of
+ * baked into the container at creation time. `priority` is set high enough to beat the Docker
+ * provider's own (rule-length-based, normally well under 100) default, so a file-provider router for
+ * the same name always wins when both exist — letting a domain-only change update this file alone,
+ * with no container recreate and so no redeploy. See docs/ROADMAP.md Fase 6 for why both can coexist.
+ */
+export function traefikDynamicConfig(name: string, routing: Routing, port: number): string {
+  const rule = routing.hosts.map((h) => `Host(\`${h}\`)`).join(" || ");
+  const lines = [
+    "http:",
+    "  routers:",
+    `    ${name}:`,
+    `      rule: "${rule}"`,
+    "      entryPoints:",
+    "        - websecure",
+    "      tls:",
+    "        certResolver: letsencrypt",
+    `      service: ${name}`,
+    "      priority: 1000",
+  ];
+  if (routing.redirectFrom) {
+    const r = `${name}-redir`;
+    lines.push(
+      `    ${r}:`,
+      `      rule: "Host(\`${routing.redirectFrom}\`)"`,
+      "      entryPoints:",
+      "        - websecure",
+      "      tls:",
+      "        certResolver: letsencrypt",
+      `      service: ${name}`,
+      "      middlewares:",
+      `        - ${r}`,
+      "      priority: 1000",
+    );
+  }
+  lines.push("  services:", `    ${name}:`, "      loadBalancer:", "        servers:", `          - url: "http://${name}:${port}"`);
+  if (routing.redirectFrom) {
+    const r = `${name}-redir`;
+    lines.push(
+      "  middlewares:",
+      `    ${r}:`,
+      "      redirectRegex:",
+      `        regex: "^https?://${regexEscape(routing.redirectFrom)}/(.*)"`,
+      `        replacement: "https://${routing.canonical}/\${1}"`,
+      "        permanent: true",
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}

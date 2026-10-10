@@ -5,6 +5,10 @@ export const PROXY_NETWORK_NAME = "yeah-proxy-net";
 
 export const PROXY_CONTAINER_NAME = "yeah-proxy";
 
+/** Where the proxy's own config lives on the managed server — traefik.yml, acme.json, and (Fase 6)
+ * the dynamic/ directory the File Provider watches for no-redeploy domain changes. */
+export const PROXY_DIR = "/opt/yeah-proxy";
+
 /** `docker restart` for the proxy's own container. */
 export function buildProxyRestartCommand(): string {
   return `docker restart '${PROXY_CONTAINER_NAME}'`;

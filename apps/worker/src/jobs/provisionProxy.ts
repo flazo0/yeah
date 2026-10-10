@@ -2,13 +2,12 @@ import { eq } from "drizzle-orm";
 import { servers } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ProxyProvisionJobData } from "@yeah/queue";
-import { buildProxyRestartCommand, PROXY_CONTAINER_NAME, PROXY_NETWORK_NAME } from "@yeah/shared";
+import { buildProxyRestartCommand, PROXY_CONTAINER_NAME, PROXY_DIR, PROXY_NETWORK_NAME } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
 
-export { PROXY_NETWORK_NAME, PROXY_CONTAINER_NAME };
-const PROXY_DIR = "/opt/yeah-proxy";
+export { PROXY_NETWORK_NAME, PROXY_CONTAINER_NAME, PROXY_DIR };
 
 function traefikStaticConfig(acmeEmail: string, trafficAnalyticsEnabled: boolean): string {
   return `entryPoints:
@@ -26,6 +25,12 @@ providers:
   docker:
     exposedByDefault: false
     network: ${PROXY_NETWORK_NAME}
+  # Fase 6: a router/service written here for a name that also exists via the Docker provider wins
+  # (higher priority, see traefikDynamicConfig in packages/shared) — lets a domain-only change update
+  # routing without recreating the container. Empty until a deploy or a domain edit writes into it.
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
 
 certificatesResolvers:
   letsencrypt:
@@ -81,8 +86,8 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
       });
 
       try {
-        const mkdirResult = await execStream(conn, `mkdir -p ${shellQuote(PROXY_DIR)}`, () => {});
-        if (mkdirResult.exitCode !== 0) throw new Error(`mkdir -p ${PROXY_DIR} exited with code ${mkdirResult.exitCode}`);
+        const mkdirResult = await execStream(conn, `mkdir -p ${shellQuote(`${PROXY_DIR}/dynamic`)}`, () => {});
+        if (mkdirResult.exitCode !== 0) throw new Error(`mkdir -p ${PROXY_DIR}/dynamic exited with code ${mkdirResult.exitCode}`);
 
         await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail, server.trafficAnalyticsEnabled));
 
@@ -100,6 +105,7 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
           `-v /var/run/docker.sock:/var/run/docker.sock:ro ` +
           `-v ${shellQuote(`${PROXY_DIR}/traefik.yml`)}:/etc/traefik/traefik.yml:ro ` +
           `-v ${shellQuote(`${PROXY_DIR}/acme.json`)}:/etc/traefik/acme.json ` +
+          `-v ${shellQuote(`${PROXY_DIR}/dynamic`)}:/etc/traefik/dynamic ` +
           // Pinned to v2 — v3.5's bundled Docker client sends a version-negotiation request that a
           // very new/prerelease Docker Engine (observed: API 1.55) answers with an opaque 400,
           // which breaks container discovery entirely. v2's older client doesn't hit this.

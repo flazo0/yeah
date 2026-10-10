@@ -5,8 +5,8 @@ import { applications, applicationVolumes, deployments, environments, gitSources
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
-import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath } from "@yeah/shared";
-import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
+import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath, PROXY_DIR } from "@yeah/shared";
+import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikDynamicConfig, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -340,6 +340,19 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         },
         appendAndPublish,
       );
+      }
+      // Fase 6: also write the File Provider version of the routing (not just the Docker labels
+      // above) so a later domain-only edit can update this file alone instead of redeploying — see
+      // traefikDynamicConfig in packages/shared. docker_compose keeps labels only (a compose project
+      // can have several containers; which one owns the domain is a compose-file concern, not this
+      // single-container path's).
+      if (application.buildPack !== "docker_compose") {
+        const dynamicPath = `${PROXY_DIR}/dynamic/${containerName}.yml`;
+        if (domain) {
+          await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, computeRouting(domain, application.extraDomains, application.wwwRedirect), application.port));
+        } else {
+          await execStream(conn, `rm -f ${shellQuote(dynamicPath)}`, () => undefined);
+        }
       }
       if (application.healthPath && application.buildPack !== "docker_compose") {
         await runStep(
