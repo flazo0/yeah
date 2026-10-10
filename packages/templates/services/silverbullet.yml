@@ -15,6 +15,7 @@ compose: |
   services:
     silverbullet:
       image: ghcr.io/silverbulletmd/silverbullet:v2
+      environment:
       - SB_USER=${SERVICE_USER_SILVERBULLET}:${SERVICE_PASSWORD_SILVERBULLET}
       volumes:
         - silverbullet-space:/space

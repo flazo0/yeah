@@ -114,7 +114,9 @@ function convert(key: string, raw: string): Result {
     let j = i + 1;
     while (j < kept.length && kept[j]!.trim() === "") j++;
     const nextIndent = j < kept.length ? /^(\s*)/.exec(kept[j]!)![1]!.length : -1;
-    if (nextIndent <= m[1]!.length) kept.splice(i, 1);
+    // YAML allows the "- item" lines at the same indent as their key, so a dash right below still counts as content.
+    const nextIsItem = j < kept.length && nextIndent === m[1]!.length && kept[j]!.trimStart().startsWith("- ");
+    if (nextIndent <= m[1]!.length && !nextIsItem) kept.splice(i, 1);
   }
   // strip the leading comment header (metadata lives in the yeah fields)
   while (kept.length && (kept[0]!.startsWith("#") || kept[0]!.trim() === "")) kept.shift();
