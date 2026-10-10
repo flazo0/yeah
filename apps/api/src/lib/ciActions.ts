@@ -1,5 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
-import { applications, backupSchedules, databases, deployments, servers, services } from "@yeah/db";
+import { applications, backupSchedules, databases, deployments, environments, projects, servers, services } from "@yeah/db";
 import { db } from "./db";
 import { overloadReason } from "./serverLoad";
 import { applicationDeployQueue, databaseBackupQueue } from "./queue";
@@ -54,4 +54,29 @@ export async function triggerBackup(teamId: string, databaseId: string): Promise
   if (!schedule) return { ok: false, status: 404, error: "este banco não tem um agendamento de backup — crie um pelo painel antes de disparar por aqui" };
   await databaseBackupQueue.add("backup", { scheduleId: schedule.id, manual: true });
   return { ok: true, value: { queued: true } };
+}
+
+export type MovableKind = "application" | "database" | "service";
+
+/**
+ * Re-parents a resource to another environment of the same team. Containers are named by resource id and
+ * nothing on the server refers to the environment, so this is a pure metadata change (no redeploy) —
+ * the one thing it can affect is `environment`-scoped shared variables, which now resolve against the new one.
+ */
+export async function moveResource(teamId: string, kind: MovableKind, resourceId: string, targetEnvironmentId: string): Promise<ActionResult<{ environmentId: string }>> {
+  const [target] = await db
+    .select({ id: environments.id })
+    .from(environments)
+    .innerJoin(projects, eq(environments.projectId, projects.id))
+    .where(and(eq(environments.id, targetEnvironmentId), eq(projects.teamId, teamId)))
+    .limit(1);
+  if (!target) return { ok: false, status: 404, error: "environment not found" };
+  const table = kind === "application" ? applications : kind === "database" ? databases : services;
+  const updated = await db
+    .update(table)
+    .set({ environmentId: target.id })
+    .where(and(eq(table.id, resourceId), eq(table.teamId, teamId)))
+    .returning({ id: table.id });
+  if (updated.length === 0) return { ok: false, status: 404, error: `${kind} not found` };
+  return { ok: true, value: { environmentId: target.id } };
 }

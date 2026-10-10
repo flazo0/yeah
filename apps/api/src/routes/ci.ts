@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { resolveApiToken } from "../lib/apiTokenAuth";
 import { ipAllowed } from "../lib/ipAllowlist";
 import { clientIp } from "../lib/rateLimit";
-import { listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
+import { moveResource, listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
 
 /**
  * A small, deliberately separate API surface for personal API tokens (Fase 7) — "pensado pra CI/CD"
@@ -79,7 +79,33 @@ const makeCiRoutes = (prefix: string) =>
       return { error: result.error };
     }
     return result.value;
-  });
+  })
+  .post(
+    "/move-resource",
+    async ({ ci, params, body, set }) => {
+      if ("error" in ci) {
+        set.status = ci.status;
+        return { error: ci.error };
+      }
+      if (ci.token.permission !== "full") {
+        set.status = 403;
+        return { error: "este token é só leitura" };
+      }
+      const result = await moveResource(params.teamId, body.kind, body.resourceId, body.targetEnvironmentId);
+      if (!result.ok) {
+        set.status = result.status;
+        return { error: result.error };
+      }
+      return result.value;
+    },
+    {
+      body: t.Object({
+        kind: t.Union([t.Literal("application"), t.Literal("database"), t.Literal("service")]),
+        resourceId: t.String(),
+        targetEnvironmentId: t.String(),
+      }),
+    },
+  );
 
 /** Original path, kept so existing scripts/CLI keep working. */
 export const ciRoutes = makeCiRoutes("/teams/:teamId/ci");

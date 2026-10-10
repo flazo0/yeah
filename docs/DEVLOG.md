@@ -826,3 +826,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 7 — servidor MCP + toggle por time
 
 `lib/ciActions.ts` extraiu a lógica de listar/deploy/backup da API de CI para ser compartilhada com o MCP (a `ci.ts` ficou só autenticação + HTTP). `lib/mcp.ts` é o protocolo puro (JSON-RPC: initialize, tools, resources, prompts) com as operações injetadas — daí os testes sem banco. Segurança: mesmo token pessoal e allowlist de IP da CI; permissão `read` ⇒ read-only; toggle por time desligado por padrão; sem tool de logs de build (poderiam conter segredos), então o prompt `debug_deploy` trabalha só com status e pede o log ao usuário. **Não testado** com cliente MCP real ([[feedback-no-local-docker-testing]]). 420 testes.
+
+## Fase 7 — mover recurso entre ambientes
+
+`moveResource()` em `ciActions.ts`: confirma que o ambiente alvo pertence a um projeto do mesmo time e faz `UPDATE ... SET environment_id` com filtro por `teamId` (um id de outro time simplesmente dá 404). Exposto como `POST .../move-resource` na API de CI/v1 e documentado no OpenAPI. Sem efeito no servidor, por isso sem redeploy. **Não testado** ([[feedback-no-local-docker-testing]]); falta botão na UI. Fase 7 fechada.

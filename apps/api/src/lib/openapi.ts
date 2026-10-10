@@ -34,6 +34,9 @@ export function buildOpenApiSpec() {
       [`${base}/applications/{applicationId}/deploy`]: {
         post: triggerOp("Enfileira um deploy", [idParam("applicationId"), { name: "force", in: "query", required: false, schema: { type: "string", enum: ["true"] } }]),
       },
+      [`${base}/move-resource`]: {
+        post: triggerOp("Move uma aplicação, banco ou serviço para outro ambiente do mesmo time. Corpo: { kind: application|database|service, resourceId, targetEnvironmentId }."),
+      },
       [`${base}/databases/{databaseId}/backup`]: { post: triggerOp("Dispara backup manual (precisa de agendamento existente)", [idParam("databaseId")]) },
     },
   };
