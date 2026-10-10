@@ -17,6 +17,7 @@ import {
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import Breadcrumb from "../components/Breadcrumb.vue";
 import Modal from "../components/Modal.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -47,8 +48,8 @@ const error = ref("");
 const templates = ref<ServiceTemplateDto[]>([]);
 const serviceCategory = ref("");
 const CATEGORY_LABELS: Record<string, string> = {
-  monitoring: "Monitoramento", automation: "Automação", storage: "Arquivos", messaging: "Mensageria", search: "Busca", cms: "CMS e sites",
-  analytics: "Analytics", devops: "DevOps", database: "Banco de dados", dev: "Dev", security: "Segurança", media: "Mídia", productivity: "Produtividade", other: "Outros",
+  monitoring: "Monitoramento", automation: i18n.global.t("resourceNew.automacao"), storage: "Arquivos", messaging: "Mensageria", search: "Busca", cms: i18n.global.t("resourceNew.cmsESites"),
+  analytics: "Analytics", devops: "DevOps", database: i18n.global.t("resourceNew.bancoDeDados"), dev: "Dev", security: i18n.global.t("resourceNew.seguranca"), media: i18n.global.t("resourceNew.midia"), productivity: "Produtividade", other: "Outros",
 };
 const templateCategories = computed(() => [...new Set(templates.value.map((t) => t.category))].sort((a, b) => (CATEGORY_LABELS[a] ?? a).localeCompare(CATEGORY_LABELS[b] ?? b)));
 const search = ref("");
@@ -62,34 +63,34 @@ const cards = computed<CatalogCard[]>(() => [
   {
     id: "app-public",
     category: "application",
-    name: "Repositório Git público",
+    name: i18n.global.t("resourceNew.repositorioGitPublico"),
     subtitle: "Origem Git",
-    description: "Deploy de qualquer repositório público a partir do Dockerfile, sem credenciais.",
+    description: i18n.global.t("resourceNew.deployDeQualquerRepositorioPublico"),
     icon: "source",
     docsUrl: "https://docs.docker.com/reference/dockerfile/",
   },
   {
     id: "app-github",
     category: "application",
-    name: "Repositório do GitHub (GitHub App)",
+    name: i18n.global.t("resourceNew.repositorioDoGithubGithubApp"),
     subtitle: "Origem Git",
-    description: "Repositórios públicos ou privados da sua conta pelo GitHub App, com auto-deploy a cada push.",
+    description: i18n.global.t("resourceNew.repositoriosPublicosOuPrivadosDa"),
     icon: "hub",
   },
   {
     id: "app-gitsource",
     category: "application",
-    name: "Repositório de uma fonte Git",
+    name: i18n.global.t("resourceNew.repositorioDeUmaFonteGit"),
     subtitle: "GitLab · Bitbucket · Gitea",
-    description: "Escolha um repositório de uma fonte conectada em Fontes (GitLab, Bitbucket ou Gitea), com token guardado e auto-deploy por webhook.",
+    description: i18n.global.t("resourceNew.escolhaUmRepositorioDeUma"),
     icon: "merge",
   },
   {
     id: "app-deploykey",
     category: "application",
-    name: "Repositório privado (Deploy Key)",
+    name: i18n.global.t("resourceNew.repositorioPrivadoDeployKey"),
     subtitle: "Origem Git · SSH",
-    description: "Qualquer Git por SSH (GitHub, GitLab, Gitea, servidor próprio). O yeah gera uma chave só pra esse repositório e mostra a pública pra você cadastrar.",
+    description: i18n.global.t("resourceNew.qualquerGitPorSshGithub"),
     icon: "key",
   },
   {
@@ -106,7 +107,7 @@ const cards = computed<CatalogCard[]>(() => [
     category: "application",
     name: "Railpack",
     subtitle: "Build pack · Git",
-    description: "Sem Dockerfile, como o Nixpacks, com a ferramenta mais nova da Railway. Instalado no servidor na primeira vez (precisa do BuildKit).",
+    description: i18n.global.t("resourceNew.semDockerfileComoONixpacks"),
     icon: "bolt",
     docsUrl: "https://railpack.com/",
   },
@@ -115,16 +116,16 @@ const cards = computed<CatalogCard[]>(() => [
     category: "application",
     name: "Docker Compose",
     subtitle: "Stack · Git",
-    description: "Um docker-compose.yml do repositório vira uma aplicação: todos os serviços sobem juntos como um projeto, e o yeah liga o domínio no serviço que você escolher.",
+    description: i18n.global.t("resourceNew.umDockerComposeYmlDo"),
     icon: "stacks",
     docsUrl: "https://docs.docker.com/compose/",
   },
   {
     id: "app-static",
     category: "application",
-    name: "Site estático",
+    name: i18n.global.t("resourceNew.siteEstatico"),
     subtitle: "Build pack · Git",
-    description: "Serve uma pasta do repositório (HTML, ou a saída já buildada do seu front) com nginx.",
+    description: i18n.global.t("resourceNew.serveUmaPastaDoRepositorio"),
     icon: "web",
   },
   {
@@ -132,7 +133,7 @@ const cards = computed<CatalogCard[]>(() => [
     category: "application",
     name: "Docker Image",
     subtitle: "Imagem pronta",
-    description: "Roda uma imagem de qualquer registry público, sem Git e sem build.",
+    description: i18n.global.t("resourceNew.rodaUmaImagemDeQualquer"),
     icon: "deployed_code_history",
     docsUrl: "https://docs.docker.com/reference/cli/docker/image/pull/",
   },
@@ -141,7 +142,7 @@ const cards = computed<CatalogCard[]>(() => [
     category: "application",
     name: "Dockerfile",
     subtitle: "Dockerfile colado",
-    description: "Cole um Dockerfile aqui e o yeah builda no servidor — sem repositório.",
+    description: i18n.global.t("resourceNew.coleUmDockerfileAquiE"),
     icon: "description",
     docsUrl: "https://docs.docker.com/reference/dockerfile/",
   },
@@ -160,9 +161,9 @@ const cards = computed<CatalogCard[]>(() => [
   {
     id: "svc-custom",
     category: "service" as const,
-    name: "Compose próprio",
+    name: i18n.global.t("resourceNew.composeProprio"),
     subtitle: "Cole um docker-compose.yml",
-    description: "Suba qualquer stack de vários containers colando o seu docker-compose.yml: rede do ambiente, domínio por container e logs prontos.",
+    description: i18n.global.t("resourceNew.subaQualquerStackDeVarios"),
     icon: "edit_document",
     serviceCategory: "dev",
     docsUrl: "https://docs.docker.com/compose/",
@@ -191,9 +192,9 @@ const visibleCards = computed(() => {
 });
 
 const sections: { category: Category; title: string; icon: string }[] = [
-  { category: "application", title: "Aplicações", icon: "deployed_code" },
-  { category: "database", title: "Bancos de dados", icon: "database" },
-  { category: "service", title: "Serviços", icon: "widgets" },
+  { category: "application", title: i18n.global.t("resourceNew.aplicacoes"), icon: "deployed_code" },
+  { category: "database", title: i18n.global.t("resourceNew.bancosDeDados"), icon: "database" },
+  { category: "service", title: i18n.global.t("resourceNew.servicos"), icon: "widgets" },
 ];
 
 async function load() {
@@ -206,7 +207,7 @@ async function load() {
     const local = res.servers.find((s) => s.isPlatformHost && s.status === "connected");
     if (local) serverId.value = local.id;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoCarregarServidores");
   } finally {
     loading.value = false;
   }
@@ -278,7 +279,7 @@ async function createDatabase() {
     });
     router.push(`${basePath}/databases/${res.database.id}`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar o banco";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoCriarOBanco");
   } finally {
     submittingDb.value = false;
   }
@@ -314,7 +315,7 @@ async function createCustomService() {
     });
     router.push(`${basePath}/services/${res.service.id}`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar o serviço";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoCriarOServico");
   } finally {
     submittingCustom.value = false;
   }
@@ -350,7 +351,7 @@ async function onGitSourceChange() {
   try {
     gitRepos.value = (await api.get<{ repos: GitRepoDto[] }>(`/teams/${teamId}/git-sources/${appForm.value.gitSourceId}/repos`)).repos;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao listar os repositórios";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoListarOsRepositorios");
   } finally {
     loadingGitRepos.value = false;
   }
@@ -361,14 +362,14 @@ function onGitRepoChange() {
   if (repo) appForm.value.branch = repo.defaultBranch;
 }
 const appModalTitles: Record<AppMode, string> = {
-  public: "Repositório Git público",
-  github: "Repositório do GitHub",
+  public: i18n.global.t("resourceNew.repositorioGitPublico"),
+  github: i18n.global.t("resourceNew.repositorioDoGithub"),
   gitsource: "Fonte Git",
-  deploykey: "Repositório privado (Deploy Key)",
+  deploykey: i18n.global.t("resourceNew.repositorioPrivadoDeployKey"),
   nixpacks: "Nixpacks",
   railpack: "Railpack",
   compose: "Docker Compose",
-  static: "Site estático",
+  static: i18n.global.t("resourceNew.siteEstatico"),
   image: "Docker Image",
   inline: "Dockerfile",
 };
@@ -402,7 +403,7 @@ async function createApp() {
     // A deploy key still has to be registered on the repository — land on the page that shows it.
     router.push(`${basePath}/apps/${res.application.id}${mode === "deploykey" ? "/general" : ""}`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar aplicação";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoCriarAplicacao");
   } finally {
     submittingApp.value = false;
   }
@@ -457,7 +458,7 @@ async function deploy(card: CatalogCard) {
     }
     await deployService(card.id.slice(4));
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar recurso";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("resourceNew.falhaAoCriarRecurso");
     creatingId.value = null;
   }
 }
@@ -474,8 +475,8 @@ onMounted(() => {
     <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" current="Novo recurso" />
     <div class="page-header">
       <div>
-        <h1>Escolha um recurso</h1>
-        <p>Serviços são criados na hora com os valores padrão; bancos perguntam a versão antes. Você ajusta o resto na tela do recurso.</p>
+        <h1>{{ $t("resourceNew.escolhaUmRecurso") }}</h1>
+        <p>{{ $t("resourceNew.servicosSaoCriadosNaHora") }}</p>
       </div>
     </div>
 
@@ -484,8 +485,8 @@ onMounted(() => {
     <div v-if="!loading && teamServers.length === 0" class="card">
       <div class="card-body">
         <div class="empty-state">
-          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers/new`" class="label-link">servidor conectado</RouterLink>
-          antes de criar recursos.
+          {{ $t("resourceNew.vocePrecisaDeUm") }} <RouterLink :to="`/teams/${teamId}/servers/new`" class="label-link">{{ $t("resourceNew.servidorConectado") }}</RouterLink>
+          {{ $t("resourceNew.antesDeCriarRecursos") }}
         </div>
       </div>
     </div>
@@ -494,26 +495,26 @@ onMounted(() => {
       <div class="rtable-toolbar">
         <div class="rtable-search input-icon">
           <span class="material-symbols-outlined">search</span>
-          <input v-model="search" class="form-control" type="search" placeholder="Buscar recursos" aria-label="Buscar recursos" />
+          <input v-model="search" class="form-control" type="search" :placeholder="$t('resourceNew.buscarRecursos')" :aria-label="$t('resourceNew.buscarRecursos')" />
         </div>
         <div class="rtable-filters">
-          <select v-model="categoryFilter" class="form-control" aria-label="Categoria">
-            <option value="">Todas as categorias</option>
-            <option value="application">Aplicações</option>
-            <option value="database">Bancos de dados</option>
-            <option value="service">Serviços</option>
+          <select v-model="categoryFilter" class="form-control" :aria-label="$t('resourceNew.categoria')">
+            <option value="">{{ $t("resourceNew.todasAsCategorias") }}</option>
+            <option value="application">{{ $t("resourceNew.aplicacoes") }}</option>
+            <option value="database">{{ $t("resourceNew.bancosDeDados") }}</option>
+            <option value="service">{{ $t("resourceNew.servicos") }}</option>
           </select>
-          <select v-if="templateCategories.length && (categoryFilter === '' || categoryFilter === 'service')" v-model="serviceCategory" class="form-control" aria-label="Tipo de serviço">
-            <option value="">Todos os tipos de serviço</option>
+          <select v-if="templateCategories.length && (categoryFilter === '' || categoryFilter === 'service')" v-model="serviceCategory" class="form-control" :aria-label="$t('resourceNew.tipoDeServico')">
+            <option value="">{{ $t("resourceNew.todosOsTiposDeServico") }}</option>
             <option v-for="c in templateCategories" :key="c" :value="c">{{ CATEGORY_LABELS[c] ?? c }}</option>
           </select>
-          <select v-model="serverId" class="form-control" aria-label="Servidor de destino">
-            <option v-for="s in teamServers" :key="s.id" :value="s.id">Servidor: {{ s.name }}{{ s.isPlatformHost ? " (esta máquina)" : "" }}</option>
+          <select v-model="serverId" class="form-control" :aria-label="$t('resourceNew.servidorDeDestino')">
+            <option v-for="s in teamServers" :key="s.id" :value="s.id">{{ $t("resourceNew.servidorP0P1", { p0: s.name, p1: s.isPlatformHost ? " " + $t('common.thisMachine') : "" }) }}</option>
           </select>
         </div>
       </div>
 
-      <div v-if="visibleCards.length === 0" class="empty-state">Nada bate com a busca.</div>
+      <div v-if="visibleCards.length === 0" class="empty-state">{{ $t("resourceNew.nadaBateComABusca") }}</div>
 
       <template v-for="section in sections" :key="section.category">
         <div v-if="visibleCards.some((c) => c.category === section.category)" class="card mb-16">
@@ -523,7 +524,7 @@ onMounted(() => {
           </div>
           <div class="card-body">
             <p v-if="section.category === 'service'" class="hint mb-16">
-              As marcas citadas pertencem às respectivas empresas; a listagem não indica afiliação nem endosso.
+              {{ $t("resourceNew.asMarcasCitadasPertencemAs") }}
             </p>
             <div class="catalog-grid">
               <div v-for="card in visibleCards.filter((c) => c.category === section.category)" :key="card.id" class="catalog-card">
@@ -536,10 +537,10 @@ onMounted(() => {
                 </div>
                 <p class="catalog-card-desc">{{ card.description }}</p>
                 <div class="catalog-card-actions">
-                  <a v-if="card.docsUrl" :href="card.docsUrl" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Docs</a>
-                  <a v-if="card.website" :href="card.website" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">Website</a>
+                  <a v-if="card.docsUrl" :href="card.docsUrl" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{{ $t("resourceNew.docs") }}</a>
+                  <a v-if="card.website" :href="card.website" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">{{ $t("resourceNew.website") }}</a>
                   <button type="button" class="btn btn-sm catalog-deploy" :disabled="creatingId !== null" @click="deploy(card)">
-                    {{ creatingId === card.id ? "criando..." : "Deploy" }}
+                    {{ creatingId === card.id ? $t("resourceNew.criando") : "Deploy" }}
                     <span class="material-symbols-outlined" style="font-size: 16px">arrow_forward</span>
                   </button>
                 </div>
@@ -550,29 +551,27 @@ onMounted(() => {
       </template>
     </template>
 
-    <Modal v-if="customModal" title="Serviço com compose próprio" @close="customModal = false">
+    <Modal v-if="customModal" :title="$t('resourceNew.servicoComComposeProprio')" @close="customModal = false">
       <form @submit.prevent="createCustomService">
         <div class="form-group">
-          <label for="cs-name">Nome</label>
+          <label for="cs-name">{{ $t("resourceNew.nome") }}</label>
           <input id="cs-name" v-model="customForm.name" class="form-control" required />
         </div>
         <div class="form-group">
-          <label for="cs-compose">docker-compose.yml</label>
+          <label for="cs-compose">{{ $t("resourceNew.dockerComposeYml") }}</label>
           <textarea id="cs-compose" v-model="customForm.composeContent" class="form-control mono" rows="14" spellcheck="false" required></textarea>
           <p class="hint" style="margin-top: 6px">
-            Só <span class="mono">image</span> (não há código pra <span class="mono">build</span>). Variáveis <span class="mono">${NOME}</span> são lidas do .env do serviço.
-            Todos os containers entram na rede do ambiente, com o nome <span class="mono">nome-do-serviço-container</span>.
-            Cuidado com <span class="mono">privileged</span>, <span class="mono">network_mode: host</span> e montagens do host: dão ao container poder sobre o servidor.
+            {{ $t("resourceNew.so") }} <span class="mono">{{ $t("resourceNew.image") }}</span> {{ $t("resourceNew.naoHaCodigoPra") }} <span class="mono">{{ $t("resourceNew.build") }}</span>{{ $t("resourceNew.variaveis") }} <span class="mono">${NOME}</span> {{ $t("resourceNew.saoLidasDoEnvDo") }} <span class="mono">{{ $t("resourceNew.nomeDoServicoContainer") }}</span>{{ $t("resourceNew.cuidadoCom") }} <span class="mono">{{ $t("resourceNew.privileged") }}</span>, <span class="mono">{{ $t("resourceNew.networkModeHost") }}</span> {{ $t("resourceNew.eMontagensDoHostDao") }}
           </p>
         </div>
         <div class="form-group">
-          <label for="cs-port">Porta do primeiro serviço (pro domínio)</label>
+          <label for="cs-port">{{ $t("resourceNew.portaDoPrimeiroServicoPro") }}</label>
           <input id="cs-port" v-model.number="customForm.port" type="number" class="form-control" style="max-width: 160px" />
         </div>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="submittingCustom">{{ submittingCustom ? "criando..." : "Criar serviço" }}</button>
-          <button type="button" class="btn btn-secondary" @click="customModal = false">Cancelar</button>
+          <button type="submit" class="btn" :disabled="submittingCustom">{{ submittingCustom ? $t("resourceNew.criando") : $t("resourceNew.criarServico") }}</button>
+          <button type="button" class="btn btn-secondary" @click="customModal = false">{{ $t("resourceNew.cancelar") }}</button>
         </div>
       </form>
     </Modal>
@@ -580,28 +579,28 @@ onMounted(() => {
     <Modal v-if="dbModal" :title="`Novo banco — ${DATABASE_ENGINES[dbModal].label}`" @close="dbModal = null">
       <form @submit.prevent="createDatabase">
         <div class="form-group">
-          <label for="db-name">Nome</label>
+          <label for="db-name">{{ $t("resourceNew.nome") }}</label>
           <input id="db-name" v-model="dbForm.name" class="form-control" required />
         </div>
         <div class="form-group">
-          <label for="db-version">Versão</label>
+          <label for="db-version">{{ $t("resourceNew.versao") }}</label>
           <select id="db-version" v-model="dbForm.version" class="form-control" :disabled="Boolean(dbForm.customImage.trim())">
             <option v-for="v in DATABASE_ENGINES[dbModal].versions" :key="v" :value="v">{{ DATABASE_ENGINES[dbModal].imageRepo }}:{{ v }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="db-custom">Ou outra imagem</label>
+          <label for="db-custom">{{ $t("resourceNew.ouOutraImagem") }}</label>
           <input id="db-custom" v-model="dbForm.customImage" class="form-control mono" placeholder="postgis/postgis:16-3.4" />
         </div>
         <label class="check-row" style="margin-bottom: 12px">
           <input v-model="dbForm.publicAccess" type="checkbox" />
-          <span>Acesso externo (abrir a porta {{ DATABASE_ENGINES[dbModal].defaultPort }} no servidor)</span>
+          <span>{{ $t("resourceNew.acessoExternoAbrirAPorta", { p0: DATABASE_ENGINES[dbModal].defaultPort }) }}</span>
         </label>
-        <p class="hint mb-16">Sem acesso externo o banco só é alcançável por outros recursos deste ambiente, pelo nome interno. Dá pra mudar depois.</p>
+        <p class="hint mb-16">{{ $t("resourceNew.semAcessoExternoOBanco") }}</p>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="submittingDb">{{ submittingDb ? "criando..." : "Criar banco" }}</button>
-          <button type="button" class="btn btn-secondary" @click="dbModal = null">Cancelar</button>
+          <button type="submit" class="btn" :disabled="submittingDb">{{ submittingDb ? $t("resourceNew.criando") : $t("resourceNew.criarBanco") }}</button>
+          <button type="button" class="btn btn-secondary" @click="dbModal = null">{{ $t("resourceNew.cancelar") }}</button>
         </div>
       </form>
     </Modal>
@@ -609,14 +608,14 @@ onMounted(() => {
     <Modal v-if="appModal" :title="appModalTitles[appModal]" @close="appModal = null">
       <form @submit.prevent="createApp">
         <div class="form-group">
-          <label for="app-name">Nome</label>
-          <input id="app-name" v-model="appForm.name" class="form-control" placeholder="minha-api" required />
+          <label for="app-name">{{ $t("resourceNew.nome") }}</label>
+          <input id="app-name" v-model="appForm.name" class="form-control" :placeholder="$t('resourceNew.minhaApi')" required />
         </div>
 
         <div v-if="appModal === 'github'" class="form-group">
-          <label for="app-github-repo">Repositório</label>
+          <label for="app-github-repo">{{ $t("resourceNew.repositorio") }}</label>
           <select id="app-github-repo" v-model="appForm.githubRepo" class="form-control" required @change="onGithubRepoChange">
-            <option value="" disabled>selecione...</option>
+            <option value="" disabled>{{ $t("resourceNew.selecione") }}</option>
             <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">
               {{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}
             </option>
@@ -624,24 +623,24 @@ onMounted(() => {
         </div>
         <template v-else-if="appModal === 'gitsource'">
           <div class="form-group">
-            <label for="app-gitsource">Fonte</label>
+            <label for="app-gitsource">{{ $t("resourceNew.fonte") }}</label>
             <select id="app-gitsource" v-model="appForm.gitSourceId" class="form-control" required @change="onGitSourceChange">
-              <option value="" disabled>selecione...</option>
+              <option value="" disabled>{{ $t("resourceNew.selecione") }}</option>
               <option v-for="src in gitSourcesList" :key="src.id" :value="src.id">{{ src.name }} ({{ src.baseUrl }})</option>
             </select>
           </div>
           <div class="form-group">
-            <label for="app-gitrepo">Repositório</label>
+            <label for="app-gitrepo">{{ $t("resourceNew.repositorio") }}</label>
             <select v-if="gitRepos.length" id="app-gitrepo" v-model="appForm.gitRepo" class="form-control" required @change="onGitRepoChange">
-              <option value="" disabled>selecione...</option>
+              <option value="" disabled>{{ $t("resourceNew.selecione") }}</option>
               <option v-for="repo in gitRepos" :key="repo.fullName" :value="repo.fullName">{{ repo.fullName }}{{ repo.private ? " (privado)" : "" }}</option>
             </select>
             <input v-else id="app-gitrepo" v-model="appForm.gitRepo" class="form-control mono" placeholder="grupo/projeto" :disabled="loadingGitRepos" required />
-            <p v-if="loadingGitRepos" class="hint" style="margin-top: 6px">listando repositórios...</p>
+            <p v-if="loadingGitRepos" class="hint" style="margin-top: 6px">{{ $t("resourceNew.listandoRepositorios") }}</p>
           </div>
         </template>
         <div v-else-if="modeUsesRepo(appModal)" class="form-group">
-          <label for="app-repo">URL do repositório</label>
+          <label for="app-repo">{{ $t("resourceNew.urlDoRepositorio") }}</label>
           <input
             id="app-repo"
             v-model="appForm.repoUrl"
@@ -650,61 +649,61 @@ onMounted(() => {
             required
           />
           <p v-if="appModal === 'deploykey'" class="hint" style="margin-top: 6px">
-            Use a URL SSH. Depois de criar, o yeah mostra a chave pública pra você cadastrar no repositório como deploy key (só leitura).
+            {{ $t("resourceNew.useAUrlSshDepois") }}
           </p>
         </div>
         <div v-if="appModal === 'deploykey' && sshKeysList.length > 0" class="form-group">
-          <label for="app-deploykey-existing">Deploy key</label>
+          <label for="app-deploykey-existing">{{ $t("resourceNew.deployKey") }}</label>
           <select id="app-deploykey-existing" v-model="appForm.deployKeySshKeyId" class="form-control">
-            <option value="">Gerar uma nova</option>
-            <option v-for="k in sshKeysList" :key="k.id" :value="k.id">{{ k.name }} (Keys &amp; Tokens)</option>
+            <option value="">{{ $t("resourceNew.gerarUmaNova") }}</option>
+            <option v-for="k in sshKeysList" :key="k.id" :value="k.id">{{ $t("resourceNew.p0KeysTokens", { p0: k.name }) }}</option>
           </select>
           <p v-if="appForm.deployKeySshKeyId" class="hint" style="margin-top: 6px">
-            Essa chave precisa já estar cadastrada como deploy key no repositório — o yeah não recadastra sozinho.
+            {{ $t("resourceNew.essaChavePrecisaJaEstar") }}
           </p>
         </div>
 
         <template v-if="appModal === 'compose'">
           <div class="form-group">
-            <label for="app-compose-file">Arquivo compose</label>
-            <input id="app-compose-file" v-model="appForm.composeFile" class="form-control mono" placeholder="docker-compose.yml" />
-            <p class="hint" style="margin-top: 6px">Caminho dentro do repositório. O yeah roda <span class="mono">docker compose up -d --build</span> e espera os serviços ficarem prontos.</p>
+            <label for="app-compose-file">{{ $t("resourceNew.arquivoCompose") }}</label>
+            <input id="app-compose-file" v-model="appForm.composeFile" class="form-control mono" :placeholder="$t('resourceNew.dockerComposeYml')" />
+            <p class="hint" style="margin-top: 6px">{{ $t("resourceNew.caminhoDentroDoRepositorioO") }} <span class="mono">{{ $t("resourceNew.dockerComposeUpDBuild") }}</span> {{ $t("resourceNew.eEsperaOsServicosFicarem") }}</p>
           </div>
           <div class="form-group">
-            <label for="app-compose-service">Serviço que recebe o domínio</label>
-            <input id="app-compose-service" v-model="appForm.composeService" class="form-control mono" placeholder="web" />
-            <p class="hint" style="margin-top: 6px">Nome do serviço no compose (e a porta abaixo é a que ele escuta). Vazio = sem roteamento pelo proxy; use <span class="mono">ports:</span> no próprio arquivo.</p>
+            <label for="app-compose-service">{{ $t("resourceNew.servicoQueRecebeODominio") }}</label>
+            <input id="app-compose-service" v-model="appForm.composeService" class="form-control mono" :placeholder="$t('resourceNew.web')" />
+            <p class="hint" style="margin-top: 6px">{{ $t("resourceNew.nomeDoServicoNoCompose") }} <span class="mono">{{ $t("resourceNew.ports") }}</span> {{ $t("resourceNew.noProprioArquivo") }}</p>
           </div>
         </template>
 
         <div v-if="appModal === 'image'" class="form-group">
-          <label for="app-image">Imagem</label>
-          <input id="app-image" v-model="appForm.dockerImage" class="form-control mono" placeholder="nginx:1.27-alpine" required />
+          <label for="app-image">{{ $t("resourceNew.imagem") }}</label>
+          <input id="app-image" v-model="appForm.dockerImage" class="form-control mono" :placeholder="$t('resourceNew.nginx127Alpine')" required />
         </div>
         <div v-if="appModal === 'inline'" class="form-group">
-          <label for="app-dockerfile">Dockerfile</label>
+          <label for="app-dockerfile">{{ $t("resourceNew.dockerfile") }}</label>
           <textarea id="app-dockerfile" v-model="appForm.dockerfileContent" class="form-control mono" rows="9" required></textarea>
         </div>
         <div v-if="appModal === 'static'" class="form-group">
-          <label for="app-publish">Pasta a publicar</label>
-          <input id="app-publish" v-model="appForm.publishDirectory" class="form-control mono" placeholder="dist" />
-          <p class="hint" style="margin-top: 6px">Relativa à raiz do repositório (`.` = a raiz). O repositório precisa já ter os arquivos prontos nessa pasta.</p>
+          <label for="app-publish">{{ $t("resourceNew.pastaAPublicar") }}</label>
+          <input id="app-publish" v-model="appForm.publishDirectory" class="form-control mono" :placeholder="$t('resourceNew.dist')" />
+          <p class="hint" style="margin-top: 6px">{{ $t("resourceNew.relativaARaizDoRepositorio") }}</p>
         </div>
 
         <div class="form-row mb-16">
           <div v-if="modeUsesRepo(appModal) || appModal === 'github'" class="form-group" style="margin-bottom: 0">
-            <label for="app-branch">Branch</label>
-            <input id="app-branch" v-model="appForm.branch" class="form-control" placeholder="main" />
+            <label for="app-branch">{{ $t("resourceNew.branch") }}</label>
+            <input id="app-branch" v-model="appForm.branch" class="form-control" :placeholder="$t('resourceNew.main')" />
           </div>
           <div v-if="appModal !== 'static'" class="form-group" style="margin-bottom: 0">
-            <label for="app-port">Porta do app</label>
+            <label for="app-port">{{ $t("resourceNew.portaDoApp") }}</label>
             <input id="app-port" v-model.number="appForm.port" type="number" class="form-control" />
           </div>
         </div>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="submittingApp">{{ submittingApp ? "criando..." : "Criar aplicação" }}</button>
-          <button type="button" class="btn btn-secondary" @click="appModal = null">Cancelar</button>
+          <button type="submit" class="btn" :disabled="submittingApp">{{ submittingApp ? $t("resourceNew.criando") : $t("resourceNew.criarAplicacao") }}</button>
+          <button type="button" class="btn btn-secondary" @click="appModal = null">{{ $t("resourceNew.cancelar") }}</button>
         </div>
       </form>
     </Modal>

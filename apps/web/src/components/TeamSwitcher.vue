@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
+import { i18n } from "../lib/i18n";
 
 const props = defineProps<{ currentName: string }>();
 
@@ -56,7 +57,7 @@ async function createTeam() {
     open.value = false;
     router.push(`/teams/${team.id}`);
   } catch {
-    error.value = "não foi possível criar o time";
+    error.value = i18n.global.t("teamSwitcher.naoFoiPossivelCriarO");
   } finally {
     creating.value = false;
   }

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watchEffect } from "vue";
 import { api, ApiError } from "../lib/api";
+import { i18n } from "../lib/i18n";
 
 const props = defineProps<{
   memoryLimitMb: number | null;
@@ -34,7 +35,7 @@ async function save() {
     saved.value = true;
     setTimeout(() => (saved.value = false), 2000);
   } catch (err) {
-    emit("error", err instanceof ApiError ? err.message : "falha ao salvar limites");
+    emit("error", err instanceof ApiError ? err.message : i18n.global.t("resourceLimitsCard.falhaAoSalvarLimites"));
   } finally {
     saving.value = false;
   }
@@ -44,24 +45,24 @@ async function save() {
 <template>
   <div class="card-header" style="border-top: 1px solid var(--border)">
     <span class="material-symbols-outlined" style="font-size: 18px">speed</span>
-    Limites de recurso
+    {{ $t("resourceLimitsCard.limitesDeRecurso") }}
   </div>
   <div class="card-body">
-    <p class="hint mb-16">Deixe em branco pra não limitar. {{ hint }}</p>
+    <p class="hint mb-16">{{ $t("resourceLimitsCard.deixeEmBrancoPraNao", { p0: hint }) }}</p>
     <div class="form-row mb-16">
       <div class="form-group" style="margin-bottom: 0">
-        <label for="resource-limit-mem">Memória (MB)</label>
-        <input id="resource-limit-mem" v-model.number="form.memoryLimitMb" type="number" min="0" class="form-control" placeholder="sem limite" />
+        <label for="resource-limit-mem">{{ $t("resourceLimitsCard.memoriaMb") }}</label>
+        <input id="resource-limit-mem" v-model.number="form.memoryLimitMb" type="number" min="0" class="form-control" :placeholder="$t('resourceLimitsCard.semLimite')" />
       </div>
       <div class="form-group" style="margin-bottom: 0">
-        <label for="resource-limit-cpu">CPU (cores)</label>
-        <input id="resource-limit-cpu" v-model.number="form.cpuLimit" type="number" min="0" step="0.1" class="form-control" placeholder="sem limite" />
+        <label for="resource-limit-cpu">{{ $t("resourceLimitsCard.cpuCores") }}</label>
+        <input id="resource-limit-cpu" v-model.number="form.cpuLimit" type="number" min="0" step="0.1" class="form-control" :placeholder="$t('resourceLimitsCard.semLimite')" />
       </div>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" :disabled="saving" @click="save">
         <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-        {{ saving ? "salvando..." : "Salvar" }}
+        {{ saving ? $t("resourceLimitsCard.salvando") : "Salvar" }}
       </button>
       <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ savedMessage }}</span>
     </div>

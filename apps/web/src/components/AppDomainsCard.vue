@@ -2,6 +2,7 @@
 import { ref, watchEffect } from "vue";
 import type { WwwRedirect } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
+import { i18n } from "../lib/i18n";
 
 const props = defineProps<{
   domain: string | null;
@@ -40,7 +41,7 @@ async function save() {
     saved.value = true;
     setTimeout(() => (saved.value = false), 2500);
   } catch (err) {
-    emit("error", err instanceof ApiError ? err.message : "falha ao salvar domínio");
+    emit("error", err instanceof ApiError ? err.message : i18n.global.t("appDomainsCard.falhaAoSalvarDominio"));
   } finally {
     saving.value = false;
   }
@@ -50,39 +51,38 @@ async function save() {
 <template>
   <div class="card-header" style="border-top: 1px solid var(--border)">
     <span class="material-symbols-outlined" style="font-size: 18px">shield_lock</span>
-    Domínios
+    {{ $t("appDomainsCard.dominios") }}
   </div>
   <div class="card-body">
     <p class="hint mb-16">
-      Deixe em branco pra usar o domínio wildcard do servidor (se o proxy estiver ativo) ou publicar a porta direto no host.
-      O certificado HTTPS de cada domínio é emitido sozinho; aponte o DNS pro servidor antes do deploy.
+      {{ $t("appDomainsCard.deixeEmBrancoPraUsar") }}
     </p>
     <div class="form-group">
-      <label for="app-domain">Domínio principal</label>
-      <input id="app-domain" v-model="primary" class="form-control mono" placeholder="minhaapp.exemplo.com" />
+      <label for="app-domain">{{ $t("appDomainsCard.dominioPrincipal") }}</label>
+      <input id="app-domain" v-model="primary" class="form-control mono" :placeholder="$t('appDomainsCard.minhaappExemploCom')" />
       <p v-if="suggestion" class="hint" style="margin-top: 6px">
-        O wildcard do servidor sugere <span class="mono">{{ suggestion }}</span>
-        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="primary = suggestion">Gerar domínio</button>
+        {{ $t("appDomainsCard.oWildcardDoServidorSugere") }} <span class="mono">{{ suggestion }}</span>
+        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="primary = suggestion">{{ $t("appDomainsCard.gerarDominio") }}</button>
       </p>
     </div>
     <div class="form-group">
-      <label for="app-extra-domains">Domínios adicionais</label>
-      <textarea id="app-extra-domains" v-model="extra" class="form-control mono" rows="3" placeholder="um por linha (ou separados por vírgula)"></textarea>
-      <p class="hint" style="margin-top: 6px">Respondem com o mesmo conteúdo do principal (até 10).</p>
+      <label for="app-extra-domains">{{ $t("appDomainsCard.dominiosAdicionais") }}</label>
+      <textarea id="app-extra-domains" v-model="extra" class="form-control mono" rows="3" :placeholder="$t('appDomainsCard.umPorLinhaOuSeparados')"></textarea>
+      <p class="hint" style="margin-top: 6px">{{ $t("appDomainsCard.respondemComOMesmoConteudo") }}</p>
     </div>
     <div class="form-group">
-      <label for="app-www">Redirecionamento www</label>
+      <label for="app-www">{{ $t("appDomainsCard.redirecionamentoWww") }}</label>
       <select id="app-www" v-model="redirect" class="form-control" :disabled="!primary">
-        <option value="none">Sem redirecionamento</option>
-        <option value="www_to_root">www.dominio → dominio (sem www)</option>
-        <option value="root_to_www">dominio → www.dominio</option>
+        <option value="none">{{ $t("appDomainsCard.semRedirecionamento") }}</option>
+        <option value="www_to_root">{{ $t("appDomainsCard.wwwDominioDominioSemWww") }}</option>
+        <option value="root_to_www">{{ $t("appDomainsCard.dominioWwwDominio") }}</option>
       </select>
-      <p class="hint" style="margin-top: 6px">Redireciona (301) a outra forma do domínio principal pra forma escolhida. Ela também precisa apontar no DNS.</p>
+      <p class="hint" style="margin-top: 6px">{{ $t("appDomainsCard.redireciona301AOutraForma") }}</p>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" :disabled="saving" @click="save">
         <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-        {{ saving ? "salvando..." : "Salvar" }}
+        {{ saving ? $t("appDomainsCard.salvando") : "Salvar" }}
       </button>
       <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ savedMessage }}</span>
     </div>

@@ -7,6 +7,7 @@ import { wsClient } from "../lib/ws";
 import { api, ApiError, postConfirmingOverload } from "../lib/api";
 import ResourceDetailShell from "../components/ResourceDetailShell.vue";
 import { APPLICATION_CONTEXT_KEY, type ApplicationContext } from "../composables/useApplicationContext";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -32,7 +33,7 @@ async function load() {
   try {
     await reloadApp();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar aplicação";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationLayout.falhaAoCarregarAplicacao");
   } finally {
     loading.value = false;
   }
@@ -53,7 +54,7 @@ async function deploy() {
     lastDeployment.value = res.deployment;
     if (route.name !== "app-deployments") router.push(`${routeBase}/deployments`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar deploy";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationLayout.falhaAoIniciarDeploy");
   } finally {
     deploying.value = false;
   }
@@ -66,7 +67,7 @@ async function deleteApplication() {
     await api.delete(basePath);
     router.push(environmentPath);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir aplicação";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationLayout.falhaAoExcluirAplicacao");
     deleting.value = false;
   }
 }
@@ -77,22 +78,22 @@ const isConfigGroup = computed(() => configRouteNames.includes(route.name as str
 const tabs = computed(() => [
   { to: `${routeBase}/deployments`, label: "Deployments", icon: "rocket_launch", active: route.name === "app-deployments" },
   { to: `${routeBase}/logs`, label: "Logs", icon: "article", active: route.name === "app-logs" },
-  { to: `${routeBase}/metrics`, label: "Métricas", icon: "monitoring", active: route.name === "app-metrics" },
+  { to: `${routeBase}/metrics`, label: i18n.global.t("applicationLayout.metricas"), icon: "monitoring", active: route.name === "app-metrics" },
   { to: `${routeBase}/terminal`, label: "Terminal", icon: "terminal", active: route.name === "app-terminal" },
-  { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
+  { to: `${routeBase}/general`, label: i18n.global.t("common.configuration"), icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [
-  { to: `${routeBase}/general`, label: "Geral", active: route.name === "app-general" },
-  { to: `${routeBase}/source`, label: "Origem", active: route.name === "app-source" },
-  { to: `${routeBase}/server`, label: "Servidor", active: route.name === "app-server" },
-  { to: `${routeBase}/env`, label: "Variáveis de ambiente", active: route.name === "app-env" },
-  { to: `${routeBase}/storage`, label: "Armazenamento", active: route.name === "app-storage" },
-  { to: `${routeBase}/advanced`, label: "Avançado", active: route.name === "app-advanced" },
+  { to: `${routeBase}/general`, label: i18n.global.t("common.general"), active: route.name === "app-general" },
+  { to: `${routeBase}/source`, label: i18n.global.t("common.origin"), active: route.name === "app-source" },
+  { to: `${routeBase}/server`, label: i18n.global.t("common.server"), active: route.name === "app-server" },
+  { to: `${routeBase}/env`, label: i18n.global.t("applicationLayout.variaveisDeAmbiente"), active: route.name === "app-env" },
+  { to: `${routeBase}/storage`, label: i18n.global.t("common.storage"), active: route.name === "app-storage" },
+  { to: `${routeBase}/advanced`, label: i18n.global.t("applicationLayout.avancado"), active: route.name === "app-advanced" },
   { to: `${routeBase}/webhooks`, label: "Webhooks", active: route.name === "app-webhooks" },
   { to: `${routeBase}/previews`, label: "Previews", active: route.name === "app-previews" },
-  { to: `${routeBase}/tasks`, label: "Tarefas agendadas", active: route.name === "app-tasks" },
-  { to: `${routeBase}/operations`, label: "Operações", active: route.name === "app-operations" },
-  { to: `${routeBase}/danger`, label: "Zona de perigo", active: route.name === "app-danger" },
+  { to: `${routeBase}/tasks`, label: i18n.global.t("common.scheduledTasks"), active: route.name === "app-tasks" },
+  { to: `${routeBase}/operations`, label: i18n.global.t("applicationLayout.operacoes"), active: route.name === "app-operations" },
+  { to: `${routeBase}/danger`, label: i18n.global.t("applicationLayout.zonaDePerigo"), active: route.name === "app-danger" },
 ]);
 
 // The banner compares the saved settings with the last deploy, so refresh it as the user moves around.
@@ -110,7 +111,7 @@ async function lifecycle(action: ApplicationLifecycleAction) {
     // The worker announces the result over WebSocket; this is the fallback if that socket is down.
     setTimeout(() => void reloadApp().catch(() => undefined), 6000);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao executar a ação";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationLayout.falhaAoExecutarAAcao");
   } finally {
     lifecycleBusy.value = false;
   }
@@ -126,7 +127,7 @@ onUnmounted(unsubscribe);
 
 <template>
   <PageState v-if="loading" loading />
-  <div v-else-if="!app" class="empty-state">Aplicação não encontrada.</div>
+  <div v-else-if="!app" class="empty-state">{{ $t("applicationLayout.aplicacaoNaoEncontrada") }}</div>
   <ResourceDetailShell
     v-else
     :team-id="teamId"
@@ -144,40 +145,40 @@ onUnmounted(unsubscribe);
     <template #actions>
       <button v-if="app.status === 'stopped'" type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('start')">
         <span class="material-symbols-outlined" style="font-size: 18px">play_arrow</span>
-        Iniciar
+        {{ $t("applicationLayout.iniciar") }}
       </button>
       <template v-else-if="app.status === 'running'">
         <button type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('restart')">
           <span class="material-symbols-outlined" style="font-size: 18px">restart_alt</span>
-          Reiniciar
+          {{ $t("applicationLayout.reiniciar") }}
         </button>
         <button type="button" class="btn btn-secondary" :disabled="lifecycleBusy" @click="lifecycle('stop')">
           <span class="material-symbols-outlined" style="font-size: 18px">stop</span>
-          Parar
+          {{ $t("applicationLayout.parar") }}
         </button>
       </template>
       <button type="button" class="btn" :disabled="deploying" @click="deploy">
         <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
-        {{ deploying ? "iniciando..." : "Deploy" }}
+        {{ deploying ? $t("applicationLayout.iniciando") : "Deploy" }}
       </button>
     </template>
     <template #subtitle>
       <p class="resource-subtitle mono">
         <template v-if="app.buildPack === 'image'">{{ app.dockerImage }}</template>
-        <template v-else-if="app.buildPack === 'dockerfile_inline'">Dockerfile colado</template>
+        <template v-else-if="app.buildPack === 'dockerfile_inline'">{{ $t("applicationLayout.dockerfileColado") }}</template>
         <template v-else>{{ app.repoUrl }} ({{ app.branch }}) · {{ app.buildPack }}</template>
         → {{ app.serverName }}:{{ app.port }}
       </p>
       <p v-if="app.domain" class="resource-subtitle">
-        <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">https://{{ app.domain }}</a>
+        <a :href="`https://${app.domain}`" target="_blank" rel="noopener" class="label-link">{{ $t("applicationLayout.httpsP0", { p0: app.domain }) }}</a>
       </p>
     </template>
     <div v-if="app.pendingChanges?.length" class="callout pending-banner" role="status">
       <span class="material-symbols-outlined" style="font-size: 18px">pending_actions</span>
       <div>
-        <strong>{{ app.pendingChanges.length }} {{ app.pendingChanges.length === 1 ? "mudança pendente" : "mudanças pendentes" }}</strong>
-        desde o último deploy: {{ app.pendingChanges.join(", ") }}.
-        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" :disabled="deploying" @click="deploy">Fazer deploy pra aplicar</button>
+        <strong>{{ app.pendingChanges.length }} {{ app.pendingChanges.length === 1 ? $t("applicationLayout.mudancaPendente") : $t("applicationLayout.mudancasPendentes") }}</strong>
+        {{ $t("applicationLayout.desdeOUltimoDeployP0", { p0: app.pendingChanges.join(", ") }) }}
+        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" :disabled="deploying" @click="deploy">{{ $t("applicationLayout.fazerDeployPraAplicar") }}</button>
       </div>
     </div>
     <router-view />

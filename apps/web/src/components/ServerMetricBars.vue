@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from "../lib/i18n";
 import type { ServerDto } from "@yeah/shared";
 
 defineProps<{ server: Pick<ServerDto, "cpuPercent" | "memPercent" | "diskPercent" | "metricsCheckedAt">; compact?: boolean }>();
@@ -12,12 +13,12 @@ function barClass(value: number | null, threshold: number): string {
 const rows = [
   { key: "cpuPercent", label: "CPU", threshold: 90 },
   { key: "memPercent", label: "RAM", threshold: 90 },
-  { key: "diskPercent", label: "Disco", threshold: 85 },
+  { key: "diskPercent", label: i18n.global.t("common.disk"), threshold: 85 },
 ] as const;
 </script>
 
 <template>
-  <div v-if="server.metricsCheckedAt === null" class="muted metric-empty">sem métricas ainda</div>
+  <div v-if="server.metricsCheckedAt === null" class="muted metric-empty">{{ $t("serverMetricBars.semMetricasAinda") }}</div>
   <div v-else class="metric-bars" :class="{ compact }">
     <div v-for="row in rows" :key="row.key" class="metric-row">
       <div class="stat-label">{{ row.label }} · {{ server[row.key] ?? "-" }}%</div>

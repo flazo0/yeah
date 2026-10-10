@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import { NOTIFICATION_EVENT_LABELS, type NotificationChannelDto, type NotificationChannelType, type NotificationEventType } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -35,7 +36,7 @@ const typeLabel: Record<NotificationChannelType, string> = {
   discord: "Discord",
   slack: "Slack",
   telegram: "Telegram",
-  webhook: "Webhook genérico",
+  webhook: i18n.global.t("notifications.webhookGenerico"),
   email: "Email",
   ntfy: "ntfy",
 };
@@ -46,7 +47,7 @@ const editingEvents = ref<NotificationEventType[]>([]);
 const savingEvents = ref(false);
 
 function eventsSummary(events: NotificationEventType[] | null): string {
-  if (!events || events.length === 0) return "todos os eventos";
+  if (!events || events.length === 0) return i18n.global.t("notifications.todosOsEventos");
   return events.map((e) => NOTIFICATION_EVENT_LABELS[e]).join(", ");
 }
 
@@ -65,7 +66,7 @@ async function saveEvents(channelId: string) {
     if (index !== -1) channels.value[index] = res.channel;
     editingEventsId.value = null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar eventos";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("notifications.falhaAoSalvarEventos");
   } finally {
     savingEvents.value = false;
   }
@@ -81,7 +82,7 @@ async function loadChannels() {
     const res = await api.get<{ channels: NotificationChannelDto[] }>(`/teams/${teamId}/notifications`);
     channels.value = res.channels;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar canais";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("notifications.falhaAoCarregarCanais");
   } finally {
     loading.value = false;
   }
@@ -123,7 +124,7 @@ async function addChannel() {
       events: [],
     };
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar canal";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("notifications.falhaAoCriarCanal");
   } finally {
     submitting.value = false;
   }
@@ -160,8 +161,8 @@ onMounted(loadChannels);
   <div>
     <div class="page-header">
       <div>
-        <h1>Notificações</h1>
-        <p>Alertas de deploy, backup, servidor e uso de recursos — escolha por canal quais tipos recebe (padrão: todos).</p>
+        <h1>{{ $t("notifications.notificacoes") }}</h1>
+        <p>{{ $t("notifications.alertasDeDeployBackupServidor") }}</p>
       </div>
     </div>
 
@@ -170,7 +171,7 @@ onMounted(loadChannels);
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">notifications</span>
-        Canais do time
+        {{ $t("notifications.canaisDoTime") }}
       </div>
       <div v-if="loading" class="card-body">
         <PageState loading />
@@ -178,17 +179,17 @@ onMounted(loadChannels);
       <div v-else-if="channels.length === 0" class="card-body">
         <div class="empty-state">
           <span class="material-symbols-outlined icon">notifications_off</span>
-          Nenhum canal ainda. Sem isso, alertas só aparecem no dashboard.
+          {{ $t("notifications.nenhumCanalAindaSemIsso") }}
         </div>
       </div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Eventos</th>
-              <th>Ativo</th>
+              <th>{{ $t("notifications.nome") }}</th>
+              <th>{{ $t("notifications.tipo") }}</th>
+              <th>{{ $t("notifications.eventos") }}</th>
+              <th>{{ $t("notifications.ativo") }}</th>
               <th></th>
             </tr>
           </thead>
@@ -206,17 +207,17 @@ onMounted(loadChannels);
                 <td>
                   <button type="button" class="btn btn-secondary btn-sm" @click="toggleEnabled(channel)">
                     <span class="badge" :class="channel.enabled ? 'badge-good' : 'badge-neutral'">
-                      {{ channel.enabled ? "ativo" : "pausado" }}
+                      {{ channel.enabled ? $t('common.active') : $t('common.paused') }}
                     </span>
                   </button>
                 </td>
                 <td class="btn-row">
                   <button type="button" class="btn btn-secondary btn-sm" :disabled="testingId === channel.id" @click="testChannel(channel.id)">
                     <span class="material-symbols-outlined" style="font-size: 16px">send</span>
-                    {{ testingId === channel.id ? "enviando..." : "testar" }}
+                    {{ testingId === channel.id ? $t("notifications.enviando") : "testar" }}
                   </button>
-                  <span v-if="testResult[channel.id] === 'ok'" class="badge badge-good">enviado</span>
-                  <span v-else-if="testResult[channel.id] === 'failed'" class="badge badge-bad">falhou</span>
+                  <span v-if="testResult[channel.id] === 'ok'" class="badge badge-good">{{ $t("notifications.enviado") }}</span>
+                  <span v-else-if="testResult[channel.id] === 'failed'" class="badge badge-bad">{{ $t("notifications.falhou") }}</span>
                   <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteChannel(channel.id)">
                     <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
                   </button>
@@ -230,12 +231,12 @@ onMounted(loadChannels);
                       {{ NOTIFICATION_EVENT_LABELS[eventType] }}
                     </label>
                   </div>
-                  <p class="hint" style="margin-top: 6px">Nenhum marcado = recebe todos os eventos.</p>
+                  <p class="hint" style="margin-top: 6px">{{ $t("notifications.nenhumMarcadoRecebeTodosOs") }}</p>
                   <div class="btn-row mt-16" style="margin-top: 8px">
                     <button type="button" class="btn btn-secondary btn-sm" :disabled="savingEvents" @click="saveEvents(channel.id)">
-                      {{ savingEvents ? "salvando..." : "Salvar" }}
+                      {{ savingEvents ? $t("notifications.salvando") : "Salvar" }}
                     </button>
-                    <button type="button" class="btn btn-secondary btn-sm" @click="editingEventsId = null">Cancelar</button>
+                    <button type="button" class="btn btn-secondary btn-sm" @click="editingEventsId = null">{{ $t("notifications.cancelar") }}</button>
                   </div>
                 </td>
               </tr>
@@ -248,29 +249,29 @@ onMounted(loadChannels);
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Adicionar canal
+        {{ $t("notifications.adicionarCanal") }}
       </div>
       <div class="card-body">
         <form @submit.prevent="addChannel">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="notif-name">Nome</label>
-              <input id="notif-name" v-model="form.name" class="form-control" placeholder="alertas-produção" required />
+              <label for="notif-name">{{ $t("notifications.nome") }}</label>
+              <input id="notif-name" v-model="form.name" class="form-control" :placeholder="$t('notifications.alertasProducao')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="notif-type">Tipo</label>
+              <label for="notif-type">{{ $t("notifications.tipo") }}</label>
               <select id="notif-type" v-model="form.type" class="form-control">
-                <option value="discord">Discord</option>
-                <option value="slack">Slack</option>
-                <option value="telegram">Telegram</option>
-                <option value="webhook">Webhook genérico</option>
-                <option value="email">Email</option>
-                <option value="ntfy">ntfy</option>
+                <option value="discord">{{ $t("notifications.discord") }}</option>
+                <option value="slack">{{ $t("notifications.slack") }}</option>
+                <option value="telegram">{{ $t("notifications.telegram") }}</option>
+                <option value="webhook">{{ $t("notifications.webhookGenerico") }}</option>
+                <option value="email">{{ $t("notifications.email") }}</option>
+                <option value="ntfy">{{ $t("notifications.ntfy") }}</option>
               </select>
             </div>
           </div>
           <div v-if="needsUrl" class="form-group">
-            <label for="notif-url">URL do webhook</label>
+            <label for="notif-url">{{ $t("notifications.urlDoWebhook") }}</label>
             <input
               id="notif-url"
               v-model="form.url"
@@ -281,55 +282,55 @@ onMounted(loadChannels);
           </div>
           <div v-else-if="needsTelegram" class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="notif-bot-token">Bot Token</label>
-              <input id="notif-bot-token" v-model="form.telegramBotToken" class="form-control mono" placeholder="123456:ABC-..." required />
+              <label for="notif-bot-token">{{ $t("notifications.botToken") }}</label>
+              <input id="notif-bot-token" v-model="form.telegramBotToken" class="form-control mono" :placeholder="$t('notifications.123456Abc')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="notif-chat-id">Chat ID</label>
+              <label for="notif-chat-id">{{ $t("notifications.chatId") }}</label>
               <input id="notif-chat-id" v-model="form.telegramChatId" class="form-control mono" placeholder="-100123456789" required />
             </div>
           </div>
           <template v-else-if="needsEmail">
-            <p class="hint mb-16">Qualquer servidor SMTP funciona — Gmail, SES, SendGrid, Postfix próprio, etc.</p>
+            <p class="hint mb-16">{{ $t("notifications.qualquerServidorSmtpFuncionaGmail") }}</p>
             <div class="form-row mb-16">
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-smtp-host">Servidor SMTP</label>
-                <input id="notif-smtp-host" v-model="form.smtpHost" class="form-control mono" placeholder="smtp.exemplo.com" required />
+                <label for="notif-smtp-host">{{ $t("notifications.servidorSmtp") }}</label>
+                <input id="notif-smtp-host" v-model="form.smtpHost" class="form-control mono" :placeholder="$t('notifications.smtpExemploCom')" required />
               </div>
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-smtp-port">Porta</label>
+                <label for="notif-smtp-port">{{ $t("notifications.porta") }}</label>
                 <input id="notif-smtp-port" v-model.number="form.smtpPort" type="number" class="form-control" placeholder="587" required />
               </div>
             </div>
             <div class="form-row mb-16">
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-smtp-user">Usuário (opcional)</label>
+                <label for="notif-smtp-user">{{ $t("notifications.usuarioOpcional") }}</label>
                 <input id="notif-smtp-user" v-model="form.smtpUser" class="form-control mono" placeholder="usuario@exemplo.com" />
               </div>
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-smtp-password">Senha (opcional)</label>
+                <label for="notif-smtp-password">{{ $t("notifications.senhaOpcional") }}</label>
                 <input id="notif-smtp-password" v-model="form.smtpPassword" type="password" class="form-control mono" autocomplete="new-password" />
               </div>
             </div>
             <div class="form-group">
               <label style="display: inline-flex; align-items: center; gap: 6px">
                 <input type="checkbox" v-model="form.smtpSecure" />
-                Conexão TLS direta (porta 465) — deixe desmarcado pra STARTTLS (587, o mais comum)
+                {{ $t("notifications.conexaoTlsDiretaPorta465") }}
               </label>
             </div>
             <div class="form-row mb-16">
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-smtp-from">Remetente (De)</label>
+                <label for="notif-smtp-from">{{ $t("notifications.remetenteDe") }}</label>
                 <input id="notif-smtp-from" v-model="form.smtpFrom" type="email" class="form-control mono" placeholder="alertas@exemplo.com" required />
               </div>
               <div class="form-group" style="margin-bottom: 0">
-                <label for="notif-email-to">Destinatário (Para)</label>
+                <label for="notif-email-to">{{ $t("notifications.destinatarioPara") }}</label>
                 <input id="notif-email-to" v-model="form.emailTo" type="email" class="form-control mono" placeholder="voce@exemplo.com" required />
               </div>
             </div>
           </template>
           <div class="form-group">
-            <label>Eventos (nenhum marcado = todos)</label>
+            <label>{{ $t("notifications.eventosNenhumMarcadoTodos") }}</label>
             <div style="display: flex; flex-wrap: wrap; gap: 12px">
               <label v-for="eventType in EVENT_TYPES" :key="eventType" style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px">
                 <input type="checkbox" :value="eventType" v-model="form.events" />
@@ -339,7 +340,7 @@ onMounted(loadChannels);
           </div>
           <button type="submit" class="btn" :disabled="submitting">
             <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-            {{ submitting ? "adicionando..." : "Adicionar canal" }}
+            {{ submitting ? $t("notifications.adicionando") : $t("notifications.adicionarCanal") }}
           </button>
         </form>
       </div>

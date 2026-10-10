@@ -5,6 +5,8 @@ import type { ApiTokenDto, ApiTokenPermission } from "@yeah/shared";
 import type { SshKeyDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
+import { dateLocale } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -25,7 +27,7 @@ async function load() {
   try {
     keys.value = (await api.get<{ keys: SshKeyDto[] }>(`/teams/${teamId}/ssh-keys`)).keys;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar as chaves";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoCarregarAsChaves");
   } finally {
     loading.value = false;
   }
@@ -50,7 +52,7 @@ async function submit() {
     justCreated.value = res.key;
     formOpen.value = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar a chave";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoCriarAChave");
   } finally {
     submitting.value = false;
   }
@@ -75,7 +77,7 @@ async function deleteKey(key: SshKeyDto) {
     keys.value = keys.value.filter((k) => k.id !== key.id);
     if (justCreated.value?.id === key.id) justCreated.value = null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir a chave";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoExcluirAChave");
   }
 }
 
@@ -105,7 +107,7 @@ async function toggleMcp() {
   try {
     mcpEnabled.value = (await api.put<{ mcpEnabled: boolean }>(`/teams/${teamId}/mcp-settings`, { mcpEnabled: next })).mcpEnabled;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoSalvar");
   }
 }
 
@@ -114,7 +116,7 @@ async function loadTokens() {
   try {
     tokens.value = (await api.get<{ tokens: ApiTokenDto[] }>(`/teams/${teamId}/api-tokens`)).tokens;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar os tokens";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoCarregarOsTokens");
   } finally {
     tokensLoading.value = false;
   }
@@ -140,7 +142,7 @@ async function submitToken() {
     justCreatedToken.value = res;
     tokenFormOpen.value = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar o token";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoCriarOToken");
   } finally {
     tokenSubmitting.value = false;
   }
@@ -164,7 +166,7 @@ async function deleteToken(token: ApiTokenDto) {
     tokens.value = tokens.value.filter((t) => t.id !== token.id);
     if (justCreatedToken.value?.apiToken.id === token.id) justCreatedToken.value = null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir o token";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoExcluirOToken");
   }
 }
 
@@ -178,18 +180,17 @@ onMounted(() => {
   <div>
     <div class="page-header">
       <div>
-        <h1>Keys &amp; Tokens</h1>
-        <p>Chaves SSH reutilizáveis: gere ou importe uma vez e escolha ela ao adicionar um servidor ou uma deploy key, em vez de gerar (e reautorizar) uma nova toda hora.</p>
+        <h1>{{ $t("keysTokens.keysTokens") }}</h1>
+        <p>{{ $t("keysTokens.chavesSshReutilizaveisGereOu") }}</p>
       </div>
     </div>
 
     <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
 
     <div v-if="justCreated" class="callout mb-16">
-      <strong>Chave "{{ justCreated.name }}" criada</strong>
+      <strong>{{ $t("keysTokens.chaveP0Criada", { p0: justCreated.name }) }}</strong>
       <p class="hint" style="margin: 4px 0 8px">
-        Autorize a chave pública abaixo em cada servidor (<span class="mono">~/.ssh/authorized_keys</span>) ou cadastre-a como deploy key no seu
-        repositório antes de usá-la.
+        {{ $t("keysTokens.autorizeAChavePublicaAbaixo") }}<span class="mono">{{ $t("keysTokens.sshAuthorizedKeys") }}</span>{{ $t("keysTokens.ouCadastreAComoDeploy") }}
       </p>
       <pre class="callout-code">{{ justCreated.publicKey }}</pre>
     </div>
@@ -197,15 +198,15 @@ onMounted(() => {
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">key</span>
-        Chaves SSH
+        {{ $t("keysTokens.chavesSsh") }}
         <div class="btn-row" style="margin-left: auto">
           <button type="button" class="btn btn-secondary btn-sm" @click="openForm('generate')">
             <span class="material-symbols-outlined" style="font-size: 16px">add</span>
-            Gerar chave
+            {{ $t("keysTokens.gerarChave") }}
           </button>
           <button type="button" class="btn btn-secondary btn-sm" @click="openForm('import')">
             <span class="material-symbols-outlined" style="font-size: 16px">upload</span>
-            Importar chave
+            {{ $t("keysTokens.importarChave") }}
           </button>
         </div>
       </div>
@@ -213,38 +214,38 @@ onMounted(() => {
       <div v-if="formOpen" class="card-body" style="border-bottom: 1px solid var(--border)">
         <form @submit.prevent="submit">
           <div class="form-group">
-            <label for="key-name">Nome</label>
-            <input id="key-name" v-model="form.name" class="form-control" placeholder="deploy-vps-producao" required />
+            <label for="key-name">{{ $t("keysTokens.nome") }}</label>
+            <input id="key-name" v-model="form.name" class="form-control" :placeholder="$t('keysTokens.deployVpsProducao')" required />
           </div>
           <template v-if="mode === 'import'">
             <div class="form-group">
-              <label for="key-priv">Chave privada</label>
-              <textarea id="key-priv" v-model="form.privateKey" class="form-control mono" rows="6" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----" required></textarea>
+              <label for="key-priv">{{ $t("keysTokens.chavePrivada") }}</label>
+              <textarea id="key-priv" v-model="form.privateKey" class="form-control mono" rows="6" :placeholder="$t('keysTokens.beginOpensshPrivateKey')" required></textarea>
             </div>
             <div class="form-group">
-              <label for="key-pub">Chave pública</label>
-              <input id="key-pub" v-model="form.publicKey" class="form-control mono" placeholder="ssh-ed25519 AAAA... comentário" required />
+              <label for="key-pub">{{ $t("keysTokens.chavePublica") }}</label>
+              <input id="key-pub" v-model="form.publicKey" class="form-control mono" :placeholder="$t('keysTokens.sshEd25519AaaaComentario')" required />
             </div>
-            <p class="hint mb-16">Cole as duas metades de um par que você já gerou (ex.: com <span class="mono">ssh-keygen</span>). O painel não deriva uma da outra.</p>
+            <p class="hint mb-16">{{ $t("keysTokens.coleAsDuasMetadesDe") }} <span class="mono">{{ $t("keysTokens.sshKeygen") }}</span>{{ $t("keysTokens.oPainelNaoDerivaUma") }}</p>
           </template>
-          <p v-else class="hint mb-16">Gera um par ed25519 novo. A chave privada fica só no painel (criptografada) — você recebe a pública pra autorizar.</p>
+          <p v-else class="hint mb-16">{{ $t("keysTokens.geraUmParEd25519Novo") }}</p>
           <div class="btn-row">
             <button type="submit" class="btn" :disabled="submitting">
               <span class="material-symbols-outlined" style="font-size: 18px">check</span>
-              {{ submitting ? "salvando..." : "Salvar" }}
+              {{ submitting ? $t("keysTokens.salvando") : "Salvar" }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="formOpen = false">Cancelar</button>
+            <button type="button" class="btn btn-secondary" @click="formOpen = false">{{ $t("keysTokens.cancelar") }}</button>
           </div>
         </form>
       </div>
 
       <div v-if="loading" class="card-body"><PageState loading /></div>
       <div v-else-if="keys.length === 0" class="card-body">
-        <div class="empty-state">Nenhuma chave ainda. Gere ou importe uma pra reutilizar em vários servidores.</div>
+        <div class="empty-state">{{ $t("keysTokens.nenhumaChaveAindaGereOu") }}</div>
       </div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Chave pública</th><th>Em uso</th><th></th></tr></thead>
+          <thead><tr><th>{{ $t("keysTokens.nome") }}</th><th>{{ $t("keysTokens.chavePublica") }}</th><th>{{ $t("keysTokens.emUso") }}</th><th></th></tr></thead>
           <tbody>
             <tr v-for="key in keys" :key="key.id">
               <td>{{ key.name }}</td>
@@ -254,7 +255,7 @@ onMounted(() => {
                 <div class="btn-row">
                   <button type="button" class="btn btn-secondary btn-sm" @click="copyPublicKey(key)">
                     <span class="material-symbols-outlined" style="font-size: 16px">{{ copied === key.id ? "check" : "content_copy" }}</span>
-                    {{ copied === key.id ? "Copiado" : "Copiar" }}
+                    {{ copied === key.id ? $t('common.copied') : $t('common.copy') }}
                   </button>
                   <button
                     type="button"
@@ -265,7 +266,7 @@ onMounted(() => {
                     @click="deleteKey(key)"
                   >
                     <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
-                    Excluir
+                    {{ $t("keysTokens.excluir") }}
                   </button>
                 </div>
               </td>
@@ -276,13 +277,13 @@ onMounted(() => {
     </div>
 
     <div v-if="justCreatedToken" class="callout mb-16" style="margin-top: 16px">
-      <strong>Token "{{ justCreatedToken.apiToken.name }}" criado</strong>
-      <p class="hint" style="margin: 4px 0 8px">Copie agora — ele não aparece de novo depois de sair desta tela.</p>
+      <strong>{{ $t("keysTokens.tokenP0Criado", { p0: justCreatedToken.apiToken.name }) }}</strong>
+      <p class="hint" style="margin: 4px 0 8px">{{ $t("keysTokens.copieAgoraEleNaoAparece") }}</p>
       <div class="btn-row">
         <pre class="callout-code" style="margin: 0; flex: 1">{{ justCreatedToken.token }}</pre>
         <button type="button" class="btn btn-secondary btn-sm" @click="copyToken">
           <span class="material-symbols-outlined" style="font-size: 16px">{{ tokenCopied ? "check" : "content_copy" }}</span>
-          {{ tokenCopied ? "Copiado" : "Copiar" }}
+          {{ tokenCopied ? $t('common.copied') : $t('common.copy') }}
         </button>
       </div>
     </div>
@@ -290,15 +291,15 @@ onMounted(() => {
     <div class="card" style="margin-top: 16px">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">smart_toy</span>
-        Servidor MCP
+        {{ $t("keysTokens.servidorMcp") }}
       </div>
       <div class="card-body">
         <label style="display: flex; gap: 8px; align-items: center">
           <input id="mcp-enabled" type="checkbox" :checked="mcpEnabled" @change="toggleMcp" />
-          Permitir que agentes de IA usem este time via MCP
+          {{ $t("keysTokens.permitirQueAgentesDeIa") }}
         </label>
         <p class="hint">
-          Endpoint: <code>POST /teams/{{ teamId }}/mcp</code> com <code>Authorization: Bearer &lt;token&gt;</code>. Token só de leitura = modo somente leitura; os logs de build nunca são expostos.
+          {{ $t("keysTokens.endpoint") }} <code>POST /teams/{{ teamId }}/mcp</code> {{ $t("keysTokens.com") }} <code>Authorization: Bearer &lt;token&gt;</code>{{ $t("keysTokens.tokenSoDeLeituraModo") }}
         </p>
       </div>
     </div>
@@ -306,10 +307,10 @@ onMounted(() => {
     <div class="card" style="margin-top: 16px">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">vpn_key</span>
-        Tokens de API
+        {{ $t("keysTokens.tokensDeApi") }}
         <button type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" @click="openTokenForm">
           <span class="material-symbols-outlined" style="font-size: 16px">add</span>
-          Novo token
+          {{ $t("keysTokens.novoToken") }}
         </button>
       </div>
 
@@ -317,58 +318,57 @@ onMounted(() => {
         <form @submit.prevent="submitToken">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="token-name">Nome</label>
-              <input id="token-name" v-model="tokenForm.name" class="form-control" placeholder="ci-deploy" required />
+              <label for="token-name">{{ $t("keysTokens.nome") }}</label>
+              <input id="token-name" v-model="tokenForm.name" class="form-control" :placeholder="$t('keysTokens.ciDeploy')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="token-perm">Permissão</label>
+              <label for="token-perm">{{ $t("keysTokens.permissao") }}</label>
               <select id="token-perm" v-model="tokenForm.permission" class="form-control">
-                <option value="read">Só leitura</option>
-                <option value="full">Leitura e escrita (deploy, backup)</option>
+                <option value="read">{{ $t("keysTokens.soLeitura") }}</option>
+                <option value="full">{{ $t("keysTokens.leituraEEscritaDeployBackup") }}</option>
               </select>
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="token-exp">Expira em (dias, opcional)</label>
-              <input id="token-exp" v-model="tokenForm.expiresInDays" type="number" min="1" class="form-control" placeholder="sem expiração" />
+              <label for="token-exp">{{ $t("keysTokens.expiraEmDiasOpcional") }}</label>
+              <input id="token-exp" v-model="tokenForm.expiresInDays" type="number" min="1" class="form-control" :placeholder="$t('keysTokens.semExpiracao')" />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="token-ips">IPs permitidos (opcional)</label>
+              <label for="token-ips">{{ $t("keysTokens.ipsPermitidosOpcional") }}</label>
               <input id="token-ips" v-model="tokenForm.allowedIps" class="form-control" placeholder="203.0.113.5, 10.0.0.0/8" />
             </div>
           </div>
           <p class="hint mb-16">
-            Usado pela API de CI/CD (<span class="mono">/teams/{{ teamId }}/ci/...</span>) — listar e disparar deploy/backup de aplicações e bancos, sem sessão de navegador.
-            "Só leitura" só consulta; "leitura e escrita" também dispara ações.
+            {{ $t("keysTokens.usadoPelaApiDeCi") }}<span class="mono">{{ $t("keysTokens.teamsP0Ci", { p0: teamId }) }}</span>{{ $t("keysTokens.listarEDispararDeployBackup") }}
           </p>
           <div class="btn-row">
             <button type="submit" class="btn" :disabled="tokenSubmitting">
               <span class="material-symbols-outlined" style="font-size: 18px">check</span>
-              {{ tokenSubmitting ? "criando..." : "Criar token" }}
+              {{ tokenSubmitting ? $t("keysTokens.criando") : $t("keysTokens.criarToken") }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="tokenFormOpen = false">Cancelar</button>
+            <button type="button" class="btn btn-secondary" @click="tokenFormOpen = false">{{ $t("keysTokens.cancelar") }}</button>
           </div>
         </form>
       </div>
 
       <div v-if="tokensLoading" class="card-body"><PageState loading /></div>
       <div v-else-if="tokens.length === 0" class="card-body">
-        <div class="empty-state">Nenhum token ainda.</div>
+        <div class="empty-state">{{ $t("keysTokens.nenhumTokenAinda") }}</div>
       </div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Prefixo</th><th>Permissão</th><th>IPs</th><th>Expira</th><th>Último uso</th><th></th></tr></thead>
+          <thead><tr><th>{{ $t("keysTokens.nome") }}</th><th>{{ $t("keysTokens.prefixo") }}</th><th>{{ $t("keysTokens.permissao") }}</th><th>{{ $t("keysTokens.ips") }}</th><th>{{ $t("keysTokens.expira") }}</th><th>{{ $t("keysTokens.ultimoUso") }}</th><th></th></tr></thead>
           <tbody>
             <tr v-for="token in tokens" :key="token.id">
               <td>{{ token.name }}</td>
               <td class="mono">{{ token.tokenPrefix }}…</td>
-              <td>{{ token.permission === "full" ? "Leitura e escrita" : "Só leitura" }}</td>
+              <td>{{ token.permission === "full" ? $t("keysTokens.leituraEEscrita") : $t("keysTokens.soLeitura") }}</td>
               <td class="mono">{{ token.allowedIps ?? "qualquer" }}</td>
-              <td>{{ token.expiresAt ? new Date(token.expiresAt).toLocaleDateString("pt-BR") : "nunca" }}</td>
-              <td>{{ token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString("pt-BR") : "nunca" }}</td>
+              <td>{{ token.expiresAt ? new Date(token.expiresAt).toLocaleDateString(dateLocale()) : "nunca" }}</td>
+              <td>{{ token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString(dateLocale()) : "nunca" }}</td>
               <td>
                 <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteToken(token)">
                   <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
-                  Revogar
+                  {{ $t("keysTokens.revogar") }}
                 </button>
               </td>
             </tr>

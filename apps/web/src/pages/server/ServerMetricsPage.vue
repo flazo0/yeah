@@ -23,11 +23,11 @@ async function fetchHistory(hours: number) {
   <div v-if="server" class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">monitor_heart</span>
-      Recursos
+      {{ $t("serverMetrics.recursos") }}
     </div>
     <div class="card-body">
       <div v-if="server.metricsCheckedAt === null" class="empty-state">
-        Sem dados ainda — a primeira checagem roda até 1 minuto depois do servidor conectar.
+        {{ $t("serverMetrics.semDadosAindaAPrimeira") }}
       </div>
       <template v-else>
         <ServerMetricBars :server="server" />

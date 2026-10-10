@@ -5,6 +5,7 @@ import type { EnvironmentDto, ProjectDto, SharedVariableDto } from "@yeah/shared
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
 import Modal from "../components/Modal.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 // Kept out of the template: a literal double brace inside {{ }} ends the interpolation early.
@@ -27,11 +28,11 @@ const pendingDelete = ref<string | null>(null);
 let deleteTimer: ReturnType<typeof setTimeout> | undefined;
 const copied = ref<string | null>(null);
 
-const scopeLabels = { team: "Time", project: "Projeto", environment: "Ambiente" } as const;
+const scopeLabels = { team: i18n.global.t("common.team"), project: i18n.global.t("common.project"), environment: i18n.global.t("common.environment") } as const;
 const scopeHints = {
-  team: "Vale pra todas as aplicações do time.",
-  project: "Vale pras aplicações de um projeto.",
-  environment: "Vale só pras aplicações de um ambiente (ex.: production).",
+  team: i18n.global.t("variables.valePraTodasAsAplicacoes"),
+  project: i18n.global.t("variables.valePrasAplicacoesDeUm"),
+  environment: i18n.global.t("variables.valeSoPrasAplicacoesDe"),
 } as const;
 
 const environmentChoices = computed(() =>
@@ -50,7 +51,7 @@ function reference(v: SharedVariableDto): string {
 function targetOf(v: SharedVariableDto): string {
   if (v.scope === "project") return projectLabel.value.get(v.projectId ?? "") ?? "projeto removido";
   if (v.scope === "environment") return environmentLabel.value.get(v.environmentId ?? "") ?? "ambiente removido";
-  return "todo o time";
+  return i18n.global.t("variables.todoOTime");
 }
 
 async function load() {
@@ -70,7 +71,7 @@ async function load() {
     );
     environmentsByProject.value = Object.fromEntries(entries);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar variáveis";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("variables.falhaAoCarregarVariaveis");
   } finally {
     loading.value = false;
   }
@@ -96,7 +97,7 @@ async function create() {
     variables.value.push(res.variable);
     showCreate.value = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar a variável";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("variables.falhaAoCriarAVariavel");
   } finally {
     saving.value = false;
   }
@@ -113,7 +114,7 @@ async function saveEdit(v: SharedVariableDto) {
     v.value = res.variable.value;
     editingId.value = null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("variables.falhaAoSalvar");
   }
 }
 
@@ -129,7 +130,7 @@ async function remove(v: SharedVariableDto) {
     await api.delete(`/teams/${teamId}/variables/${v.id}`);
     variables.value = variables.value.filter((x) => x.id !== v.id);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("variables.falhaAoExcluir");
   }
 }
 
@@ -150,16 +151,15 @@ onMounted(load);
   <div>
     <div class="page-header">
       <div>
-        <h1>Variáveis compartilhadas</h1>
+        <h1>{{ $t("variables.variaveisCompartilhadas") }}</h1>
         <p>
-          Declare uma vez, use em várias aplicações: no <span class="mono">.env</span> da aplicação escreva
-          <span class="mono">{{ exampleReference }}</span> (ou <span class="mono">team</span> / <span class="mono">environment</span>) e o valor entra
-          no deploy.
+          {{ $t("variables.declareUmaVezUseEm") }} <span class="mono">{{ $t("variables.env") }}</span> {{ $t("variables.daAplicacaoEscreva") }}
+          <span class="mono">{{ exampleReference }}</span> {{ $t("variables.ou") }} <span class="mono">{{ $t("variables.team") }}</span> / <span class="mono">{{ $t("variables.environment") }}</span>{{ $t("variables.eOValorEntraNo") }}
         </p>
       </div>
       <button type="button" class="btn" @click="openCreate">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Nova variável
+        {{ $t("variables.novaVariavel") }}
       </button>
     </div>
 
@@ -180,20 +180,20 @@ onMounted(load);
     </div>
     <p class="hint mb-16">{{ scopeHints[scopeTab] }}</p>
 
-    <PageState :loading="loading" :empty="shown.length === 0" empty-icon="data_object" empty-text="Nenhuma variável nesse escopo ainda.">
+    <PageState :loading="loading" :empty="shown.length === 0" empty-icon="data_object" :empty-text="$t('variables.nenhumaVariavelNesseEscopoAinda')">
       <div class="rtable-wrap">
         <table class="rtable">
           <thead>
             <tr>
-              <th>Nome</th>
+              <th>{{ $t("variables.nome") }}</th>
               <th v-if="scopeTab !== 'team'">{{ scopeLabels[scopeTab] }}</th>
-              <th>Valor</th>
+              <th>{{ $t("variables.valor") }}</th>
               <th class="rtable-actions-col"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="v in shown" :key="v.id">
-              <td data-label="Nome">
+              <td :data-label="$t('variables.labelNome')">
                 <strong class="mono">{{ v.key }}</strong>
                 <br />
                 <button type="button" class="label-link mono" style="background: none; border: none; cursor: pointer; padding: 0; font-size: 12px" @click="copyReference(v)">
@@ -201,18 +201,18 @@ onMounted(load);
                 </button>
               </td>
               <td v-if="scopeTab !== 'team'" :data-label="scopeLabels[scopeTab]">{{ targetOf(v) }}</td>
-              <td data-label="Valor" style="min-width: 220px">
+              <td :data-label="$t('variables.labelValor')" style="min-width: 220px">
                 <form v-if="editingId === v.id" class="btn-row" @submit.prevent="saveEdit(v)">
-                  <input v-model="editValue" class="form-control mono" aria-label="Valor" />
-                  <button type="submit" class="btn btn-sm">Salvar</button>
-                  <button type="button" class="btn btn-secondary btn-sm" @click="editingId = null">Cancelar</button>
+                  <input v-model="editValue" class="form-control mono" :aria-label="$t('variables.valor')" />
+                  <button type="submit" class="btn btn-sm">{{ $t("variables.salvar") }}</button>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="editingId = null">{{ $t("variables.cancelar") }}</button>
                 </form>
-                <button v-else type="button" class="mono" style="background: none; border: none; cursor: pointer; padding: 0; text-align: left; color: var(--ink)" title="Editar" @click="startEdit(v)">
+                <button v-else type="button" class="mono" style="background: none; border: none; cursor: pointer; padding: 0; text-align: left; color: var(--ink)" :title="$t('variables.editar')" @click="startEdit(v)">
                   {{ v.value || "(vazio)" }}
                 </button>
               </td>
               <td class="rtable-actions-col">
-                <button type="button" class="rtable-delete" :class="{ confirming: pendingDelete === v.id }" :title="pendingDelete === v.id ? 'Clique de novo pra confirmar' : 'Excluir'" @click="remove(v)">
+                <button type="button" class="rtable-delete" :class="{ confirming: pendingDelete === v.id }" :title="pendingDelete === v.id ? $t('variables.cliqueDeNovoPraConfirmar') : 'Excluir'" @click="remove(v)">
                   <span class="material-symbols-outlined">{{ pendingDelete === v.id ? "warning" : "delete" }}</span>
                 </button>
               </td>
@@ -222,33 +222,33 @@ onMounted(load);
       </div>
     </PageState>
 
-    <Modal v-if="showCreate" :title="`Nova variável (${scopeLabels[scopeTab].toLowerCase()})`" @close="showCreate = false">
+    <Modal v-if="showCreate" :title="$t('variables.novaVariavelP0', { p0: scopeLabels[scopeTab].toLowerCase() })" @close="showCreate = false">
       <form @submit.prevent="create">
         <div v-if="scopeTab === 'project'" class="form-group">
-          <label for="var-project">Projeto</label>
+          <label for="var-project">{{ $t("variables.projeto") }}</label>
           <select id="var-project" v-model="form.projectId" class="form-control" required>
             <option v-for="p in projects" :key="p.id" :value="p.id">{{ p.name }}</option>
           </select>
         </div>
         <div v-if="scopeTab === 'environment'" class="form-group">
-          <label for="var-env">Ambiente</label>
+          <label for="var-env">{{ $t("variables.ambiente") }}</label>
           <select id="var-env" v-model="form.environmentId" class="form-control" required>
             <option v-for="e in environmentChoices" :key="e.id" :value="e.id">{{ e.label }}</option>
           </select>
         </div>
         <div class="form-group">
-          <label for="var-key">Nome</label>
+          <label for="var-key">{{ $t("variables.nome") }}</label>
           <input id="var-key" v-model="form.key" class="form-control mono" placeholder="NODE_ENV" required autofocus />
         </div>
         <div class="form-group">
-          <label for="var-value">Valor</label>
+          <label for="var-value">{{ $t("variables.valor") }}</label>
           <input id="var-value" v-model="form.value" class="form-control mono" />
-          <p class="hint" style="margin-top: 6px">Guardado criptografado no painel.</p>
+          <p class="hint" style="margin-top: 6px">{{ $t("variables.guardadoCriptografadoNoPainel") }}</p>
         </div>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="saving">{{ saving ? "criando..." : "Criar variável" }}</button>
-          <button type="button" class="btn btn-secondary" @click="showCreate = false">Cancelar</button>
+          <button type="submit" class="btn" :disabled="saving">{{ saving ? $t("variables.criando") : $t("variables.criarVariavel") }}</button>
+          <button type="button" class="btn btn-secondary" @click="showCreate = false">{{ $t("variables.cancelar") }}</button>
         </div>
       </form>
     </Modal>

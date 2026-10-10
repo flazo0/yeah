@@ -172,7 +172,7 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 
 ## Fase 8 — Polimento, documentação e extras
 
-- [ ] **i18n** PT/EN: `vue-i18n`, `pt.json` + `en.json`, seletor de idioma junto do tema; migrar página por página. *(Parcial: infraestrutura pronta (`lib/i18n.ts`, idioma pelo navegador/localStorage, fallback pt, seletor em Configurações) e migrados a barra lateral/topbar, Login, Configurações e os a página Projetos, componentes compartilhados (menu da conta, seletor de time, busca global, estado de carregamento, alternância lista/grade). As demais páginas continuam com texto fixo em português — um teste garante que pt.json e en.json têm as mesmas chaves. Não testado no navegador.)*
+- [x] **i18n** PT/EN: `vue-i18n` + `pt.json`/`en.json` (~1.4 mil mensagens), seletor de idioma em Configurações (guarda no navegador; padrão pelo idioma do navegador), datas seguem o idioma. **Todas** as 70+ telas, layouts e componentes foram migrados (extração automatizada por script + tradução EN revisada à mão; sobrou só texto técnico idêntico nos dois idiomas, tipo `docker run`). Testes: paridade de chaves pt/en e **toda mensagem compila** no compilador do vue-i18n. **Limites**: (1) as mensagens de erro que vêm da **API** (`{ error: "..." }`) continuam em português — a API não é traduzida; (2) constantes avaliadas uma vez no setup do componente só trocam de idioma ao reabrir a tela; (3) não abri o painel no navegador, então espaçamento/ordem de frases em inglês (textos quebrados por tags `<strong>` viram vários trechos) não foi conferido visualmente.
 - [x] Doc **"Escalar app Node/Bun em múltiplos cores"** → `docs/SCALING.md` (`pm2-runtime -i max`, `reusePort: true`, e o que vai pro Redis). Só documentação, não validado numa VPS.
 - [x] Doc de **troubleshooting** → `docs/TROUBLESHOOTING.md` (502/503/504, OOM em build, firewall, Let's Encrypt, token GitHub, servidor offline). Escrito a partir do comportamento do código; não validado em VPS real.
 - [x] **2FA** (TOTP, RFC 6238) pra conta do admin: ativar em Configurações (chave + URI `otpauth://`, confirmação com um código, 8 códigos de recuperação de uso único mostrados uma vez), pedido no login, desativar exige senha + código. Segredo criptografado em repouso; recuperação guardada só como hash; migração 0047. Núcleo TOTP testado contra os vetores do RFC 6238 (4 testes). **Não testado**: fluxo completo no navegador/API nem com um app autenticador real; sem QR code (só chave/URI em texto). Brute force do código limitado pela regra de rate limit de auth no login.
@@ -248,7 +248,7 @@ Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. O
 - [ ] Rate limiting na API → Fase 0.
 
 **Só aqui (sem fase própria)**
-- [ ] **(só aqui)** Internacionalização PT/EN — detalhada na Fase 8; mantida aqui porque foi pedido explicitamente pelo usuário e é o item mais antigo da lista.
+- [x] **(só aqui)** Internacionalização PT/EN — detalhada na Fase 8; mantida aqui porque foi pedido explicitamente pelo usuário e é o item mais antigo da lista.
 - [ ] **(só aqui)** Deliberadamente **sem** paridade, por decisão de produto: multiusuário, OIDC/SSO e hospedar terceiros no servidor — o `yeah` é single-admin de propósito (ver `docs/ARCHITECTURE.md`). Não é pendência, fica registrado pra ninguém abrir issue achando que é lacuna.
 
 PRs e issues são bem-vindos pra qualquer item daqui — ver `CONTRIBUTING.md`.

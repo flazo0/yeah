@@ -4,6 +4,7 @@ import { useI18n } from "vue-i18n";
 import { useRouter } from "vue-router";
 import type { SearchResultDto } from "@yeah/shared";
 import { api } from "../lib/api";
+import { i18n } from "../lib/i18n";
 
 const props = defineProps<{ teamId: string | null }>();
 const { t } = useI18n();
@@ -35,17 +36,17 @@ const kindIcon: Record<SearchResultDto["kind"], string> = {
 
 const pages = computed<Entry[]>(() => {
   const t = props.teamId;
-  const list: Entry[] = [{ key: "p-dashboard", name: "Dashboard", subtitle: "Página", icon: "space_dashboard", path: "/dashboard" }];
+  const list: Entry[] = [{ key: "p-dashboard", name: "Dashboard", subtitle: i18n.global.t("globalSearch.pagina"), icon: "space_dashboard", path: "/dashboard" }];
   if (t) {
     list.push(
-      { key: "p-projects", name: "Projetos", subtitle: "Página", icon: "layers", path: `/teams/${t}` },
-      { key: "p-servers", name: "Servidores", subtitle: "Página", icon: "dns", path: `/teams/${t}/servers` },
-      { key: "p-sources", name: "Fontes", subtitle: "Página", icon: "hub", path: `/teams/${t}/sources` },
-      { key: "p-storages", name: "Armazenamento", subtitle: "Página", icon: "cloud", path: `/teams/${t}/storages` },
-      { key: "p-team", name: "Time", subtitle: "Página", icon: "group", path: `/teams/${t}/team` },
-      { key: "p-notifications", name: "Notificações", subtitle: "Página", icon: "notifications", path: `/teams/${t}/notifications` },
-      { key: "p-updates", name: "Atualizações", subtitle: "Página", icon: "deployed_code_update", path: `/teams/${t}/updates` },
-      { key: "p-settings", name: "Configurações", subtitle: "Página", icon: "settings", path: `/teams/${t}/settings` },
+      { key: "p-projects", name: "Projetos", subtitle: i18n.global.t("globalSearch.pagina"), icon: "layers", path: `/teams/${t}` },
+      { key: "p-servers", name: "Servidores", subtitle: i18n.global.t("globalSearch.pagina"), icon: "dns", path: `/teams/${t}/servers` },
+      { key: "p-sources", name: "Fontes", subtitle: i18n.global.t("globalSearch.pagina"), icon: "hub", path: `/teams/${t}/sources` },
+      { key: "p-storages", name: "Armazenamento", subtitle: i18n.global.t("globalSearch.pagina"), icon: "cloud", path: `/teams/${t}/storages` },
+      { key: "p-team", name: "Time", subtitle: i18n.global.t("globalSearch.pagina"), icon: "group", path: `/teams/${t}/team` },
+      { key: "p-notifications", name: i18n.global.t("globalSearch.notificacoes"), subtitle: i18n.global.t("globalSearch.pagina"), icon: "notifications", path: `/teams/${t}/notifications` },
+      { key: "p-updates", name: i18n.global.t("globalSearch.atualizacoes"), subtitle: i18n.global.t("globalSearch.pagina"), icon: "deployed_code_update", path: `/teams/${t}/updates` },
+      { key: "p-settings", name: i18n.global.t("globalSearch.configuracoes"), subtitle: i18n.global.t("globalSearch.pagina"), icon: "settings", path: `/teams/${t}/settings` },
     );
   }
   return list;
@@ -163,7 +164,7 @@ defineExpose({ show });
             v-model="query"
             type="text"
             :placeholder="t('search.placeholder')"
-            aria-label="Buscar"
+            :aria-label="$t('globalSearch.buscar')"
             autocomplete="off"
             @keydown="onInputKey"
           />

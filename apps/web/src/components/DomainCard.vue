@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watchEffect } from "vue";
 import { api, ApiError } from "../lib/api";
+import { i18n } from "../lib/i18n";
 
 const props = defineProps<{
   domain: string | null;
@@ -32,7 +33,7 @@ async function save() {
     saved.value = true;
     setTimeout(() => (saved.value = false), 2000);
   } catch (err) {
-    emit("error", err instanceof ApiError ? err.message : "falha ao salvar domínio");
+    emit("error", err instanceof ApiError ? err.message : i18n.global.t("domainCard.falhaAoSalvarDominio"));
   } finally {
     saving.value = false;
   }
@@ -42,24 +43,24 @@ async function save() {
 <template>
   <div class="card-header" style="border-top: 1px solid var(--border)">
     <span class="material-symbols-outlined" style="font-size: 18px">shield_lock</span>
-    Domínio
+    {{ $t("domainCard.dominio") }}
   </div>
   <div class="card-body">
     <p class="hint mb-16">
-      Deixe em branco pra usar o domínio wildcard do servidor (se o proxy estiver ativo) ou publicar a porta direto no host.
+      {{ $t("domainCard.deixeEmBrancoPraUsar") }}
     </p>
     <div class="form-group">
-      <label for="resource-domain">Domínio customizado</label>
-      <input id="resource-domain" v-model="form" class="form-control mono" placeholder="minhaapp.exemplo.com" />
+      <label for="resource-domain">{{ $t("domainCard.dominioCustomizado") }}</label>
+      <input id="resource-domain" v-model="form" class="form-control mono" :placeholder="$t('domainCard.minhaappExemploCom')" />
       <p v-if="suggestion" class="hint" style="margin-top: 6px">
-        O wildcard do servidor sugere <span class="mono">{{ suggestion }}</span>
-        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="form = suggestion">Gerar domínio</button>
+        {{ $t("domainCard.oWildcardDoServidorSugere") }} <span class="mono">{{ suggestion }}</span>
+        <button type="button" class="label-link" style="background: none; border: none; cursor: pointer; padding: 0" @click="form = suggestion">{{ $t("domainCard.gerarDominio") }}</button>
       </p>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" :disabled="saving" @click="save">
         <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-        {{ saving ? "salvando..." : "Salvar" }}
+        {{ saving ? $t("domainCard.salvando") : "Salvar" }}
       </button>
       <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ savedMessage }}</span>
     </div>

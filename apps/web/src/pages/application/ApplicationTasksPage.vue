@@ -4,6 +4,7 @@ import type { ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 import PageState from "../../components/PageState.vue";
+import { i18n } from "../../lib/i18n";
 
 const { basePath, error } = useApplicationContext();
 
@@ -21,17 +22,17 @@ const executions = ref<ScheduledTaskExecutionDto[]>([]);
 let poll: ReturnType<typeof setInterval> | undefined;
 
 const presets = [
-  { label: "A cada minuto", cron: "* * * * *" },
-  { label: "A cada hora", cron: "0 * * * *" },
-  { label: "Todo dia às 03:00", cron: "0 3 * * *" },
-  { label: "Toda segunda às 08:00", cron: "0 8 * * 1" },
+  { label: i18n.global.t("applicationTasks.aCadaMinuto"), cron: "* * * * *" },
+  { label: i18n.global.t("applicationTasks.aCadaHora"), cron: "0 * * * *" },
+  { label: i18n.global.t("applicationTasks.todoDiaAs0300"), cron: "0 3 * * *" },
+  { label: i18n.global.t("applicationTasks.todaSegundaAs0800"), cron: "0 8 * * 1" },
 ];
 
 async function load() {
   try {
     tasks.value = (await api.get<{ tasks: ScheduledTaskDto[] }>(`${basePath}/tasks`)).tasks;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar as tarefas";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationTasks.falhaAoCarregarAsTarefas");
   } finally {
     loading.value = false;
   }
@@ -67,7 +68,7 @@ async function save() {
     showForm.value = false;
     await load();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar a tarefa";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationTasks.falhaAoSalvarATarefa");
   } finally {
     busy.value = false;
   }
@@ -86,7 +87,7 @@ async function toggle(task: ScheduledTaskDto) {
     });
     await load();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao atualizar a tarefa";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationTasks.falhaAoAtualizarATarefa");
   }
 }
 
@@ -96,7 +97,7 @@ async function runNow(task: ScheduledTaskDto) {
     await api.post(`${basePath}/tasks/${task.id}/run`);
     await openHistory(task.id, true);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao executar a tarefa";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationTasks.falhaAoExecutarATarefa");
   }
 }
 
@@ -112,7 +113,7 @@ async function remove(task: ScheduledTaskDto) {
     if (openTaskId.value === task.id) openTaskId.value = null;
     await load();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao remover a tarefa";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationTasks.falhaAoRemoverATarefa");
   } finally {
     confirmingDelete.value = null;
   }
@@ -157,52 +158,52 @@ onBeforeUnmount(() => {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">schedule</span>
-        Tarefas agendadas
-        <button type="button" class="btn btn-sm" style="margin-left: auto" @click="startNew">Nova tarefa</button>
+        {{ $t("applicationTasks.tarefasAgendadas") }}
+        <button type="button" class="btn btn-sm" style="margin-left: auto" @click="startNew">{{ $t("applicationTasks.novaTarefa") }}</button>
       </div>
       <div class="card-body">
         <p class="hint">
-          Roda um comando <em>dentro do container</em> da aplicação num horário (cron) — limpar cache, rodar
-          <span class="mono">schedule:run</span>, mandar um relatório. A saída fica guardada (últimas 50 execuções) e uma falha avisa nos canais de notificação.
+          {{ $t("applicationTasks.rodaUmComando") }} <em>{{ $t("applicationTasks.dentroDoContainer") }}</em> {{ $t("applicationTasks.daAplicacaoNumHorarioCron") }}
+          <span class="mono">{{ $t("applicationTasks.scheduleRun") }}</span>{{ $t("applicationTasks.mandarUmRelatorioASaida") }}
         </p>
       </div>
     </div>
 
     <form v-if="showForm" class="card mb-16" @submit.prevent="save">
-      <div class="card-header">{{ editingId ? "Editar tarefa" : "Nova tarefa" }}</div>
+      <div class="card-header">{{ editingId ? $t("applicationTasks.editarTarefa") : $t("applicationTasks.novaTarefa") }}</div>
       <div class="card-body">
         <div class="form-group">
-          <label for="task-name">Nome</label>
-          <input id="task-name" v-model="form.name" required maxlength="255" placeholder="Limpar cache" />
+          <label for="task-name">{{ $t("applicationTasks.nome") }}</label>
+          <input id="task-name" v-model="form.name" required maxlength="255" :placeholder="$t('applicationTasks.limparCache')" />
         </div>
         <div class="form-group">
-          <label for="task-command">Comando</label>
-          <input id="task-command" v-model="form.command" required class="mono" placeholder="php artisan cache:clear" />
+          <label for="task-command">{{ $t("applicationTasks.comando") }}</label>
+          <input id="task-command" v-model="form.command" required class="mono" :placeholder="$t('applicationTasks.phpArtisanCacheClear')" />
         </div>
         <div class="form-group">
-          <label for="task-cron">Frequência (cron)</label>
+          <label for="task-cron">{{ $t("applicationTasks.frequenciaCron") }}</label>
           <input id="task-cron" v-model="form.cron" required class="mono" placeholder="0 * * * *" />
           <div class="btn-row" style="margin-top: 6px">
             <button v-for="p in presets" :key="p.cron" type="button" class="btn btn-secondary btn-sm" @click="form.cron = p.cron">{{ p.label }}</button>
           </div>
         </div>
         <div class="form-group">
-          <label for="task-tz">Fuso horário</label>
-          <input id="task-tz" v-model="form.timezone" placeholder="UTC" />
+          <label for="task-tz">{{ $t("applicationTasks.fusoHorario") }}</label>
+          <input id="task-tz" v-model="form.timezone" :placeholder="$t('applicationTasks.utc')" />
         </div>
         <div class="form-group">
-          <label for="task-timeout">Limite de tempo (segundos)</label>
+          <label for="task-timeout">{{ $t("applicationTasks.limiteDeTempoSegundos") }}</label>
           <input id="task-timeout" v-model.number="form.timeoutSeconds" type="number" min="1" max="86400" />
         </div>
         <div class="btn-row">
-          <button type="submit" class="btn" :disabled="busy">Salvar</button>
-          <button type="button" class="btn btn-secondary" @click="showForm = false">Cancelar</button>
+          <button type="submit" class="btn" :disabled="busy">{{ $t("applicationTasks.salvar") }}</button>
+          <button type="button" class="btn btn-secondary" @click="showForm = false">{{ $t("applicationTasks.cancelar") }}</button>
         </div>
       </div>
     </form>
 
     <div v-if="tasks.length === 0 && !showForm" class="card">
-      <div class="card-body"><p class="hint">Nenhuma tarefa agendada ainda.</p></div>
+      <div class="card-body"><p class="hint">{{ $t("applicationTasks.nenhumaTarefaAgendadaAinda") }}</p></div>
     </div>
 
     <div v-for="task in tasks" :key="task.id" class="card mb-16">
@@ -210,34 +211,34 @@ onBeforeUnmount(() => {
         <div class="btn-row" style="justify-content: space-between; align-items: flex-start">
           <div style="min-width: 0">
             <strong>{{ task.name }}</strong>
-            <span v-if="!task.enabled" class="badge" style="margin-left: 8px">pausada</span>
+            <span v-if="!task.enabled" class="badge" style="margin-left: 8px">{{ $t("applicationTasks.pausada") }}</span>
             <div class="mono hint" style="word-break: break-all">{{ task.command }}</div>
             <div class="hint">
-              <span class="mono">{{ task.cron }}</span> ({{ task.timezone }}) · limite {{ task.timeoutSeconds }}s
+              <span class="mono">{{ task.cron }}</span> {{ $t("applicationTasks.p0LimiteP1S", { p0: task.timezone, p1: task.timeoutSeconds }) }}
               <template v-if="task.lastExecution">
-                · última: <span :class="['tone-' + tone(task.lastExecution.status)]">{{ task.lastExecution.status }}</span> em {{ fmt(task.lastExecution.startedAt) }}
+                {{ $t("applicationTasks.ultima") }} <span :class="['tone-' + tone(task.lastExecution.status)]">{{ task.lastExecution.status }}</span> {{ $t("applicationTasks.emP0", { p0: fmt(task.lastExecution.startedAt) }) }}
               </template>
             </div>
           </div>
           <div class="btn-row">
-            <button type="button" class="btn btn-secondary btn-sm" @click="runNow(task)">Executar agora</button>
-            <button type="button" class="btn btn-secondary btn-sm" @click="openHistory(task.id)">Histórico</button>
-            <button type="button" class="btn btn-secondary btn-sm" @click="toggle(task)">{{ task.enabled ? "Pausar" : "Ativar" }}</button>
-            <button type="button" class="btn btn-secondary btn-sm" @click="startEdit(task)">Editar</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="runNow(task)">{{ $t("applicationTasks.executarAgora") }}</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="openHistory(task.id)">{{ $t("applicationTasks.historico") }}</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="toggle(task)">{{ task.enabled ? $t('common.pause') : $t('common.activate') }}</button>
+            <button type="button" class="btn btn-secondary btn-sm" @click="startEdit(task)">{{ $t("applicationTasks.editar") }}</button>
             <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="remove(task)">
-              {{ confirmingDelete === task.id ? "Confirmar?" : "Remover" }}
+              {{ confirmingDelete === task.id ? $t('common.confirmQ') : $t('common.remove') }}
             </button>
           </div>
         </div>
 
         <div v-if="openTaskId === task.id" style="margin-top: 12px">
-          <p v-if="executions.length === 0" class="hint">Sem execuções ainda.</p>
+          <p v-if="executions.length === 0" class="hint">{{ $t("applicationTasks.semExecucoesAinda") }}</p>
           <details v-for="(e, i) in executions" :key="e.id" :open="i === 0" style="margin-bottom: 6px">
             <summary>
               <span :class="['tone-' + tone(e.status)]">{{ e.status }}</span>
-              · {{ fmt(e.startedAt) }}<template v-if="e.manual"> · manual</template><template v-if="e.exitCode !== null"> · código {{ e.exitCode }}</template>
+              · {{ fmt(e.startedAt) }}<template v-if="e.manual"> {{ $t("applicationTasks.manual") }}</template><template v-if="e.exitCode !== null"> {{ $t("applicationTasks.codigoP0", { p0: e.exitCode }) }}</template>
             </summary>
-            <pre class="callout-code" style="max-height: 260px; overflow: auto">{{ e.log || "(sem saída)" }}</pre>
+            <pre class="callout-code" style="max-height: 260px; overflow: auto">{{ e.log || $t('common.noOutput') }}</pre>
           </details>
         </div>
       </div>

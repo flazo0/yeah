@@ -15,7 +15,7 @@ defineProps<{
   <div v-else-if="error" class="alert alert-error">{{ error }}</div>
   <div v-else-if="empty" class="empty-state page-state">
     <span class="material-symbols-outlined icon">{{ emptyIcon ?? "inbox" }}</span>
-    <slot name="empty">{{ emptyText ?? "Nada por aqui ainda." }}</slot>
+    <slot name="empty">{{ emptyText ?? $t("pageState.nadaPorAquiAinda") }}</slot>
   </div>
   <slot v-else />
 </template>

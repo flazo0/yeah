@@ -6,6 +6,8 @@ import { wsClient } from "../../lib/ws";
 import DeployLogTerminal from "../../components/DeployLogTerminal.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 import StatusBadge from "../../components/StatusBadge.vue";
+import { i18n } from "../../lib/i18n";
+import { dateLocale } from "../../lib/i18n";
 
 const { app, basePath, error, lastDeployment } = useApplicationContext();
 
@@ -28,7 +30,7 @@ async function load() {
       currentStatus.value = latest.status;
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar deploys";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationDeployments.falhaAoCarregarDeploys");
   }
 }
 
@@ -49,7 +51,7 @@ async function rollback(deployment: DeploymentDto) {
     history.value = [res.deployment, ...history.value];
     if (app.value) app.value.status = "deploying";
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao voltar pra essa versão";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationDeployments.falhaAoVoltarPraEssa");
   } finally {
     rollingBackId.value = null;
   }
@@ -94,7 +96,7 @@ onUnmounted(() => {
   <div class="card mb-16">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">terminal</span>
-      Log do deploy
+      {{ $t("applicationDeployments.logDoDeploy") }}
       <StatusBadge v-if="currentStatus" :status="currentStatus" kind="job" style="margin-left: auto" />
     </div>
     <DeployLogTerminal :log="currentLog" />
@@ -103,29 +105,29 @@ onUnmounted(() => {
   <div class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">history</span>
-      Histórico de deploys
+      {{ $t("applicationDeployments.historicoDeDeploys") }}
     </div>
     <div v-if="history.length === 0" class="card-body">
-      <div class="empty-state">Nenhum deploy ainda.</div>
+      <div class="empty-state">{{ $t("applicationDeployments.nenhumDeployAinda") }}</div>
     </div>
     <div v-else class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Quando</th>
-            <th>Commit</th>
-            <th>Status</th>
+            <th>{{ $t("applicationDeployments.quando") }}</th>
+            <th>{{ $t("applicationDeployments.commit") }}</th>
+            <th>{{ $t("applicationDeployments.status") }}</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="deployment in history" :key="deployment.id">
-            <td>{{ new Date(deployment.createdAt).toLocaleString("pt-BR") }}</td>
+            <td>{{ new Date(deployment.createdAt).toLocaleString(dateLocale()) }}</td>
             <td class="mono">{{ deployment.commitSha ? deployment.commitSha.slice(0, 7) : "—" }}</td>
             <td><StatusBadge :status="deployment.status" kind="job" /></td>
             <td class="btn-row" style="justify-content: flex-end">
               <button type="button" class="btn btn-secondary btn-sm" @click="selectDeployment(deployment)">
-                Ver log
+                {{ $t("applicationDeployments.verLog") }}
               </button>
               <button
                 v-if="deployment.status === 'success'"
@@ -134,7 +136,7 @@ onUnmounted(() => {
                 :disabled="!canDeploy() || rollingBackId === deployment.id"
                 @click="rollback(deployment)"
               >
-                {{ rollingBackId === deployment.id ? "voltando..." : "Voltar pra essa versão" }}
+                {{ rollingBackId === deployment.id ? $t("applicationDeployments.voltando") : $t("applicationDeployments.voltarPraEssaVersao") }}
               </button>
             </td>
           </tr>

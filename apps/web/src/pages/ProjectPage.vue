@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import type { EnvironmentDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -24,7 +25,7 @@ async function load() {
     );
     environments.value = res.environments;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar ambientes";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("project.falhaAoCarregarAmbientes");
   } finally {
     loading.value = false;
   }
@@ -42,7 +43,7 @@ async function createEnvironment() {
     environments.value.push(res.environment);
     name.value = "";
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar ambiente";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("project.falhaAoCriarAmbiente");
   } finally {
     creating.value = false;
   }
@@ -55,8 +56,8 @@ onMounted(load);
   <div>
     <div class="page-header">
       <div>
-        <h1>Ambientes</h1>
-        <p>Cada ambiente tem sua própria grade de aplicações e bancos de dados.</p>
+        <h1>{{ $t("project.ambientes") }}</h1>
+        <p>{{ $t("project.cadaAmbienteTemSuaPropria") }}</p>
       </div>
     </div>
 
@@ -65,7 +66,7 @@ onMounted(load);
       <div class="card-body">
         <div class="empty-state">
           <span class="material-symbols-outlined icon">layers</span>
-          Nenhum ambiente ainda.
+          {{ $t("project.nenhumAmbienteAinda") }}
         </div>
       </div>
     </div>
@@ -77,23 +78,23 @@ onMounted(load);
         class="quick-link"
       >
         <div class="name">{{ environment.name }}</div>
-        <div class="desc">{{ environment.applicationCount }} aplicação(ões) · {{ environment.databaseCount }} banco(s)</div>
+        <div class="desc">{{ $t("project.p0AplicacaoOesP1Banco", { p0: environment.applicationCount, p1: environment.databaseCount }) }}</div>
       </RouterLink>
     </div>
 
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Novo ambiente
+        {{ $t("project.novoAmbiente") }}
       </div>
       <div class="card-body">
         <form class="form-row" style="align-items: end" @submit.prevent="createEnvironment">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="env-name">Nome</label>
-            <input id="env-name" v-model="name" class="form-control" placeholder="staging" required />
+            <label for="env-name">{{ $t("project.nome") }}</label>
+            <input id="env-name" v-model="name" class="form-control" :placeholder="$t('project.staging')" required />
           </div>
           <button type="submit" class="btn" :disabled="creating">
-            {{ creating ? "criando..." : "Criar ambiente" }}
+            {{ creating ? $t("project.criando") : $t("project.criarAmbiente") }}
           </button>
         </form>
         <div v-if="error" class="alert alert-error" style="margin-top: 12px">{{ error }}</div>

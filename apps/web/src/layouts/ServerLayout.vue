@@ -7,6 +7,7 @@ import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import StatusBadge from "../components/StatusBadge.vue";
 import { SERVER_CONTEXT_KEY, type ServerContext } from "../composables/useServerContext";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -22,7 +23,7 @@ async function load() {
     const res = await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`);
     server.value = res.servers.find((s) => s.id === serverId) ?? null;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar servidor";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serverLayout.falhaAoCarregarServidor");
   } finally {
     loading.value = false;
   }
@@ -54,20 +55,20 @@ const unsubscribe = wsClient.on((event: WsServerEvent) => {
 onUnmounted(unsubscribe);
 
 const tabs = [
-  { path: "general", label: "Geral", icon: "tune" },
+  { path: "general", label: i18n.global.t("common.general"), icon: "tune" },
   { path: "proxy", label: "Proxy", icon: "shield_lock" },
-  { path: "maintenance", label: "Manutenção", icon: "cleaning_services" },
-  { path: "metrics", label: "Recursos", icon: "monitor_heart" },
+  { path: "maintenance", label: i18n.global.t("serverLayout.manutencao"), icon: "cleaning_services" },
+  { path: "metrics", label: i18n.global.t("common.resources"), icon: "monitor_heart" },
   { path: "terminal", label: "Terminal", icon: "terminal" },
 ];
 </script>
 
 <template>
   <PageState v-if="loading" loading />
-  <div v-else-if="!server" class="empty-state">Servidor não encontrado.</div>
+  <div v-else-if="!server" class="empty-state">{{ $t("serverLayout.servidorNaoEncontrado") }}</div>
   <div v-else>
     <nav class="breadcrumb">
-      <RouterLink :to="`/teams/${teamId}/servers`" class="breadcrumb-item">Servidores</RouterLink>
+      <RouterLink :to="`/teams/${teamId}/servers`" class="breadcrumb-item">{{ $t("serverLayout.servidores") }}</RouterLink>
       <span class="breadcrumb-sep">›</span>
       <span class="breadcrumb-current">{{ server.name }}</span>
     </nav>

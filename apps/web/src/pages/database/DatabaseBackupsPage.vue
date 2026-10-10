@@ -6,6 +6,8 @@ import { api, ApiError } from "../../lib/api";
 import { wsClient } from "../../lib/ws";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
 import StatusBadge from "../../components/StatusBadge.vue";
+import { i18n } from "../../lib/i18n";
+import { dateLocale } from "../../lib/i18n";
 
 const { database, basePath, error } = useDatabaseContext();
 const multiDatabase = computed(() => database.value !== null && ['postgresql', 'mysql', 'mariadb', 'mongodb'].includes(database.value.engine));
@@ -75,7 +77,7 @@ async function load() {
       void syncNow();
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar backups";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoCarregarBackups");
   }
 }
 
@@ -90,7 +92,7 @@ async function createSchedule() {
     });
     schedule.value = res.schedule;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar agendamento";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoCriarAgendamento");
   } finally {
     creatingSchedule.value = false;
   }
@@ -117,7 +119,7 @@ async function deleteSchedule(withBackups: boolean) {
     schedule.value = null;
     executions.value = [];
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao remover";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoRemover");
   }
 }
 
@@ -129,10 +131,10 @@ async function cleanup(what: "failed" | "missing") {
   error.value = "";
   try {
     const res = await api.post<{ removed: number }>(`${basePath}/backup-executions/cleanup`, { what });
-    cleanupMessage.value = res.removed === 0 ? "Nada pra limpar." : `${res.removed} removido(s).`;
+    cleanupMessage.value = res.removed === 0 ? i18n.global.t("databaseBackups.nadaPraLimpar") : `${res.removed} removido(s).`;
     await loadExecutions();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha na limpeza";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaNaLimpeza");
   } finally {
     cleaning.value = false;
   }
@@ -148,7 +150,7 @@ async function saveSync() {
     });
     schedule.value = res.schedule;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoSalvar");
   } finally {
     savingSync.value = false;
   }
@@ -170,7 +172,7 @@ async function syncNow() {
     let downloaded = 0;
     for (const execution of pending) {
       const res = await fetch(downloadUrl(execution.id), { credentials: "include" });
-      if (!res.ok) throw new Error(`falha ao baixar o backup de ${new Date(execution.createdAt).toLocaleString("pt-BR")}`);
+      if (!res.ok) throw new Error(i18n.global.t("databaseBackups.falhaAoBaixarOBackup", { p0: new Date(execution.createdAt).toLocaleString(dateLocale()) }));
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const disposition = res.headers.get("Content-Disposition") ?? "";
@@ -187,11 +189,11 @@ async function syncNow() {
       const pruneRes = await api.post<{ removed: number }>(`${basePath}/backup-schedule/${schedule.value.id}/prune`, {});
       syncMessage.value = `${downloaded} baixado(s), ${pruneRes.removed} removido(s) do servidor.`;
     } else {
-      syncMessage.value = downloaded === 0 ? "Nada novo pra baixar." : `${downloaded} baixado(s).`;
+      syncMessage.value = downloaded === 0 ? i18n.global.t("databaseBackups.nadaNovoPraBaixar") : `${downloaded} baixado(s).`;
     }
     await loadExecutions();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "falha ao sincronizar";
+    error.value = err instanceof ApiError ? err.message : err instanceof Error ? err.message : i18n.global.t("databaseBackups.falhaAoSincronizar");
   } finally {
     syncing.value = false;
   }
@@ -222,7 +224,7 @@ async function restoreFrom(execution: BackupExecutionDto) {
     openRestoreId.value = res.restore.id;
     await loadRestores();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar o restore";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoIniciarORestore");
   }
 }
 
@@ -232,7 +234,7 @@ async function uploadAndRestore(event: Event) {
   if (!file) return;
   if (!armed(`upload-${file.name}`)) {
     // First selection only arms: the file input is reset so choosing it again confirms.
-    error.value = `Isto vai SUBSTITUIR os dados do banco pelo conteúdo de "${file.name}". Escolha o arquivo de novo pra confirmar.`;
+    error.value = i18n.global.t("databaseBackups.istoVaiSubstituirOsDados", { p0: file.name });
     input.value = "";
     return;
   }
@@ -251,7 +253,7 @@ async function uploadAndRestore(event: Event) {
     openRestoreId.value = json.restore.id;
     await loadRestores();
   } catch (err) {
-    error.value = err instanceof Error ? err.message : "falha ao enviar o arquivo";
+    error.value = err instanceof Error ? err.message : i18n.global.t("databaseBackups.falhaAoEnviarOArquivo");
   } finally {
     uploading.value = false;
     input.value = "";
@@ -286,7 +288,7 @@ async function saveSchedule() {
     schedule.value = res.schedule;
     editingSchedule.value = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar agendamento";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseBackups.falhaAoSalvarAgendamento");
   } finally {
     savingSchedule.value = false;
   }
@@ -337,56 +339,56 @@ onUnmounted(() => {
   <div class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">backup</span>
-      Backups
+      {{ $t("databaseBackups.backups") }}
     </div>
 
     <div v-if="!schedule" class="card-body">
-      <p class="hint mb-16">Sem agendamento ainda. Crie um pra ter backups automáticos deste banco.</p>
+      <p class="hint mb-16">{{ $t("databaseBackups.semAgendamentoAindaCrieUm") }}</p>
       <form @submit.prevent="createSchedule">
         <div class="form-row mb-16">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="cron">Frequência (cron)</label>
+            <label for="cron">{{ $t("databaseBackups.frequenciaCron") }}</label>
             <input id="cron" v-model="scheduleForm.cron" class="form-control mono" placeholder="0 0 * * *" required />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="tz">Timezone</label>
-            <input id="tz" v-model="scheduleForm.timezone" class="form-control" placeholder="UTC" />
+            <label for="tz">{{ $t("databaseBackups.timezone") }}</label>
+            <input id="tz" v-model="scheduleForm.timezone" class="form-control" :placeholder="$t('databaseBackups.utc')" />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="timeout">Timeout (s)</label>
+            <label for="timeout">{{ $t("databaseBackups.timeoutS") }}</label>
             <input id="timeout" v-model.number="scheduleForm.timeoutSeconds" type="number" class="form-control" />
           </div>
         </div>
-        <p class="hint mb-16">Retenção — 0 significa sem limite naquela regra; a primeira que bater dispara a limpeza.</p>
+        <p class="hint mb-16">{{ $t("databaseBackups.retencao0SignificaSemLimite") }}</p>
         <div class="form-row mb-16">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="retention-count">Nº de backups a manter</label>
+            <label for="retention-count">{{ $t("databaseBackups.nDeBackupsAManter") }}</label>
             <input id="retention-count" v-model.number="scheduleForm.retentionCount" type="number" class="form-control" />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="retention-days">Dias a manter</label>
+            <label for="retention-days">{{ $t("databaseBackups.diasAManter") }}</label>
             <input id="retention-days" v-model.number="scheduleForm.retentionDays" type="number" class="form-control" />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="retention-size">Armazenamento máx. (GB)</label>
+            <label for="retention-size">{{ $t("databaseBackups.armazenamentoMaxGb") }}</label>
             <input id="retention-size" v-model.number="scheduleForm.retentionSizeGb" type="number" class="form-control" />
           </div>
         </div>
         <div v-if="multiDatabase" class="form-group">
-          <label for="inc">Bancos a incluir</label>
-          <input id="inc" v-model="scheduleForm.databases" class="form-control mono" placeholder="em branco = só o banco principal; ou: vendas, estoque" />
-          <p class="hint" style="margin-top: 6px">Nomes separados por vírgula. Com mais de um, o backup vira um arquivo <span class="mono">.tar.gz</span> com um dump por banco.</p>
+          <label for="inc">{{ $t("databaseBackups.bancosAIncluir") }}</label>
+          <input id="inc" v-model="scheduleForm.databases" class="form-control mono" :placeholder="$t('databaseBackups.emBrancoSoOBanco')" />
+          <p class="hint" style="margin-top: 6px">{{ $t("databaseBackups.nomesSeparadosPorVirgulaCom") }} <span class="mono">{{ $t("databaseBackups.tarGz") }}</span> {{ $t("databaseBackups.comUmDumpPorBanco") }}</p>
         </div>
         <div class="form-group">
-          <label for="storage">Destino</label>
+          <label for="storage">{{ $t("databaseBackups.destino") }}</label>
           <select id="storage" v-model="scheduleForm.storageId" class="form-control">
-            <option value="">Disco do servidor</option>
+            <option value="">{{ $t("databaseBackups.discoDoServidor") }}</option>
             <option v-for="s in storages" :key="s.id" :value="s.id">{{ s.name }} ({{ s.bucket }})</option>
           </select>
         </div>
         <button type="submit" class="btn" :disabled="creatingSchedule">
           <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-          {{ creatingSchedule ? "criando..." : "Criar agendamento" }}
+          {{ creatingSchedule ? $t("databaseBackups.criando") : $t("databaseBackups.criarAgendamento") }}
         </button>
       </form>
     </div>
@@ -397,28 +399,27 @@ onUnmounted(() => {
           <span class="mono" style="align-self: center">{{ schedule.cron }} ({{ schedule.timezone }})</span>
           <button type="button" class="btn btn-secondary btn-sm" :disabled="runningNow" @click="runNow">
             <span class="material-symbols-outlined" style="font-size: 16px">bolt</span>
-            {{ runningNow ? "disparando..." : "Backup agora" }}
+            {{ runningNow ? $t("databaseBackups.disparando") : $t("databaseBackups.backupAgora") }}
           </button>
           <button type="button" class="btn btn-secondary btn-sm" @click="startEditSchedule">
             <span class="material-symbols-outlined" style="font-size: 16px">edit</span>
-            Editar
+            {{ $t("databaseBackups.editar") }}
           </button>
           <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteSchedule(false)">
             <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
-            {{ confirming === "schedule" ? "Confirmar?" : "Remover agendamento" }}
+            {{ confirming === "schedule" ? $t('common.confirmQ') : $t("databaseBackups.removerAgendamento") }}
           </button>
           <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteSchedule(true)">
             <span class="material-symbols-outlined" style="font-size: 16px">delete_forever</span>
-            {{ confirming === "schedule+files" ? "Apagar tudo mesmo?" : "Remover e apagar os backups" }}
+            {{ confirming === "schedule+files" ? $t("databaseBackups.apagarTudoMesmo") : $t("databaseBackups.removerEApagarOsBackups") }}
           </button>
         </div>
         <p class="hint">
-          Retenção: {{ schedule.retentionCount || "∞" }} backups · {{ schedule.retentionDays || "∞" }} dias ·
-          {{ schedule.retentionSizeGb || "∞" }} GB
+          {{ $t("databaseBackups.retencaoP0BackupsP1Dias", { p0: schedule.retentionCount || "∞", p1: schedule.retentionDays || "∞", p2: schedule.retentionSizeGb || "∞" }) }}
         </p>
-        <p v-if="schedule.databases" class="hint">Bancos: <span class="mono">{{ schedule.databases }}</span></p>
+        <p v-if="schedule.databases" class="hint">{{ $t("databaseBackups.bancos") }} <span class="mono">{{ schedule.databases }}</span></p>
         <p class="hint">
-          Destino: {{ schedule.storageId ? storages.find((s) => s.id === schedule?.storageId)?.name ?? "S3" : "disco do servidor" }}
+          {{ $t("databaseBackups.destinoP0", { p0: schedule.storageId ? storages.find((s) => s.id === schedule?.storageId)?.name ?? "S3" : $t("databaseBackups.discoDoServidorLower") }) }}
         </p>
       </div>
 
@@ -426,112 +427,112 @@ onUnmounted(() => {
         <form @submit.prevent="saveSchedule">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-cron">Frequência (cron)</label>
+              <label for="edit-cron">{{ $t("databaseBackups.frequenciaCron") }}</label>
               <input id="edit-cron" v-model="editForm.cron" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-tz">Timezone</label>
+              <label for="edit-tz">{{ $t("databaseBackups.timezone") }}</label>
               <input id="edit-tz" v-model="editForm.timezone" class="form-control" />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-timeout">Timeout (s)</label>
+              <label for="edit-timeout">{{ $t("databaseBackups.timeoutS") }}</label>
               <input id="edit-timeout" v-model.number="editForm.timeoutSeconds" type="number" class="form-control" />
             </div>
           </div>
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-retention-count">Nº de backups a manter</label>
+              <label for="edit-retention-count">{{ $t("databaseBackups.nDeBackupsAManter") }}</label>
               <input id="edit-retention-count" v-model.number="editForm.retentionCount" type="number" class="form-control" />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-retention-days">Dias a manter</label>
+              <label for="edit-retention-days">{{ $t("databaseBackups.diasAManter") }}</label>
               <input id="edit-retention-days" v-model.number="editForm.retentionDays" type="number" class="form-control" />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="edit-retention-size">Armazenamento máx. (GB)</label>
+              <label for="edit-retention-size">{{ $t("databaseBackups.armazenamentoMaxGb") }}</label>
               <input id="edit-retention-size" v-model.number="editForm.retentionSizeGb" type="number" class="form-control" />
             </div>
           </div>
           <div v-if="multiDatabase" class="form-group">
-            <label for="edit-inc">Bancos a incluir</label>
-            <input id="edit-inc" v-model="editForm.databases" class="form-control mono" placeholder="em branco = só o banco principal; ou: vendas, estoque" />
-            <p class="hint" style="margin-top: 6px">Nomes separados por vírgula. Com mais de um, o backup vira um arquivo <span class="mono">.tar.gz</span> com um dump por banco.</p>
+            <label for="edit-inc">{{ $t("databaseBackups.bancosAIncluir") }}</label>
+            <input id="edit-inc" v-model="editForm.databases" class="form-control mono" :placeholder="$t('databaseBackups.emBrancoSoOBanco')" />
+            <p class="hint" style="margin-top: 6px">{{ $t("databaseBackups.nomesSeparadosPorVirgulaCom") }} <span class="mono">{{ $t("databaseBackups.tarGz") }}</span> {{ $t("databaseBackups.comUmDumpPorBanco") }}</p>
           </div>
             <div class="form-group">
-            <label for="edit-storage">Destino</label>
+            <label for="edit-storage">{{ $t("databaseBackups.destino") }}</label>
             <select id="edit-storage" v-model="editForm.storageId" class="form-control">
-              <option value="">Disco do servidor</option>
+              <option value="">{{ $t("databaseBackups.discoDoServidor") }}</option>
               <option v-for="s in storages" :key="s.id" :value="s.id">{{ s.name }} ({{ s.bucket }})</option>
             </select>
           </div>
           <div class="btn-row">
             <button type="submit" class="btn" :disabled="savingSchedule">
               <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-              {{ savingSchedule ? "salvando..." : "Salvar" }}
+              {{ savingSchedule ? $t("databaseBackups.salvando") : "Salvar" }}
             </button>
-            <button type="button" class="btn btn-secondary" @click="editingSchedule = false">Cancelar</button>
+            <button type="button" class="btn btn-secondary" @click="editingSchedule = false">{{ $t("databaseBackups.cancelar") }}</button>
           </div>
         </form>
       </div>
 
       <div class="card-body" style="border-bottom: 1px solid var(--border)">
         <div class="btn-row">
-          <span class="hint" style="align-self: center; margin: 0">Manutenção:</span>
-          <button type="button" class="btn btn-secondary btn-sm" :disabled="cleaning" @click="cleanup('failed')">Limpar falhos</button>
-          <button type="button" class="btn btn-secondary btn-sm" :disabled="cleaning" @click="cleanup('missing')">Limpar sem arquivo</button>
+          <span class="hint" style="align-self: center; margin: 0">{{ $t("databaseBackups.manutencao") }}</span>
+          <button type="button" class="btn btn-secondary btn-sm" :disabled="cleaning" @click="cleanup('failed')">{{ $t("databaseBackups.limparFalhos") }}</button>
+          <button type="button" class="btn btn-secondary btn-sm" :disabled="cleaning" @click="cleanup('missing')">{{ $t("databaseBackups.limparSemArquivo") }}</button>
           <span v-if="cleanupMessage" class="muted" style="align-self: center; font-size: 13px">{{ cleanupMessage }}</span>
         </div>
       </div>
 
       <div class="card-body" style="border-bottom: 1px solid var(--border)">
         <p class="hint mb-16">
-          Sincronização local: baixa pro seu computador todo backup ainda não baixado e, se um número estiver configurado abaixo, apaga do servidor/S3 os mais antigos além desse número — só os que já foram baixados com sucesso. Com um número configurado, isso roda sozinho sempre que você abre esta aba.
+          {{ $t("databaseBackups.sincronizacaoLocalBaixaProSeu") }}
         </p>
         <div class="btn-row">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="sync-keep">Manter no servidor (vazio = não apagar nada)</label>
+            <label for="sync-keep">{{ $t("databaseBackups.manterNoServidorVazioNao") }}</label>
             <input id="sync-keep" v-model.number="syncKeepCount" type="number" min="1" class="form-control" style="max-width: 160px" @change="saveSync" :disabled="savingSync" />
           </div>
           <button type="button" class="btn btn-secondary btn-sm" style="align-self: flex-end" :disabled="syncing" @click="syncNow">
             <span class="material-symbols-outlined" style="font-size: 16px">sync</span>
-            {{ syncing ? "sincronizando..." : "Sincronizar agora" }}
+            {{ syncing ? $t("databaseBackups.sincronizando") : $t("databaseBackups.sincronizarAgora") }}
           </button>
           <span v-if="syncMessage" class="muted" style="align-self: center; font-size: 13px">{{ syncMessage }}</span>
         </div>
       </div>
 
       <div v-if="executions.length === 0" class="card-body">
-        <div class="empty-state">Nenhuma execução ainda.</div>
+        <div class="empty-state">{{ $t("databaseBackups.nenhumaExecucaoAinda") }}</div>
       </div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Quando</th>
-              <th>Status</th>
-              <th>Tamanho</th>
+              <th>{{ $t("databaseBackups.quando") }}</th>
+              <th>{{ $t("databaseBackups.status") }}</th>
+              <th>{{ $t("databaseBackups.tamanho") }}</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="execution in executions" :key="execution.id">
-              <td>{{ new Date(execution.createdAt).toLocaleString("pt-BR") }}</td>
+              <td>{{ new Date(execution.createdAt).toLocaleString(dateLocale()) }}</td>
               <td><StatusBadge :status="execution.status" kind="job" /></td>
               <td class="mono">{{ formatSize(execution.sizeBytes) }}</td>
               <td class="btn-row">
-                <span v-if="execution.syncedAt" class="badge badge-neutral" title="já baixado pela sincronização local">sincronizado</span>
+                <span v-if="execution.syncedAt" class="badge badge-neutral" :title="$t('databaseBackups.jaBaixadoPelaSincronizacaoLocal')">{{ $t("databaseBackups.sincronizado") }}</span>
                 <a
                   v-if="execution.status === 'success'"
                   class="btn btn-secondary btn-sm"
                   :href="downloadUrl(execution.id)"
                 >
-                  Baixar
+                  {{ $t("databaseBackups.baixar") }}
                 </a>
                 <button v-if="execution.status === 'success'" type="button" class="btn btn-secondary btn-sm" :disabled="restoreRunning" @click="restoreFrom(execution)">
-                  {{ confirming === `restore-${execution.id}` ? "Substituir os dados?" : "Restaurar" }}
+                  {{ confirming === `restore-${execution.id}` ? $t("databaseBackups.substituirOsDados") : "Restaurar" }}
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteExecution(execution.id)">
-                  Excluir
+                  {{ $t("databaseBackups.excluir") }}
                 </button>
               </td>
             </tr>
@@ -544,38 +545,37 @@ onUnmounted(() => {
   <div class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">restore</span>
-      Restaurar / importar
+      {{ $t("databaseBackups.restaurarImportar") }}
     </div>
     <div class="card-body">
       <p class="hint mb-16">
-        Restaurar <strong>substitui</strong> os dados atuais do banco pelos do backup. Use "Restaurar" numa linha da lista acima, ou envie um arquivo de outro lugar
-        (<span class="mono">.sql</span> ou <span class="mono">.sql.gz</span> pra PostgreSQL/MySQL/MariaDB, <span class="mono">.archive.gz</span> pro MongoDB, <span class="mono">.rdb</span>/<span class="mono">.rdb.gz</span> pro Redis e KeyDB,
-        <span class="mono">.zip</span> de backup do ClickHouse, ou o <span class="mono">.tar.gz</span> de vários bancos). Arquivos enviados pelo painel podem ter até 120 MB.
+        {{ $t("databaseBackups.restaurar") }} <strong>{{ $t("databaseBackups.substitui") }}</strong> {{ $t("databaseBackups.osDadosAtuaisDoBanco") }}<span class="mono">{{ $t("databaseBackups.sql") }}</span> {{ $t("databaseBackups.ou") }} <span class="mono">{{ $t("databaseBackups.sqlGz") }}</span> {{ $t("databaseBackups.praPostgresqlMysqlMariadb") }} <span class="mono">{{ $t("databaseBackups.archiveGz") }}</span> {{ $t("databaseBackups.proMongodb") }} <span class="mono">{{ $t("databaseBackups.rdb") }}</span>/<span class="mono">{{ $t("databaseBackups.rdbGz") }}</span> {{ $t("databaseBackups.proRedisEKeydb") }}
+        <span class="mono">{{ $t("databaseBackups.zip") }}</span> {{ $t("databaseBackups.deBackupDoClickhouseOu") }} <span class="mono">{{ $t("databaseBackups.tarGz") }}</span> {{ $t("databaseBackups.deVariosBancosArquivosEnviados") }}
       </p>
-      <p v-if="engineInfo && !engineInfo.supportsBackup" class="hint mb-16">{{ engineInfo.label }} ainda não tem backup/restore pelo painel.</p>
+      <p v-if="engineInfo && !engineInfo.supportsBackup" class="hint mb-16">{{ $t("databaseBackups.p0AindaNaoTemBackup", { p0: engineInfo.label }) }}</p>
       <div class="btn-row">
-        <input ref="uploadInput" type="file" class="form-control" style="max-width: 320px" :disabled="uploading || restoreRunning || !engineInfo?.supportsBackup" aria-label="Arquivo de backup" @change="uploadAndRestore" />
-        <span v-if="uploading" class="muted" style="align-self: center">enviando...</span>
+        <input ref="uploadInput" type="file" class="form-control" style="max-width: 320px" :disabled="uploading || restoreRunning || !engineInfo?.supportsBackup" :aria-label="$t('databaseBackups.arquivoDeBackup')" @change="uploadAndRestore" />
+        <span v-if="uploading" class="muted" style="align-self: center">{{ $t("databaseBackups.enviando") }}</span>
       </div>
     </div>
     <div v-if="restores.length" class="table-wrap">
       <table>
-        <thead><tr><th>Quando</th><th>Origem</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th>{{ $t("databaseBackups.quando") }}</th><th>{{ $t("databaseBackups.origem") }}</th><th>{{ $t("databaseBackups.status") }}</th><th></th></tr></thead>
         <tbody>
           <template v-for="r in restores" :key="r.id">
             <tr>
-              <td>{{ new Date(r.createdAt).toLocaleString("pt-BR") }}</td>
+              <td>{{ new Date(r.createdAt).toLocaleString(dateLocale()) }}</td>
               <td class="mono">{{ r.sourceLabel }}</td>
               <td><StatusBadge :status="r.status" kind="job" /></td>
-              <td><button type="button" class="btn btn-secondary btn-sm" @click="openRestoreId = openRestoreId === r.id ? null : r.id">Log</button></td>
+              <td><button type="button" class="btn btn-secondary btn-sm" @click="openRestoreId = openRestoreId === r.id ? null : r.id">{{ $t("databaseBackups.log") }}</button></td>
             </tr>
-            <tr v-if="openRestoreId === r.id"><td colspan="4"><pre class="callout-code" style="max-height: 300px; overflow: auto; margin: 0">{{ r.log || "(sem saída ainda)" }}</pre></td></tr>
+            <tr v-if="openRestoreId === r.id"><td colspan="4"><pre class="callout-code" style="max-height: 300px; overflow: auto; margin: 0">{{ r.log || $t('common.noOutputYet') }}</pre></td></tr>
           </template>
         </tbody>
       </table>
     </div>
     <div class="card-body" style="border-top: 1px solid var(--border)">
-      <p class="hint" style="margin: 0"><strong>Volume persistente não é backup:</strong> se o servidor for perdido, os dados vão junto. Guarde os backups em um destino S3, fora do servidor.</p>
+      <p class="hint" style="margin: 0"><strong>{{ $t("databaseBackups.volumePersistenteNaoEBackup") }}</strong> {{ $t("databaseBackups.seOServidorForPerdido") }}</p>
     </div>
   </div>
 </template>

@@ -874,3 +874,7 @@ Listagens read-only de servidores, projetos, storages, canais de notificação, 
 ## Fase 9 — knobs chegando nos containers
 
 Achei um bug meu das rodadas anteriores: `docker-compose.prod.yml` não usa `env_file`, então `LOG_FORMAT`, `LOG_LEVEL` e `DB_POOL_MAX` documentados no `.env.example` nunca chegavam aos serviços. Agora são repassados explicitamente (api/worker/ws). Novo `METRICS_INTERVAL_SECONDS` (parser clampado, testado) e `docs/RESOURCES.md`. Compose não validado subindo ([[feedback-no-local-docker-testing]]).
+
+## Fase 8 — i18n completo
+
+Em vez de editar 75 arquivos à mão, escrevi um codemod (fora do repo) que extrai texto estático de templates (nós de texto, `placeholder/title/aria-label/...`, literais em `{{ }}`) e strings portuguesas em scripts, troca por `$t()` / `i18n.global.t()` e gera as chaves (`namespaceDaPagina.slugDoTexto`). Interpolações viram parâmetros nomeados. Depois traduzi ~1.3 mil mensagens para inglês manualmente em lotes. Achados no caminho: ícones Material Symbols e entidades HTML (`&amp;`) tinham sido capturados (corrigido), um texto em minúscula sobrescreveu uma chave existente (detectado comparando com o `HEAD` e corrigido), e `data-label` e textos em `<pre>` precisaram de passe extra. Rede de segurança: teste de paridade + teste que compila todas as mensagens (`@intlify/message-compiler`), `vue-tsc` limpo. **Não conferido no navegador** ([[feedback-no-local-docker-testing]]); API segue só em PT.

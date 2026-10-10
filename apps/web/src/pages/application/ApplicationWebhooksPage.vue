@@ -2,6 +2,7 @@
 import { computed, ref } from "vue";
 import { api, apiBaseUrl, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
 
 const { app, basePath, error } = useApplicationContext();
 
@@ -23,7 +24,7 @@ async function generate() {
     token.value = res.token;
     if (app.value) app.value.hasDeployToken = true;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao gerar o token";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationWebhooks.falhaAoGerarOToken");
   } finally {
     busy.value = false;
   }
@@ -42,7 +43,7 @@ async function remove() {
     token.value = "";
     if (app.value) app.value.hasDeployToken = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao remover o token";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationWebhooks.falhaAoRemoverOToken");
   } finally {
     confirmingRemove.value = false;
     busy.value = false;
@@ -64,30 +65,30 @@ async function copy() {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">webhook</span>
-        Deploy por URL
+        {{ $t("applicationWebhooks.deployPorUrl") }}
       </div>
       <div class="card-body">
         <p class="hint mb-16">
-          Um <span class="mono">POST</span> nessa URL dispara um deploy — pra CI (GitHub Actions, GitLab CI), um git hook ou um
-          <span class="mono">curl</span> à mão. A URL é a credencial: só o hash dela fica guardado, então ela aparece uma única vez, na hora de gerar.
+          {{ $t("applicationWebhooks.um") }} <span class="mono">{{ $t("applicationWebhooks.post") }}</span> {{ $t("applicationWebhooks.nessaUrlDisparaUmDeploy") }}
+          <span class="mono">{{ $t("applicationWebhooks.curl") }}</span> {{ $t("applicationWebhooks.aMaoAUrlE") }}
         </p>
         <div v-if="token" class="callout mb-16">
-          <strong>Copie agora — não dá pra ver de novo</strong>
+          <strong>{{ $t("applicationWebhooks.copieAgoraNaoDaPra") }}</strong>
           <pre class="callout-code" style="margin-top: 8px">{{ hookUrl }}</pre>
           <pre class="callout-code">{{ curl }}</pre>
           <button type="button" class="btn btn-secondary btn-sm" @click="copy">
             <span class="material-symbols-outlined" style="font-size: 16px">{{ copied ? "check" : "content_copy" }}</span>
-            {{ copied ? "Copiado" : "Copiar URL" }}
+            {{ copied ? $t('common.copied') : $t("applicationWebhooks.copiarUrl") }}
           </button>
         </div>
-        <p v-else-if="app.hasDeployToken" class="hint mb-16">Já existe um token. Gerar outro invalida o anterior.</p>
+        <p v-else-if="app.hasDeployToken" class="hint mb-16">{{ $t("applicationWebhooks.jaExisteUmTokenGerar") }}</p>
         <div class="btn-row">
           <button type="button" class="btn" :disabled="busy" @click="generate">
             <span class="material-symbols-outlined" style="font-size: 18px">key</span>
-            {{ app.hasDeployToken ? "Regenerar URL" : "Gerar URL" }}
+            {{ app.hasDeployToken ? $t("applicationWebhooks.regenerarUrl") : $t("applicationWebhooks.gerarUrl") }}
           </button>
           <button v-if="app.hasDeployToken" type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="busy" @click="remove">
-            {{ confirmingRemove ? "Confirmar remoção?" : "Remover URL" }}
+            {{ confirmingRemove ? $t("applicationWebhooks.confirmarRemocao") : $t("applicationWebhooks.removerUrl") }}
           </button>
         </div>
       </div>
@@ -96,13 +97,13 @@ async function copy() {
     <div class="card" style="margin-bottom: 0">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">hub</span>
-        Auto-deploy pelo GitHub
+        {{ $t("applicationWebhooks.autoDeployPeloGithub") }}
       </div>
       <div class="card-body">
         <p class="hint">
-          <template v-if="app.githubRepo">Cada push em <span class="mono">{{ app.branch }}</span> de <span class="mono">{{ app.githubRepo }}</span> já dispara um deploy.</template>
-          <template v-else>Só vale pra aplicações criadas a partir de uma fonte GitHub (em Fontes).</template>
-          Coloque <span class="mono">[skip ci]</span> ou <span class="mono">[skip cd]</span> na mensagem do commit pra aquele push não fazer deploy.
+          <template v-if="app.githubRepo">{{ $t("applicationWebhooks.cadaPushEm") }} <span class="mono">{{ app.branch }}</span> {{ $t("applicationWebhooks.de") }} <span class="mono">{{ app.githubRepo }}</span> {{ $t("applicationWebhooks.jaDisparaUmDeploy") }}</template>
+          <template v-else>{{ $t("applicationWebhooks.soValePraAplicacoesCriadas") }}</template>
+          {{ $t("applicationWebhooks.coloque") }} <span class="mono">{{ $t("applicationWebhooks.skipCi") }}</span> {{ $t("applicationWebhooks.ou") }} <span class="mono">{{ $t("applicationWebhooks.skipCd") }}</span> {{ $t("applicationWebhooks.naMensagemDoCommitPra") }}
         </p>
       </div>
     </div>

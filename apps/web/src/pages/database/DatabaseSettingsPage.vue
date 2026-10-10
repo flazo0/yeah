@@ -3,6 +3,7 @@ import { computed, ref, watchEffect } from "vue";
 import { DATABASE_ENGINES } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
+import { i18n } from "../../lib/i18n";
 
 const { database, basePath, error, reloadDatabase } = useDatabaseContext();
 
@@ -37,7 +38,7 @@ async function save() {
     saved.value = true;
     setTimeout(() => (saved.value = false), 3000);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseSettings.falhaAoSalvar");
   } finally {
     saving.value = false;
   }
@@ -47,81 +48,79 @@ async function save() {
 <template>
   <form v-if="database && info" @submit.prevent="save">
     <div class="card mb-16">
-      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">new_releases</span> Versão</div>
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">new_releases</span> {{ $t("databaseSettings.versao") }}</div>
       <div class="card-body">
         <div class="form-group">
-          <label for="db-image">Imagem</label>
+          <label for="db-image">{{ $t("databaseSettings.imagem") }}</label>
           <input id="db-image" v-model="form.image" class="form-control mono" list="db-versions" />
           <datalist id="db-versions">
             <option v-for="v in info.versions" :key="v" :value="`${info.imageRepo}:${v}`" />
           </datalist>
         </div>
         <p class="hint">
-          Trocar a imagem recria o container mantendo os dados. Subir de <strong>versão maior</strong> (ex.: PostgreSQL 15 → 16) costuma exigir migração dos dados:
-          faça um backup antes.
+          {{ $t("databaseSettings.trocarAImagemRecriaO") }} <strong>{{ $t("databaseSettings.versaoMaior") }}</strong> {{ $t("databaseSettings.exPostgresql1516Costuma") }}
         </p>
-        <p v-if="imageChanged" class="callout" style="margin-top: 8px">Você mudou a imagem — ao salvar o banco reinicia com a nova versão.</p>
+        <p v-if="imageChanged" class="callout" style="margin-top: 8px">{{ $t("databaseSettings.voceMudouAImagemAo") }}</p>
       </div>
     </div>
 
     <div class="card mb-16">
-      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">public</span> Acesso</div>
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">public</span> {{ $t("databaseSettings.acesso") }}</div>
       <div class="card-body">
         <label class="check-row">
           <input v-model="form.publicAccess" type="checkbox" />
-          <span>Acesso externo (publicar a porta no servidor)</span>
+          <span>{{ $t("databaseSettings.acessoExternoPublicarAPorta") }}</span>
         </label>
         <p class="hint" style="margin: 4px 0 12px">
-          Desligado (padrão), só recursos do mesmo ambiente conectam, pelo nome interno <span class="mono">{{ database.internalHost }}</span>.
-          Ligado, qualquer um que alcance o servidor pode tentar a senha.
+          {{ $t("databaseSettings.desligadoPadraoSoRecursosDo") }} <span class="mono">{{ database.internalHost }}</span>{{ $t("databaseSettings.ligadoQualquerUmQueAlcance") }}
         </p>
         <div v-if="form.publicAccess" class="form-group">
-          <label for="db-port">Porta no servidor</label>
+          <label for="db-port">{{ $t("databaseSettings.portaNoServidor") }}</label>
           <input id="db-port" v-model.number="form.port" type="number" min="1" max="65535" class="form-control" style="max-width: 160px" />
         </div>
         <label v-if="info.supportsSsl" class="check-row">
           <input v-model="form.ssl" type="checkbox" />
-          <span>Exigir TLS (certificado autoassinado gerado pelo painel)</span>
+          <span>{{ $t("databaseSettings.exigirTlsCertificadoAutoassinadoGera") }}</span>
         </label>
         <p v-if="info.supportsSsl" class="hint" style="margin: 4px 0 0">
-          A conexão passa a ser criptografada e sem TLS é recusada. O certificado não é validado por uma autoridade: use o modo "require" do cliente (a URL de conexão já vem assim).
+          {{ $t("databaseSettings.aConexaoPassaASer") }}
         </p>
-        <p v-else class="hint" style="margin: 0">{{ info.label }} ainda não tem TLS pelo painel.</p>
+        <p v-else class="hint" style="margin: 0">{{ $t("databaseSettings.p0AindaNaoTemTls", { p0: info.label }) }}</p>
       </div>
     </div>
 
     <div class="card mb-16">
-      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">monitor_heart</span> Healthcheck</div>
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">monitor_heart</span> {{ $t("databaseSettings.healthcheck") }}</div>
       <div class="card-body">
         <label class="check-row">
           <input v-model="form.healthEnabled" type="checkbox" />
-          <span>Verificar a saúde do banco</span>
+          <span>{{ $t("databaseSettings.verificarASaudeDoBanco") }}</span>
         </label>
-        <p class="hint" style="margin: 4px 0 12px">O Docker pergunta ao próprio banco se ele responde; o provisionamento só termina como "rodando" quando ele responde.</p>
+        <p class="hint" style="margin: 4px 0 12px">{{ $t("databaseSettings.oDockerPerguntaAoProprio") }}</p>
         <div v-if="form.healthEnabled" class="form-row">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="hc-interval">Intervalo (s)</label>
+            <label for="hc-interval">{{ $t("databaseSettings.intervaloS") }}</label>
             <input id="hc-interval" v-model.number="form.healthIntervalSeconds" type="number" min="5" class="form-control" />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="hc-timeout">Timeout (s)</label>
+            <label for="hc-timeout">{{ $t("databaseSettings.timeoutS") }}</label>
             <input id="hc-timeout" v-model.number="form.healthTimeoutSeconds" type="number" min="1" class="form-control" />
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="hc-retries">Tentativas</label>
+            <label for="hc-retries">{{ $t("databaseSettings.tentativas") }}</label>
             <input id="hc-retries" v-model.number="form.healthRetries" type="number" min="1" class="form-control" />
           </div>
         </div>
-        <p v-if="info.label === 'Dragonfly'" class="hint" style="margin-top: 8px">A imagem do Dragonfly não traz um cliente pra perguntar — sem healthcheck nesse motor.</p>
+        <p v-if="info.label === 'Dragonfly'" class="hint" style="margin-top: 8px">{{ $t("databaseSettings.aImagemDoDragonflyNao") }}</p>
       </div>
     </div>
 
     <div class="btn-row">
       <button type="submit" class="btn" :disabled="saving">
         <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-        {{ saving ? "salvando..." : "Salvar e recriar o container" }}
+        {{ saving ? $t("databaseSettings.salvando") : $t("databaseSettings.salvarERecriarOContainer") }}
       </button>
-      <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">salvo — recriando</span>
+      <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ $t("databaseSettings.salvoRecriando") }}</span>
     </div>
   </form>
 </template>

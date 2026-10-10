@@ -20,6 +20,7 @@
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
+    "@intlify/message-compiler": "10.0.5",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-vue": "^6.0.9",
     "tailwindcss": "^4.3.3",

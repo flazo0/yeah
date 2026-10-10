@@ -92,42 +92,42 @@ function domainHref(domain: string): string {
     <div class="rtable-toolbar">
       <div class="rtable-search input-icon">
         <span class="material-symbols-outlined">search</span>
-        <input v-model="search" class="form-control" type="search" placeholder="Buscar recursos" aria-label="Buscar recursos" />
+        <input v-model="search" class="form-control" type="search" :placeholder="$t('resourceTable.buscarRecursos')" :aria-label="$t('resourceTable.buscarRecursos')" />
       </div>
       <div class="rtable-filters">
-        <select v-model="typeFilter" class="form-control" aria-label="Filtrar por tipo">
-          <option value="">Todos os tipos</option>
-          <option value="application">Aplicações</option>
-          <option value="database">Bancos de dados</option>
-          <option value="service">Serviços</option>
+        <select v-model="typeFilter" class="form-control" :aria-label="$t('resourceTable.filtrarPorTipo')">
+          <option value="">{{ $t("resourceTable.todosOsTipos") }}</option>
+          <option value="application">{{ $t("resourceTable.aplicacoes") }}</option>
+          <option value="database">{{ $t("resourceTable.bancosDeDados") }}</option>
+          <option value="service">{{ $t("resourceTable.servicos") }}</option>
         </select>
-        <select v-model="statusFilter" class="form-control" aria-label="Filtrar por status">
-          <option value="">Todo status</option>
+        <select v-model="statusFilter" class="form-control" :aria-label="$t('resourceTable.filtrarPorStatus')">
+          <option value="">{{ $t("resourceTable.todoStatus") }}</option>
           <option v-for="s in statuses" :key="s" :value="s">{{ s }}</option>
         </select>
-        <select v-if="servers.length > 1" v-model="serverFilter" class="form-control" aria-label="Filtrar por servidor">
-          <option value="">Todos os servidores</option>
+        <select v-if="servers.length > 1" v-model="serverFilter" class="form-control" :aria-label="$t('resourceTable.filtrarPorServidor')">
+          <option value="">{{ $t("resourceTable.todosOsServidores") }}</option>
           <option v-for="s in servers" :key="s" :value="s">{{ s }}</option>
         </select>
-        <select v-if="allTags.length > 0" v-model="tagFilter" class="form-control" aria-label="Filtrar por etiqueta">
-          <option value="">Todas as etiquetas</option>
+        <select v-if="allTags.length > 0" v-model="tagFilter" class="form-control" :aria-label="$t('resourceTable.filtrarPorEtiqueta')">
+          <option value="">{{ $t("resourceTable.todasAsEtiquetas") }}</option>
           <option v-for="tag in allTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
         </select>
-        <select v-model="sortBy" class="form-control" aria-label="Ordenar por">
-          <option value="name">Ordenar: nome</option>
-          <option value="status">Ordenar: status</option>
-          <option value="type">Ordenar: tipo</option>
-          <option value="server">Ordenar: servidor</option>
+        <select v-model="sortBy" class="form-control" :aria-label="$t('resourceTable.ordenarPor')">
+          <option value="name">{{ $t("resourceTable.ordenarNome") }}</option>
+          <option value="status">{{ $t("resourceTable.ordenarStatus") }}</option>
+          <option value="type">{{ $t("resourceTable.ordenarTipo") }}</option>
+          <option value="server">{{ $t("resourceTable.ordenarServidor") }}</option>
         </select>
       </div>
       <ViewToggle v-model="view" storage-key="yeah:resource-view" />
     </div>
 
     <PageState v-if="loading" loading />
-    <div v-else-if="items.length === 0" class="empty-state"><slot name="empty">Nenhum recurso ainda.</slot></div>
+    <div v-else-if="items.length === 0" class="empty-state"><slot name="empty">{{ $t("resourceTable.nenhumRecursoAinda") }}</slot></div>
     <div v-else-if="filtered.length === 0" class="empty-state">
-      Nenhum recurso bate com os filtros.
-      <button v-if="hasFilters" type="button" class="label-link rtable-link-btn" @click="clearFilters">Limpar filtros</button>
+      {{ $t("resourceTable.nenhumRecursoBateComOs") }}
+      <button v-if="hasFilters" type="button" class="label-link rtable-link-btn" @click="clearFilters">{{ $t("resourceTable.limparFiltros") }}</button>
     </div>
 
     <template v-else>
@@ -135,17 +135,17 @@ function domainHref(domain: string): string {
         <table class="rtable">
           <thead>
             <tr>
-              <th>Recurso</th>
-              <th>Tipo</th>
-              <th>Status</th>
-              <th>Domínio</th>
-              <th>Servidor</th>
+              <th>{{ $t("resourceTable.recurso") }}</th>
+              <th>{{ $t("resourceTable.tipo") }}</th>
+              <th>{{ $t("resourceTable.status") }}</th>
+              <th>{{ $t("resourceTable.dominio") }}</th>
+              <th>{{ $t("resourceTable.servidor") }}</th>
               <th class="rtable-actions-col"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="row in paged" :key="row.id">
-              <td data-label="Recurso">
+              <td :data-label="$t('resourceTable.labelRecurso')">
                 <RouterLink :to="row.path" class="rtable-name">
                   <span class="rtable-icon"><span class="material-symbols-outlined">{{ row.icon }}</span></span>
                   <span class="rtable-name-text">
@@ -157,25 +157,25 @@ function domainHref(domain: string): string {
                   <span v-for="tag in row.tags" :key="tag.id" class="tag-chip" :style="{ '--tag': tag.color }">{{ tag.name }}</span>
                 </div>
               </td>
-              <td data-label="Tipo">{{ row.typeLabel }}</td>
-              <td data-label="Status">
+              <td :data-label="$t('resourceTable.labelTipo')">{{ row.typeLabel }}</td>
+              <td :data-label="$t('resourceTable.labelStatus')">
                 <StatusBadge :status="row.status" />
               </td>
-              <td data-label="Domínio" class="rtable-domain">
+              <td :data-label="$t('resourceTable.labelDomnio')" class="rtable-domain">
                 <a v-if="row.domain" :href="domainHref(row.domain)" target="_blank" rel="noopener noreferrer" class="mono">{{ row.domain }}</a>
                 <span v-else class="muted">-</span>
               </td>
-              <td data-label="Servidor">{{ row.serverName }}</td>
+              <td :data-label="$t('resourceTable.labelServidor')">{{ row.serverName }}</td>
               <td class="rtable-actions-col">
-                <button type="button" class="rtable-delete" title="Etiquetas" aria-label="Etiquetas" @click="emit('tags', row)">
+                <button type="button" class="rtable-delete" :title="$t('resourceTable.etiquetas')" :aria-label="$t('resourceTable.etiquetas')" @click="emit('tags', row)">
                   <span class="material-symbols-outlined">sell</span>
                 </button>
                 <button
                   type="button"
                   class="rtable-delete"
                   :class="{ confirming: pendingDeleteId === row.id }"
-                  :title="pendingDeleteId === row.id ? 'Clique de novo pra confirmar' : 'Excluir'"
-                  :aria-label="pendingDeleteId === row.id ? 'Confirmar exclusão' : 'Excluir'"
+                  :title="pendingDeleteId === row.id ? $t('resourceTable.cliqueDeNovoPraConfirmar') : 'Excluir'"
+                  :aria-label="pendingDeleteId === row.id ? $t('resourceTable.confirmarExclusao') : 'Excluir'"
                   @click="emit('delete', row)"
                 >
                   <span class="material-symbols-outlined">{{ pendingDeleteId === row.id ? "warning" : "delete" }}</span>
@@ -201,14 +201,14 @@ function domainHref(domain: string): string {
               <span v-for="tag in row.tags" :key="tag.id" class="tag-chip" :style="{ '--tag': tag.color }">{{ tag.name }}</span>
             </div>
           </RouterLink>
-          <button type="button" class="resource-card-delete resource-card-tags" title="Etiquetas" aria-label="Etiquetas" @click="emit('tags', row)">
+          <button type="button" class="resource-card-delete resource-card-tags" :title="$t('resourceTable.etiquetas')" :aria-label="$t('resourceTable.etiquetas')" @click="emit('tags', row)">
             <span class="material-symbols-outlined">sell</span>
           </button>
           <button
             type="button"
             class="resource-card-delete"
             :class="{ confirming: pendingDeleteId === row.id }"
-            :title="pendingDeleteId === row.id ? 'Clique de novo pra confirmar' : 'Excluir'"
+            :title="pendingDeleteId === row.id ? $t('resourceTable.cliqueDeNovoPraConfirmar') : 'Excluir'"
             @click="emit('delete', row)"
           >
             <span class="material-symbols-outlined">{{ pendingDeleteId === row.id ? "warning" : "delete" }}</span>

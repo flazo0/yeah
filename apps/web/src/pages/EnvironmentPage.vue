@@ -7,6 +7,7 @@ import { wsClient } from "../lib/ws";
 import Breadcrumb from "../components/Breadcrumb.vue";
 import ResourceTable, { type ResourceRow } from "../components/ResourceTable.vue";
 import Modal from "../components/Modal.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -36,7 +37,7 @@ const resources = computed<Resource[]>(() => {
       name: app.name,
       status: app.status,
       icon: "deployed_code",
-      typeLabel: "Aplicação",
+      typeLabel: i18n.global.t("environment.aplicacao"),
       domain: app.domain,
       detail: `${app.repoUrl} (${app.branch})`,
       serverName: app.serverName,
@@ -49,7 +50,7 @@ const resources = computed<Resource[]>(() => {
       name: item.name,
       status: item.status,
       icon: "database",
-      typeLabel: "Banco de dados",
+      typeLabel: i18n.global.t("environment.bancoDeDados"),
       domain: null,
       detail: `${item.engine} · ${item.image}`,
       serverName: item.serverName,
@@ -62,7 +63,7 @@ const resources = computed<Resource[]>(() => {
       name: item.name,
       status: item.status,
       icon: "widgets",
-      typeLabel: "Serviço",
+      typeLabel: i18n.global.t("environment.servico"),
       domain: item.domain,
       detail: `${item.catalogKey} · ${item.image}`,
       serverName: item.serverName,
@@ -89,7 +90,7 @@ async function load() {
     svcs.value = svcsRes.services;
     teamServers.value = serversRes.servers;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar o ambiente";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("environment.falhaAoCarregarOAmbiente");
   } finally {
     loading.value = false;
   }
@@ -126,7 +127,7 @@ async function deleteResource(resource: Resource) {
       svcs.value = svcs.value.filter((s) => s.id !== resource.id);
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir recurso";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("environment.falhaAoExcluirRecurso");
   }
 }
 
@@ -157,7 +158,7 @@ async function createTag() {
     tagSelection.value = [...tagSelection.value, res.tag.id];
     newTagName.value = "";
   } catch (err) {
-    tagError.value = err instanceof ApiError ? err.message : "falha ao criar a etiqueta";
+    tagError.value = err instanceof ApiError ? err.message : i18n.global.t("environment.falhaAoCriarAEtiqueta");
   } finally {
     tagBusy.value = false;
   }
@@ -171,7 +172,7 @@ async function deleteTag(tag: TagDto) {
     teamTags.value = teamTags.value.filter((t) => t.id !== tag.id);
     tagSelection.value = tagSelection.value.filter((id) => id !== tag.id);
   } catch (err) {
-    tagError.value = err instanceof ApiError ? err.message : "falha ao apagar a etiqueta";
+    tagError.value = err instanceof ApiError ? err.message : i18n.global.t("environment.falhaAoApagarAEtiqueta");
   } finally {
     tagBusy.value = false;
   }
@@ -190,7 +191,7 @@ async function saveTags() {
     teamTags.value = res.tags;
     tagTarget.value = null;
   } catch (err) {
-    tagError.value = err instanceof ApiError ? err.message : "falha ao salvar as etiquetas";
+    tagError.value = err instanceof ApiError ? err.message : i18n.global.t("environment.falhaAoSalvarAsEtiquetas");
   } finally {
     tagBusy.value = false;
   }
@@ -222,12 +223,12 @@ onUnmounted(() => {
     <Breadcrumb :team-id="teamId" :project-id="projectId" :environment-id="environmentId" />
     <div class="page-header">
       <div>
-        <h1>Recursos</h1>
-        <p>Aplicações, bancos de dados e serviços deste ambiente.</p>
+        <h1>{{ $t("environment.recursos") }}</h1>
+        <p>{{ $t("environment.aplicacoesBancosDeDadosE") }}</p>
       </div>
       <RouterLink v-if="teamServers.length > 0" :to="`${basePath}/new`" class="btn">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Novo recurso
+        {{ $t("environment.novoRecurso") }}
       </RouterLink>
     </div>
 
@@ -236,40 +237,40 @@ onUnmounted(() => {
     <div v-if="!loading && teamServers.length === 0" class="card mb-16">
       <div class="card-body">
         <div class="empty-state">
-          Você precisa de um <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">servidor conectado</RouterLink>
-          antes de criar aplicações, bancos de dados ou serviços.
+          {{ $t("environment.vocePrecisaDeUm") }} <RouterLink :to="`/teams/${teamId}/servers`" class="label-link">{{ $t("environment.servidorConectado") }}</RouterLink>
+          {{ $t("environment.antesDeCriarAplicacoesBancos") }}
         </div>
       </div>
     </div>
 
     <ResourceTable :items="resources" :loading="loading" :pending-delete-id="pendingDeleteId" @delete="deleteResource" @tags="openTags">
       <template #empty>
-        Nenhum recurso ainda.
+        {{ $t("environment.nenhumRecursoAinda") }}
         <template v-if="teamServers.length > 0">
-          <RouterLink :to="`${basePath}/new`" class="label-link">Crie o primeiro</RouterLink>.
+          <RouterLink :to="`${basePath}/new`" class="label-link">{{ $t("environment.crieOPrimeiro") }}</RouterLink>.
         </template>
       </template>
     </ResourceTable>
 
     <Modal v-if="tagTarget" :title="`Etiquetas — ${tagTarget.name}`" @close="tagTarget = null">
       <div v-if="tagError" class="alert alert-error mb-16">{{ tagError }}</div>
-      <p v-if="teamTags.length === 0" class="hint mb-16">Nenhuma etiqueta ainda. Crie a primeira abaixo.</p>
+      <p v-if="teamTags.length === 0" class="hint mb-16">{{ $t("environment.nenhumaEtiquetaAindaCrieA") }}</p>
       <div v-for="tag in teamTags" :key="tag.id" class="tag-option">
         <label>
           <input v-model="tagSelection" type="checkbox" :value="tag.id" />
           <span class="tag-chip" :style="{ '--tag': tag.color }">{{ tag.name }}</span>
         </label>
-        <button type="button" class="rtable-delete" title="Apagar etiqueta (de todos os recursos)" :aria-label="`Apagar etiqueta ${tag.name}`" :disabled="tagBusy" @click="deleteTag(tag)">
+        <button type="button" class="rtable-delete" :title="$t('environment.apagarEtiquetaDeTodosOs')" :aria-label="$t('environment.apagarEtiquetaP0', { p0: tag.name })" :disabled="tagBusy" @click="deleteTag(tag)">
           <span class="material-symbols-outlined">delete</span>
         </button>
       </div>
       <form class="btn-row" style="margin: 16px 0" @submit.prevent="createTag">
-        <input v-model="newTagName" class="form-control" maxlength="50" placeholder="Nova etiqueta" aria-label="Nome da nova etiqueta" />
-        <button type="submit" class="btn btn-secondary" :disabled="tagBusy || !newTagName.trim()">Criar</button>
+        <input v-model="newTagName" class="form-control" maxlength="50" :placeholder="$t('environment.novaEtiqueta')" :aria-label="$t('environment.nomeDaNovaEtiqueta')" />
+        <button type="submit" class="btn btn-secondary" :disabled="tagBusy || !newTagName.trim()">{{ $t("environment.criar") }}</button>
       </form>
       <div class="btn-row">
-        <button type="button" class="btn" :disabled="tagBusy" @click="saveTags">Salvar</button>
-        <button type="button" class="btn btn-secondary" @click="tagTarget = null">Cancelar</button>
+        <button type="button" class="btn" :disabled="tagBusy" @click="saveTags">{{ $t("environment.salvar") }}</button>
+        <button type="button" class="btn btn-secondary" @click="tagTarget = null">{{ $t("environment.cancelar") }}</button>
       </div>
     </Modal>
   </div>

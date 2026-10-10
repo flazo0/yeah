@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { ServerDto, SshKeyDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import CodeEditor from "../components/CodeEditor.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -40,7 +41,7 @@ async function generateKey() {
     form.value.privateKey = res.privateKey;
     publicKey.value = res.publicKey;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao gerar a chave";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serverNew.falhaAoGerarAChave");
   } finally {
     generating.value = false;
   }
@@ -77,7 +78,7 @@ async function createOnHetzner() {
     const res = await api.post<{ server: ServerDto }>(`/teams/${teamId}/servers/create-vps`, hz.value);
     router.push(`/teams/${teamId}/servers/${res.server.id}/general`);
   } catch (err) {
-    hzError.value = err instanceof ApiError ? err.message : "falha ao criar a VPS";
+    hzError.value = err instanceof ApiError ? err.message : i18n.global.t("serverNew.falhaAoCriarAVps");
   } finally {
     hzSubmitting.value = false;
   }
@@ -94,7 +95,7 @@ async function addServer() {
     const res = await api.post<{ server: ServerDto }>(`/teams/${teamId}/servers`, payload);
     router.push(`/teams/${teamId}/servers/${res.server.id}/general`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar servidor";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serverNew.falhaAoCriarServidor");
   } finally {
     submitting.value = false;
   }
@@ -104,67 +105,67 @@ async function addServer() {
 <template>
   <div>
     <nav class="breadcrumb">
-      <RouterLink :to="`/teams/${teamId}/servers`" class="breadcrumb-item">Servidores</RouterLink>
+      <RouterLink :to="`/teams/${teamId}/servers`" class="breadcrumb-item">{{ $t("serverNew.servidores") }}</RouterLink>
       <span class="breadcrumb-sep">›</span>
-      <span class="breadcrumb-current">Adicionar servidor</span>
+      <span class="breadcrumb-current">{{ $t("serverNew.adicionarServidor") }}</span>
     </nav>
     <div class="page-header">
       <div>
-        <h1>Adicionar servidor</h1>
-        <p>Conecte uma máquina via SSH pra começar a fazer deploy nela.</p>
+        <h1>{{ $t("serverNew.adicionarServidor") }}</h1>
+        <p>{{ $t("serverNew.conecteUmaMaquinaViaSsh") }}</p>
       </div>
     </div>
 
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add_circle</span>
-        Criar uma VPS nova (Hetzner, DigitalOcean ou Vultr)
+        {{ $t("serverNew.criarUmaVpsNovaHetzner") }}
       </div>
       <div class="card-body">
         <p class="hint">
-          Cria a máquina, um firewall (só 22, 80 e 443) e autoriza uma chave de Keys &amp; Tokens. O token da API do provedor (com permissão de escrita) é usado só nesta requisição e não é guardado. Isso gera custo na sua conta no provedor. DigitalOcean e Vultr podem levar um minuto até a máquina ter IP.
+          {{ $t("serverNew.criaAMaquinaUmFirewall") }}
         </p>
-        <p v-if="savedKeys.length === 0" class="hint">Crie uma chave em Keys &amp; Tokens primeiro.</p>
+        <p v-if="savedKeys.length === 0" class="hint">{{ $t("serverNew.crieUmaChaveEmKeys") }}</p>
         <form v-else @submit.prevent="createOnHetzner">
           <div class="form-group">
-            <label for="hz-provider">Provedor</label>
+            <label for="hz-provider">{{ $t("serverNew.provedor") }}</label>
             <select id="hz-provider" v-model="hz.provider" class="form-control" @change="pickProvider">
               <option v-for="(d, key) in PROVIDER_DEFAULTS" :key="key" :value="key">{{ d.label }}</option>
             </select>
           </div>
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="hz-name">Nome</label>
-              <input id="hz-name" v-model="hz.name" class="form-control" placeholder="vps-producao" required />
+              <label for="hz-name">{{ $t("serverNew.nome") }}</label>
+              <input id="hz-name" v-model="hz.name" class="form-control" :placeholder="$t('serverNew.vpsProducao')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="hz-key">Chave SSH</label>
+              <label for="hz-key">{{ $t("serverNew.chaveSsh") }}</label>
               <select id="hz-key" v-model="hz.sshKeyId" class="form-control" required>
-                <option value="" disabled>escolha...</option>
+                <option value="" disabled>{{ $t("serverNew.escolha") }}</option>
                 <option v-for="k in savedKeys" :key="k.id" :value="k.id">{{ k.name }}</option>
               </select>
             </div>
           </div>
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="hz-type">Tipo</label>
+              <label for="hz-type">{{ $t("serverNew.tipo") }}</label>
               <input id="hz-type" v-model="hz.size" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="hz-loc">Local</label>
+              <label for="hz-loc">{{ $t("serverNew.local") }}</label>
               <input id="hz-loc" v-model="hz.region" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="hz-image">Imagem</label>
+              <label for="hz-image">{{ $t("serverNew.imagem") }}</label>
               <input id="hz-image" v-model="hz.image" class="form-control mono" required />
             </div>
           </div>
           <div class="form-group">
-            <label for="hz-token">Token da API do provedor</label>
+            <label for="hz-token">{{ $t("serverNew.tokenDaApiDoProvedor") }}</label>
             <input id="hz-token" v-model="hz.apiToken" type="password" class="form-control mono" autocomplete="off" required />
           </div>
           <div v-if="hzError" class="alert alert-error mb-16">{{ hzError }}</div>
-          <button type="submit" class="btn" :disabled="hzSubmitting">{{ hzSubmitting ? "criando..." : "Criar VPS" }}</button>
+          <button type="submit" class="btn" :disabled="hzSubmitting">{{ hzSubmitting ? $t("serverNew.criando") : $t("serverNew.criarVps") }}</button>
         </form>
       </div>
     </div>
@@ -174,58 +175,57 @@ async function addServer() {
         <form @submit.prevent="addServer">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="server-name">Nome</label>
-              <input id="server-name" v-model="form.name" class="form-control" placeholder="vps-producao" required />
+              <label for="server-name">{{ $t("serverNew.nome") }}</label>
+              <input id="server-name" v-model="form.name" class="form-control" :placeholder="$t('serverNew.vpsProducao')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="server-host">Host / IP</label>
+              <label for="server-host">{{ $t("serverNew.hostIp") }}</label>
               <input id="server-host" v-model="form.host" class="form-control" placeholder="203.0.113.10" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="server-port">Porta</label>
+              <label for="server-port">{{ $t("serverNew.porta") }}</label>
               <input id="server-port" v-model.number="form.port" type="number" class="form-control" placeholder="22" />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="server-user">Usuário SSH</label>
-              <input id="server-user" v-model="form.sshUser" class="form-control" placeholder="root" />
+              <label for="server-user">{{ $t("serverNew.usuarioSsh") }}</label>
+              <input id="server-user" v-model="form.sshUser" class="form-control" :placeholder="$t('serverNew.root')" />
             </div>
           </div>
           <div v-if="savedKeys.length > 0" class="form-group">
-            <label for="server-saved-key">Chave SSH</label>
+            <label for="server-saved-key">{{ $t("serverNew.chaveSsh") }}</label>
             <select id="server-saved-key" v-model="form.sshKeyId" class="form-control">
-              <option value="">Colar ou gerar uma nova (abaixo)</option>
-              <option v-for="k in savedKeys" :key="k.id" :value="k.id">{{ k.name }} (Keys &amp; Tokens)</option>
+              <option value="">{{ $t("serverNew.colarOuGerarUmaNova") }}</option>
+              <option v-for="k in savedKeys" :key="k.id" :value="k.id">{{ $t("serverNew.p0KeysTokens", { p0: k.name }) }}</option>
             </select>
           </div>
           <div v-if="keyChoice === 'new'" class="form-group">
             <div class="btn-row" style="justify-content: space-between; align-items: center; margin-bottom: 6px">
-              <label style="margin: 0">Chave privada SSH</label>
+              <label style="margin: 0">{{ $t("serverNew.chavePrivadaSsh") }}</label>
               <button type="button" class="btn btn-secondary btn-sm" :disabled="generating" @click="generateKey">
                 <span class="material-symbols-outlined" style="font-size: 16px">key</span>
-                {{ generating ? "gerando..." : "Gerar chave nova" }}
+                {{ generating ? $t("serverNew.gerando") : $t("serverNew.gerarChaveNova") }}
               </button>
             </div>
             <CodeEditor v-model="form.privateKey" :height="160" />
             <p class="hint" style="margin-top: 6px">
-              Já tem uma chave autorizada no servidor? Cole aqui. Senão, gere uma nova e autorize a chave pública nele.
+              {{ $t("serverNew.jaTemUmaChaveAutorizada") }}
             </p>
           </div>
           <div v-if="authorizeCommand" class="callout mb-16">
-            <strong>Autorize esta chave no servidor</strong>
+            <strong>{{ $t("serverNew.autorizeEstaChaveNoServidor") }}</strong>
             <p class="hint" style="margin: 4px 0 8px">
-              Entre no servidor por SSH como <span class="mono">{{ form.sshUser || "root" }}</span> e rode o comando abaixo. A chave
-              privada fica guardada criptografada no painel; a pública é só o que o servidor precisa conhecer.
+              {{ $t("serverNew.entreNoServidorPorSsh") }} <span class="mono">{{ form.sshUser || "root" }}</span> {{ $t("serverNew.eRodeOComandoAbaixo") }}
             </p>
             <pre class="callout-code">{{ authorizeCommand }}</pre>
             <button type="button" class="btn btn-secondary btn-sm" @click="copyCommand">
               <span class="material-symbols-outlined" style="font-size: 16px">{{ copied ? "check" : "content_copy" }}</span>
-              {{ copied ? "Copiado" : "Copiar comando" }}
+              {{ copied ? $t('common.copied') : $t("serverNew.copiarComando") }}
             </button>
           </div>
           <div v-if="error" class="alert alert-error">{{ error }}</div>
           <button type="submit" class="btn" :disabled="submitting">
             <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-            {{ submitting ? "adicionando..." : "Adicionar servidor" }}
+            {{ submitting ? $t("serverNew.adicionando") : $t("serverNew.adicionarServidor") }}
           </button>
         </form>
       </div>

@@ -5,6 +5,7 @@ import type { ServerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import StatusBadge from "../../components/StatusBadge.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const teamId = useRoute().params.teamId as string;
@@ -20,7 +21,7 @@ onMounted(async () => {
   try {
     servers.value = (await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`)).servers;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar os servidores";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationServer.falhaAoCarregarOsServidores");
   }
 });
 
@@ -44,7 +45,7 @@ async function move(force = false) {
     target.value = "";
   } catch (err) {
     if (err instanceof ApiError && err.code === "teardown_failed") forceOffer.value = err.message;
-    else error.value = err instanceof ApiError ? err.message : "falha ao trocar de servidor";
+    else error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationServer.falhaAoTrocarDeServidor");
   } finally {
     busy.value = false;
     confirming.value = false;
@@ -56,30 +57,29 @@ async function move(force = false) {
   <div v-if="app" class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">dns</span>
-      Servidor de destino
+      {{ $t("applicationServer.servidorDeDestino") }}
     </div>
     <div class="card-body">
       <dl class="kv-list mb-16">
-        <div><dt>Servidor atual</dt><dd>{{ app.serverName }} <StatusBadge v-if="current()" :status="current()!.status" /></dd></div>
+        <div><dt>{{ $t("applicationServer.servidorAtual") }}</dt><dd>{{ app.serverName }} <StatusBadge v-if="current()" :status="current()!.status" /></dd></div>
       </dl>
       <div v-if="onLocalMachine()" class="callout mb-16">
-        Esta aplicação roda na máquina do próprio painel. Quando estiver pronta pra produção, escolha abaixo uma VPS real pra <strong>promovê-la</strong>: faça backup dos volumes antes (os dados não são copiados) e depois um deploy no novo servidor.
+        {{ $t("applicationServer.estaAplicacaoRodaNaMaquina") }} <strong>{{ $t("applicationServer.promoveLa") }}</strong>{{ $t("applicationServer.facaBackupDosVolumesAntes") }}
       </div>
       <p class="hint mb-16">
-        Trocar de servidor <strong>remove</strong> o container, os arquivos e os volumes dessa aplicação do servidor atual e deixa ela parada, sem deploy.
-        Os dados dos volumes <strong>não</strong> são copiados pro novo servidor. Depois é só fazer um deploy.
+        {{ $t("applicationServer.trocarDeServidor") }} <strong>{{ $t("applicationServer.remove") }}</strong> {{ $t("applicationServer.oContainerOsArquivosE") }} <strong>{{ $t("applicationServer.nao") }}</strong> {{ $t("applicationServer.saoCopiadosProNovoServidor") }}
       </p>
-      <div v-if="moved" class="alert alert-success mb-16">Pronto — a aplicação está em {{ app.serverName }}. Faça um deploy pra subir lá.</div>
+      <div v-if="moved" class="alert alert-success mb-16">{{ $t("applicationServer.prontoAAplicacaoEstaEm", { p0: app.serverName }) }}</div>
       <div v-if="forceOffer" class="callout mb-16">
         {{ forceOffer }}
         <div class="btn-row" style="margin-top: 8px">
-          <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="move(true)">Mover mesmo assim</button>
+          <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="move(true)">{{ $t("applicationServer.moverMesmoAssim") }}</button>
         </div>
       </div>
       <div class="form-group">
-        <label for="target-server">Mover pra</label>
+        <label for="target-server">{{ $t("applicationServer.moverPra") }}</label>
         <select id="target-server" v-model="target" class="form-control">
-          <option value="">Escolha um servidor</option>
+          <option value="">{{ $t("applicationServer.escolhaUmServidor") }}</option>
           <option v-for="s in servers.filter((x) => x.id !== app!.serverId)" :key="s.id" :value="s.id" :disabled="s.status !== 'connected'">
             {{ s.name }}{{ s.status !== "connected" ? " (desconectado)" : "" }}
           </option>
@@ -87,7 +87,7 @@ async function move(force = false) {
       </div>
       <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="busy || !target" @click="move(false)">
         <span class="material-symbols-outlined" style="font-size: 18px">swap_horiz</span>
-        {{ confirming ? "Confirmar troca de servidor?" : onLocalMachine() ? "Promover pra servidor real" : "Trocar de servidor" }}
+        {{ confirming ? $t("applicationServer.confirmarTrocaDeServidor") : onLocalMachine() ? $t("applicationServer.promoverPraServidorReal") : $t("applicationServer.trocarDeServidor") }}
       </button>
     </div>
   </div>

@@ -17,7 +17,7 @@ onUnmounted(() => document.removeEventListener("keydown", onKey));
       <div class="modal" role="dialog" aria-modal="true" :aria-label="title">
         <div class="modal-header">
           <h2>{{ title }}</h2>
-          <button type="button" class="modal-close" aria-label="Fechar" @click="emit('close')">
+          <button type="button" class="modal-close" :aria-label="$t('modal.fechar')" @click="emit('close')">
             <span class="material-symbols-outlined">close</span>
           </button>
         </div>

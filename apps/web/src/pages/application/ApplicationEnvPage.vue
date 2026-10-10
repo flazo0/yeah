@@ -5,6 +5,7 @@ import { parseEnvContent, serializeEnvEntries, type EnvAvailability } from "@yea
 import { api, ApiError } from "../../lib/api";
 import CodeEditor from "../../components/CodeEditor.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const teamId = useRoute().params.teamId as string;
@@ -57,7 +58,7 @@ function setMode(next: "text" | "table") {
 const KEY_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const rowError = (row: Row): string => {
   if (!row.key) return "";
-  if (!KEY_RE.test(row.key)) return "nome inválido (letras, números e _)";
+  if (!KEY_RE.test(row.key)) return i18n.global.t("applicationEnv.nomeInvalidoLetrasNumerosE");
   if (rows.value.filter((r) => r.key === row.key).length > 1) return "nome repetido";
   return "";
 };
@@ -70,7 +71,7 @@ function addRow() {
 
 async function saveEnv() {
   if (mode.value === "table" && hasRowErrors.value) {
-    error.value = "corrija os nomes marcados na tabela antes de salvar";
+    error.value = i18n.global.t("applicationEnv.corrijaOsNomesMarcadosNa");
     return;
   }
   savingEnv.value = true;
@@ -84,7 +85,7 @@ async function saveEnv() {
     setTimeout(() => (envSaved.value = false), 2000);
     void reloadApp();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar variáveis";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationEnv.falhaAoSalvarVariaveis");
   } finally {
     savingEnv.value = false;
   }
@@ -95,19 +96,17 @@ async function saveEnv() {
   <div class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">key</span>
-      Variáveis de ambiente
-      <div class="segmented" style="margin-left: auto" role="group" aria-label="Modo de edição">
-        <button type="button" :class="{ active: mode === 'text' }" @click="setMode('text')">Texto</button>
-        <button type="button" :class="{ active: mode === 'table' }" @click="setMode('table')">Tabela</button>
+      {{ $t("applicationEnv.variaveisDeAmbiente") }}
+      <div class="segmented" style="margin-left: auto" role="group" :aria-label="$t('applicationEnv.modoDeEdicao')">
+        <button type="button" :class="{ active: mode === 'text' }" @click="setMode('text')">{{ $t("applicationEnv.texto") }}</button>
+        <button type="button" :class="{ active: mode === 'table' }" @click="setMode('table')">{{ $t("applicationEnv.tabela") }}</button>
       </div>
     </div>
     <div class="card-body">
       <p class="hint mb-16">
-        Por padrão a variável vale só em tempo de execução (dentro do container).
-        Com <span class="mono">build:CHAVE=valor</span> (na tabela: "Só build") ela existe só durante o build (vira <span class="mono">--build-arg</span>, e some do container);
-        com <span class="mono">both:</span> ("Build e execução"), nos dois. Valores podem referenciar
-        <RouterLink :to="`/teams/${teamId}/variables`" class="label-link">variáveis compartilhadas</RouterLink>:
-        <span class="mono">{{ exampleReference }}</span>. Build args ficam visíveis no histórico da imagem — não use pra segredo que precise ficar fora dela.
+        {{ $t("applicationEnv.porPadraoAVariavelVale") }} <span class="mono">{{ $t("applicationEnv.buildChaveValor") }}</span> {{ $t("applicationEnv.naTabelaSoBuildEla") }} <span class="mono">{{ $t("applicationEnv.buildArg") }}</span>{{ $t("applicationEnv.eSomeDoContainerCom") }} <span class="mono">{{ $t("applicationEnv.both") }}</span> {{ $t("applicationEnv.buildEExecucaoNosDois") }}
+        <RouterLink :to="`/teams/${teamId}/variables`" class="label-link">{{ $t("applicationEnv.variaveisCompartilhadas") }}</RouterLink>:
+        <span class="mono">{{ exampleReference }}</span>{{ $t("applicationEnv.buildArgsFicamVisiveisNo") }}
       </p>
 
       <CodeEditor v-if="mode === 'text'" v-model="envContent" language="ini" :height="200" />
@@ -116,52 +115,52 @@ async function saveEnv() {
         <div class="env-table-wrap">
           <table class="env-table">
             <thead>
-              <tr><th>Nome</th><th>Valor</th><th>Disponível em</th><th></th></tr>
+              <tr><th>{{ $t("applicationEnv.nome") }}</th><th>{{ $t("applicationEnv.valor") }}</th><th>{{ $t("applicationEnv.disponivelEm") }}</th><th></th></tr>
             </thead>
             <tbody>
               <tr v-for="(row, i) in rows" :key="i">
-                <td data-label="Nome">
-                  <input v-model="row.key" class="form-control mono" :class="{ invalid: rowError(row) }" placeholder="NOME" :aria-label="`Nome da variável ${i + 1}`" />
+                <td :data-label="$t('applicationEnv.labelNome')">
+                  <input v-model="row.key" class="form-control mono" :class="{ invalid: rowError(row) }" :placeholder="$t('applicationEnv.nome2')" :aria-label="$t('applicationEnv.nomeDaVariavelP0', { p0: i + 1 })" />
                   <small v-if="rowError(row)" class="field-error">{{ rowError(row) }}</small>
                 </td>
-                <td data-label="Valor">
+                <td :data-label="$t('applicationEnv.labelValor')">
                   <div class="env-value">
-                    <input v-model="row.value" class="form-control mono" :type="row.reveal ? 'text' : 'password'" autocomplete="off" placeholder="valor" :aria-label="`Valor da variável ${i + 1}`" />
-                    <button type="button" class="rtable-delete" :title="row.reveal ? 'Ocultar' : 'Mostrar'" :aria-label="row.reveal ? 'Ocultar valor' : 'Mostrar valor'" @click="row.reveal = !row.reveal">
+                    <input v-model="row.value" class="form-control mono" :type="row.reveal ? 'text' : 'password'" autocomplete="off" :placeholder="$t('applicationEnv.valor2')" :aria-label="$t('applicationEnv.valorDaVariavelP0', { p0: i + 1 })" />
+                    <button type="button" class="rtable-delete" :title="row.reveal ? 'Ocultar' : 'Mostrar'" :aria-label="row.reveal ? $t('applicationEnv.ocultarValor') : $t('applicationEnv.mostrarValor')" @click="row.reveal = !row.reveal">
                       <span class="material-symbols-outlined">{{ row.reveal ? "visibility_off" : "visibility" }}</span>
                     </button>
                   </div>
                 </td>
-                <td data-label="Disponível em">
-                  <select v-model="row.availability" class="form-control" :aria-label="`Disponibilidade da variável ${i + 1}`">
-                    <option value="runtime">Só execução</option>
-                    <option value="build">Só build</option>
-                    <option value="both">Build e execução</option>
+                <td :data-label="$t('applicationEnv.labelDisponvelEm')">
+                  <select v-model="row.availability" class="form-control" :aria-label="$t('applicationEnv.disponibilidadeDaVariavelP0', { p0: i + 1 })">
+                    <option value="runtime">{{ $t("applicationEnv.soExecucao") }}</option>
+                    <option value="build">{{ $t("applicationEnv.soBuild") }}</option>
+                    <option value="both">{{ $t("applicationEnv.buildEExecucao") }}</option>
                   </select>
                 </td>
                 <td>
-                  <button type="button" class="rtable-delete" title="Remover" aria-label="Remover variável" @click="rows.splice(i, 1)">
+                  <button type="button" class="rtable-delete" :title="$t('applicationEnv.remover')" :aria-label="$t('applicationEnv.removerVariavel')" @click="rows.splice(i, 1)">
                     <span class="material-symbols-outlined">delete</span>
                   </button>
                 </td>
               </tr>
-              <tr v-if="rows.length === 0"><td colspan="4" class="muted">Nenhuma variável ainda.</td></tr>
+              <tr v-if="rows.length === 0"><td colspan="4" class="muted">{{ $t("applicationEnv.nenhumaVariavelAinda") }}</td></tr>
             </tbody>
           </table>
         </div>
         <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 8px" @click="addRow">
           <span class="material-symbols-outlined" style="font-size: 16px">add</span>
-          Adicionar variável
+          {{ $t("applicationEnv.adicionarVariavel") }}
         </button>
-        <p class="hint" style="margin-top: 8px">A visão em tabela não guarda comentários (<span class="mono"># ...</span>) nem linhas em branco do modo texto.</p>
+        <p class="hint" style="margin-top: 8px">{{ $t("applicationEnv.aVisaoEmTabelaNao") }}<span class="mono"># ...</span>{{ $t("applicationEnv.nemLinhasEmBrancoDo") }}</p>
       </template>
 
       <div class="btn-row mt-16" style="margin-top: 12px">
         <button type="button" class="btn btn-secondary" :disabled="savingEnv" @click="saveEnv">
           <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-          {{ savingEnv ? "salvando..." : "Salvar variáveis" }}
+          {{ savingEnv ? $t("applicationEnv.salvando") : $t("applicationEnv.salvarVariaveis") }}
         </button>
-        <span v-if="envSaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+        <span v-if="envSaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationEnv.salvoAplicaNoProximoDeploy") }}</span>
       </div>
     </div>
   </div>

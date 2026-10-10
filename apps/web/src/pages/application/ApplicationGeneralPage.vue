@@ -26,59 +26,59 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
   <div v-if="app" class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">info</span>
-      Geral
+      {{ $t("applicationGeneral.geral") }}
     </div>
     <div class="card-body">
       <div class="grid grid-2">
         <div v-if="app.buildPack === 'image'">
-          <div class="stat-label">Imagem</div>
+          <div class="stat-label">{{ $t("applicationGeneral.imagem") }}</div>
           <div class="mono">{{ app.dockerImage }}</div>
         </div>
         <div v-else-if="app.buildPack === 'dockerfile_inline'">
-          <div class="stat-label">Origem</div>
-          <div>Dockerfile colado</div>
+          <div class="stat-label">{{ $t("applicationGeneral.origem") }}</div>
+          <div>{{ $t("applicationGeneral.dockerfileColado") }}</div>
         </div>
         <template v-else>
           <div>
-            <div class="stat-label">Repositório</div>
+            <div class="stat-label">{{ $t("applicationGeneral.repositorio") }}</div>
             <div class="mono">{{ app.repoUrl }}</div>
           </div>
           <div>
-            <div class="stat-label">Branch</div>
+            <div class="stat-label">{{ $t("applicationGeneral.branch") }}</div>
             <div class="mono">{{ app.branch }}</div>
           </div>
         </template>
         <template v-if="app.buildPack === 'docker_compose'">
           <div>
-            <div class="stat-label">Arquivo compose</div>
+            <div class="stat-label">{{ $t("applicationGeneral.arquivoCompose") }}</div>
             <div class="mono">{{ app.composeFile }}</div>
           </div>
           <div>
-            <div class="stat-label">Serviço do domínio</div>
+            <div class="stat-label">{{ $t("applicationGeneral.servicoDoDominio") }}</div>
             <div class="mono">{{ app.composeService || "—" }}</div>
           </div>
         </template>
         <div v-if="app.buildPack === 'static'">
-          <div class="stat-label">Pasta publicada</div>
+          <div class="stat-label">{{ $t("applicationGeneral.pastaPublicada") }}</div>
           <div class="mono">{{ app.publishDirectory }}</div>
         </div>
         <div>
-          <div class="stat-label">Servidor</div>
+          <div class="stat-label">{{ $t("applicationGeneral.servidor") }}</div>
           <div>{{ app.serverName }}</div>
         </div>
         <div>
-          <div class="stat-label">Porta</div>
+          <div class="stat-label">{{ $t("applicationGeneral.porta") }}</div>
           <div class="mono">{{ app.port }}</div>
         </div>
         <div>
-          <div class="stat-label">Build pack</div>
+          <div class="stat-label">{{ $t("applicationGeneral.buildPack") }}</div>
           <div class="mono">{{ app.buildPack }}</div>
         </div>
       </div>
       <div v-if="app.deployKeyPublic" class="callout" style="margin-top: 16px">
-        <strong>Deploy key</strong>
+        <strong>{{ $t("applicationGeneral.deployKey") }}</strong>
         <p class="hint" style="margin: 4px 0 8px">
-          Cadastre esta chave pública no repositório como deploy key (acesso só de leitura), senão o clone falha. A privada fica guardada criptografada no painel.
+          {{ $t("applicationGeneral.cadastreEstaChavePublicaNo") }}
         </p>
         <pre class="callout-code" style="margin: 0">{{ app.deployKeyPublic }}</pre>
       </div>
@@ -90,7 +90,7 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :www-redirect="app.wwwRedirect"
       :put-url="`${basePath}/domain`"
       :suggestion="suggestion"
-      :saved-message="app.buildPack === 'docker_compose' ? 'salvo — aplica no próximo deploy' : 'salvo — aplica na hora, sem precisar reimplantar'"
+      :saved-message="app.buildPack === 'docker_compose' ? $t('applicationGeneral.salvoAplicaNoProximoDeploy') : 'salvo — aplica na hora, sem precisar reimplantar'"
       @saved="(v) => { app!.domain = v.domain; app!.extraDomains = v.extraDomains; app!.wwwRedirect = v.wwwRedirect; void reloadApp(); }"
       @error="(msg) => (error = msg)"
     />
@@ -99,8 +99,8 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :memory-limit-mb="app.memoryLimitMb"
       :cpu-limit="app.cpuLimit"
       :put-url="`${basePath}/limits`"
-      hint="Aplica no próximo deploy."
-      saved-message="salvo — aplica no próximo deploy"
+      :hint="$t('applicationGeneral.aplicaNoProximoDeploy')"
+      :saved-message="$t('applicationGeneral.salvoAplicaNoProximoDeploy')"
       @saved="(limits) => { app!.memoryLimitMb = limits.memoryLimitMb; app!.cpuLimit = limits.cpuLimit; }"
       @error="(msg) => (error = msg)"
     />

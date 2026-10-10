@@ -8,8 +8,7 @@ const { app, basePath } = useApplicationContext();
 <template>
   <div v-if="app">
     <p class="hint mb-16">
-      Shell dentro do container (<span class="mono">docker exec -it</span>; bash se existir, senão sh). O container precisa estar rodando.
-      Em aplicações Docker Compose entra no primeiro container do serviço do domínio.
+      {{ $t("applicationTerminal.shellDentroDoContainer") }}<span class="mono">{{ $t("applicationTerminal.dockerExecIt") }}</span>{{ $t("applicationTerminal.bashSeExistirSenaoSh") }}
     </p>
     <TerminalView :path="`${basePath}/terminal`" :title="`Terminal — ${app.name}`" />
   </div>

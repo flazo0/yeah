@@ -7,6 +7,7 @@ import { wsClient } from "../lib/ws";
 import DeployLogTerminal from "../components/DeployLogTerminal.vue";
 import StatusBadge from "../components/StatusBadge.vue";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -54,7 +55,7 @@ async function load() {
     platformOp.value = opsRes.platformUpdate;
     systemOp.value = opsRes.systemUpdate;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao checar atualizações";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("updates.falhaAoChecarAtualizacoes");
   } finally {
     loading.value = false;
   }
@@ -74,7 +75,7 @@ async function runPlatformUpdate() {
     const res = await api.post<{ operation: PlatformOperationDto }>("/updates/platform/run", {});
     platformOp.value = res.operation;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar a atualização";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("updates.falhaAoIniciarAAtualizacao");
   }
 }
 
@@ -92,7 +93,7 @@ async function runSystemUpdate() {
     const res = await api.post<{ operation: PlatformOperationDto }>("/updates/system/run", {});
     systemOp.value = res.operation;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar a atualização";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("updates.falhaAoIniciarAAtualizacao");
   }
 }
 
@@ -104,7 +105,7 @@ async function applyImageUpdate(item: ImageUpdateResourceDto) {
     item.currentTag = item.latestTag ?? item.currentTag;
     item.updateAvailable = false;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao atualizar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("updates.falhaAoAtualizar");
   } finally {
     applyingResource.value = null;
   }
@@ -120,7 +121,7 @@ async function applyAllImageUpdates() {
       item.updateAvailable = false;
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao atualizar tudo";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("updates.falhaAoAtualizarTudo");
   } finally {
     applyingAll.value = false;
   }
@@ -151,12 +152,12 @@ onUnmounted(() => {
   <div>
     <div class="page-header">
       <div>
-        <h1>Atualizações</h1>
-        <p>Checagem automática — os botões abaixo aplicam de verdade, direto na VPS.</p>
+        <h1>{{ $t("updates.atualizacoes") }}</h1>
+        <p>{{ $t("updates.checagemAutomaticaOsBotoesAbaixo") }}</p>
       </div>
       <button type="button" class="btn btn-secondary" :disabled="loading" @click="load">
         <span class="material-symbols-outlined" style="font-size: 18px">refresh</span>
-        Checar de novo
+        {{ $t("updates.checarDeNovo") }}
       </button>
     </div>
 
@@ -165,29 +166,29 @@ onUnmounted(() => {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">deployed_code_update</span>
-        Plataforma (yeah)
+        {{ $t("updates.plataformaYeah") }}
       </div>
       <div v-if="loading" class="card-body"><PageState loading /></div>
       <div v-else-if="!platform || platform.currentCommit === null" class="card-body">
         <div class="empty-state">
-          Sem versão rastreável aqui (rodando fora de um container de produção — normal em desenvolvimento local).
+          {{ $t("updates.semVersaoRastreavelAquiRodando") }}
         </div>
       </div>
       <div v-else class="card-body">
         <div class="grid grid-2">
           <div>
-            <div class="stat-label">Commit atual</div>
+            <div class="stat-label">{{ $t("updates.commitAtual") }}</div>
             <div class="mono">{{ platform.currentCommit.slice(0, 12) }}</div>
           </div>
           <div>
-            <div class="stat-label">Último no main</div>
-            <div class="mono">{{ platform.latestCommit ? platform.latestCommit.slice(0, 12) : "não foi possível checar" }}</div>
+            <div class="stat-label">{{ $t("updates.ultimoNoMain") }}</div>
+            <div class="mono">{{ platform.latestCommit ? platform.latestCommit.slice(0, 12) : $t("updates.naoFoiPossivelChecar") }}</div>
           </div>
         </div>
         <div class="btn-row mt-16" style="margin-top: 16px">
-          <span v-if="platform.updateAvailable === true" class="badge badge-warn">atualização disponível</span>
-          <span v-else-if="platform.updateAvailable === false" class="badge badge-good">em dia</span>
-          <a v-if="platform.compareUrl" :href="platform.compareUrl" target="_blank" rel="noopener" class="label-link">ver mudanças</a>
+          <span v-if="platform.updateAvailable === true" class="badge badge-warn">{{ $t("updates.atualizacaoDisponivel") }}</span>
+          <span v-else-if="platform.updateAvailable === false" class="badge badge-good">{{ $t("updates.emDia") }}</span>
+          <a v-if="platform.compareUrl" :href="platform.compareUrl" target="_blank" rel="noopener" class="label-link">{{ $t("updates.verMudancas") }}</a>
           <button
             v-if="platform.hasPlatformHost !== false"
             type="button"
@@ -197,15 +198,14 @@ onUnmounted(() => {
             @click="runPlatformUpdate"
           >
             <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
-            {{ opRunning(platformOp) ? "atualizando..." : confirmingPlatform ? "Confirmar atualização?" : "Atualizar plataforma" }}
+            {{ opRunning(platformOp) ? $t("updates.atualizando") : confirmingPlatform ? $t("updates.confirmarAtualizacao") : $t("updates.atualizarPlataforma") }}
           </button>
         </div>
         <p v-if="platform.hasPlatformHost === false" class="hint mt-16" style="margin-top: 12px">
-          Painel em modo separado (não roda num servidor cadastrado): pra atualizar, rode <span class="mono">sudo yeah update</span> na
-          máquina do painel. Os servidores de deploy você atualiza direto neles, por SSH.
+          {{ $t("updates.painelEmModoSeparadoNao") }} <span class="mono">{{ $t("updates.sudoYeahUpdate") }}</span> {{ $t("updates.naMaquinaDoPainelOs") }}
         </p>
         <p v-else class="hint mt-16" style="margin-top: 12px">
-          Faz <span class="mono">git pull</span> + rebuild dos containers + migrations, direto no servidor marcado como host da plataforma. A API/worker reiniciam durante o processo — o log abaixo continua acompanhando mesmo assim.
+          {{ $t("updates.faz") }} <span class="mono">{{ $t("updates.gitPull") }}</span> {{ $t("updates.rebuildDosContainersMigrationsDireto") }}
         </p>
         <div v-if="platformOp" class="mt-16" style="margin-top: 12px">
           <div class="btn-row mb-16" style="margin-bottom: 8px">
@@ -219,17 +219,16 @@ onUnmounted(() => {
     <div v-if="platform?.hasPlatformHost !== false" class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">dns</span>
-        Sistema operacional (VPS)
+        {{ $t("updates.sistemaOperacionalVps") }}
       </div>
       <div class="card-body">
         <p class="hint mb-16">
-          Roda <span class="mono">apt-get update && apt-get upgrade</span> no servidor marcado como host da plataforma. Pode deixar
-          um kernel novo instalado sem reiniciar — reinicie a VPS manualmente depois se precisar.
+          {{ $t("updates.roda") }} <span class="mono">{{ $t("updates.aptGetUpdateAptGet") }}</span> {{ $t("updates.noServidorMarcadoComoHost") }}
         </p>
         <div class="btn-row">
           <button type="button" class="btn btn-secondary" :disabled="opRunning(systemOp)" @click="runSystemUpdate">
             <span class="material-symbols-outlined" style="font-size: 18px">terminal</span>
-            {{ opRunning(systemOp) ? "atualizando..." : confirmingSystem ? "Confirmar atualização?" : "Atualizar sistema" }}
+            {{ opRunning(systemOp) ? $t("updates.atualizando") : confirmingSystem ? $t("updates.confirmarAtualizacao") : $t("updates.atualizarSistema") }}
           </button>
           <StatusBadge v-if="systemOp" :status="systemOp.status" kind="job" style="align-self: center" />
         </div>
@@ -242,7 +241,7 @@ onUnmounted(() => {
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">inventory_2</span>
-        Imagens Docker em uso
+        {{ $t("updates.imagensDockerEmUso") }}
         <button
           type="button"
           class="btn btn-secondary btn-sm"
@@ -250,22 +249,22 @@ onUnmounted(() => {
           :disabled="applyingAll || !images.some((i) => i.updateAvailable)"
           @click="applyAllImageUpdates"
         >
-          {{ applyingAll ? "atualizando tudo..." : "Atualizar tudo" }}
+          {{ applyingAll ? $t("updates.atualizandoTudo") : $t("updates.atualizarTudo") }}
         </button>
       </div>
       <div v-if="loading" class="card-body"><PageState loading /></div>
       <div v-else-if="images.length === 0" class="card-body">
-        <div class="empty-state">Nenhum banco ou serviço criado ainda pra checar.</div>
+        <div class="empty-state">{{ $t("updates.nenhumBancoOuServicoCriado") }}</div>
       </div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Recurso</th>
-              <th>Imagem</th>
-              <th>Tag atual</th>
-              <th>Tag mais recente</th>
-              <th>Status</th>
+              <th>{{ $t("updates.recurso") }}</th>
+              <th>{{ $t("updates.imagem") }}</th>
+              <th>{{ $t("updates.tagAtual") }}</th>
+              <th>{{ $t("updates.tagMaisRecente") }}</th>
+              <th>{{ $t("updates.status") }}</th>
               <th></th>
             </tr>
           </thead>
@@ -276,9 +275,9 @@ onUnmounted(() => {
               <td class="mono">{{ img.currentTag }}</td>
               <td class="mono">{{ img.latestTag ?? "-" }}</td>
               <td>
-                <span v-if="img.updateAvailable === true" class="badge badge-warn">nova tag disponível</span>
-                <span v-else-if="img.updateAvailable === false" class="badge badge-good">em dia</span>
-                <span v-else class="badge badge-neutral">não verificável</span>
+                <span v-if="img.updateAvailable === true" class="badge badge-warn">{{ $t("updates.novaTagDisponivel") }}</span>
+                <span v-else-if="img.updateAvailable === false" class="badge badge-good">{{ $t("updates.emDia") }}</span>
+                <span v-else class="badge badge-neutral">{{ $t("updates.naoVerificavel") }}</span>
               </td>
               <td>
                 <button
@@ -288,7 +287,7 @@ onUnmounted(() => {
                   :disabled="applyingResource === img.resourceId || applyingAll"
                   @click="applyImageUpdate(img)"
                 >
-                  {{ applyingResource === img.resourceId ? "atualizando..." : "Atualizar" }}
+                  {{ applyingResource === img.resourceId ? $t("updates.atualizando") : "Atualizar" }}
                 </button>
               </td>
             </tr>
@@ -296,14 +295,14 @@ onUnmounted(() => {
         </table>
       </div>
       <div v-if="systemImages.length > 0" class="card-body" style="border-top: 1px solid var(--border)">
-        <div class="stat-label mb-16" style="margin-bottom: 8px">Imagens de sistema (proxy etc.)</div>
+        <div class="stat-label mb-16" style="margin-bottom: 8px">{{ $t("updates.imagensDeSistemaProxyEtc") }}</div>
         <div v-for="img in systemImages" :key="img.image" class="btn-row mb-16" style="justify-content: space-between">
           <span class="mono">{{ img.image.split(":")[0] }}:{{ img.currentTag }}</span>
-          <span v-if="img.updateAvailable === true" class="badge badge-warn">{{ img.latestTag }} disponível</span>
-          <span v-else-if="img.updateAvailable === false" class="badge badge-good">em dia</span>
-          <span v-else class="badge badge-neutral">não verificável</span>
+          <span v-if="img.updateAvailable === true" class="badge badge-warn">{{ $t("updates.p0Disponivel", { p0: img.latestTag }) }}</span>
+          <span v-else-if="img.updateAvailable === false" class="badge badge-good">{{ $t("updates.emDia") }}</span>
+          <span v-else class="badge badge-neutral">{{ $t("updates.naoVerificavel") }}</span>
         </div>
-        <p class="hint">Atualização automática ainda não suportada pra essas — exige reconfigurar o proxy do servidor.</p>
+        <p class="hint">{{ $t("updates.atualizacaoAutomaticaAindaNaoSuporta") }}</p>
       </div>
     </div>
   </div>

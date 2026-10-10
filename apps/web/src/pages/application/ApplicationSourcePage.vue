@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import type { GithubRepoDto, RegistryDto, ServerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const teamId = useRoute().params.teamId as string;
@@ -69,7 +70,7 @@ async function saveRegistry() {
     registrySaved.value = true;
     setTimeout(() => (registrySaved.value = false), 2500);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar o registry";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.falhaAoSalvarORegistry");
   } finally {
     savingRegistry.value = false;
   }
@@ -85,7 +86,7 @@ async function saveBuildServer() {
     buildServerSaved.value = true;
     setTimeout(() => (buildServerSaved.value = false), 2500);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar o servidor de build";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.falhaAoSalvarOServidor");
   } finally {
     savingBuildServer.value = false;
   }
@@ -118,7 +119,7 @@ async function save() {
     saved.value = true;
     setTimeout(() => (saved.value = false), 2500);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao salvar a origem";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.falhaAoSalvarAOrigem");
   } finally {
     saving.value = false;
   }
@@ -129,75 +130,74 @@ async function save() {
   <form v-if="app" class="card" style="margin-bottom: 0" @submit.prevent="save">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">merge</span>
-      Origem do código
+      {{ $t("applicationSource.origemDoCodigo") }}
     </div>
     <div class="card-body">
       <p class="hint mb-16">
-        De onde o deploy tira o código. O build pack (<span class="mono">{{ app.buildPack }}</span>) não muda depois de criado — pra trocar, crie outra aplicação
-        (ou clone esta em Operações). Vale a partir do próximo deploy.
+        {{ $t("applicationSource.deOndeODeployTira") }}<span class="mono">{{ app.buildPack }}</span>{{ $t("applicationSource.naoMudaDepoisDeCriado") }}
       </p>
 
       <template v-if="app.buildPack === 'image'">
         <div class="form-group">
-          <label for="src-image">Imagem</label>
+          <label for="src-image">{{ $t("applicationSource.imagem") }}</label>
           <input id="src-image" v-model="form.dockerImage" class="form-control mono" required />
         </div>
       </template>
       <template v-else-if="app.buildPack === 'dockerfile_inline'">
         <div class="form-group">
-          <label for="src-dockerfile">Dockerfile</label>
+          <label for="src-dockerfile">{{ $t("applicationSource.dockerfile") }}</label>
           <textarea id="src-dockerfile" v-model="form.dockerfileContent" class="form-control mono" rows="10" required></textarea>
         </div>
       </template>
       <template v-else>
         <div v-if="app.githubRepo" class="form-group">
-          <label for="src-github">Repositório do GitHub</label>
+          <label for="src-github">{{ $t("applicationSource.repositorioDoGithub") }}</label>
           <select v-if="githubRepos.length" id="src-github" v-model="form.githubRepo" class="form-control">
             <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">{{ repo.fullName }}</option>
           </select>
           <input v-else id="src-github" v-model="form.githubRepo" class="form-control mono" />
         </div>
         <div v-else-if="app.gitSourceId" class="form-group">
-          <label for="src-gitrepo">Repositório (grupo/projeto)</label>
+          <label for="src-gitrepo">{{ $t("applicationSource.repositorioGrupoProjeto") }}</label>
           <input id="src-gitrepo" v-model="form.gitRepo" class="form-control mono" required />
-          <p class="hint" style="margin-top: 6px">Vem de uma fonte Git conectada (GitLab, Bitbucket ou Gitea); o token da fonte é usado no clone.</p>
+          <p class="hint" style="margin-top: 6px">{{ $t("applicationSource.vemDeUmaFonteGit") }}</p>
         </div>
         <div v-else class="form-group">
-          <label for="src-repo">URL do repositório</label>
+          <label for="src-repo">{{ $t("applicationSource.urlDoRepositorio") }}</label>
           <input id="src-repo" v-model="form.repoUrl" class="form-control mono" required />
-          <p v-if="app.deployKeyPublic" class="hint" style="margin-top: 6px">Com deploy key a URL precisa ser SSH (<span class="mono">git@host:org/repo.git</span>).</p>
+          <p v-if="app.deployKeyPublic" class="hint" style="margin-top: 6px">{{ $t("applicationSource.comDeployKeyAUrl") }}<span class="mono">git@host:org/repo.git</span>).</p>
         </div>
         <div class="form-group">
-          <label for="src-branch">Branch</label>
+          <label for="src-branch">{{ $t("applicationSource.branch") }}</label>
           <input id="src-branch" v-model="form.branch" class="form-control mono" required />
         </div>
         <div v-if="app.buildPack === 'static'" class="form-group">
-          <label for="src-publish">Pasta publicada</label>
+          <label for="src-publish">{{ $t("applicationSource.pastaPublicada") }}</label>
           <input id="src-publish" v-model="form.publishDirectory" class="form-control mono" />
         </div>
         <template v-if="app.buildPack === 'docker_compose'">
           <div class="form-group">
-            <label for="src-compose">Arquivo compose</label>
+            <label for="src-compose">{{ $t("applicationSource.arquivoCompose") }}</label>
             <input id="src-compose" v-model="form.composeFile" class="form-control mono" required />
           </div>
           <div class="form-group">
-            <label for="src-service">Serviço que recebe o domínio</label>
-            <input id="src-service" v-model="form.composeService" class="form-control mono" placeholder="web" />
+            <label for="src-service">{{ $t("applicationSource.servicoQueRecebeODominio") }}</label>
+            <input id="src-service" v-model="form.composeService" class="form-control mono" :placeholder="$t('applicationSource.web')" />
           </div>
         </template>
       </template>
 
       <div v-if="app.buildPack !== 'static'" class="form-group">
-        <label for="src-port">Porta do app</label>
+        <label for="src-port">{{ $t("applicationSource.portaDoApp") }}</label>
         <input id="src-port" v-model.number="form.port" type="number" class="form-control" style="max-width: 160px" />
       </div>
 
       <div class="btn-row">
         <button type="submit" class="btn btn-secondary" :disabled="saving">
           <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-          {{ saving ? "salvando..." : "Salvar" }}
+          {{ saving ? $t("applicationSource.salvando") : "Salvar" }}
         </button>
-        <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+        <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.salvoAplicaNoProximoDeploy") }}</span>
       </div>
     </div>
   </form>
@@ -205,33 +205,32 @@ async function save() {
   <div v-if="app && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">inventory_2</span>
-      Registry
+      {{ $t("applicationSource.registry") }}
     </div>
     <div class="card-body">
-      <p v-if="app.buildPack === 'image'" class="hint mb-16">Escolha um registry pra entrar antes de baixar a imagem (imagem privada).</p>
+      <p v-if="app.buildPack === 'image'" class="hint mb-16">{{ $t("applicationSource.escolhaUmRegistryPraEntrar") }}</p>
       <p v-else class="hint mb-16">
-        Depois de construir, o yeah envia a imagem pro registry com a tag do commit. Um novo deploy do mesmo commit — ou um rollback, ou outro servidor — baixa a imagem pronta em vez de construir de novo.
-        Mudar as variáveis de build gera outra tag.
+        {{ $t("applicationSource.depoisDeConstruirOYeah") }}
       </p>
       <div class="form-group">
-        <label for="reg-select">Registry</label>
+        <label for="reg-select">{{ $t("applicationSource.registry") }}</label>
         <select id="reg-select" v-model="registryId" class="form-control" style="max-width: 320px">
-          <option value="">Nenhum</option>
+          <option value="">{{ $t("applicationSource.nenhum") }}</option>
           <option v-for="r in registries" :key="r.id" :value="r.id">{{ r.name }} ({{ r.host }})</option>
         </select>
-        <p v-if="registries.length === 0" class="hint" style="margin-top: 6px">Nenhum registry cadastrado — <RouterLink :to="`/teams/${teamId}/registries`" class="label-link">cadastre um</RouterLink>.</p>
+        <p v-if="registries.length === 0" class="hint" style="margin-top: 6px">{{ $t("applicationSource.nenhumRegistryCadastrado") }} <RouterLink :to="`/teams/${teamId}/registries`" class="label-link">{{ $t("applicationSource.cadastreUm") }}</RouterLink>.</p>
       </div>
       <div v-if="registryId && app.buildPack !== 'image'" class="form-group">
-        <label for="reg-repo">Repositório no registry</label>
+        <label for="reg-repo">{{ $t("applicationSource.repositorioNoRegistry") }}</label>
         <input id="reg-repo" v-model="registryRepo" class="form-control mono" placeholder="minha-org/minha-app" />
-        <p class="hint" style="margin-top: 6px">Em minúsculas. A imagem vai pra <span class="mono">registry/repositório:commit</span>.</p>
+        <p class="hint" style="margin-top: 6px">{{ $t("applicationSource.emMinusculasAImagemVai") }} <span class="mono">{{ $t("applicationSource.registryRepositorioCommit") }}</span>.</p>
       </div>
       <div class="btn-row">
         <button type="button" class="btn btn-secondary" :disabled="savingRegistry" @click="saveRegistry">
           <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-          {{ savingRegistry ? "salvando..." : "Salvar" }}
+          {{ savingRegistry ? $t("applicationSource.salvando") : "Salvar" }}
         </button>
-        <span v-if="registrySaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+        <span v-if="registrySaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.salvoAplicaNoProximoDeploy") }}</span>
       </div>
     </div>
   </div>
@@ -239,27 +238,26 @@ async function save() {
   <div v-if="app && app.buildPack !== 'image' && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">precision_manufacturing</span>
-      Servidor de build
+      {{ $t("applicationSource.servidorDeBuild") }}
     </div>
     <div class="card-body">
       <p class="hint mb-16">
-        Constrói e envia a imagem num servidor separado do que roda a aplicação — útil pra não competir por CPU/memória com o que já está no ar,
-        ou pra construir numa máquina maior. Exige registry e repositório configurados acima.
+        {{ $t("applicationSource.constroiEEnviaAImagem") }}
       </p>
-      <div v-if="!(app?.registryId && app?.registryImage)" class="hint mb-16">Configure o registry acima primeiro.</div>
+      <div v-if="!(app?.registryId && app?.registryImage)" class="hint mb-16">{{ $t("applicationSource.configureORegistryAcimaPrimeiro") }}</div>
       <div v-else class="form-group">
-        <label for="build-server-select">Construir em</label>
+        <label for="build-server-select">{{ $t("applicationSource.construirEm") }}</label>
         <select id="build-server-select" v-model="buildServerId" class="form-control" style="max-width: 320px">
-          <option value="">Neste servidor (padrão)</option>
+          <option value="">{{ $t("applicationSource.nesteServidorPadrao") }}</option>
           <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
         </select>
       </div>
       <div class="btn-row" style="margin-top: 12px">
         <button type="button" class="btn btn-secondary" :disabled="savingBuildServer || !(app?.registryId && app?.registryImage)" @click="saveBuildServer">
           <span class="material-symbols-outlined" style="font-size: 18px">save</span>
-          {{ savingBuildServer ? "salvando..." : "Salvar" }}
+          {{ savingBuildServer ? $t("applicationSource.salvando") : "Salvar" }}
         </button>
-        <span v-if="buildServerSaved" class="muted" style="align-self: center; font-size: 13px">salvo — aplica no próximo deploy</span>
+        <span v-if="buildServerSaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.salvoAplicaNoProximoDeploy") }}</span>
       </div>
     </div>
   </div>

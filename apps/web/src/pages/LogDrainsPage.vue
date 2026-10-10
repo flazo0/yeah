@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import type { LogDrainDto, LogDrainKind } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -37,7 +38,7 @@ async function loadDrains() {
   try {
     drains.value = (await api.get<{ drains: LogDrainDto[] }>(`/teams/${teamId}/log-drains`)).drains;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar os destinos";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("logDrains.falhaAoCarregarOsDestinos");
   } finally {
     loading.value = false;
   }
@@ -60,7 +61,7 @@ async function addDrain() {
     drains.value.push(res.drain);
     form.value = { name: "", kind: "loki", url: "", lokiUsername: "", lokiPassword: "", axiomDataset: "", axiomToken: "", newRelicLicenseKey: "" };
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar o destino";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("logDrains.falhaAoCriarODestino");
   } finally {
     submitting.value = false;
   }
@@ -95,10 +96,9 @@ onMounted(loadDrains);
   <div>
     <div class="page-header">
       <div>
-        <h1>Log Drains</h1>
+        <h1>{{ $t("logDrains.logDrains") }}</h1>
         <p>
-          Encaminha o log de cada deploy e execução de tarefa agendada (o log inteiro, no final) pra um agregador externo. Não é um tail contínuo
-          da saída dos containers — pra isso, use a aba Logs de cada recurso.
+          {{ $t("logDrains.encaminhaOLogDeCada") }}
         </p>
       </div>
     </div>
@@ -108,17 +108,17 @@ onMounted(loadDrains);
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">receipt_long</span>
-        Destinos do time
+        {{ $t("logDrains.destinosDoTime") }}
       </div>
       <div v-if="loading" class="card-body">
         <PageState loading />
       </div>
       <div v-else-if="drains.length === 0" class="card-body">
-        <div class="empty-state">Nenhum destino ainda.</div>
+        <div class="empty-state">{{ $t("logDrains.nenhumDestinoAinda") }}</div>
       </div>
       <div v-else class="table-wrap">
         <table>
-          <thead><tr><th>Nome</th><th>Tipo</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>{{ $t("logDrains.nome") }}</th><th>{{ $t("logDrains.tipo") }}</th><th>{{ $t("logDrains.status") }}</th><th></th></tr></thead>
           <tbody>
             <tr v-for="drain in drains" :key="drain.id">
               <td>{{ drain.name }}</td>
@@ -126,7 +126,7 @@ onMounted(loadDrains);
               <td>
                 <button type="button" class="btn btn-secondary btn-sm" @click="toggleEnabled(drain)">
                   <span class="badge" :class="drain.enabled ? 'badge-good' : 'badge-neutral'">
-                    {{ drain.enabled ? "ativo" : "pausado" }}
+                    {{ drain.enabled ? $t('common.active') : $t('common.paused') }}
                   </span>
                 </button>
               </td>
@@ -134,13 +134,13 @@ onMounted(loadDrains);
                 <div class="btn-row">
                   <button type="button" class="btn btn-secondary btn-sm" :disabled="testingId === drain.id" @click="testDrain(drain.id)">
                     <span class="material-symbols-outlined" style="font-size: 16px">bolt</span>
-                    {{ testingId === drain.id ? "testando..." : "Testar" }}
+                    {{ testingId === drain.id ? $t("logDrains.testando") : "Testar" }}
                   </button>
-                  <span v-if="testResult[drain.id] === 'ok'" style="color: var(--good)">enviado</span>
-                  <span v-else-if="testResult[drain.id] === 'failed'" style="color: var(--bad)">falhou</span>
+                  <span v-if="testResult[drain.id] === 'ok'" style="color: var(--good)">{{ $t("logDrains.enviado") }}</span>
+                  <span v-else-if="testResult[drain.id] === 'failed'" style="color: var(--bad)">{{ $t("logDrains.falhou") }}</span>
                   <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteDrain(drain.id)">
                     <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
-                    Excluir
+                    {{ $t("logDrains.excluir") }}
                   </button>
                 </div>
               </td>
@@ -153,28 +153,28 @@ onMounted(loadDrains);
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Novo destino
+        {{ $t("logDrains.novoDestino") }}
       </div>
       <div class="card-body">
         <form @submit.prevent="addDrain">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="ld-name">Nome</label>
-              <input id="ld-name" v-model="form.name" class="form-control" placeholder="loki-producao" required />
+              <label for="ld-name">{{ $t("logDrains.nome") }}</label>
+              <input id="ld-name" v-model="form.name" class="form-control" :placeholder="$t('logDrains.lokiProducao')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="ld-kind">Tipo</label>
+              <label for="ld-kind">{{ $t("logDrains.tipo") }}</label>
               <select id="ld-kind" v-model="form.kind" class="form-control">
-                <option value="loki">Grafana Loki</option>
-                <option value="axiom">Axiom</option>
-                <option value="new_relic">New Relic</option>
-                <option value="fluent_bit_http">Fluent Bit (HTTP input)</option>
+                <option value="loki">{{ $t("logDrains.grafanaLoki") }}</option>
+                <option value="axiom">{{ $t("logDrains.axiom") }}</option>
+                <option value="new_relic">{{ $t("logDrains.newRelic") }}</option>
+                <option value="fluent_bit_http">{{ $t("logDrains.fluentBitHttpInput") }}</option>
               </select>
             </div>
           </div>
 
           <div v-if="needsUrl" class="form-group">
-            <label for="ld-url">URL</label>
+            <label for="ld-url">{{ $t("logDrains.url") }}</label>
             <input
               id="ld-url"
               v-model="form.url"
@@ -186,34 +186,34 @@ onMounted(loadDrains);
           <template v-if="needsLokiAuth">
             <div class="form-row mb-16">
               <div class="form-group" style="margin-bottom: 0">
-                <label for="ld-loki-user">Usuário (opcional)</label>
+                <label for="ld-loki-user">{{ $t("logDrains.usuarioOpcional") }}</label>
                 <input id="ld-loki-user" v-model="form.lokiUsername" class="form-control" />
               </div>
               <div class="form-group" style="margin-bottom: 0">
-                <label for="ld-loki-pass">Senha (opcional)</label>
+                <label for="ld-loki-pass">{{ $t("logDrains.senhaOpcional") }}</label>
                 <input id="ld-loki-pass" v-model="form.lokiPassword" type="password" class="form-control" />
               </div>
             </div>
-            <p class="hint mb-16">Só preencha se o seu Loki exige autenticação básica (ex.: Grafana Cloud).</p>
+            <p class="hint mb-16">{{ $t("logDrains.soPreenchaSeOSeu") }}</p>
           </template>
           <template v-if="needsAxiom">
             <div class="form-group">
-              <label for="ld-axiom-dataset">Dataset</label>
-              <input id="ld-axiom-dataset" v-model="form.axiomDataset" class="form-control" placeholder="producao" required />
+              <label for="ld-axiom-dataset">{{ $t("logDrains.dataset") }}</label>
+              <input id="ld-axiom-dataset" v-model="form.axiomDataset" class="form-control" :placeholder="$t('logDrains.producao')" required />
             </div>
             <div class="form-group">
-              <label for="ld-axiom-token">API token</label>
+              <label for="ld-axiom-token">{{ $t("logDrains.apiToken") }}</label>
               <input id="ld-axiom-token" v-model="form.axiomToken" type="password" class="form-control mono" required />
             </div>
           </template>
           <div v-if="needsNewRelic" class="form-group">
-            <label for="ld-nr-key">License key</label>
+            <label for="ld-nr-key">{{ $t("logDrains.licenseKey") }}</label>
             <input id="ld-nr-key" v-model="form.newRelicLicenseKey" type="password" class="form-control mono" required />
           </div>
 
           <button type="submit" class="btn" :disabled="submitting">
             <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-            {{ submitting ? "criando..." : "Adicionar destino" }}
+            {{ submitting ? $t("logDrains.criando") : $t("logDrains.adicionarDestino") }}
           </button>
         </form>
       </div>

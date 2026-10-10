@@ -6,6 +6,7 @@ import { api, ApiError } from "../lib/api";
 import { LOCALES, setLocale, type Locale } from "../lib/i18n";
 import { isDark, toggleTheme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
+import { i18n } from "../lib/i18n";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -30,7 +31,7 @@ async function startTwoFa() {
   try {
     twoFa.value = await api.post<{ secret: string; otpauthUri: string }>("/auth/2fa/setup");
   } catch (err) {
-    twoFaError.value = err instanceof ApiError ? err.message : "falha ao iniciar";
+    twoFaError.value = err instanceof ApiError ? err.message : i18n.global.t("settings.falhaAoIniciar");
   }
 }
 
@@ -42,7 +43,7 @@ async function enableTwoFa() {
     twoFaCode.value = "";
     await auth.fetchMe();
   } catch (err) {
-    twoFaError.value = err instanceof ApiError ? err.message : "falha ao ativar";
+    twoFaError.value = err instanceof ApiError ? err.message : i18n.global.t("settings.falhaAoAtivar");
   }
 }
 
@@ -54,7 +55,7 @@ async function disableTwoFa() {
     twoFaPassword.value = "";
     await auth.fetchMe();
   } catch (err) {
-    twoFaError.value = err instanceof ApiError ? err.message : "falha ao desativar";
+    twoFaError.value = err instanceof ApiError ? err.message : i18n.global.t("settings.falhaAoDesativar");
   }
 }
 
@@ -79,17 +80,17 @@ onMounted(async () => {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">palette</span>
-        Aparência
+        {{ $t("settings.aparencia") }}
       </div>
       <div class="card-body">
         <div class="btn-row" style="align-items: center; justify-content: space-between">
           <div>
-            <strong>Tema</strong>
-            <p class="hint" style="margin: 2px 0 0">Escuro é o padrão; a escolha fica salva neste navegador.</p>
+            <strong>{{ $t("settings.tema") }}</strong>
+            <p class="hint" style="margin: 2px 0 0">{{ $t("settings.escuroEOPadraoA") }}</p>
           </div>
           <button type="button" class="btn btn-secondary" @click="toggleTheme">
             <span class="material-symbols-outlined" style="font-size: 18px">{{ isDark ? "dark_mode" : "light_mode" }}</span>
-            {{ isDark ? "Escuro" : "Claro" }}
+            {{ isDark ? $t('common.dark') : $t('common.light') }}
           </button>
         </div>
       </div>
@@ -98,17 +99,17 @@ onMounted(async () => {
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">deployed_code_update</span>
-        Versão da plataforma
+        {{ $t("settings.versaoDaPlataforma") }}
       </div>
       <div class="card-body">
         <dl class="kv-list">
-          <div><dt>Commit atual</dt><dd class="mono">{{ platform?.currentCommit?.slice(0, 7) ?? "-" }}</dd></div>
-          <div><dt>Última no GitHub</dt><dd class="mono">{{ platform?.latestCommit?.slice(0, 7) ?? "-" }}</dd></div>
+          <div><dt>{{ $t("settings.commitAtual") }}</dt><dd class="mono">{{ platform?.currentCommit?.slice(0, 7) ?? "-" }}</dd></div>
+          <div><dt>{{ $t("settings.ultimaNoGithub") }}</dt><dd class="mono">{{ platform?.latestCommit?.slice(0, 7) ?? "-" }}</dd></div>
         </dl>
         <div v-if="teamId" class="btn-row" style="margin-top: 16px">
           <RouterLink :to="`/teams/${teamId}/updates`" class="btn btn-secondary">
             <span class="material-symbols-outlined" style="font-size: 18px">arrow_forward</span>
-            Ir pra Atualizações
+            {{ $t("settings.irPraAtualizacoes") }}
           </RouterLink>
         </div>
       </div>
@@ -117,12 +118,12 @@ onMounted(async () => {
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">person</span>
-        Conta
+        {{ $t("settings.conta") }}
       </div>
       <div class="card-body">
         <dl class="kv-list">
-          <div><dt>Nome</dt><dd>{{ auth.user?.name || "-" }}</dd></div>
-          <div><dt>E-mail</dt><dd>{{ auth.user?.email }}</dd></div>
+          <div><dt>{{ $t("settings.nome") }}</dt><dd>{{ auth.user?.name || "-" }}</dd></div>
+          <div><dt>{{ $t("settings.eMail") }}</dt><dd>{{ auth.user?.email }}</dd></div>
         </dl>
       </div>
     </div>
@@ -135,7 +136,7 @@ onMounted(async () => {
       <div class="card-body">
         <label for="locale-select" class="hint">{{ t("settings.language") }}</label>
         <select id="locale-select" class="form-control" :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as Locale)">
-          <option v-for="loc in LOCALES" :key="loc" :value="loc">{{ loc === "pt" ? "Português" : "English" }}</option>
+          <option v-for="loc in LOCALES" :key="loc" :value="loc">{{ loc === "pt" ? $t("settings.portugues") : "English" }}</option>
         </select>
       </div>
     </div>
@@ -143,37 +144,37 @@ onMounted(async () => {
     <div class="card" style="margin-top: 16px">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">shield_lock</span>
-        Verificação em duas etapas
+        {{ $t("settings.verificacaoEmDuasEtapas") }}
       </div>
       <div class="card-body">
         <div v-if="twoFaError" class="alert alert-error">{{ twoFaError }}</div>
         <div v-if="recoveryCodes.length">
-          <p class="hint">Guarde estes códigos de recuperação num lugar seguro — cada um vale uma vez e não serão mostrados de novo:</p>
+          <p class="hint">{{ $t("settings.guardeEstesCodigosDeRecuperacao") }}</p>
           <pre class="mono">{{ recoveryCodes.join(' ') }}</pre>
         </div>
         <template v-if="auth.user?.totpEnabled">
-          <p>Ativa. O login pede o código do app autenticador.</p>
+          <p>{{ $t("settings.ativaOLoginPedeO") }}</p>
           <div class="form-group">
-            <label for="tf-pass">Senha</label>
+            <label for="tf-pass">{{ $t("settings.senha") }}</label>
             <input id="tf-pass" v-model="twoFaPassword" type="password" class="form-control" autocomplete="current-password" />
           </div>
           <div class="form-group">
-            <label for="tf-code-off">Código atual (ou de recuperação)</label>
+            <label for="tf-code-off">{{ $t("settings.codigoAtualOuDeRecuperacao") }}</label>
             <input id="tf-code-off" v-model="twoFaCode" class="form-control" autocomplete="one-time-code" />
           </div>
-          <button type="button" class="btn btn-secondary" @click="disableTwoFa">Desativar</button>
+          <button type="button" class="btn btn-secondary" @click="disableTwoFa">{{ $t("settings.desativar") }}</button>
         </template>
         <template v-else-if="twoFa">
-          <p class="hint">Adicione no app autenticador (Google Authenticator, Authy, 1Password...) usando a chave abaixo ou a URI otpauth, e digite o código gerado.</p>
-          <p>Chave: <code class="mono">{{ twoFa.secret }}</code></p>
+          <p class="hint">{{ $t("settings.adicioneNoAppAutenticadorGoogle") }}</p>
+          <p>{{ $t("settings.chave") }} <code class="mono">{{ twoFa.secret }}</code></p>
           <p class="hint mono" style="word-break: break-all">{{ twoFa.otpauthUri }}</p>
           <div class="form-group">
-            <label for="tf-code-on">Código de 6 dígitos</label>
+            <label for="tf-code-on">{{ $t("settings.codigoDe6Digitos") }}</label>
             <input id="tf-code-on" v-model="twoFaCode" class="form-control" inputmode="numeric" autocomplete="one-time-code" />
           </div>
-          <button type="button" class="btn" @click="enableTwoFa">Ativar</button>
+          <button type="button" class="btn" @click="enableTwoFa">{{ $t("settings.ativar") }}</button>
         </template>
-        <button v-else type="button" class="btn" @click="startTwoFa">Configurar</button>
+        <button v-else type="button" class="btn" @click="startTwoFa">{{ $t("settings.configurar") }}</button>
       </div>
     </div>
   </div>

@@ -9,6 +9,7 @@ import StatusBadge from "../components/StatusBadge.vue";
 import ViewToggle from "../components/ViewToggle.vue";
 import ListPager from "../components/ListPager.vue";
 import ServerMetricBars from "../components/ServerMetricBars.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -38,7 +39,7 @@ async function loadServers() {
     const res = await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`);
     servers.value = res.servers;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar servidores";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("servers.falhaAoCarregarServidores");
   } finally {
     loading.value = false;
   }
@@ -50,7 +51,7 @@ async function testConnection(serverId: string) {
   try {
     await api.post(`/teams/${teamId}/servers/${serverId}/test-connection`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao testar conexão";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("servers.falhaAoTestarConexao");
   }
 }
 
@@ -82,12 +83,12 @@ onUnmounted(() => unsubscribe?.());
   <div>
     <div class="page-header">
       <div>
-        <h1>Servidores</h1>
-        <p>Máquinas conectadas via SSH onde os recursos rodam.</p>
+        <h1>{{ $t("servers.servidores") }}</h1>
+        <p>{{ $t("servers.maquinasConectadasViaSshOnde") }}</p>
       </div>
       <RouterLink :to="`/teams/${teamId}/servers/new`" class="btn">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Adicionar servidor
+        {{ $t("servers.adicionarServidor") }}
       </RouterLink>
     </div>
 
@@ -96,37 +97,37 @@ onUnmounted(() => unsubscribe?.());
     <div class="rtable-toolbar">
       <div class="rtable-search input-icon">
         <span class="material-symbols-outlined">search</span>
-        <input v-model="search" class="form-control" type="search" placeholder="Buscar servidores" aria-label="Buscar servidores" />
+        <input v-model="search" class="form-control" type="search" :placeholder="$t('servers.buscarServidores')" :aria-label="$t('servers.buscarServidores')" />
       </div>
       <div class="rtable-filters">
-        <select v-model="statusFilter" class="form-control" aria-label="Filtrar por status">
-          <option value="">Todo status</option>
-          <option value="connected">connected</option>
-          <option value="pending">pending</option>
-          <option value="error">error</option>
+        <select v-model="statusFilter" class="form-control" :aria-label="$t('servers.filtrarPorStatus')">
+          <option value="">{{ $t("servers.todoStatus") }}</option>
+          <option value="connected">{{ $t("servers.connected") }}</option>
+          <option value="pending">{{ $t("servers.pending") }}</option>
+          <option value="error">{{ $t("servers.error") }}</option>
         </select>
       </div>
       <ViewToggle v-model="view" storage-key="yeah:servers-view" />
     </div>
 
-    <PageState :loading="loading" :empty="servers.length === 0" empty-icon="dns" empty-text="Nenhum servidor ainda. Adicione a VPS que vai rodar seus apps pelo botão acima — a tela gera a chave SSH e mostra o comando pra autorizá-la.">
-      <div v-if="filtered.length === 0" class="empty-state">Nenhum servidor bate com os filtros.</div>
+    <PageState :loading="loading" :empty="servers.length === 0" empty-icon="dns" :empty-text="$t('servers.nenhumServidorAindaAdicioneA')">
+      <div v-if="filtered.length === 0" class="empty-state">{{ $t("servers.nenhumServidorBateComOs") }}</div>
 
       <div v-else-if="view === 'list'" class="rtable-wrap">
         <table class="rtable">
           <thead>
             <tr>
-              <th>Servidor</th>
-              <th>Status</th>
-              <th>Proxy</th>
-              <th>Recursos</th>
-              <th>Docker</th>
+              <th>{{ $t("servers.servidor") }}</th>
+              <th>{{ $t("servers.status") }}</th>
+              <th>{{ $t("servers.proxy") }}</th>
+              <th>{{ $t("servers.recursos") }}</th>
+              <th>{{ $t("servers.docker") }}</th>
               <th class="rtable-actions-col"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="server in paged" :key="server.id">
-              <td data-label="Servidor">
+              <td :data-label="$t('servers.labelServidor')">
                 <RouterLink :to="`/teams/${teamId}/servers/${server.id}/general`" class="rtable-name">
                   <span class="rtable-icon"><span class="material-symbols-outlined">dns</span></span>
                   <span class="rtable-name-text">
@@ -135,12 +136,12 @@ onUnmounted(() => unsubscribe?.());
                   </span>
                 </RouterLink>
               </td>
-              <td data-label="Status"><StatusBadge :status="server.status" /></td>
-              <td data-label="Proxy"><StatusBadge :status="server.proxyStatus" /></td>
-              <td data-label="Recursos" class="server-metrics-cell"><ServerMetricBars :server="server" compact /></td>
-              <td data-label="Docker" class="mono">{{ server.dockerVersion || "-" }}</td>
+              <td :data-label="$t('servers.labelStatus')"><StatusBadge :status="server.status" /></td>
+              <td :data-label="$t('servers.labelProxy')"><StatusBadge :status="server.proxyStatus" /></td>
+              <td :data-label="$t('servers.labelRecursos')" class="server-metrics-cell"><ServerMetricBars :server="server" compact /></td>
+              <td :data-label="$t('servers.labelDocker')" class="mono">{{ server.dockerVersion || "-" }}</td>
               <td class="rtable-actions-col">
-                <button type="button" class="rtable-delete" title="Testar conexão" aria-label="Testar conexão" @click="testConnection(server.id)">
+                <button type="button" class="rtable-delete" :title="$t('servers.testarConexao')" :aria-label="$t('servers.testarConexao')" @click="testConnection(server.id)">
                   <span class="material-symbols-outlined">sync</span>
                 </button>
               </td>

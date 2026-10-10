@@ -33,3 +33,8 @@ export function setLocale(locale: Locale) {
     // preference just won't persist
   }
 }
+
+/** Locale tag for Intl/toLocale*String, following the UI language. */
+export function dateLocale(): string {
+  return i18n.global.locale.value === "en" ? "en-US" : "pt-BR";
+}

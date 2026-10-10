@@ -18,3 +18,18 @@ describe("i18n", () => {
     expect(pickLocale(null, undefined)).toBe("pt");
   });
 });
+
+describe("message syntax", () => {
+  test("every message in both locales compiles", async () => {
+    const { baseCompile } = await import("@intlify/message-compiler");
+    const errors: string[] = [];
+    for (const [lang, messages] of Object.entries({ pt, en })) {
+      for (const [ns, bucket] of Object.entries(messages as Record<string, Record<string, string>>)) {
+        for (const [key, text] of Object.entries(bucket)) {
+          baseCompile(text, { onError: (e) => errors.push(`${lang}:${ns}.${key}: ${e.message}`) });
+        }
+      }
+    }
+    expect(errors).toEqual([]);
+  });
+});

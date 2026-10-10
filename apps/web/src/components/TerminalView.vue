@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from "../lib/i18n";
 import { onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { Terminal, type ITheme } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -97,7 +98,7 @@ function connect() {
   ws.onclose = () => {
     if (socket !== ws) return;
     state.value = "closed";
-    term?.writeln("\r\n\x1b[90m[conexão encerrada]\x1b[0m");
+    term?.writeln("\r\n\x1b[90m[" + i18n.global.t("terminalView.connectionClosed") + "]\x1b[0m");
   };
 }
 
@@ -140,7 +141,7 @@ onBeforeUnmount(() => {
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 16px">terminal</span>
       {{ title }}
-      <button v-if="state === 'closed'" type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" @click="connect">Reconectar</button>
+      <button v-if="state === 'closed'" type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" @click="connect">{{ $t("terminalView.reconectar") }}</button>
     </div>
     <div ref="container" class="terminal-box"></div>
   </div>

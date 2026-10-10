@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { ApiError } from "../lib/api";
 import Logo from "../components/Logo.vue";
+import { i18n } from "../lib/i18n";
 
 const name = ref("");
 const email = ref("");
@@ -20,7 +21,7 @@ async function submit() {
     await auth.register(email.value, password.value, name.value || undefined);
     router.push("/dashboard");
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "não foi possível criar a conta";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("register.naoFoiPossivelCriarA");
   } finally {
     loading.value = false;
   }
@@ -34,19 +35,19 @@ async function submit() {
         <Logo :height="44" />
       </div>
       <div class="auth-form-head">
-        <h1>Configurar instância</h1>
-        <p>Primeiro acesso — cria a única conta de administrador desta instância.</p>
+        <h1>{{ $t("register.configurarInstancia") }}</h1>
+        <p>{{ $t("register.primeiroAcessoCriaAUnica") }}</p>
       </div>
       <form @submit.prevent="submit">
         <div class="form-group">
-          <label for="name">Nome</label>
+          <label for="name">{{ $t("register.nome") }}</label>
           <div class="input-icon">
             <span class="material-symbols-outlined">badge</span>
-            <input id="name" v-model="name" type="text" class="form-control form-control-lg" placeholder="Seu nome" />
+            <input id="name" v-model="name" type="text" class="form-control form-control-lg" :placeholder="$t('register.seuNome')" />
           </div>
         </div>
         <div class="form-group">
-          <label for="email">Email</label>
+          <label for="email">{{ $t("register.email") }}</label>
           <div class="input-icon">
             <span class="material-symbols-outlined">mail</span>
             <input
@@ -61,7 +62,7 @@ async function submit() {
           </div>
         </div>
         <div class="form-group">
-          <label for="password">Senha (mín. 8 caracteres)</label>
+          <label for="password">{{ $t("register.senhaMin8Caracteres") }}</label>
           <div class="input-icon">
             <span class="material-symbols-outlined">lock</span>
             <input
@@ -69,7 +70,7 @@ async function submit() {
               v-model="password"
               type="password"
               class="form-control form-control-lg"
-              placeholder="Sua senha"
+              :placeholder="$t('register.suaSenha')"
               required
               minlength="8"
               autocomplete="new-password"
@@ -78,7 +79,7 @@ async function submit() {
         </div>
         <div v-if="error" class="alert alert-error">{{ error }}</div>
         <button type="submit" class="btn btn-lg btn-block" :disabled="loading">
-          {{ loading ? "criando..." : "Criar conta" }}
+          {{ loading ? $t("register.criando") : $t("register.criarConta") }}
         </button>
       </form>
     </div>

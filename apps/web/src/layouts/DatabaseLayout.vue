@@ -7,6 +7,7 @@ import { api, ApiError } from "../lib/api";
 import { wsClient } from "../lib/ws";
 import ResourceDetailShell from "../components/ResourceDetailShell.vue";
 import { DATABASE_CONTEXT_KEY, type DatabaseContext } from "../composables/useDatabaseContext";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const router = useRouter();
@@ -34,7 +35,7 @@ async function load() {
   try {
     await reloadDatabase();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar banco de dados";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseLayout.falhaAoCarregarBancoDe");
   } finally {
     loading.value = false;
   }
@@ -51,7 +52,7 @@ async function deleteDatabase() {
     await api.delete(basePath);
     router.push(environmentPath);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir banco de dados";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("databaseLayout.falhaAoExcluirBancoDe");
     deleting.value = false;
   }
 }
@@ -70,17 +71,17 @@ const isConfigGroup = computed(() => configRouteNames.includes(route.name as str
 
 const tabs = computed(() => [
   { to: `${routeBase}/backups`, label: "Backups", icon: "backup", active: route.name === "database-backups" },
-  { to: `${routeBase}/general`, label: "Configuration", icon: "tune", active: isConfigGroup.value },
+  { to: `${routeBase}/general`, label: i18n.global.t("common.configuration"), icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [
-  { to: `${routeBase}/general`, label: "Geral", active: route.name === "database-general" },
-  { to: `${routeBase}/settings`, label: "Versão, acesso e saúde", active: route.name === "database-settings" },
+  { to: `${routeBase}/general`, label: i18n.global.t("common.general"), active: route.name === "database-general" },
+  { to: `${routeBase}/settings`, label: i18n.global.t("databaseLayout.versaoAcessoESaude"), active: route.name === "database-settings" },
 ]);
 </script>
 
 <template>
   <PageState v-if="loading" loading />
-  <div v-else-if="!database" class="empty-state">Banco de dados não encontrado.</div>
+  <div v-else-if="!database" class="empty-state">{{ $t("databaseLayout.bancoDeDadosNaoEncontrado") }}</div>
   <ResourceDetailShell
     v-else
     :team-id="teamId"

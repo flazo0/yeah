@@ -4,6 +4,7 @@ import type { DeploymentStatus, ProjectDto, ServerDto, TeamOverviewDto } from "@
 import { useAuthStore } from "../stores/auth";
 import { api } from "../lib/api";
 import StatusBadge from "../components/StatusBadge.vue";
+import { dateLocale } from "../lib/i18n";
 
 const auth = useAuthStore();
 
@@ -64,8 +65,8 @@ watch(
   <div>
     <div class="page-header">
       <div>
-        <h1>Dashboard</h1>
-        <p v-if="primaryTeam">Visão geral de {{ primaryTeam.name }}.</p>
+        <h1>{{ $t("dashboard.dashboard") }}</h1>
+        <p v-if="primaryTeam">{{ $t("dashboard.visaoGeralDeP0", { p0: primaryTeam.name }) }}</p>
       </div>
     </div>
 
@@ -73,7 +74,7 @@ watch(
       <div class="card-body">
         <div class="empty-state">
           <span class="material-symbols-outlined icon">groups</span>
-          Você ainda não tem nenhum time.
+          {{ $t("dashboard.voceAindaNaoTemNenhum") }}
         </div>
       </div>
     </div>
@@ -81,19 +82,19 @@ watch(
     <template v-else>
       <div v-if="overview" class="quick-links mb-16">
         <div class="stat-card">
-          <div class="stat-label">Aplicações</div>
+          <div class="stat-label">{{ $t("dashboard.aplicacoes") }}</div>
           <div class="stat-value">{{ overview.counts.applications }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Bancos de dados</div>
+          <div class="stat-label">{{ $t("dashboard.bancosDeDados") }}</div>
           <div class="stat-value">{{ overview.counts.databases }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Serviços</div>
+          <div class="stat-label">{{ $t("dashboard.servicos") }}</div>
           <div class="stat-value">{{ overview.counts.services }}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">Servidores</div>
+          <div class="stat-label">{{ $t("dashboard.servidores") }}</div>
           <div class="stat-value">{{ overview.counts.servers }}</div>
         </div>
       </div>
@@ -101,24 +102,24 @@ watch(
       <div v-if="overview" class="card mb-16">
         <div class="card-header">
           <span class="material-symbols-outlined" style="font-size: 18px">rocket_launch</span>
-          Deploys recentes
+          {{ $t("dashboard.deploysRecentes") }}
         </div>
         <div v-if="overview.recentDeployments.length === 0" class="card-body">
-          <div class="empty-state">Nenhum deploy ainda.</div>
+          <div class="empty-state">{{ $t("dashboard.nenhumDeployAinda") }}</div>
         </div>
         <div v-else class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Aplicação</th>
-                <th>Quando</th>
-                <th>Status</th>
+                <th>{{ $t("dashboard.aplicacao") }}</th>
+                <th>{{ $t("dashboard.quando") }}</th>
+                <th>{{ $t("dashboard.status") }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="deployment in overview.recentDeployments" :key="deployment.id">
                 <td>{{ deployment.applicationName }}</td>
-                <td>{{ new Date(deployment.createdAt).toLocaleString("pt-BR") }}</td>
+                <td>{{ new Date(deployment.createdAt).toLocaleString(dateLocale()) }}</td>
                 <td><StatusBadge :status="deployment.status" kind="job" /></td>
               </tr>
             </tbody>
@@ -128,36 +129,36 @@ watch(
 
       <div class="card-header" style="border: none; padding-left: 0; padding-right: 0">
         <span class="material-symbols-outlined" style="font-size: 18px">layers</span>
-        Projetos
+        {{ $t("dashboard.projetos") }}
         <RouterLink :to="`/teams/${primaryTeam.id}`" class="label-link" style="margin-left: auto; font-size: 13px; text-transform: none; letter-spacing: normal; font-weight: 500">
-          Ver todos
+          {{ $t("dashboard.verTodos") }}
         </RouterLink>
       </div>
       <div v-if="projects.length === 0" class="card mb-16">
         <div class="card-body">
-          <div class="empty-state">Nenhum projeto ainda.</div>
+          <div class="empty-state">{{ $t("dashboard.nenhumProjetoAinda") }}</div>
         </div>
       </div>
       <div v-else class="quick-links mb-16">
         <RouterLink v-for="project in projects" :key="project.id" :to="`/teams/${primaryTeam.id}/projects/${project.id}`" class="quick-link">
           <div class="name">
             {{ project.name }}
-            <span class="badge badge-neutral">{{ project.environmentCount }} ambiente(s)</span>
+            <span class="badge badge-neutral">{{ $t("dashboard.p0AmbienteS", { p0: project.environmentCount }) }}</span>
           </div>
-          <div class="desc">Criado em {{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</div>
+          <div class="desc">{{ $t("dashboard.criadoEmP0", { p0: new Date(project.createdAt).toLocaleDateString(dateLocale()) }) }}</div>
         </RouterLink>
       </div>
 
       <div class="card-header" style="border: none; padding-left: 0; padding-right: 0">
         <span class="material-symbols-outlined" style="font-size: 18px">dns</span>
-        Servidores
+        {{ $t("dashboard.servidores") }}
         <RouterLink :to="`/teams/${primaryTeam.id}/servers`" class="label-link" style="margin-left: auto; font-size: 13px; text-transform: none; letter-spacing: normal; font-weight: 500">
-          Ver todos
+          {{ $t("dashboard.verTodos") }}
         </RouterLink>
       </div>
       <div v-if="servers.length === 0" class="card">
         <div class="card-body">
-          <div class="empty-state">Nenhum servidor ainda.</div>
+          <div class="empty-state">{{ $t("dashboard.nenhumServidorAinda") }}</div>
         </div>
       </div>
       <div v-else class="resource-cards">
@@ -168,15 +169,15 @@ watch(
           </div>
           <div v-if="server.metricsCheckedAt" class="grid grid-3">
             <div>
-              <div class="stat-label">CPU · {{ server.cpuPercent }}%</div>
+              <div class="stat-label">{{ $t("dashboard.cpuP0", { p0: server.cpuPercent }) }}</div>
               <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.cpuPercent, 90)" :style="{ width: `${server.cpuPercent}%` }"></div></div>
             </div>
             <div>
-              <div class="stat-label">RAM · {{ server.memPercent }}%</div>
+              <div class="stat-label">{{ $t("dashboard.ramP0", { p0: server.memPercent }) }}</div>
               <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.memPercent, 90)" :style="{ width: `${server.memPercent}%` }"></div></div>
             </div>
             <div>
-              <div class="stat-label">Disco · {{ server.diskPercent }}%</div>
+              <div class="stat-label">{{ $t("dashboard.discoP0", { p0: server.diskPercent }) }}</div>
               <div class="metric-bar"><div class="metric-bar-fill" :class="metricBarClass(server.diskPercent, 85)" :style="{ width: `${server.diskPercent}%` }"></div></div>
             </div>
           </div>

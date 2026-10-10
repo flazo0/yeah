@@ -7,7 +7,7 @@ const { server, teamId } = useServerContext();
 
 <template>
   <div v-if="server">
-    <p class="hint mb-16">Shell de login em <span class="mono">{{ server.sshUser }}@{{ server.host }}</span>, pela mesma chave SSH que o painel usa. A sessão fecha sozinha depois de 30 min sem digitar.</p>
+    <p class="hint mb-16">{{ $t("serverTerminal.shellDeLoginEm") }} <span class="mono">{{ server.sshUser }}@{{ server.host }}</span>{{ $t("serverTerminal.pelaMesmaChaveSshQue") }}</p>
     <TerminalView :path="`/teams/${teamId}/servers/${server.id}/terminal`" :title="`Terminal — ${server.name}`" />
   </div>
 </template>

@@ -8,6 +8,7 @@ import Logo from "./components/Logo.vue";
 import AccountMenu from "./components/AccountMenu.vue";
 import TeamSwitcher from "./components/TeamSwitcher.vue";
 import GlobalSearch from "./components/GlobalSearch.vue";
+import { i18n } from "./lib/i18n";
 
 const { t } = useI18n();
 const auth = useAuthStore();
@@ -41,7 +42,7 @@ const teamId = computed(() => (typeof route.params.teamId === "string" ? route.p
 // falls back to the user's first (for single-admin, only) team.
 const currentTeamName = computed(() => {
   const team = teamId.value ? auth.teams.find((t) => t.id === teamId.value) : auth.teams[0];
-  return team?.name ?? "Time";
+  return team?.name ?? i18n.global.t("common.team");
 });
 const projectId = computed(() => (typeof route.params.projectId === "string" ? route.params.projectId : null));
 const environmentId = computed(() =>
@@ -65,23 +66,23 @@ const isUpdatesRoute = computed(() => Boolean(teamId.value) && route.path === `/
 // switcher now, not a plain string in this list.
 const breadcrumb = computed(() => {
   if (!teamId.value) return [];
-  if (isServersRoute.value) return ["Servidores"];
+  if (isServersRoute.value) return [i18n.global.t("common.servers")];
   if (isKeysTokensRoute.value) return ["Keys & Tokens"];
-  if (isStoragesRoute.value) return ["Armazenamento"];
+  if (isStoragesRoute.value) return [i18n.global.t("common.storage")];
   if (isRegistriesRoute.value) return ["Registries"];
-  if (isSourcesRoute.value) return ["Fontes"];
-  if (isNotificationsRoute.value) return ["Notificações"];
+  if (isSourcesRoute.value) return [i18n.global.t("common.sources")];
+  if (isNotificationsRoute.value) return [i18n.global.t("app.notificacoes")];
   if (isLogDrainsRoute.value) return ["Log Drains"];
-  if (isUpdatesRoute.value) return ["Atualizações"];
-  if (isVariablesRoute.value) return ["Variáveis"];
-  if (isTeamRoute.value) return ["Time"];
-  if (isSettingsRoute.value) return ["Configurações"];
-  if (!projectId.value) return ["Projetos"];
-  if (!environmentId.value) return ["Projetos", "Ambientes"];
-  if (route.params.applicationId) return ["Projetos", "Ambiente", "Aplicação"];
-  if (route.params.databaseId) return ["Projetos", "Ambiente", "Banco de dados"];
-  if (route.params.serviceId) return ["Projetos", "Ambiente", "Serviço"];
-  return ["Projetos", "Recursos"];
+  if (isUpdatesRoute.value) return [i18n.global.t("app.atualizacoes")];
+  if (isVariablesRoute.value) return [i18n.global.t("app.variaveis")];
+  if (isTeamRoute.value) return [i18n.global.t("common.team")];
+  if (isSettingsRoute.value) return [i18n.global.t("app.configuracoes")];
+  if (!projectId.value) return [i18n.global.t("common.projects")];
+  if (!environmentId.value) return [i18n.global.t("common.projects"), i18n.global.t("common.environments")];
+  if (route.params.applicationId) return [i18n.global.t("common.projects"), i18n.global.t("common.environment"), i18n.global.t("app.aplicacao")];
+  if (route.params.databaseId) return [i18n.global.t("common.projects"), i18n.global.t("common.environment"), i18n.global.t("app.bancoDeDados")];
+  if (route.params.serviceId) return [i18n.global.t("common.projects"), i18n.global.t("common.environment"), i18n.global.t("app.servico")];
+  return [i18n.global.t("common.projects"), i18n.global.t("common.resources")];
 });
 </script>
 

@@ -8,6 +8,8 @@ import PageState from "../components/PageState.vue";
 import ViewToggle from "../components/ViewToggle.vue";
 import ListPager from "../components/ListPager.vue";
 import Modal from "../components/Modal.vue";
+import { i18n } from "../lib/i18n";
+import { dateLocale } from "../lib/i18n";
 
 const { t } = useI18n();
 const route = useRoute();
@@ -95,7 +97,7 @@ async function quickAdd(project: ProjectDto) {
     const only = res.environments.length === 1 ? res.environments[0] : undefined;
     router.push(only ? `/teams/${teamId}/projects/${project.id}/environments/${only.id}/new` : `/teams/${teamId}/projects/${project.id}`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao abrir o projeto";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("projects.falhaAoAbrirOProjeto");
   }
 }
 
@@ -182,7 +184,7 @@ onMounted(load);
               </td>
               <td :data-label="t('projects.colEnvironments')">{{ project.environmentCount }}</td>
               <td :data-label="t('projects.colResources')">{{ project.resourceCount }}</td>
-              <td :data-label="t('projects.colCreated')">{{ new Date(project.createdAt).toLocaleDateString("pt-BR") }}</td>
+              <td :data-label="t('projects.colCreated')">{{ new Date(project.createdAt).toLocaleDateString(dateLocale()) }}</td>
             </tr>
           </tbody>
         </table>

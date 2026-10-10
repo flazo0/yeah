@@ -4,6 +4,7 @@ import { useRoute } from "vue-router";
 import type { S3StorageDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
+import { i18n } from "../lib/i18n";
 
 const route = useRoute();
 const teamId = route.params.teamId as string;
@@ -23,7 +24,7 @@ async function loadStorages() {
     const res = await api.get<{ storages: S3StorageDto[] }>(`/teams/${teamId}/storages`);
     storages.value = res.storages;
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar destinos de armazenamento";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("storages.falhaAoCarregarDestinosDe");
   } finally {
     loading.value = false;
   }
@@ -40,7 +41,7 @@ async function addStorage() {
     storages.value.push(res.storage);
     form.value = { name: "", endpoint: "", region: "us-east-1", bucket: "", accessKeyId: "", secretAccessKey: "" };
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao criar destino de armazenamento";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("storages.falhaAoCriarDestinoDe");
   } finally {
     submitting.value = false;
   }
@@ -70,8 +71,8 @@ onMounted(loadStorages);
   <div>
     <div class="page-header">
       <div>
-        <h1>Armazenamento</h1>
-        <p>Destinos S3-compatíveis pra guardar backups fora do servidor (AWS S3, MinIO, R2, Spaces...).</p>
+        <h1>{{ $t("storages.armazenamento") }}</h1>
+        <p>{{ $t("storages.destinosS3CompativeisPraGuardar") }}</p>
       </div>
     </div>
 
@@ -80,7 +81,7 @@ onMounted(loadStorages);
     <div class="card mb-16">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">cloud</span>
-        Destinos do time
+        {{ $t("storages.destinosDoTime") }}
       </div>
       <div v-if="loading" class="card-body">
         <PageState loading />
@@ -88,16 +89,16 @@ onMounted(loadStorages);
       <div v-else-if="storages.length === 0" class="card-body">
         <div class="empty-state">
           <span class="material-symbols-outlined icon">cloud_off</span>
-          Nenhum destino ainda. Sem isso, os backups ficam só no disco do servidor.
+          {{ $t("storages.nenhumDestinoAindaSemIsso") }}
         </div>
       </div>
       <div v-else class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>Nome</th>
-              <th>Bucket</th>
-              <th>Endpoint</th>
+              <th>{{ $t("storages.nome") }}</th>
+              <th>{{ $t("storages.bucket") }}</th>
+              <th>{{ $t("storages.endpoint") }}</th>
               <th></th>
             </tr>
           </thead>
@@ -109,10 +110,10 @@ onMounted(loadStorages);
               <td class="btn-row">
                 <button type="button" class="btn btn-secondary btn-sm" :disabled="testingId === storage.id" @click="testConnection(storage.id)">
                   <span class="material-symbols-outlined" style="font-size: 16px">sync</span>
-                  {{ testingId === storage.id ? "testando..." : "testar" }}
+                  {{ testingId === storage.id ? $t("storages.testando") : "testar" }}
                 </button>
-                <span v-if="testResult[storage.id] === 'ok'" class="badge badge-good">ok</span>
-                <span v-else-if="testResult[storage.id] === 'failed'" class="badge badge-bad">falhou</span>
+                <span v-if="testResult[storage.id] === 'ok'" class="badge badge-good">{{ $t("storages.ok") }}</span>
+                <span v-else-if="testResult[storage.id] === 'failed'" class="badge badge-bad">{{ $t("storages.falhou") }}</span>
                 <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteStorage(storage.id)">
                   <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
                 </button>
@@ -126,41 +127,41 @@ onMounted(loadStorages);
     <div class="card">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-        Adicionar destino
+        {{ $t("storages.adicionarDestino") }}
       </div>
       <div class="card-body">
         <form @submit.prevent="addStorage">
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="storage-name">Nome</label>
-              <input id="storage-name" v-model="form.name" class="form-control" placeholder="backups-producao" required />
+              <label for="storage-name">{{ $t("storages.nome") }}</label>
+              <input id="storage-name" v-model="form.name" class="form-control" :placeholder="$t('storages.backupsProducao')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="storage-bucket">Bucket</label>
-              <input id="storage-bucket" v-model="form.bucket" class="form-control" placeholder="meus-backups" required />
+              <label for="storage-bucket">{{ $t("storages.bucket") }}</label>
+              <input id="storage-bucket" v-model="form.bucket" class="form-control" :placeholder="$t('storages.meusBackups')" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="storage-region">Região</label>
-              <input id="storage-region" v-model="form.region" class="form-control" placeholder="us-east-1" />
+              <label for="storage-region">{{ $t("storages.regiao") }}</label>
+              <input id="storage-region" v-model="form.region" class="form-control" :placeholder="$t('storages.usEast1')" />
             </div>
           </div>
           <div class="form-group">
-            <label for="storage-endpoint">Endpoint (deixe em branco pra AWS S3 de verdade)</label>
+            <label for="storage-endpoint">{{ $t("storages.endpointDeixeEmBrancoPra") }}</label>
             <input id="storage-endpoint" v-model="form.endpoint" class="form-control mono" placeholder="https://minha-instancia-minio:9000" />
           </div>
           <div class="form-row mb-16">
             <div class="form-group" style="margin-bottom: 0">
-              <label for="storage-key">Access Key ID</label>
+              <label for="storage-key">{{ $t("storages.accessKeyId") }}</label>
               <input id="storage-key" v-model="form.accessKeyId" class="form-control mono" required />
             </div>
             <div class="form-group" style="margin-bottom: 0">
-              <label for="storage-secret">Secret Access Key</label>
+              <label for="storage-secret">{{ $t("storages.secretAccessKey") }}</label>
               <input id="storage-secret" v-model="form.secretAccessKey" type="password" class="form-control mono" required />
             </div>
           </div>
           <button type="submit" class="btn" :disabled="submitting">
             <span class="material-symbols-outlined" style="font-size: 18px">add</span>
-            {{ submitting ? "adicionando..." : "Adicionar destino" }}
+            {{ submitting ? $t("storages.adicionando") : $t("storages.adicionarDestino") }}
           </button>
         </form>
       </div>

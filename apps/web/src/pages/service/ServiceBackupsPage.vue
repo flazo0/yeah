@@ -5,6 +5,8 @@ import type { S3StorageDto, ServiceVolumeDto, VolumeBackupDto } from "@yeah/shar
 import StatusBadge from "../../components/StatusBadge.vue";
 import { api, ApiError } from "../../lib/api";
 import { useServiceContext } from "../../composables/useServiceContext";
+import { i18n } from "../../lib/i18n";
+import { dateLocale } from "../../lib/i18n";
 
 const { basePath, error } = useServiceContext();
 
@@ -34,7 +36,7 @@ async function load() {
     storages.value = (await api.get<{ storages: S3StorageDto[] }>(`/teams/${teamId}/storages`)).storages;
     await loadBackups();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar os volumes";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.falhaAoCarregarOsVolumes");
   } finally {
     loaded.value = true;
   }
@@ -46,7 +48,7 @@ async function backupVolume(v: ServiceVolumeDto) {
     await api.post(`${basePath}/volumes/${encodeURIComponent(v.key)}/backup`, { storageId: storageId.value || null });
     await loadBackups();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar o backup";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.falhaAoIniciarOBackup");
   }
 }
 
@@ -63,7 +65,7 @@ async function restoreBackup(b: VolumeBackupDto) {
     await api.post(`${basePath}/volume-backups/${b.id}/restore`, {});
     await loadBackups();
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao iniciar o restore";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.falhaAoIniciarORestore");
   }
 }
 
@@ -72,7 +74,7 @@ async function deleteBackup(b: VolumeBackupDto) {
     await api.delete(`${basePath}/volume-backups/${b.id}`);
     backups.value = backups.value.filter((x) => x.id !== b.id);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao excluir";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.falhaAoExcluir");
   }
 }
 
@@ -95,33 +97,32 @@ onBeforeUnmount(() => {
   <div class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">backup</span>
-      Volumes e backups
+      {{ $t("serviceBackups.volumesEBackups") }}
     </div>
     <div class="card-body">
       <p class="hint" style="margin: 0">
-        <strong>Volume persistente não é backup:</strong> ele sobrevive a redeploys, mas se o servidor morrer ou o serviço for excluído, os dados vão junto.
-        "Backup" cria um <span class="mono">.tar.gz</span> do conteúdo do volume, no servidor ou num destino S3 (guardamos os 5 mais recentes de cada). Restaurar
-        <strong>substitui</strong> o conteúdo do volume e reinicia os containers da stack. Baixe os arquivos pra guardá-los fora do servidor.
+        <strong>{{ $t("serviceBackups.volumePersistenteNaoEBackup") }}</strong> {{ $t("serviceBackups.eleSobreviveARedeploysMas") }} <span class="mono">{{ $t("serviceBackups.tarGz") }}</span> {{ $t("serviceBackups.doConteudoDoVolumeNo") }}
+        <strong>{{ $t("serviceBackups.substitui") }}</strong> {{ $t("serviceBackups.oConteudoDoVolumeE") }}
       </p>
     </div>
     <div v-if="loaded && volumes.length === 0" class="card-body">
-      <p class="hint" style="margin: 0">O compose deste serviço não declara volumes nomeados (a chave <span class="mono">volumes:</span> no nível de cima), então não há o que copiar.</p>
+      <p class="hint" style="margin: 0">{{ $t("serviceBackups.oComposeDesteServicoNao") }} <span class="mono">{{ $t("serviceBackups.volumes") }}</span> {{ $t("serviceBackups.noNivelDeCimaEntao") }}</p>
     </div>
     <div v-if="volumes.length && storages.length" class="card-body" style="display: flex; align-items: center; gap: 8px">
-      <label for="backup-destination" class="hint" style="margin: 0">Guardar em</label>
+      <label for="backup-destination" class="hint" style="margin: 0">{{ $t("serviceBackups.guardarEm") }}</label>
       <select id="backup-destination" v-model="storageId" class="input" style="max-width: 320px">
-        <option value="">Neste servidor</option>
-        <option v-for="st in storages" :key="st.id" :value="st.id">S3: {{ st.name }} ({{ st.bucket }})</option>
+        <option value="">{{ $t("serviceBackups.nesteServidor") }}</option>
+        <option v-for="st in storages" :key="st.id" :value="st.id">{{ $t("serviceBackups.s3P0P1", { p0: st.name, p1: st.bucket }) }}</option>
       </select>
     </div>
     <div v-if="volumes.length" class="table-wrap">
       <table>
-        <thead><tr><th>Volume</th><th>Nome no Docker</th><th></th></tr></thead>
+        <thead><tr><th>{{ $t("serviceBackups.volume") }}</th><th>{{ $t("serviceBackups.nomeNoDocker") }}</th><th></th></tr></thead>
         <tbody>
           <tr v-for="v in volumes" :key="v.key">
             <td class="mono">{{ v.key }}</td>
             <td class="mono">{{ v.dockerName }}</td>
-            <td><button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="backupVolume(v)">Backup</button></td>
+            <td><button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="backupVolume(v)">{{ $t("serviceBackups.backup") }}</button></td>
           </tr>
         </tbody>
       </table>
@@ -129,30 +130,30 @@ onBeforeUnmount(() => {
   </div>
 
   <div v-if="backups.length" class="card" style="margin-top: 16px">
-    <div class="card-header">Histórico</div>
+    <div class="card-header">{{ $t("serviceBackups.historico") }}</div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Quando</th><th>Volume</th><th>Operação</th><th>Status</th><th>Tamanho</th><th></th></tr></thead>
+        <thead><tr><th>{{ $t("serviceBackups.quando") }}</th><th>{{ $t("serviceBackups.volume") }}</th><th>{{ $t("serviceBackups.operacao") }}</th><th>{{ $t("serviceBackups.status") }}</th><th>{{ $t("serviceBackups.tamanho") }}</th><th></th></tr></thead>
         <tbody>
           <template v-for="b in backups" :key="b.id">
             <tr>
-              <td>{{ new Date(b.createdAt).toLocaleString("pt-BR") }}</td>
+              <td>{{ new Date(b.createdAt).toLocaleString(dateLocale()) }}</td>
               <td class="mono">{{ b.label }}</td>
               <td>{{ b.operation === "backup" ? "backup" : "restore" }}</td>
               <td><StatusBadge :status="b.status" kind="job" /></td>
-              <td class="mono">{{ size(b.sizeBytes) }}<span v-if="b.inS3" class="hint"> · S3</span></td>
+              <td class="mono">{{ size(b.sizeBytes) }}<span v-if="b.inS3" class="hint"> {{ $t("serviceBackups.s3") }}</span></td>
               <td>
                 <div class="btn-row">
                   <template v-if="b.operation === 'backup' && b.status === 'success'">
-                    <a class="btn btn-secondary btn-sm" :href="downloadUrl(b.id)">Baixar</a>
-                    <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="restoreBackup(b)">{{ confirmingRestore === b.id ? "Substituir os dados?" : "Restaurar" }}</button>
+                    <a class="btn btn-secondary btn-sm" :href="downloadUrl(b.id)">{{ $t("serviceBackups.baixar") }}</a>
+                    <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="restoreBackup(b)">{{ confirmingRestore === b.id ? $t("serviceBackups.substituirOsDados") : "Restaurar" }}</button>
                   </template>
-                  <button type="button" class="btn btn-secondary btn-sm" @click="openLogId = openLogId === b.id ? null : b.id">Log</button>
-                  <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteBackup(b)">Excluir</button>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="openLogId = openLogId === b.id ? null : b.id">{{ $t("serviceBackups.log") }}</button>
+                  <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteBackup(b)">{{ $t("serviceBackups.excluir") }}</button>
                 </div>
               </td>
             </tr>
-            <tr v-if="openLogId === b.id"><td colspan="6"><pre class="callout-code" style="max-height: 240px; overflow: auto; margin: 0">{{ b.log || "(sem saída ainda)" }}</pre></td></tr>
+            <tr v-if="openLogId === b.id"><td colspan="6"><pre class="callout-code" style="max-height: 240px; overflow: auto; margin: 0">{{ b.log || $t('common.noOutputYet') }}</pre></td></tr>
           </template>
         </tbody>
       </table>

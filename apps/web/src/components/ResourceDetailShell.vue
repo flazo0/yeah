@@ -59,7 +59,7 @@ onUnmounted(() => clearTimeout(timer));
       <div class="btn-row">
         <button type="button" class="btn btn-secondary" style="color: var(--bad)" :disabled="deleting" @click="onDelete">
           <span class="material-symbols-outlined" style="font-size: 18px">delete</span>
-          {{ confirming ? "Confirmar exclusão?" : "Excluir" }}
+          {{ confirming ? $t("resourceDetailShell.confirmarExclusao") : "Excluir" }}
         </button>
         <slot name="actions" />
       </div>

@@ -4,6 +4,7 @@ import { useRoute, useRouter } from "vue-router";
 import type { EnvironmentDto, ProjectDto, ServerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
 const route = useRoute();
@@ -37,7 +38,7 @@ onMounted(async () => {
       for (const env of envs.environments) places.value.push({ environmentId: env.id, projectId: project.id, label: `${project.name} / ${env.name}` });
     }
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao carregar projetos e servidores";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationOperations.falhaAoCarregarProjetosE");
   }
   cloneName.value = app.value ? `${app.value.name}-copia` : "";
   cloneEnv.value = app.value?.environmentId ?? "";
@@ -57,7 +58,7 @@ async function clone() {
     const place = places.value.find((p) => p.environmentId === res.environmentId);
     if (place) router.push(`/teams/${teamId}/projects/${place.projectId}/environments/${place.environmentId}/apps/${res.application.id}/general`);
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao clonar";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationOperations.falhaAoClonar");
   } finally {
     busy.value = false;
   }
@@ -73,9 +74,9 @@ async function move() {
     const place = places.value.find((p) => p.environmentId === moveEnv.value);
     if (place) router.push(`/teams/${teamId}/projects/${place.projectId}/environments/${place.environmentId}/apps/${app.value!.id}/operations`);
     else await reloadApp();
-    message.value = "Aplicação movida.";
+    message.value = i18n.global.t("applicationOperations.aplicacaoMovida");
   } catch (err) {
-    error.value = err instanceof ApiError ? err.message : "falha ao mover";
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationOperations.falhaAoMover");
   } finally {
     busy.value = false;
   }
@@ -87,54 +88,53 @@ async function move() {
     <form class="card mb-16" @submit.prevent="clone">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">content_copy</span>
-        Clonar
+        {{ $t("applicationOperations.clonar") }}
       </div>
       <div class="card-body">
         <p class="hint mb-16">
-          Cria uma cópia com as mesmas configurações: origem, variáveis, armazenamento, healthcheck e limites. Os domínios e o token de deploy <strong>não</strong> vêm
-          (dois apps não podem responder no mesmo domínio), e as tarefas agendadas vêm pausadas. A cópia não é deployada sozinha.
+          {{ $t("applicationOperations.criaUmaCopiaComAs") }} <strong>{{ $t("applicationOperations.nao") }}</strong> {{ $t("applicationOperations.vemDoisAppsNaoPodem") }}
         </p>
         <div class="form-group">
-          <label for="clone-name">Nome</label>
+          <label for="clone-name">{{ $t("applicationOperations.nome") }}</label>
           <input id="clone-name" v-model="cloneName" class="form-control" required />
         </div>
         <div class="form-row mb-16">
           <div class="form-group" style="margin-bottom: 0">
-            <label for="clone-env">Ambiente</label>
+            <label for="clone-env">{{ $t("applicationOperations.ambiente") }}</label>
             <select id="clone-env" v-model="cloneEnv" class="form-control">
               <option v-for="p in places" :key="p.environmentId" :value="p.environmentId">{{ p.label }}</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0">
-            <label for="clone-server">Servidor</label>
+            <label for="clone-server">{{ $t("applicationOperations.servidor") }}</label>
             <select id="clone-server" v-model="cloneServer" class="form-control">
               <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select>
           </div>
         </div>
-        <button type="submit" class="btn btn-secondary" :disabled="busy || !cloneName.trim()">Clonar aplicação</button>
+        <button type="submit" class="btn btn-secondary" :disabled="busy || !cloneName.trim()">{{ $t("applicationOperations.clonarAplicacao") }}</button>
       </div>
     </form>
 
     <form class="card" style="margin-bottom: 0" @submit.prevent="move">
       <div class="card-header">
         <span class="material-symbols-outlined" style="font-size: 18px">drive_file_move</span>
-        Mover pra outro ambiente
+        {{ $t("applicationOperations.moverPraOutroAmbiente") }}
       </div>
       <div class="card-body">
         <p class="hint mb-16">
-          Só muda onde a aplicação aparece (projeto/ambiente) — o container continua rodando. Atenção: referências a variáveis compartilhadas de
-          <span class="mono">project</span> ou <span class="mono">environment</span> passam a apontar pro novo local no próximo deploy.
+          {{ $t("applicationOperations.soMudaOndeAAplicacao") }}
+          <span class="mono">{{ $t("applicationOperations.project") }}</span> {{ $t("applicationOperations.ou") }} <span class="mono">{{ $t("applicationOperations.environment") }}</span> {{ $t("applicationOperations.passamAApontarProNovo") }}
         </p>
         <div class="form-group">
-          <label for="move-env">Destino</label>
+          <label for="move-env">{{ $t("applicationOperations.destino") }}</label>
           <select id="move-env" v-model="moveEnv" class="form-control">
-            <option value="">Escolha um ambiente</option>
+            <option value="">{{ $t("applicationOperations.escolhaUmAmbiente") }}</option>
             <option v-for="p in places.filter((x) => x.environmentId !== app!.environmentId)" :key="p.environmentId" :value="p.environmentId">{{ p.label }}</option>
           </select>
         </div>
         <div class="btn-row">
-          <button type="submit" class="btn btn-secondary" :disabled="busy || !moveEnv">Mover</button>
+          <button type="submit" class="btn btn-secondary" :disabled="busy || !moveEnv">{{ $t("applicationOperations.mover") }}</button>
           <span v-if="message" class="muted" style="align-self: center; font-size: 13px">{{ message }}</span>
         </div>
       </div>

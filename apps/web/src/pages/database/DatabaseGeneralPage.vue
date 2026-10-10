@@ -16,36 +16,36 @@ function fetchHistory(hours: number) {
   <div v-if="database" class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">info</span>
-      Geral
+      {{ $t("databaseGeneral.geral") }}
     </div>
     <div class="card-body">
       <div class="grid grid-2">
         <div>
-          <div class="stat-label">Motor</div>
+          <div class="stat-label">{{ $t("databaseGeneral.motor") }}</div>
           <div class="mono">{{ database.engine }}</div>
         </div>
         <div>
-          <div class="stat-label">Imagem</div>
+          <div class="stat-label">{{ $t("databaseGeneral.imagem") }}</div>
           <div class="mono">{{ database.image }}</div>
         </div>
         <div>
-          <div class="stat-label">Servidor</div>
+          <div class="stat-label">{{ $t("databaseGeneral.servidor") }}</div>
           <div>{{ database.serverName }}</div>
         </div>
         <div>
-          <div class="stat-label">Nome interno</div>
+          <div class="stat-label">{{ $t("databaseGeneral.nomeInterno") }}</div>
           <div class="mono">{{ database.internalHost }}</div>
         </div>
         <div v-if="database.publicAccess">
-          <div class="stat-label">Porta externa</div>
+          <div class="stat-label">{{ $t("databaseGeneral.portaExterna") }}</div>
           <div class="mono">{{ database.port }}</div>
         </div>
         <div v-if="database.username">
-          <div class="stat-label">Usuário</div>
+          <div class="stat-label">{{ $t("databaseGeneral.usuario") }}</div>
           <div class="mono">{{ database.username }}</div>
         </div>
         <div v-if="database.databaseName">
-          <div class="stat-label">Database</div>
+          <div class="stat-label">{{ $t("databaseGeneral.database") }}</div>
           <div class="mono">{{ database.databaseName }}</div>
         </div>
       </div>
@@ -57,14 +57,14 @@ function fetchHistory(hours: number) {
       :memory-limit-mb="database.memoryLimitMb"
       :cpu-limit="database.cpuLimit"
       :put-url="`${basePath}/limits`"
-      hint="Recria o container imediatamente ao salvar."
-      saved-message="salvo — recriando container"
+      :hint="$t('databaseGeneral.recriaOContainerImediatamenteAo')"
+      :saved-message="$t('databaseGeneral.salvoRecriandoContainer')"
       @saved="(limits) => { database!.memoryLimitMb = limits.memoryLimitMb; database!.cpuLimit = limits.cpuLimit; }"
       @error="(msg) => (error = msg)"
     />
 
     <div class="card">
-      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> Histórico de recursos</div>
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">history</span> {{ $t("databaseGeneral.historicoDeRecursos") }}</div>
       <div class="card-body"><MetricsHistoryChart :fetch-history="fetchHistory" /></div>
     </div>
   </div>
