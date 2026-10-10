@@ -1,3 +1,4 @@
+import { PROJECT_ICONS, DEFAULT_PROJECT_ICON } from "@yeah/shared";
 import { Elysia, t } from "elysia";
 import { eq, sql } from "drizzle-orm";
 import { applications, databases, environments, projects, services } from "@yeah/db";
@@ -52,6 +53,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       id: row.project.id,
       teamId: row.project.teamId,
       name: row.project.name,
+      icon: row.project.icon ?? DEFAULT_PROJECT_ICON,
       environmentCount: row.environmentCount,
       resourceCount: row.resourceCount,
       createdAt: row.project.createdAt.toISOString(),
@@ -86,6 +88,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
         id: project.id,
         teamId: project.teamId,
         name: project.name,
+        icon: DEFAULT_PROJECT_ICON,
         environmentCount: environment ? 1 : 0,
         resourceCount: 0,
         createdAt: project.createdAt.toISOString(),
@@ -93,6 +96,32 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       return { project: dto };
     },
     { body: t.Object({ name: t.String({ minLength: 1 }), firstEnvironmentName: t.Optional(t.String()) }) },
+  )
+  .put(
+    "/:projectId/icon",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!(PROJECT_ICONS as readonly string[]).includes(body.icon)) {
+        set.status = 400;
+        return { error: "ícone inválido" };
+      }
+      const project = await loadProject(params.teamId, params.projectId);
+      if (!project) {
+        set.status = 404;
+        return { error: "project not found" };
+      }
+      await db.update(projects).set({ icon: body.icon }).where(eq(projects.id, project.id));
+      return { icon: body.icon };
+    },
+    { body: t.Object({ icon: t.String() }) },
   )
   .get("/:projectId", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
@@ -117,6 +146,7 @@ export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
       id: project.id,
       teamId: project.teamId,
       name: project.name,
+      icon: project.icon ?? DEFAULT_PROJECT_ICON,
       environmentCount: environmentRows.length,
       resourceCount: await countProjectResources(project.id),
       createdAt: project.createdAt.toISOString(),

@@ -7,6 +7,8 @@ export const projects = pgTable("projects", {
     .references(() => teams.id, { onDelete: "cascade" })
     .notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  /** One of PROJECT_ICONS (Material Symbols name); null = default. */
+  icon: varchar("icon", { length: 40 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

@@ -107,10 +107,16 @@ export interface ApiTokenDto {
   createdAt: string;
 }
 
+/** Curated Material Symbols a project can use as its icon (also the server-side allowlist). */
+export const PROJECT_ICONS = ["layers", "rocket_launch", "storefront", "shopping_cart", "article", "code", "dns", "database", "cloud", "api", "smart_toy", "school", "sports_esports", "science", "monitoring", "forum"] as const;
+export const DEFAULT_PROJECT_ICON = "layers";
+
 export interface ProjectDto {
   id: string;
   teamId: string;
   name: string;
+  /** Material Symbols name, always one of PROJECT_ICONS. */
+  icon: string;
   environmentCount: number;
   resourceCount: number;
   createdAt: string;

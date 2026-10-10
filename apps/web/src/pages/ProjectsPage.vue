@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import type { EnvironmentDto, ProjectDto } from "@yeah/shared";
+import { PROJECT_ICONS, type EnvironmentDto, type ProjectDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
 import ViewToggle from "../components/ViewToggle.vue";
@@ -52,6 +52,20 @@ async function load() {
     error.value = err instanceof ApiError ? err.message : "falha ao carregar projetos";
   } finally {
     loading.value = false;
+  }
+}
+
+const iconProject = ref<ProjectDto | null>(null);
+
+async function setIcon(icon: string) {
+  const project = iconProject.value;
+  if (!project) return;
+  try {
+    await api.put(`/teams/${teamId}/projects/${project.id}/icon`, { icon });
+    project.icon = icon;
+    iconProject.value = null;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao trocar o ícone";
   }
 }
 
@@ -126,7 +140,7 @@ onMounted(load);
       <div v-else-if="view === 'grid'" class="project-grid">
         <div v-for="project in paged" :key="project.id" class="project-card" tabindex="0" @click="open(project)" @keydown.enter="open(project)">
           <div class="project-card-head">
-            <span class="rtable-icon"><span class="material-symbols-outlined">layers</span></span>
+            <span class="rtable-icon"><span class="material-symbols-outlined">{{ project.icon }}</span></span>
             <strong>{{ project.name }}</strong>
           </div>
           <div class="project-card-foot">
@@ -134,6 +148,9 @@ onMounted(load);
             <span class="project-card-actions">
               <button type="button" class="card-icon-btn" title="Adicionar recurso" aria-label="Adicionar recurso" @click.stop="quickAdd(project)">
                 <span class="material-symbols-outlined">add</span>
+              </button>
+              <button type="button" class="card-icon-btn" title="Trocar ícone" aria-label="Trocar ícone" @click.stop="iconProject = project">
+                <span class="material-symbols-outlined">palette</span>
               </button>
               <button type="button" class="card-icon-btn" title="Ambientes do projeto" aria-label="Ambientes do projeto" @click.stop="open(project)">
                 <span class="material-symbols-outlined">settings</span>
@@ -157,7 +174,7 @@ onMounted(load);
             <tr v-for="project in paged" :key="project.id">
               <td data-label="Projeto">
                 <RouterLink :to="`/teams/${teamId}/projects/${project.id}`" class="rtable-name">
-                  <span class="rtable-icon"><span class="material-symbols-outlined">layers</span></span>
+                  <span class="rtable-icon"><span class="material-symbols-outlined">{{ project.icon }}</span></span>
                   <strong>{{ project.name }}</strong>
                 </RouterLink>
               </td>
@@ -171,6 +188,23 @@ onMounted(load);
 
       <ListPager v-if="filtered.length > 0" v-model:page="page" v-model:page-size="pageSize" :total="filtered.length" :sizes="[12, 24, 48]" size-key="yeah:projects-page-size" />
     </PageState>
+
+    <Modal v-if="iconProject" :title="`Ícone de ${iconProject.name}`" @close="iconProject = null">
+      <div class="btn-row" style="flex-wrap: wrap">
+        <button
+          v-for="icon in PROJECT_ICONS"
+          :key="icon"
+          type="button"
+          class="card-icon-btn"
+          :class="{ active: icon === iconProject.icon }"
+          :title="icon"
+          :aria-label="icon"
+          @click="setIcon(icon)"
+        >
+          <span class="material-symbols-outlined">{{ icon }}</span>
+        </button>
+      </div>
+    </Modal>
 
     <Modal v-if="showCreate" title="Novo projeto" @close="showCreate = false">
       <form @submit.prevent="createProject">

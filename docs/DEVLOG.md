@@ -838,3 +838,7 @@ As rotas de CI agora são montadas duas vezes por uma factory (`makeCiRoutes`): 
 ## Fase 8 — 2FA (TOTP)
 
 `lib/totp.ts` implementa TOTP à mão com `node:crypto` (sem dependência) e passa nos vetores oficiais do RFC 6238. `users.totp_secret` (criptografado), `totp_enabled`, `totp_recovery_hashes`. Fluxo: `/auth/2fa/setup` grava o segredo ainda inerte → `/auth/2fa/enable` só liga depois de um código válido (prova que o app tem a chave) e devolve os códigos de recuperação uma vez → `/auth/login` passa a exigir `code` (resposta `totp_required` faz a tela mostrar o campo). Recuperação existe porque é conta única: sem ela, perder o celular trancaria o painel. Desativar exige senha + código; `/2fa/disable` entra na regra de rate limit de auth. **Não testado** ponta a ponta nem com app real ([[feedback-no-local-docker-testing]]); sem QR. 424 testes.
+
+## Fase 8 — ícone por projeto
+
+Escolhi uma lista curta e fixa de Material Symbols (já carregado no painel) em vez de upload de imagem/emoji: zero armazenamento de arquivos, nada de conteúdo arbitrário vindo do cliente (o servidor valida contra `PROJECT_ICONS`). `projects.icon` nulo cai em `layers`. **Não testado** no navegador ([[feedback-no-local-docker-testing]]).
