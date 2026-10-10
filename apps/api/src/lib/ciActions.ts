@@ -1,5 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
-import { applications, backupSchedules, databases, deployments, environments, projects, servers, services } from "@yeah/db";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { applications, backupSchedules, databases, deployments, environments, notificationChannels, projects, s3Storages, scheduledTasks, servers, services } from "@yeah/db";
 import { db } from "./db";
 import { overloadReason } from "./serverLoad";
 import { applicationDeployQueue, databaseBackupQueue } from "./queue";
@@ -79,4 +79,35 @@ export async function moveResource(teamId: string, kind: MovableKind, resourceId
     .returning({ id: table.id });
   if (updated.length === 0) return { ok: false, status: 404, error: `${kind} not found` };
   return { ok: true, value: { environmentId: target.id } };
+}
+
+/** Read-only listings for the rest of the v1 surface. None of them selects a secret column. */
+export async function listServers(teamId: string) {
+  return db.select({ id: servers.id, name: servers.name, host: servers.host, status: servers.status, proxyStatus: servers.proxyStatus }).from(servers).where(eq(servers.teamId, teamId));
+}
+
+export async function listProjects(teamId: string) {
+  const projectRows = await db.select({ id: projects.id, name: projects.name }).from(projects).where(eq(projects.teamId, teamId));
+  if (projectRows.length === 0) return [];
+  const envRows = await db
+    .select({ id: environments.id, name: environments.name, projectId: environments.projectId })
+    .from(environments)
+    .where(inArray(environments.projectId, projectRows.map((p) => p.id)));
+  return projectRows.map((p) => ({ ...p, environments: envRows.filter((e) => e.projectId === p.id).map(({ id, name }) => ({ id, name })) }));
+}
+
+export async function listStorages(teamId: string) {
+  return db.select({ id: s3Storages.id, name: s3Storages.name, bucket: s3Storages.bucket, region: s3Storages.region, endpoint: s3Storages.endpoint }).from(s3Storages).where(eq(s3Storages.teamId, teamId));
+}
+
+export async function listNotificationChannels(teamId: string) {
+  return db.select({ id: notificationChannels.id, name: notificationChannels.name, type: notificationChannels.type }).from(notificationChannels).where(eq(notificationChannels.teamId, teamId));
+}
+
+export async function listScheduledTasks(teamId: string) {
+  return db
+    .select({ id: scheduledTasks.id, name: scheduledTasks.name, cron: scheduledTasks.cron, enabled: scheduledTasks.enabled, applicationId: scheduledTasks.applicationId })
+    .from(scheduledTasks)
+    .innerJoin(applications, eq(scheduledTasks.applicationId, applications.id))
+    .where(eq(applications.teamId, teamId));
 }

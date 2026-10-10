@@ -144,11 +144,13 @@ Conecta em `ws://<host>:<WS_PORT>`. Sem autenticação própria — o socket só
 
 ## API de CI e CLI (`yeah`)
 
-Autenticação por token pessoal (`Authorization: Bearer yeah_…`, criado em Keys & Tokens). Prefixo `/teams/:teamId/ci`:
+Autenticação por token pessoal (`Authorization: Bearer yeah_…`, criado em Keys & Tokens). Prefixo `/teams/:teamId/ci` (ou `/api/v1/teams/:teamId`, mesma coisa; spec em `/api/v1/openapi.json`, UI em `/swagger`):
 
 | Método | Rota | Permissão | Descrição |
 |---|---|---|---|
-| GET | `/applications`, `/databases`, `/services` | read | Lista recursos do time |
+| GET | `/applications`, `/databases`, `/services`, `/servers`, `/projects`, `/storages`, `/notification-channels`, `/scheduled-tasks` | read | Lista recursos do time (sem segredos) |
+| GET | `/applications/:id/deployments` | read | Últimos 10 deploys (status, sem log) |
+| POST | `/move-resource` | full | Move app/banco/serviço pra outro ambiente do time |
 | POST | `/applications/:id/deploy?force=true` | full | Enfileira deploy (409 `server_overloaded` sem `force`) |
 | POST | `/databases/:id/backup` | full | Dispara backup (precisa de agendamento existente) |
 

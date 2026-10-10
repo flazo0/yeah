@@ -31,6 +31,14 @@ export function buildOpenApiSpec() {
       [`${base}/applications`]: { get: listOp("Lista aplicações do time") },
       [`${base}/databases`]: { get: listOp("Lista bancos do time") },
       [`${base}/services`]: { get: listOp("Lista serviços do time") },
+      [`${base}/servers`]: { get: listOp("Lista servidores do time (sem credenciais)") },
+      [`${base}/projects`]: { get: listOp("Lista projetos com seus ambientes") },
+      [`${base}/storages`]: { get: listOp("Lista destinos S3 (sem chaves)") },
+      [`${base}/notification-channels`]: { get: listOp("Lista canais de notificação (sem segredos)") },
+      [`${base}/scheduled-tasks`]: { get: listOp("Lista tarefas agendadas das aplicações do time") },
+      [`${base}/applications/{applicationId}/deployments`]: {
+        get: { ...listOp("Últimos 10 deploys de uma aplicação (sem o log)"), parameters: [teamIdParam, idParam("applicationId")] },
+      },
       [`${base}/applications/{applicationId}/deploy`]: {
         post: triggerOp("Enfileira um deploy", [idParam("applicationId"), { name: "force", in: "query", required: false, schema: { type: "string", enum: ["true"] } }]),
       },

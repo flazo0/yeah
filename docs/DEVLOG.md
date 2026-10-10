@@ -862,3 +862,7 @@ Item que ficou esquecido na Fase 5. Logger próprio mínimo (sem pino/winston: z
 ## Fase 9 — pool configurável e UX local-first
 
 `DB_POOL_MAX` opcional em `createDb` (sem valor = idêntico ao antes). `install.sh` explica a pergunta de onde o painel roda. `ServerDto.isPlatformHost`: a tela de novo recurso pré-seleciona o servidor local conectado e o marca "(esta máquina)". Falta o botão "Promover pra servidor real". Sem testes de runtime ([[feedback-no-local-docker-testing]]).
+
+## Fase 7 — `/api/v1` mais ampla
+
+Listagens read-only de servidores, projetos, storages, canais de notificação, tarefas agendadas e deploys por app em `ciActions.ts`, expostas pela mesma factory (CI + v1) e no OpenAPI. Cada `select` nomeia colunas explicitamente, nunca `*`, pra um campo secreto novo numa tabela não vazar por acidente. Não virou CRUD completo de propósito: o blast radius de mutações com token é maior e não dá pra testar aqui ([[feedback-no-local-docker-testing]]). 435 testes.

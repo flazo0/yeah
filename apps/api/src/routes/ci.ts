@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { resolveApiToken } from "../lib/apiTokenAuth";
 import { ipAllowed } from "../lib/ipAllowlist";
 import { clientIp } from "../lib/rateLimit";
-import { moveResource, listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
+import { listDeployments, listNotificationChannels, listProjects, listScheduledTasks, listServers, listStorages, moveResource, listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
 
 /**
  * A small, deliberately separate API surface for personal API tokens (Fase 7) — "pensado pra CI/CD"
@@ -43,6 +43,53 @@ const makeCiRoutes = (prefix: string) =>
       return { error: ci.error };
     }
     return { services: await listServices(params.teamId) };
+  })
+  .get("/servers", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    return { servers: await listServers(params.teamId) };
+  })
+  .get("/projects", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    return { projects: await listProjects(params.teamId) };
+  })
+  .get("/storages", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    return { storages: await listStorages(params.teamId) };
+  })
+  .get("/notification-channels", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    return { notificationChannels: await listNotificationChannels(params.teamId) };
+  })
+  .get("/scheduled-tasks", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    return { scheduledTasks: await listScheduledTasks(params.teamId) };
+  })
+  .get("/applications/:applicationId/deployments", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    const result = await listDeployments(params.teamId, params.applicationId);
+    if (!result.ok) {
+      set.status = result.status;
+      return { error: result.error };
+    }
+    return { deployments: result.value };
   })
   .post(
     "/applications/:applicationId/deploy",
