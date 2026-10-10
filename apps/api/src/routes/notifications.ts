@@ -16,6 +16,8 @@ const EVENT_TYPE_SCHEMA = t.Union([
   t.Literal("server.reconnected"),
   t.Literal("server.metrics"),
   t.Literal("tls.expiring"),
+  t.Literal("docker-cleanup.failed"),
+  t.Literal("api-token.expiring"),
 ]);
 
 function toChannelDto(channel: NotificationChannel): NotificationChannelDto {

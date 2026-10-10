@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
+import type { ApiTokenDto, ApiTokenPermission } from "@yeah/shared";
 import type { SshKeyDto } from "@yeah/shared";
 import { api, ApiError } from "../lib/api";
 import PageState from "../components/PageState.vue";
@@ -79,6 +80,75 @@ async function deleteKey(key: SshKeyDto) {
 }
 
 onMounted(load);
+
+// ---- API tokens
+const tokens = ref<ApiTokenDto[]>([]);
+const tokensLoading = ref(true);
+const tokenFormOpen = ref(false);
+const tokenForm = ref({ name: "", permission: "read" as ApiTokenPermission, expiresInDays: "" });
+const tokenSubmitting = ref(false);
+const justCreatedToken = ref<{ token: string; apiToken: ApiTokenDto } | null>(null);
+const tokenCopied = ref(false);
+
+async function loadTokens() {
+  tokensLoading.value = true;
+  try {
+    tokens.value = (await api.get<{ tokens: ApiTokenDto[] }>(`/teams/${teamId}/api-tokens`)).tokens;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao carregar os tokens";
+  } finally {
+    tokensLoading.value = false;
+  }
+}
+
+function openTokenForm() {
+  tokenForm.value = { name: "", permission: "read", expiresInDays: "" };
+  justCreatedToken.value = null;
+  tokenFormOpen.value = true;
+}
+
+async function submitToken() {
+  tokenSubmitting.value = true;
+  error.value = "";
+  try {
+    const res = await api.post<{ token: string; apiToken: ApiTokenDto }>(`/teams/${teamId}/api-tokens`, {
+      name: tokenForm.value.name,
+      permission: tokenForm.value.permission,
+      expiresInDays: tokenForm.value.expiresInDays ? Number(tokenForm.value.expiresInDays) : undefined,
+    });
+    tokens.value = [res.apiToken, ...tokens.value];
+    justCreatedToken.value = res;
+    tokenFormOpen.value = false;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao criar o token";
+  } finally {
+    tokenSubmitting.value = false;
+  }
+}
+
+async function copyToken() {
+  if (!justCreatedToken.value) return;
+  try {
+    await navigator.clipboard.writeText(justCreatedToken.value.token);
+    tokenCopied.value = true;
+    setTimeout(() => (tokenCopied.value = false), 2000);
+  } catch {
+    tokenCopied.value = false;
+  }
+}
+
+async function deleteToken(token: ApiTokenDto) {
+  error.value = "";
+  try {
+    await api.delete(`/teams/${teamId}/api-tokens/${token.id}`);
+    tokens.value = tokens.value.filter((t) => t.id !== token.id);
+    if (justCreatedToken.value?.apiToken.id === token.id) justCreatedToken.value = null;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : "falha ao excluir o token";
+  }
+}
+
+onMounted(loadTokens);
 </script>
 
 <template>
@@ -175,6 +245,87 @@ onMounted(load);
                     Excluir
                   </button>
                 </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div v-if="justCreatedToken" class="callout mb-16" style="margin-top: 16px">
+      <strong>Token "{{ justCreatedToken.apiToken.name }}" criado</strong>
+      <p class="hint" style="margin: 4px 0 8px">Copie agora — ele não aparece de novo depois de sair desta tela.</p>
+      <div class="btn-row">
+        <pre class="callout-code" style="margin: 0; flex: 1">{{ justCreatedToken.token }}</pre>
+        <button type="button" class="btn btn-secondary btn-sm" @click="copyToken">
+          <span class="material-symbols-outlined" style="font-size: 16px">{{ tokenCopied ? "check" : "content_copy" }}</span>
+          {{ tokenCopied ? "Copiado" : "Copiar" }}
+        </button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">vpn_key</span>
+        Tokens de API
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" @click="openTokenForm">
+          <span class="material-symbols-outlined" style="font-size: 16px">add</span>
+          Novo token
+        </button>
+      </div>
+
+      <div v-if="tokenFormOpen" class="card-body" style="border-bottom: 1px solid var(--border)">
+        <form @submit.prevent="submitToken">
+          <div class="form-row mb-16">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="token-name">Nome</label>
+              <input id="token-name" v-model="tokenForm.name" class="form-control" placeholder="ci-deploy" required />
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="token-perm">Permissão</label>
+              <select id="token-perm" v-model="tokenForm.permission" class="form-control">
+                <option value="read">Só leitura</option>
+                <option value="full">Leitura e escrita (deploy, backup)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="token-exp">Expira em (dias, opcional)</label>
+              <input id="token-exp" v-model="tokenForm.expiresInDays" type="number" min="1" class="form-control" placeholder="sem expiração" />
+            </div>
+          </div>
+          <p class="hint mb-16">
+            Usado pela API de CI/CD (<span class="mono">/teams/{{ teamId }}/ci/...</span>) — listar e disparar deploy/backup de aplicações e bancos, sem sessão de navegador.
+            "Só leitura" só consulta; "leitura e escrita" também dispara ações.
+          </p>
+          <div class="btn-row">
+            <button type="submit" class="btn" :disabled="tokenSubmitting">
+              <span class="material-symbols-outlined" style="font-size: 18px">check</span>
+              {{ tokenSubmitting ? "criando..." : "Criar token" }}
+            </button>
+            <button type="button" class="btn btn-secondary" @click="tokenFormOpen = false">Cancelar</button>
+          </div>
+        </form>
+      </div>
+
+      <div v-if="tokensLoading" class="card-body"><PageState loading /></div>
+      <div v-else-if="tokens.length === 0" class="card-body">
+        <div class="empty-state">Nenhum token ainda.</div>
+      </div>
+      <div v-else class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Prefixo</th><th>Permissão</th><th>Expira</th><th>Último uso</th><th></th></tr></thead>
+          <tbody>
+            <tr v-for="token in tokens" :key="token.id">
+              <td>{{ token.name }}</td>
+              <td class="mono">{{ token.tokenPrefix }}…</td>
+              <td>{{ token.permission === "full" ? "Leitura e escrita" : "Só leitura" }}</td>
+              <td>{{ token.expiresAt ? new Date(token.expiresAt).toLocaleDateString("pt-BR") : "nunca" }}</td>
+              <td>{{ token.lastUsedAt ? new Date(token.lastUsedAt).toLocaleString("pt-BR") : "nunca" }}</td>
+              <td>
+                <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteToken(token)">
+                  <span class="material-symbols-outlined" style="font-size: 16px">delete</span>
+                  Revogar
+                </button>
               </td>
             </tr>
           </tbody>

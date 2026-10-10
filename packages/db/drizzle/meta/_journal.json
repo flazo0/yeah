@@ -309,6 +309,13 @@
       "when": 1791603298479,
       "tag": "0043_traffic_analytics",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791604278570,
+      "tag": "0044_api_tokens",
+      "breakpoints": true
     }
   ]
 }

@@ -159,12 +159,13 @@ Invisível pro usuário final, mas reduz risco de bug de longo prazo. Cada item 
 
 ## Fase 7 — API, CLI e automação
 
-- [ ] **Tokens de API pessoais** com escopo (time + permissões), criados em Keys & Tokens.
-- [ ] Expiração de token com aviso antecipado.
-- [ ] API REST versionada (`/api/v1`) cobrindo aplicações, bancos, serviços, servidores, deploys, projetos, notificações, storages, tarefas agendadas.
+- [x] **Tokens de API pessoais** com escopo (time + permissões), criados em Keys & Tokens: `api_tokens` (migração 0044) guarda só um hash sha256 (`yeah_<64 hex>`, mesmo esquema dos tokens de deploy webhook) + um prefixo de 12 caracteres pra identificar na lista — o token bruto só existe na resposta de criação. Escopo = um time + uma permissão (`read` ou `full`); não é ACL por recurso (o app é single-admin de propósito, não precisa de mais granularidade que isso). **Decisão de design**: em vez de encaixar autenticação por Bearer token em cada uma das ~20 rotas já existentes (sessão por cookie) — risco alto de regressão numa área que já funciona, sem como testar contra infraestrutura real —, criei uma API **separada e pequena**, só pra CI/CD: `GET/POST /teams/:teamId/ci/{applications,databases,services}` (listar; disparar deploy de app ou backup de banco). O blast radius de um erro aqui fica contido a essa meia dúzia de rotas novas, não ao painel inteiro.
+- [x] Expiração de token com aviso antecipado: `expiresAt` opcional na criação (1 a 3650 dias) + job diário `api-token-expiry` que avisa (mesmo sistema de notificações, evento novo `api-token.expiring`) quando faltam 7 dias ou menos, uma vez só por token (`expiryWarningSentAt`).
+- [ ] API REST versionada (`/api/v1`) cobrindo aplicações, bancos, serviços, servidores, deploys, projetos, notificações, storages, tarefas agendadas. *(A API de CI acima não substitui isso — é deliberadamente pequena; esse item continua em aberto.)*
 - [ ] Documentação OpenAPI + **Swagger UI ao vivo** (`/swagger`).
-- [ ] Allowlist de IP e rate limit documentado (headers + retry) na API.
-- [ ] **CLI oficial** (`yeah`): cliente fino sobre a API, contexto = URL + token; deploy, criar/listar recursos, backup — pensado pra CI/CD.
+- [x] Rate limit na API de CI: as rotas novas caem na regra `WRITE_RULE` já existente (qualquer POST/PUT/PATCH/DELETE, 120/min) sem precisar de código novo — `ruleFor()` em `apps/api/src/lib/rateLimit.ts` é por método HTTP, não por path. Leituras (`GET`) continuam sem limite, igual o resto da API hoje; não é uma lacuna nova, é o padrão já estabelecido (um token de 256 bits não é força-bruta-ável por rate limit de qualquer forma).
+- [ ] Allowlist de IP e rate limit **documentado** (headers + retry) na API. *(O rate limit em si já existe desde a Fase 0; falta só documentar os headers de resposta — `retry-after` — e a allowlist de IP continua sem existir.)*
+- [ ] **CLI oficial** (`yeah`): cliente fino sobre a API, contexto = URL + token; deploy, criar/listar recursos, backup — pensado pra CI/CD. *(A API de CI acima é exatamente a base que esse CLI consumiria — ainda falta o binário/cliente em si.)*
 - [ ] **Servidor MCP** (`/mcp`, HTTP) com Tools, Resources (read-only) e Prompts (ex.: "debugar esse deploy"), modo read-only opcional, sem contornar escopo/redação de segredos.
 - [ ] Mover recurso entre ambientes via API.
 - [ ] Toggle "MCP server" nas configurações do time.

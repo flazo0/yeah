@@ -90,6 +90,21 @@ export interface SshKeyDto {
   createdAt: string;
 }
 
+export type ApiTokenPermission = "read" | "full";
+
+/** A personal API token for the CI-only surface (see routes/ci.ts) — the raw value is only ever in the create response. */
+export interface ApiTokenDto {
+  id: string;
+  teamId: string;
+  name: string;
+  /** First 12 characters of the raw token, kept so the list screen can help tell tokens apart. */
+  tokenPrefix: string;
+  permission: ApiTokenPermission;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  createdAt: string;
+}
+
 export interface ProjectDto {
   id: string;
   teamId: string;
@@ -470,7 +485,8 @@ export type NotificationEventType =
   | "server.reconnected"
   | "server.metrics"
   | "tls.expiring"
-  | "docker-cleanup.failed";
+  | "docker-cleanup.failed"
+  | "api-token.expiring";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -482,6 +498,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "server.metrics": "CPU/RAM/disco no limite",
   "tls.expiring": "Certificado TLS perto de expirar",
   "docker-cleanup.failed": "Limpeza do Docker falhou",
+  "api-token.expiring": "Token de API perto de expirar",
 };
 
 export interface NotificationChannelDto {

@@ -25,3 +25,4 @@ export * from "./logDrains";
 export * from "./caCertificates";
 export * from "./metricSamples";
 export * from "./trafficSamples";
+export * from "./apiTokens";

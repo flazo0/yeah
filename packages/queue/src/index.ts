@@ -21,6 +21,7 @@ export const LOG_RETENTION_QUEUE = "log-retention";
 export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
 export const TRAFFIC_ANALYTICS_QUEUE = "traffic-analytics";
 export const APPLICATION_ROUTING_QUEUE = "application-routing";
+export const API_TOKEN_EXPIRY_QUEUE = "api-token-expiry";
 export const SERVER_EVENTS_CHANNEL = "server-events";
 /** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
 export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
@@ -30,6 +31,8 @@ export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
 export const LOG_RETENTION_SCHEDULER_ID = "system-log-retention";
 /** Fixed id for the single system-wide repeatable job that ticks the traffic-analytics poll. */
 export const TRAFFIC_ANALYTICS_SCHEDULER_ID = "system-traffic-analytics";
+/** Fixed id for the single system-wide repeatable job that ticks the api-token expiry check. */
+export const API_TOKEN_EXPIRY_SCHEDULER_ID = "system-api-token-expiry";
 
 export interface ServerCheckJobData {
   serverId: string;
@@ -365,6 +368,22 @@ export function createApplicationRoutingQueue(connection: Redis): Queue<Applicat
 
 export function createApplicationRoutingWorker(connection: Redis, processor: Processor<ApplicationRoutingJobData>): Worker<ApplicationRoutingJobData> {
   return new Worker<ApplicationRoutingJobData>(APPLICATION_ROUTING_QUEUE, processor, { connection });
+}
+
+/** Tick job, no per-run data — see apps/worker/src/jobs/apiTokenExpiry.ts. */
+export type ApiTokenExpiryJobData = Record<string, never>;
+
+export function createApiTokenExpiryQueue(connection: Redis): Queue<ApiTokenExpiryJobData> {
+  return new Queue<ApiTokenExpiryJobData>(API_TOKEN_EXPIRY_QUEUE, { connection });
+}
+
+export function createApiTokenExpiryWorker(connection: Redis, processor: Processor<ApiTokenExpiryJobData>): Worker<ApiTokenExpiryJobData> {
+  return new Worker<ApiTokenExpiryJobData>(API_TOKEN_EXPIRY_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Once a day, same cadence as the TLS expiry check. */
+export async function ensureApiTokenExpiryScheduler(queue: Queue<ApiTokenExpiryJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(API_TOKEN_EXPIRY_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {
