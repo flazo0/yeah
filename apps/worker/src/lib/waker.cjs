@@ -111,7 +111,7 @@ async function waitForPort(target) {
   const deadline = Date.now() + WAKE_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (await canConnect(target)) return;
-    await new Promise((r) => setTimeout(r, 100));
+    await new Promise((r) => setTimeout(r, 40));
   }
   throw new Error("the app did not accept connections in time");
 }

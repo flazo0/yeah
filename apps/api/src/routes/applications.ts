@@ -503,7 +503,7 @@ export const applicationRoutes = new Elysia({
 
       const [updated] = await db
         .update(applications)
-        .set({ domain: domain || null, extraDomains, wwwRedirect: domain ? wwwRedirect : "none" })
+        .set({ domain: domain || null, extraDomains, wwwRedirect: domain ? wwwRedirect : "none", ...(domain ? {} : { sleepAfterMinutes: null }) })
         .where(eq(applications.id, params.applicationId))
         .returning();
       if (!updated) {
@@ -583,7 +583,11 @@ export const applicationRoutes = new Elysia({
       if (minutes !== null) {
         if (!Number.isInteger(minutes) || minutes < MIN_SLEEP_MINUTES || minutes > MAX_SLEEP_MINUTES) {
           set.status = 400;
-          return { error: `informe de ${MIN_SLEEP_MINUTES} a ${MAX_SLEEP_MINUTES} minutos` };
+          return { error: `informe de ${MIN_SLEEP_MINUTES} minuto a ${MAX_SLEEP_MINUTES / 1440} dias` };
+        }
+        if (!row.application.domain) {
+          set.status = 400;
+          return { error: "dormir quando ocioso só funciona em aplicações com domínio" };
         }
         if (row.application.buildPack === "docker_compose") {
           set.status = 400;

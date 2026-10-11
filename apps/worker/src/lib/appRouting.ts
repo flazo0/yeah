@@ -20,7 +20,7 @@ async function run(conn: Client, command: string): Promise<void> {
 export async function writeAppRouting(conn: Client, application: Application, containerName: string, domain: string | null): Promise<void> {
   const dynamicPath = `${PROXY_DIR}/dynamic/${containerName}.yml`;
   if (!domain) {
-    await execStream(conn, `rm -f ${shellQuote(dynamicPath)} ${shellQuote(wakeConfigPath(containerName))}`, () => undefined);
+    await execStream(conn, `rm -f ${shellQuote(dynamicPath)} ${shellQuote(wakeConfigPath(containerName))}; docker start ${shellQuote(containerName)} >/dev/null 2>&1 || true`, () => undefined);
     return;
   }
   const routing = computeRouting(domain, application.extraDomains, application.wwwRedirect);

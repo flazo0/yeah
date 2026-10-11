@@ -7,20 +7,25 @@ const props = defineProps<{ sleepAfterMinutes: number | null; hasDomain: boolean
 const emit = defineEmits<{ saved: [number | null]; error: [string] }>();
 
 const enabled = ref(false);
-const minutes = ref(10);
+const amount = ref(15);
+const unit = ref<"min" | "h" | "d">("min");
+const FACTOR = { min: 1, h: 60, d: 1440 } as const;
 const saving = ref(false);
 const saved = ref(false);
 
 watchEffect(() => {
   enabled.value = props.sleepAfterMinutes !== null;
-  minutes.value = props.sleepAfterMinutes ?? 10;
+  const total = props.sleepAfterMinutes ?? 15;
+  if (total % 1440 === 0) { unit.value = "d"; amount.value = total / 1440; }
+  else if (total % 60 === 0) { unit.value = "h"; amount.value = total / 60; }
+  else { unit.value = "min"; amount.value = total; }
 });
 
 async function save() {
   saving.value = true;
   saved.value = false;
   try {
-    const value = enabled.value ? Math.round(minutes.value) : null;
+    const value = enabled.value ? Math.round(amount.value * FACTOR[unit.value]) : null;
     await api.put(props.putUrl, { sleepAfterMinutes: value });
     emit("saved", value);
     saved.value = true;
@@ -47,9 +52,19 @@ async function save() {
         {{ $t("appSleepCard.ativar") }}
       </label>
     </div>
-    <div v-if="enabled" class="form-group">
-      <label for="app-sleep-minutes">{{ $t("appSleepCard.minutos") }}</label>
-      <input id="app-sleep-minutes" v-model.number="minutes" type="number" min="1" max="10080" class="form-control" />
+    <div v-if="enabled" class="form-row mb-16">
+      <div class="form-group" style="margin-bottom: 0">
+        <label for="app-sleep-amount">{{ $t("appSleepCard.minutos") }}</label>
+        <input id="app-sleep-amount" v-model.number="amount" type="number" min="1" class="form-control" />
+      </div>
+      <div class="form-group" style="margin-bottom: 0">
+        <label for="app-sleep-unit">{{ $t("appSleepCard.unidade") }}</label>
+        <select id="app-sleep-unit" v-model="unit" class="form-control">
+          <option value="min">{{ $t("appSleepCard.min") }}</option>
+          <option value="h">{{ $t("appSleepCard.horas") }}</option>
+          <option value="d">{{ $t("appSleepCard.dias") }}</option>
+        </select>
+      </div>
     </div>
     <div class="btn-row">
       <button type="button" class="btn btn-secondary" :disabled="saving || !hasDomain" @click="save">

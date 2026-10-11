@@ -18,7 +18,7 @@ export const WAKER_CONTAINER_NAME = "yeah-waker";
 export const WAKER_PORT = 8080;
 /** Bounds (minutes of idle time) the API accepts for an app's sleep setting. */
 export const MIN_SLEEP_MINUTES = 1;
-export const MAX_SLEEP_MINUTES = 10080;
+export const MAX_SLEEP_MINUTES = 43200;
 
 /** `docker restart` for the proxy's own container. */
 export function buildProxyRestartCommand(): string {
