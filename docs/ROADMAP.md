@@ -451,7 +451,7 @@ O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 
 - [ ] **Ocultar valores de variáveis nos logs** (redação de segredos) como opção por recurso.
 - [ ] **Pular o build do compose quando as imagens não mudaram**; **drain seconds** no rolling update.
 - [x] **Ocultar valores de variáveis nos logs de deploy** (opcional por app, aba Avançado): valores com 6+ caracteres viram `***` no log gravado e transmitido (migração 0056); valores curtos como `true`/`3000` não são mascarados. Testado em unidade; **não cobre os logs de runtime** (`docker logs`). Pendente ainda: diretivas somente-build/runtime já existem no editor de variáveis; falta o botão "restaurar variáveis padrão".
-- [ ] **Restaurar variáveis padrão** de um template/serviço com um clique.
+- [x] **Restaurar variáveis do template** (botão na aba de variáveis do serviço): acrescenta as variáveis do template que faltam (com segredos novos só para as geradas), sem tocar nas existentes. Testado em unidade (`addMissingTemplateEnv`); rota não exercitada contra banco real.
 - [ ] **Explorador de arquivos** dos volumes de aplicação/serviço/banco no painel.
 - [ ] **Listar imagens Docker de deploys recentes para rollback** (hoje o rollback usa o histórico do yeah).
 - [ ] **API de previews**: listar/consultar/abrir deploys de preview e ver seus logs de runtime.

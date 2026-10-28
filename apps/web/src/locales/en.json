@@ -1655,7 +1655,12 @@
     "variaveisDeAmbiente": "Environment variables",
     "salvando": "saving...",
     "salvoReimplantePraAplicar": "saved — redeploy to apply",
-    "falhaAoSalvarVariaveis": "failed to save variables"
+    "falhaAoSalvarVariaveis": "failed to save variables",
+    "restaurar": "Restore template variables",
+    "restaurarDica": "Adds the template variables that are missing, without touching existing ones",
+    "restauradas": "Added: {vars}. Redeploy to apply.",
+    "nadaAFazer": "No template variable is missing.",
+    "falhaAoRestaurar": "failed to restore the variables"
   },
   "serviceGeneral": {
     "geral": "General",

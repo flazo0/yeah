@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { readdirSync } from "node:fs";
-import { generateSecret, loadTemplates, parseTemplate, renderTemplateEnv, TEMPLATES_DIR } from "./templates";
+import { addMissingTemplateEnv, generateSecret, loadTemplates, parseTemplate, renderTemplateEnv, TEMPLATES_DIR } from "./templates";
 
 describe("the shipped templates", () => {
   const files = readdirSync(TEMPLATES_DIR).filter((f) => f.endsWith(".yml"));
@@ -78,5 +78,23 @@ describe("the extra secret kinds used by imported templates", () => {
     const withLogo = loadTemplates().filter((t) => t.logo);
     expect(withLogo.length).toBeGreaterThan(100);
     for (const t of withLogo) expect(existsSync(join(logos, t.logo!))).toBe(true);
+  });
+});
+
+describe("addMissingTemplateEnv", () => {
+  const template = { env: { A: "1", SECRET: "$generate:password", B: "x" } } as unknown as Parameters<typeof addMissingTemplateEnv>[0];
+  const bytes = (n: number) => Buffer.alloc(n, 1);
+
+  test("appends only the missing variables and leaves existing lines alone", () => {
+    const r = addMissingTemplateEnv(template, "A=custom\nEXTRA=keep", bytes);
+    expect(r.added).toEqual(["SECRET", "B"]);
+    expect(r.envContent.startsWith("A=custom\nEXTRA=keep\n")).toBe(true);
+    expect(r.envContent).toContain("B=x\n");
+    expect(r.envContent).toMatch(/SECRET=\S+/);
+  });
+
+  test("nothing missing, nothing changed", () => {
+    const content = "A=1\nSECRET=abc\nB=x\n";
+    expect(addMissingTemplateEnv(template, content, bytes)).toEqual({ envContent: content, added: [] });
   });
 });

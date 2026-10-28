@@ -15,6 +15,24 @@ watchEffect(() => {
   if (service.value) envContent.value = service.value.envContent;
 });
 
+const restoring = ref(false);
+const restoreMessage = ref("");
+
+async function restoreDefaults() {
+  restoring.value = true;
+  restoreMessage.value = "";
+  error.value = "";
+  try {
+    const res = await api.post<{ service: typeof service.value; added: string[] }>(`${basePath}/env/restore-defaults`, {});
+    if (res.service) service.value = res.service;
+    restoreMessage.value = res.added.length ? i18n.global.t("serviceEnv.restauradas", { vars: res.added.join(", ") }) : i18n.global.t("serviceEnv.nadaAFazer");
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceEnv.falhaAoRestaurar");
+  } finally {
+    restoring.value = false;
+  }
+}
+
 async function saveEnv() {
   savingEnv.value = true;
   envSaved.value = false;
@@ -44,6 +62,11 @@ async function saveEnv() {
           <span class="material-symbols-outlined" style="font-size: 18px">save</span>
           {{ savingEnv ? $t("serviceEnv.salvando") : "Salvar" }}
         </button>
+        <button v-if="service?.templateKey" type="button" class="btn btn-secondary" :disabled="restoring" :title="$t('serviceEnv.restaurarDica')" @click="restoreDefaults">
+          <span class="material-symbols-outlined" style="font-size: 18px">restart_alt</span>
+          {{ $t("serviceEnv.restaurar") }}
+        </button>
+        <span v-if="restoreMessage" class="muted" style="align-self: center; font-size: 13px">{{ restoreMessage }}</span>
         <span v-if="envSaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("serviceEnv.salvoReimplantePraAplicar") }}</span>
       </div>
     </div>

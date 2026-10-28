@@ -1655,7 +1655,12 @@
     "variaveisDeAmbiente": "Variáveis de ambiente",
     "salvando": "salvando...",
     "salvoReimplantePraAplicar": "salvo — reimplante pra aplicar",
-    "falhaAoSalvarVariaveis": "falha ao salvar variáveis"
+    "falhaAoSalvarVariaveis": "falha ao salvar variáveis",
+    "restaurar": "Restaurar variáveis do template",
+    "restaurarDica": "Adiciona as variáveis do template que faltam, sem mexer nas que já existem",
+    "restauradas": "Adicionadas: {vars}. Salve e reimplante para aplicar.",
+    "nadaAFazer": "Nenhuma variável do template está faltando.",
+    "falhaAoRestaurar": "falha ao restaurar as variáveis"
   },
   "serviceGeneral": {
     "geral": "Geral",

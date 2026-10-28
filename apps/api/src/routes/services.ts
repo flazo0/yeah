@@ -12,7 +12,7 @@ import { overloadReason } from "../lib/serverLoad";
 import { loadEnvironment } from "../lib/projects";
 import { serviceProvisionQueue } from "../lib/queue";
 import { claimedHosts } from "../lib/hosts";
-import { findTemplate, renderTemplateEnv } from "../lib/templates";
+import { addMissingTemplateEnv, findTemplate, renderTemplateEnv } from "../lib/templates";
 import { syncDomainEnv } from "../lib/serviceDomainEnv";
 
 function toServiceDto(service: Service, serverName: string): ServiceDto {
@@ -274,6 +274,38 @@ export const serviceRoutes = new Elysia({
       return { service: toServiceDto(updated, row.serverName) };
     },
     { body: t.Object({ envContent: t.String() }) },
+  )
+  .post(
+    "/:serviceId/env/restore-defaults",
+    async ({ cookie, params, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadService(params.environmentId, params.serviceId);
+      if (!row) {
+        set.status = 404;
+        return { error: "service not found" };
+      }
+      const template = row.service.templateKey ? findTemplate(row.service.templateKey) : undefined;
+      if (!template) {
+        set.status = 400;
+        return { error: "este serviço não veio de um template do catálogo" };
+      }
+      const result = addMissingTemplateEnv(template, row.service.envContent);
+      if (!result.added.length) return { service: toServiceDto(row.service, row.serverName), added: [] as string[] };
+      const [updated] = await db.update(services).set({ envContent: result.envContent }).where(eq(services.id, params.serviceId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update environment" };
+      }
+      return { service: toServiceDto(updated, row.serverName), added: result.added };
+    },
   )
   .put(
     "/:serviceId/domain",

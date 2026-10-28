@@ -129,6 +129,26 @@ export function renderTemplateEnv(template: ServiceTemplate, bytes?: (n: number)
   return lines.length ? `${lines.join("\n")}\n` : "";
 }
 
+/**
+ * "Restore default variables": appends the template variables the service no longer has (with fresh secrets
+ * for generated ones). Existing lines are never touched, so values the user set — or secrets already in use —
+ * survive.
+ */
+export function addMissingTemplateEnv(template: ServiceTemplate, envContent: string, bytes?: (n: number) => Buffer): { envContent: string; added: string[] } {
+  const present = new Set(envContent.split(/\r?\n/).map((line) => /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line)?.[1]).filter((k): k is string => Boolean(k)));
+  const added: string[] = [];
+  const lines: string[] = [];
+  for (const [k, v] of Object.entries(template.env)) {
+    if (present.has(k)) continue;
+    const m = /^\$generate:(\w+)$/.exec(v);
+    lines.push(`${k}=${m ? generateSecret(m[1]!, bytes) : v}`);
+    added.push(k);
+  }
+  if (!added.length) return { envContent, added };
+  const base = envContent === "" || envContent.endsWith("\n") ? envContent : `${envContent}\n`;
+  return { envContent: `${base}${lines.join("\n")}\n`, added };
+}
+
 export function toTemplateDto(t: ServiceTemplate): ServiceTemplateDto {
   const { compose: _c, env: _e, port: _p, ...dto } = t;
   void [_c, _e, _p];
