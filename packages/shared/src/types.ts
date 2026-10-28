@@ -519,7 +519,8 @@ export type NotificationEventType =
   | "backup.success"
   | "task.success"
   | "docker-cleanup.success"
-  | "server.patches";
+  | "server.patches"
+  | "container.unhealthy";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -536,6 +537,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "task.success": "Tarefa agendada concluída",
   "docker-cleanup.success": "Limpeza do Docker concluída",
   "server.patches": "Atualizações de segurança pendentes no servidor",
+  "container.unhealthy": "Container reiniciando sem parar ou sem memória",
 };
 
 /**

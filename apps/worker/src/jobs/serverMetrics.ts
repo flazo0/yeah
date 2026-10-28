@@ -1,7 +1,7 @@
-import { and, eq, isNull, lt, ne } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { applications, containerMetricSamples, databases, serverMetricSamples, servers, services, type Server } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
-import { allContainerStatsCommand, parseDockerStats } from "@yeah/shared";
+import { allContainerStatsCommand, containerWatchCommand, detectContainerProblems, parseContainerWatch, parseDockerStats } from "@yeah/shared";
 import { createDockerCleanupQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import type { Queue } from "bullmq";
@@ -10,6 +10,7 @@ import type Redis from "ioredis";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
 import { CircuitBreaker } from "../lib/circuitBreaker";
+import { Throttle } from "../lib/throttle";
 import { crossedThreshold, METRICS_COMMAND, parseMetrics } from "./serverMetrics.commands";
 
 // How long a sample sticks around for the "últimas 24h/7d" charts before the next tick prunes it.
@@ -24,6 +25,11 @@ const DISK_THRESHOLD = 85;
 // A dead server is polled every 60s; after 5 straight failures back off (5min, 10min... up to 30min)
 // instead of retrying and logging forever.
 const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, maxCooldownMs: 30 * 60_000 });
+
+// Flapping thresholds / crash loops must not flood the channels: one alert per condition per hour per server.
+const alertThrottle = new Throttle(60 * 60 * 1000);
+// Last restart count seen per container, per server — a crash loop is a *change* in the count.
+const restartCounts = new Map<string, Map<string, number>>();
 
 // Set by makeServerMetricsProcessor: lets a disk that just filled up trigger the cleanup right away
 // (the daily schedule would otherwise leave it full until 04:00).
@@ -54,12 +60,16 @@ async function checkOne(server: Server, publishConnection: Redis) {
 
     let output = "";
     let containerOutput = "";
+    let watchOutput = "";
     try {
       await execStream(conn, METRICS_COMMAND, (chunk) => {
         output += chunk;
       });
       await execStream(conn, allContainerStatsCommand(), (chunk) => {
         containerOutput += chunk;
+      });
+      await execStream(conn, containerWatchCommand(), (chunk) => {
+        watchOutput += chunk;
       });
     } finally {
       conn.end();
@@ -94,14 +104,15 @@ async function checkOne(server: Server, publishConnection: Redis) {
     });
 
     await recordHistory(server, metrics, containerOutput);
+    await watchContainers(server, watchOutput);
 
-    if (crossedThreshold(server.cpuPercent, metrics.cpu, CPU_THRESHOLD)) {
+    if (crossedThreshold(server.cpuPercent, metrics.cpu, CPU_THRESHOLD) && alertThrottle.allow(`${server.id}:cpu`)) {
       await notifyTeam(server.teamId, "server.metrics", `CPU alta em ${server.name}`, `CPU em ${metrics.cpu}% (limiar: ${CPU_THRESHOLD}%).`, "warning");
     }
-    if (crossedThreshold(server.memPercent, metrics.mem, MEM_THRESHOLD)) {
+    if (crossedThreshold(server.memPercent, metrics.mem, MEM_THRESHOLD) && alertThrottle.allow(`${server.id}:mem`)) {
       await notifyTeam(server.teamId, "server.metrics", `Memória alta em ${server.name}`, `RAM em ${metrics.mem}% (limiar: ${MEM_THRESHOLD}%) — novos deploys/provisionamentos podem falhar por falta de memória.`, "warning");
     }
-    if (crossedThreshold(server.diskPercent, metrics.disk, DISK_THRESHOLD)) {
+    if (crossedThreshold(server.diskPercent, metrics.disk, DISK_THRESHOLD) && alertThrottle.allow(`${server.id}:disk`)) {
       await notifyTeam(server.teamId, "server.metrics", `Disco cheio em ${server.name}`, `Disco em ${metrics.disk}% (limiar: ${DISK_THRESHOLD}%) — rodando a limpeza automática agora (se estiver ligada); considere também limpar imagens/volumes não usados.`, "error");
       // Not a "manual" job on purpose: a server whose owner turned the cleanup off stays untouched.
       await cleanupQueue?.add("cleanup", { serverId: server.id, manual: false });
@@ -114,6 +125,27 @@ async function checkOne(server: Server, publishConnection: Redis) {
     if (breaker.recordFailure(server.id) === "opened") {
       console.warn(`[worker] server-metrics: ${server.name} (${server.id}) failed 5 times in a row — backing off polling (5min, doubling up to 30min) until it answers`);
     }
+  }
+}
+
+/** Alerts about crash-looping or OOM-killed containers (apps put to sleep on purpose are ignored). */
+async function watchContainers(server: Server, watchOutput: string): Promise<void> {
+  try {
+    const rows = parseContainerWatch(watchOutput);
+    if (rows.length === 0) return;
+    let previous = restartCounts.get(server.id);
+    if (!previous) {
+      previous = new Map();
+      restartCounts.set(server.id, previous);
+    }
+    const sleeping = await db.select({ id: applications.id }).from(applications).where(and(eq(applications.serverId, server.id), isNotNull(applications.sleepAfterMinutes)));
+    const ignore = new Set(sleeping.map((a) => `yeah-app-${a.id}`));
+    for (const problem of detectContainerProblems(previous, rows, ignore)) {
+      if (!alertThrottle.allow(`${server.id}:container:${problem.name}`)) continue;
+      await notifyTeam(server.teamId, "container.unhealthy", `Container com problema em ${server.name}`, `${problem.name}: ${problem.detail}.`, "error");
+    }
+  } catch (err) {
+    console.warn(`[worker] server-metrics: container watch failed for ${server.id}:`, err instanceof Error ? err.message : err);
   }
 }
 
