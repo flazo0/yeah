@@ -439,7 +439,11 @@
     "falhaAoSalvar": "falha ao salvar",
     "falhaAoCarregarOsTokens": "falha ao carregar os tokens",
     "falhaAoCriarOToken": "falha ao criar o token",
-    "falhaAoExcluirOToken": "falha ao excluir o token"
+    "falhaAoExcluirOToken": "falha ao excluir o token",
+    "segurancaDoTime": "Segurança do time",
+    "exigir2fa": "Exigir autenticação em dois fatores (2FA) de todos os membros",
+    "exigir2faDica": "Quem não tiver o 2FA ligado perde o acesso aos dados do time até ligar (em Perfil). Você precisa ter o 2FA ligado para ativar isto.",
+    "semDoisFatores": "Ainda sem 2FA:"
   },
   "logDrains": {
     "logDrains": "Log Drains",

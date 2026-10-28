@@ -400,6 +400,13 @@
       "when": 1793201338432,
       "tag": "0056_redact_env_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793201450159,
+      "tag": "0057_team_require_2fa",
+      "breakpoints": true
     }
   ]
 }

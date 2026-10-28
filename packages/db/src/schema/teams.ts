@@ -9,6 +9,8 @@ export const teams = pgTable("teams", {
   description: text("description"),
   personal: boolean("personal").default(false).notNull(),
   mcpEnabled: boolean("mcp_enabled").default(false).notNull(),
+  // Members must have two-factor authentication on to use the team (enforced in the API's assertMember).
+  requireTwoFactor: boolean("require_two_factor").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

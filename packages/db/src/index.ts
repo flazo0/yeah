@@ -1,4 +1,4 @@
 export * from "./schema";
 export * from "./client";
-export { encryptSecret, decryptSecret, isEncrypted } from "./encryption";
-export { encryptExistingSecrets } from "./encryptExisting";
+export { encryptSecret, decryptSecret, isEncrypted, usesCurrentKey } from "./encryption";
+export { encryptExistingSecrets, reencryptSecrets } from "./encryptExisting";

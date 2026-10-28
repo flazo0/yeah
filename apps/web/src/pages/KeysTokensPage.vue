@@ -92,6 +92,28 @@ const tokenSubmitting = ref(false);
 const justCreatedToken = ref<{ token: string; apiToken: ApiTokenDto } | null>(null);
 const tokenCopied = ref(false);
 
+const security = ref<{ requireTwoFactor: boolean; membersWithoutTwoFactor: string[]; youHaveTwoFactor: boolean } | null>(null);
+
+async function loadSecurity() {
+  try {
+    security.value = await api.get(`/teams/${teamId}/security`);
+  } catch {
+    /* the card just stays hidden */
+  }
+}
+
+async function toggleRequireTwoFactor() {
+  if (!security.value) return;
+  const next = !security.value.requireTwoFactor;
+  try {
+    await api.put(`/teams/${teamId}/security`, { requireTwoFactor: next });
+    await loadSecurity();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("keysTokens.falhaAoSalvar");
+    await loadSecurity();
+  }
+}
+
 const mcpEnabled = ref(false);
 
 async function loadMcp() {
@@ -173,6 +195,7 @@ async function deleteToken(token: ApiTokenDto) {
 onMounted(() => {
   void loadTokens();
   void loadMcp();
+  void loadSecurity();
 });
 </script>
 
@@ -285,6 +308,23 @@ onMounted(() => {
           <span class="material-symbols-outlined" style="font-size: 16px">{{ tokenCopied ? "check" : "content_copy" }}</span>
           {{ tokenCopied ? $t('common.copied') : $t('common.copy') }}
         </button>
+      </div>
+    </div>
+
+    <div v-if="security" class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">verified_user</span>
+        {{ $t("keysTokens.segurancaDoTime") }}
+      </div>
+      <div class="card-body">
+        <label style="display: flex; gap: 8px; align-items: center">
+          <input id="require-2fa" type="checkbox" :checked="security.requireTwoFactor" @change="toggleRequireTwoFactor" />
+          {{ $t("keysTokens.exigir2fa") }}
+        </label>
+        <p class="hint">{{ $t("keysTokens.exigir2faDica") }}</p>
+        <p v-if="security.membersWithoutTwoFactor.length" class="hint">
+          {{ $t("keysTokens.semDoisFatores") }} {{ security.membersWithoutTwoFactor.join(", ") }}
+        </p>
       </div>
     </div>
 

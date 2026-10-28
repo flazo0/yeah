@@ -51,6 +51,22 @@ export function isEncrypted(value: string): boolean {
   return value.startsWith(PREFIX);
 }
 
+/** True when the value is encrypted with the current key (not a previous one, not plaintext) — nothing to re-key. */
+export function usesCurrentKey(stored: string): boolean {
+  if (!isEncrypted(stored)) return false;
+  const raw = Buffer.from(stored.slice(PREFIX.length), "base64url");
+  if (raw.length < IV_BYTES + TAG_BYTES) return false;
+  try {
+    const decipher = createDecipheriv("aes-256-gcm", keyring().current, raw.subarray(0, IV_BYTES));
+    decipher.setAuthTag(raw.subarray(IV_BYTES, IV_BYTES + TAG_BYTES));
+    decipher.update(raw.subarray(IV_BYTES + TAG_BYTES));
+    decipher.final();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function encryptSecret(plaintext: string): string {
   const { current } = keyring();
   const iv = randomBytes(IV_BYTES);

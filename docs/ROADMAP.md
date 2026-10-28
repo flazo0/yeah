@@ -450,7 +450,8 @@ O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 
 - [ ] **Prefixo de nome de container** personalizável (nomes legíveis em vez de `yeah-app-<uuid>`).
 - [ ] **Ocultar valores de variáveis nos logs** (redação de segredos) como opção por recurso.
 - [ ] **Pular o build do compose quando as imagens não mudaram**; **drain seconds** no rolling update.
-- [ ] **Diretivas por variável** no editor de variáveis (somente build / somente runtime) e botão **"restaurar variáveis padrão"**.
+- [x] **Ocultar valores de variáveis nos logs de deploy** (opcional por app, aba Avançado): valores com 6+ caracteres viram `***` no log gravado e transmitido (migração 0056); valores curtos como `true`/`3000` não são mascarados. Testado em unidade; **não cobre os logs de runtime** (`docker logs`). Pendente ainda: diretivas somente-build/runtime já existem no editor de variáveis; falta o botão "restaurar variáveis padrão".
+- [ ] **Restaurar variáveis padrão** de um template/serviço com um clique.
 - [ ] **Explorador de arquivos** dos volumes de aplicação/serviço/banco no painel.
 - [ ] **Listar imagens Docker de deploys recentes para rollback** (hoje o rollback usa o histórico do yeah).
 - [ ] **API de previews**: listar/consultar/abrir deploys de preview e ver seus logs de runtime.
@@ -458,7 +459,7 @@ O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 
 **Novo no Coolify — bancos e segurança**
 - [ ] **SQLite como banco standalone** (arquivo em volume, backup agendado, restore, conectar a uma aplicação com 1 clique).
 - [ ] **Passkeys (WebAuthn)** no login, além do TOTP.
-- [ ] **Exigir 2FA** (opção do administrador) e **reencriptar segredos após rotação de chave**.
+- [x] **Exigir 2FA do time** (card "Segurança do time" em Keys & Tokens, só dono/admin; quem liga precisa já ter 2FA) e **reencriptar segredos após rotação de chave** (`bun run --cwd packages/db db:rekey`, idempotente, relata o que nenhuma chave decifra; a lista de colunas cifradas agora cobre todas — registries, chaves SSH, fontes Git, log drains, variáveis compartilhadas, TOTP, arquivos de volume, deploy key, Pushover, túnel). Exigência no `assertMember`: membro sem 2FA recebe 403 em tudo do time até ligar. Migração 0057. Testado: `usesCurrentKey` em unidade; **o `db:rekey` e o bloqueio por 2FA não foram rodados contra um Postgres real**. Limite: o 403 não diz o motivo (a tela só lista quem está sem 2FA para o dono).
 - [ ] **Integração com gerenciadores de segredos** (referências remotas resolvidas no deploy).
 - [ ] **Log drain CloudWatch** (Axiom já existe).
 

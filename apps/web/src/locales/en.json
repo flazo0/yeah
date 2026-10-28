@@ -439,7 +439,11 @@
     "falhaAoSalvar": "failed to save",
     "falhaAoCarregarOsTokens": "failed to load the tokens",
     "falhaAoCriarOToken": "failed to create the token",
-    "falhaAoExcluirOToken": "failed to delete the token"
+    "falhaAoExcluirOToken": "failed to delete the token",
+    "segurancaDoTime": "Team security",
+    "exigir2fa": "Require two-factor authentication (2FA) from every member",
+    "exigir2faDica": "Members without 2FA lose access to the team data until they turn it on (in Profile). You need 2FA on yourself to enable this.",
+    "semDoisFatores": "Still without 2FA:"
   },
   "logDrains": {
     "logDrains": "Log Drains",

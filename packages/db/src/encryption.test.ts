@@ -70,3 +70,26 @@ describe("secret encryption", () => {
     }
   });
 });
+
+describe("usesCurrentKey", () => {
+  test("true for a fresh ciphertext, false for plaintext and for ciphertext of a previous key", async () => {
+    const { encryptSecret, usesCurrentKey } = await import("./encryption");
+    const saved = { key: process.env.ENCRYPTION_KEY, prev: process.env.ENCRYPTION_KEY_PREVIOUS };
+    try {
+      process.env.ENCRYPTION_KEY = "old-key-for-test";
+      delete process.env.ENCRYPTION_KEY_PREVIOUS;
+      const old = encryptSecret("hello");
+      expect(usesCurrentKey(old)).toBe(true);
+      expect(usesCurrentKey("plain text")).toBe(false);
+      process.env.ENCRYPTION_KEY = "new-key-for-test";
+      process.env.ENCRYPTION_KEY_PREVIOUS = "old-key-for-test";
+      expect(usesCurrentKey(old)).toBe(false);
+      expect(usesCurrentKey(encryptSecret("hello"))).toBe(true);
+    } finally {
+      if (saved.key === undefined) delete process.env.ENCRYPTION_KEY;
+      else process.env.ENCRYPTION_KEY = saved.key;
+      if (saved.prev === undefined) delete process.env.ENCRYPTION_KEY_PREVIOUS;
+      else process.env.ENCRYPTION_KEY_PREVIOUS = saved.prev;
+    }
+  });
+});
