@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { services, servers } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ServiceProvisionJobData } from "@yeah/queue";
-import { composeLifecycleCommand, composeStackOverride, ensureNetworkCommand, environmentNetworkName, internalHostName, parseComposeStack, shellQuote, stackNetworkJoinCommand } from "@yeah/shared";
+import { composeLifecycleCommand, composeStackOverride, ensureNetworkCommand, environmentNetworkName, internalHostName, parseComposeStack, parseEnvContent, shellQuote, stackDirsCommand, stackFileWrites, stackNetworkJoinCommand } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -110,6 +110,15 @@ async function provisionStack(service: typeof services.$inferSelect, server: typ
     await run(`mkdir -p ${shellQuote(dir)}`, "preparando o diretório");
     await writeRemoteFile(conn, `${dir}/docker-compose.yml`, service.composeContent!);
     await writeRemoteFile(conn, `${dir}/.env`, service.envContent);
+    if (service.stackFiles) {
+      // Template config files (nginx.conf, init scripts…) the compose file bind-mounts from ./path.
+      const env = Object.fromEntries(parseEnvContent(service.envContent).map((e) => [e.key, e.value]));
+      await run(stackDirsCommand(dir, service.stackFiles), "criando as pastas dos arquivos de configuração");
+      for (const file of stackFileWrites(service.stackFiles, env)) {
+        await writeRemoteFile(conn, `${dir}/${file.path}`, file.content);
+        if (file.executable) await run(`chmod +x ${shellQuote(`${dir}/${file.path}`)}`, `permissão de execução em ${file.path}`);
+      }
+    }
     await writeRemoteFile(
       conn,
       `${dir}/${STACK_OVERRIDE_FILE}`,

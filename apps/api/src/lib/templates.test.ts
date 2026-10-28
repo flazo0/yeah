@@ -98,3 +98,18 @@ describe("addMissingTemplateEnv", () => {
     expect(addMissingTemplateEnv(template, content, bytes)).toEqual({ envContent: content, added: [] });
   });
 });
+
+describe("template config files", () => {
+  const withFiles = loadTemplates().filter((t) => Object.keys(t.stackFiles.files).length > 0 || t.stackFiles.dirs.length > 0);
+
+  test("the catalog ships templates with config files", () => {
+    expect(withFiles.length).toBeGreaterThan(20);
+  });
+
+  test("every file and folder the template ships is bind-mounted by its compose", () => {
+    for (const t of withFiles) {
+      const provided = new Set([...Object.keys(t.stackFiles.files), ...t.stackFiles.dirs]);
+      for (const path of provided) expect(t.compose, `${t.key}: ${path}`).toContain(`./${path}:`);
+    }
+  });
+});

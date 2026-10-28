@@ -1,0 +1,77 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Zep"
+description: "Zep enhances your AI agent's knowledge through continuous learning from user interactions, enabling personalized experiences and improved accuracy."
+icon: psychology
+logo: "zep.png"
+category: ai
+tags: ["lowcode", "nocode", "ai", "llm", "openai", "anthropic", "machine-learning", "rag"]
+docs: "https://help.getzep.com/concepts"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "nlp"
+port: 5557
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+  OPENAI_API_KEY: ""
+  SERVICE_PASSWORD_AUTHSECRET: "$generate:password"
+files:
+  "config.yaml": "llm:\n  # openai or anthropic\n  service: \"openai\"\n  # OpenAI: gpt-3.5-turbo, gpt-4, gpt-3.5-turbo-1106, gpt-3.5-turbo-16k, gpt-4-32k, gpt-4o-mini, gpt-4o-mini-2024-07-18; Anthropic: claude-instant-1 or claude-2\n  model: \"gpt-4o-mini\"\n  ## OpenAI-specific settings\n  # Only used for Azure OpenAI API\n  azure_openai_endpoint:\n  # for Azure OpenAI API deployment, the model may be deployed with custom deployment names\n  # set the deployment names if you encounter in logs HTTP 404 errors:\n  #   \"The API deployment for this resource does not exist.\"\n  azure_openai:\n  # llm.model name is used as deployment name as reasonable default if not set\n  # assuming base model is deployed with deployment name matching model name\n  #   llm_deployment: \"gpt-4o-mini-customname\"\n  # embeddings deployment is required when Zep is configured to use OpenAI embeddings\n  #   embedding_deployment: \"text-embedding-ada-002-customname\"\n  # Use only with an alternate OpenAI-compatible API endpoint\n    llm_deployment:\n    embedding_deployment:\n  openai_endpoint:\n  openai_org_id:\nnlp:\n  server_url: \"http://localhost:5557\"\nmemory:\n  message_window: 12\nextractors:\n  documents:\n    embeddings:\n      enabled: true\n      chunk_size: 1000\n      dimensions: 384\n      service: \"local\"\n#      dimensions: 1536\n#      service: \"openai\"\n  messages:\n    summarizer:\n      enabled: true\n      entities:\n        enabled: true\n      embeddings:\n        enabled: true\n        dimensions: 384\n        service: \"local\"\n    entities:\n      enabled: true\n    intent:\n      enabled: true\n    embeddings:\n      enabled: true\n      dimensions: 384\n      service: \"local\"\n#      dimensions: 1536\n#      service: \"openai\"\nstore:\n  type: \"postgres\"\n  postgres:\n    dsn: \"postgres://postgres:postgres@localhost:5432/?sslmode=disable\"\nserver:\n  # Specify the host to listen on. Defaults to 0.0.0.0\n  host: 0.0.0.0\n  port: 8000\n  # Is the Web UI enabled?\n  # Warning: The Web UI is not secured by authentication and should not be enabled if\n  # Zep is exposed to the public internet.\n  web_enabled: true\n  # The maximum size of a request body, in bytes. Defaults to 5MB.\n  max_request_size: 5242880\nauth:\n  # Set to true to enable authentication\n  required: true\n  # Do not use this secret in production. The ZEP_AUTH_SECRET environment variable should be\n  # set to a cryptographically secure secret. See the Zep docs for details.\n  secret: \"do-not-use-this-secret-in-production\"\ndata:\n  #  PurgeEvery is the period between hard deletes, in minutes.\n  #  If set to 0 or undefined, hard deletes will not be performed.\n  purge_every: 60\nlog:\n  level: \"info\"\nopentelemetry:\n  enabled: false\n# Custom Prompts Configuration\n# Allows customization of extractor prompts.\ncustom_prompts:\n  summarizer_prompts:\n    # Anthropic Guidelines:\n    # - Use XML-style tags like <current_summary> as element identifiers.\n    # - Include {{.PrevSummary}} and {{.MessagesJoined}} as template variables.\n    # - Clearly explain model instructions, e.g., \"Review content inside <current_summary></current_summary> tags\".\n    # - Provide a clear example within the prompt.\n    #\n    # Example format:\n    # anthropic: |\n    #   <YOUR INSTRUCTIONS HERE>\n    #   <example>\n    #     <PROVIDE AN EXAMPLE>\n    #   </example>\n    #   <current_summary>{{.PrevSummary}}</current_summary>\n    #   <new_lines>{{.MessagesJoined}}</new_lines>\n    #   Response without preamble.\n    #\n    # If left empty, the default Anthropic summary prompt from zep/pkg/extractors/prompts.go will be used.\n    anthropic: |\n\n    # OpenAI summarizer prompt configuration.\n    # Guidelines:\n    # - Include {{.PrevSummary}} and {{.MessagesJoined}} as template variables.\n    # - Provide a clear example within the prompt.\n    #\n    # Example format:\n    # openai: |\n    #   <YOUR INSTRUCTIONS HERE>\n    #   Example:\n    #     <PROVIDE AN EXAMPLE>\n    #   Current summary: {{.PrevSummary}}\n    #   New lines of conversation: {{.MessagesJoined}}\n    #   New summary:`\n    #\n    # If left empty, the default OpenAI summary prompt from zep/pkg/extractors/prompts.go will be used.\n    openai: |\n"
+compose: |
+  services:
+    postgres:
+      image: ghcr.io/getzep/postgres:postgres-15
+      shm_size: 128mb
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      volumes:
+        - pg_data:/var/lib/postgresql/data
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "pg_isready -h localhost -U $${POSTGRES_USER} -d postgres"
+        interval: 5s
+        timeout: 5s
+        retries: 5
+    nlp:
+      image: ghcr.io/getzep/zep-nlp-server:0.4
+      environment:
+        - ZEP_OPENAI_API_KEY=${OPENAI_API_KEY}
+        - ZEP_AUTH_SECRET=${SERVICE_PASSWORD_AUTHSECRET}
+        - ZEP_SERVER_WEB_ENABLED=${ZEP_SERVER_WEB_ENABLED:-false}
+      healthcheck:
+        test: "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/5557' || exit 1"
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 45s
+    zep:
+      image: ghcr.io/getzep/zep:latest
+      depends_on:
+        postgres:
+          condition: service_healthy
+        nlp:
+          condition: service_healthy
+      environment:
+        - ZEP_STORE_POSTGRES_DSN=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_POSTGRES}@postgres:5432/postgres?sslmode=disable
+        - ZEP_NLP_SERVER_URL=http://nlp:5557
+        - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_SERVICE=${EXTRACTORS_DOCUMENTS_EMBEDDINGS_SERVICE:-openai}
+        - ZEP_EXTRACTORS_DOCUMENTS_EMBEDDINGS_DIMENSIONS=${EXTRACTORS_DOCUMENTS_EMBEDDINGS_DIMENSIONS:-1536}
+        - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_SERVICE=${EXTRACTORS_MESSAGES_EMBEDDINGS_SERVICE:-openai}
+        - ZEP_EXTRACTORS_MESSAGES_EMBEDDINGS_DIMENSIONS=${EXTRACTORS_MESSAGES_EMBEDDINGS_DIMENSIONS:-1536}
+        - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_SERVICE=${EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_SERVICE:-openai}
+        - ZEP_EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_DIMENSIONS=${EXTRACTORS_MESSAGES_SUMMARIZER_EMBEDDINGS_DIMENSIONS:-1536}
+        - ZEP_OPENAI_API_KEY=${OPENAI_API_KEY}
+        - ZEP_AUTH_SECRET=${SERVICE_PASSWORD_AUTHSECRET}
+        - ZEP_SERVER_WEB_ENABLED=${ZEP_SERVER_WEB_ENABLED:-false}
+      volumes:
+        - ./config.yaml:/app/config.yaml
+      healthcheck:
+        test: "timeout 10s bash -c ':> /dev/tcp/127.0.0.1/8000' || exit 1"
+        interval: 5s
+        timeout: 10s
+        retries: 3
+        start_period: 40s
+
+  volumes:
+    pg_data: {}

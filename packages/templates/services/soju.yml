@@ -1,0 +1,37 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Soju"
+description: "A user-friendly IRC bouncer with a modern web interface"
+icon: forum
+logo: "soju.svg"
+category: messaging
+tags: ["irc", "bouncer", "chat", "messaging", "relay"]
+docs: "https://soju.im/"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "gamja"
+port: 80
+env: {}
+files:
+  "soju/config": "db sqlite3 /db/main.db\nmessage-store db\nfile-upload fs /uploads/\nlisten irc+insecure://0.0.0.0:6667\nlisten ws+insecure://0.0.0.0:80\nlisten unix+admin:///run/soju/admin\n"
+compose: |
+  services:
+    soju:
+      image: codeberg.org/emersion/soju:latest
+      volumes:
+        - soju-db:/db
+        - soju-uploads:/uploads
+        - soju-run:/run/soju
+        - ./soju/config:/soju-config
+      networks:
+        default:
+          aliases:
+            - gamja-backend
+
+    gamja:
+      image: codeberg.org/emersion/gamja:latest
+      depends_on:
+        - soju
+
+  volumes:
+    soju-db:
+    soju-uploads:
+    soju-run:

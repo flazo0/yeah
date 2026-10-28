@@ -32,6 +32,9 @@ export const services = pgTable("services", {
   // null compose = a legacy single-container service described by catalog_key.
   composeContent: text("compose_content"),
   templateKey: varchar("template_key", { length: 100 }),
+  // Config files that came with the template (relative path -> content, plus empty folders to create); written
+  // next to the compose file before every deploy so the stack can bind-mount them.
+  stackFiles: jsonb("stack_files").$type<{ files: Record<string, string>; dirs: string[] }>(),
   // The compose service that also answers to the plain name on the environment network.
   mainService: varchar("main_service", { length: 64 }),
   // Domains per container: [{ service, domain, port }].

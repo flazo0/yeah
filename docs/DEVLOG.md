@@ -906,3 +906,7 @@ Pedido: desligar container sem uso e ligar sozinho quando chegar requisição, r
 ## Atualização do Coolify (28/10/2026)
 
 Pull do `coolify/` trouxe 1.420 commits. Comparação feita e registrada na Fase 10 do roadmap (o que já temos, o que falta, o que fica de fora por decisão de produto). Primeiro item feito: reimportação do catálogo (348 templates). Validação com `docker compose config` na VPS fica pendente até haver acesso.
+
+## Arquivos de configuração nos templates
+
+O importador agora dobra `content:` para `files:`. O teste de consistência pegou um falso alarme (binds curtos `./pasta:/x` sem arquivo são criados como pasta pelo Docker, então não exigem entrada) e eu relaxei a regra. Sem VPS não consegui rodar `docker compose config` nos 32 novos; fica registrado como pendente.

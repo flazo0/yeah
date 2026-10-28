@@ -1,0 +1,52 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Traccar"
+description: "Traccar is a free and open source modern GPS tracking system."
+icon: monitor_heart
+logo: "traccar.png"
+category: monitoring
+tags: ["traccar", "gps", "tracking", "open", "source"]
+docs: "https://www.traccar.org/documentation/"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "traccar"
+port: 8082
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+files:
+  "srv/traccar/conf/traccar.xml": "<?xml version='1.0' encoding='UTF-8'?>\n<!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>\n<properties>\n    <entry key='config.default'>./conf/default.xml</entry>\n    <entry key='database.driver'>org.postgresql.Driver</entry>\n    <entry key='database.url'>jdbc:postgresql://postgres:5432/traccar</entry>\n</properties>\n"
+compose: |
+  services:
+    traccar:
+      image: traccar/traccar:latest
+      environment:
+        - CONFIG_USE_ENVIRONMENT_VARIABLES=${CONFIG_USE_ENVIRONMENT_VARIABLES:-true}
+        - DATABASE_USER=${SERVICE_USER_POSTGRES}
+        - DATABASE_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      volumes:
+        - ./srv/traccar/conf/traccar.xml:/opt/traccar/conf/traccar.xml
+      depends_on:
+        postgres:
+          condition: service_healthy
+      healthcheck:
+        test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8082"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 15s
+
+    postgres:
+      image: postgres:16-alpine
+      environment:
+        - POSTGRES_USER=$SERVICE_USER_POSTGRES
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+        - POSTGRES_DB=${POSTGRESQL_DATABASE:-traccar}
+      volumes:
+        - traccar-postgresql-data:/var/lib/postgresql/data/
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+
+  volumes:
+    traccar-postgresql-data: {}

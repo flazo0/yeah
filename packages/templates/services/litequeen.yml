@@ -1,0 +1,29 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Litequeen"
+description: "Lite Queen is an open-source SQLite database management software that runs on your server."
+icon: database
+logo: "litequeen.svg"
+category: database
+tags: ["sqlite", "sqlite-database-management", "self-hosted", "VPS", "database"]
+docs: "https://litequeen.com/"
+main: "litequeen"
+port: 8000
+env: {}
+dirs: ["databases"]
+compose: |
+  services:
+    litequeen:
+      image: kivsegrob/lite-queen:latest
+      volumes:
+        - litequeen-data:/home/litequeen/data
+        - ./databases:/srv
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - bash -c ':> /dev/tcp/127.0.0.1/8000' || exit 1
+        interval: 5s
+        timeout: 5s
+        retries: 3
+
+  volumes:
+    litequeen-data: {}

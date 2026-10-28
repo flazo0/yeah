@@ -1,0 +1,62 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Drupal With Postgresql"
+description: "Drupal is a free and open-source web content management system written in PHP and distributed under the GNU General Public License."
+icon: language
+logo: "drupal-with-postgresql.svg"
+category: cms
+tags: ["cms", "blog", "content", "management", "postgresql"]
+docs: "https://www.drupal.org/about"
+main: "drupal"
+port: 80
+env:
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+compose: |
+  services:
+    drupal:
+      image: "drupal:10-apache"
+      environment:
+        - DB_HOST=postgres
+        - DB_NAME=postgres
+        - DB_USER=postgres
+        - DB_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+      volumes:
+        - type: volume
+          source: drupal_modules
+          target: /var/www/html/modules
+        - type: volume
+          source: drupal_profiles
+          target: /var/www/html/profiles
+        - type: volume
+          source: drupal_themes
+          target: /var/www/html/themes
+        - type: volume
+          source: drupal_sites
+          target: /var/www/html/sites
+      depends_on:
+        - postgres
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "curl -f http://localhost:80 || exit 1"
+        interval: 30s
+        timeout: 10s
+        retries: 5
+    postgres:
+      image: "postgres:16"
+      environment:
+        - POSTGRES_DB=postgres
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=$SERVICE_PASSWORD_POSTGRES
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        interval: 5s
+        timeout: 10s
+        retries: 20
+
+  volumes:
+    drupal_modules: {}
+    drupal_profiles: {}
+    drupal_themes: {}
+    drupal_sites: {}

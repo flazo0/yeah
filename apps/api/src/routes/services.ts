@@ -114,7 +114,7 @@ export const serviceRoutes = new Elysia({
         set.status = 400;
         return { error: "template desconhecido" };
       }
-      let stack: { composeContent: string; envContent: string; templateKey: string | null; mainService: string; port: number; image: string } | null = null;
+      let stack: { composeContent: string; envContent: string; templateKey: string | null; mainService: string; port: number; image: string; stackFiles: { files: Record<string, string>; dirs: string[] } | null } | null = null;
       if (template) {
         const parsedTemplate = parseComposeStack(template.compose);
         stack = {
@@ -124,6 +124,7 @@ export const serviceRoutes = new Elysia({
           mainService: template.mainService,
           port: body.port ?? template.port,
           image: parsedTemplate.ok ? String(parsedTemplate.services[template.mainService]?.image ?? "") : "",
+          stackFiles: Object.keys(template.stackFiles.files).length || template.stackFiles.dirs.length ? template.stackFiles : null,
         };
       } else if (body.composeContent !== undefined) {
         const parsed = parseComposeStack(body.composeContent);
@@ -132,7 +133,7 @@ export const serviceRoutes = new Elysia({
           return { error: parsed.error };
         }
         const first = Object.keys(parsed.services)[0]!;
-        stack = { composeContent: body.composeContent, envContent: body.envContent ?? "", templateKey: null, mainService: first, port: body.port ?? 80, image: String(parsed.services[first]?.image ?? "") };
+        stack = { composeContent: body.composeContent, envContent: body.envContent ?? "", templateKey: null, mainService: first, port: body.port ?? 80, image: String(parsed.services[first]?.image ?? ""), stackFiles: null };
       }
 
       const serverRows = await db
@@ -174,6 +175,7 @@ export const serviceRoutes = new Elysia({
           envContent: stack ? syncDomainEnv(stack.envContent, autoDomains) : catalogEntry!.envTemplate,
           composeContent: stack?.composeContent ?? null,
           templateKey: stack?.templateKey ?? null,
+          stackFiles: stack?.stackFiles ?? null,
           mainService: stack?.mainService ?? null,
           memoryLimitMb: body.memoryLimitMb ?? null,
           cpuLimit: body.cpuLimit ?? null,

@@ -77,11 +77,88 @@ const KNOWN_BROKEN: Record<string, string> = {
   mautic5: "volumes com subpasta (mautic_data/config) — recurso do Coolify",
 };
 
+interface FileMounts {
+  text: string;
+  files: Record<string, string>;
+  dirs: string[];
+  skip?: string;
+}
+
+const yamlParse = (t: string): unknown => (Bun as unknown as { YAML: { parse(t: string): unknown } }).YAML.parse(t);
+
+/**
+ * Coolify lets a volume carry its own file (`type: bind`, `source: ./nginx/nginx.conf`, `content: |…`) and mark
+ * volumes with `is_directory`. Plain compose has neither: each file mount becomes a short `./path:/target`
+ * bind and the content moves to the template's `files:` (written next to the compose file at deploy time);
+ * `is_directory` is dropped from named volumes and turns an empty bind into an entry of `dirs:`.
+ */
+function extractFileMounts(text: string): FileMounts {
+  const lines = text.split("\n");
+  const out: string[] = [];
+  const files: Record<string, string> = {};
+  const dirs: string[] = [];
+  const indentOf = (l: string) => /^(\s*)/.exec(l)![1]!.length;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    const m = /^(\s*)- type:\s*(bind|volume)\s*$/.exec(line);
+    if (!m) {
+      out.push(line);
+      continue;
+    }
+    const n = m[1]!.length;
+    let j = i + 1;
+    while (j < lines.length && (lines[j]!.trim() === "" || indentOf(lines[j]!) > n)) j++;
+    // trailing blank lines belong to whatever follows, not to this mount
+    let end = j;
+    while (end > i + 1 && lines[end - 1]!.trim() === "") end--;
+    const block = lines.slice(i, end);
+    const snippet = block.map((l) => l.slice(Math.min(n, indentOf(l)))).join("\n");
+    let parsed: Array<Record<string, unknown>>;
+    try {
+      parsed = yamlParse(snippet) as Array<Record<string, unknown>>;
+    } catch (err) {
+      return { text, files, dirs, skip: `volume ilegível (${err instanceof Error ? err.message : "erro"})` };
+    }
+    const mount = parsed?.[0];
+    if (!mount || typeof mount !== "object") {
+      out.push(...block);
+      i = end - 1;
+      continue;
+    }
+    const isDir = mount.is_directory === true || mount.isDirectory === true;
+    if (mount.type === "volume") {
+      // keep the mount, drop the Coolify-only flag
+      out.push(...block.filter((l) => !/^\s*(is_directory|isDirectory):/.test(l)));
+      i = end - 1;
+      continue;
+    }
+    const source = String(mount.source ?? "");
+    const target = String(mount.target ?? "");
+    const rel = source.replace(/^\.\//, "");
+    if (!target || !/^[A-Za-z0-9._\-/]+$/.test(rel) || rel.startsWith("/") || rel.includes("..")) {
+      return { text, files, dirs, skip: `montagem bind fora do diretório da stack (${source || "sem source"}) — não dá pra converter` };
+    }
+    if (typeof mount.content === "string") files[rel] = mount.content;
+    else if (isDir) dirs.push(rel);
+    else {
+      out.push(...block);
+      i = end - 1;
+      continue;
+    }
+    out.push(`${m[1]}- ./${rel}:${target}${mount.read_only === true ? ":ro" : ""}`);
+    i = end - 1;
+  }
+  return { text: out.join("\n"), files, dirs };
+}
+
 function convert(key: string, raw: string): Result {
-  const text = raw.replace(/\r\n/g, "\n");
+  const original = raw.replace(/\r\n/g, "\n");
   if (KNOWN_BROKEN[key]) return { key, skip: KNOWN_BROKEN[key] };
-  if (/^\s+content:/m.test(text)) return { key, skip: "usa montagem de arquivo com `content:` (recurso próprio do Coolify)" };
-  if (/^\s+is_directory:/m.test(text)) return { key, skip: "usa `is_directory` (recurso próprio do Coolify)" };
+  const mounts = extractFileMounts(original);
+  if (mounts.skip) return { key, skip: mounts.skip };
+  // the metadata header comes from the original; everything else from the text with the file mounts folded away
+  const text = mounts.text;
+  if (/^\s+content:/m.test(text)) return { key, skip: "usa `content:` num formato que o importador não reconhece" };
   if (/^\s+build:/m.test(text)) return { key, skip: "usa `build:` (aqui só vale image)" };
   if (/^\s+extends:/m.test(text)) return { key, skip: "usa `extends`" };
 
@@ -191,7 +268,8 @@ function convert(key: string, raw: string): Result {
   }
 
   // Magic variables anywhere in the text — also nested ones such as ${KEY:?${SERVICE_PASSWORD_X}} and bare $SERVICE_X.
-  for (const m of compose.matchAll(/SERVICE_[A-Z0-9_]+/g)) {
+  const fileText = Object.values(mounts.files).join(String.fromCharCode(10));
+  for (const m of (compose + String.fromCharCode(10) + fileText).matchAll(/SERVICE_[A-Z0-9_]+/g)) {
     const name = m[0];
     if (env[name] !== undefined) continue;
     if (/^SERVICE_FQDN_/.test(name)) env[name] = "localhost";
@@ -202,6 +280,11 @@ function convert(key: string, raw: string): Result {
     else if (/^SERVICE_REALBASE64_/.test(name)) env[name] = "$generate:realbase64";
     else if (/^SERVICE_BASE64_(64|128)_/.test(name)) env[name] = "$generate:base64long";
     else if (/^SERVICE_BASE64_/.test(name)) env[name] = "$generate:base64";
+  }
+
+  // Plain ${NAME} references inside the config files: surface them in the env editor so the user can fill them.
+  for (const m of fileText.matchAll(/\$\{([A-Z][A-Z0-9_]{2,})}/g)) {
+    if (env[m[1]!] === undefined && !/^(HOME|PATH|PWD|USER|HOSTNAME)$/.test(m[1]!)) env[m[1]!] = "";
   }
 
   const rawCategory = (header(text, "category") ?? "other").split(",")[0]!.trim().toLowerCase();
@@ -215,6 +298,7 @@ function convert(key: string, raw: string): Result {
   const logo = logoSrc && existsSync(logoSrc) ? `${key}${logoRel!.slice(logoRel!.lastIndexOf("."))}` : undefined;
 
   const notes: string[] = [];
+  if (Object.keys(mounts.files).length > 0) notes.push("Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real.");
   if (/^\s+privileged:\s*true/m.test(compose)) notes.push("Este serviço roda com `privileged: true`: dá ao container poder sobre o servidor.");
   if (/^\s+network_mode:\s*['"]?host/m.test(compose)) notes.push("Usa `network_mode: host`: o container compartilha a rede do servidor.");
   if (/^\s+ports:/m.test(compose)) notes.push("Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos.");
@@ -234,6 +318,8 @@ function convert(key: string, raw: string): Result {
     `port: ${port}`,
     Object.keys(env).length ? "env:" : "env: {}",
     ...Object.entries(env).map(([k, v]) => `  ${k}: ${q(v)}`),
+    ...(Object.keys(mounts.files).length ? ["files:", ...Object.entries(mounts.files).map(([k, v]) => `  ${q(k)}: ${q(v)}`)] : []),
+    ...(mounts.dirs.length ? [`dirs: [${mounts.dirs.map(q).join(", ")}]`] : []),
     "compose: |",
     ...compose.split("\n").map((l) => (l === "" ? "" : `  ${l}`)),
   ];

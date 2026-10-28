@@ -1,0 +1,36 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Wings"
+description: "The server control plane for Pterodactyl Panel. Written from the ground-up with security, speed, and stability in mind."
+icon: code
+logo: "wings.png"
+category: dev
+tags: ["game", "game server", "management", "panel", "minecraft"]
+docs: "https://pterodactyl.io/"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real. Publica portas direto no servidor (`ports:`); confira conflitos com outros recursos."
+main: "wings"
+port: 8443
+env:
+  SERVICE_USER_WINGS: "$generate:user"
+files:
+  "etc/config.yml": "debug: false\nuuid: ReplaceConfig\ntoken_id: ReplaceConfig\ntoken: ReplaceConfig\napi:\n  host: 0.0.0.0\n  port: 8443 # Warning, panel must have 443 as daemon port, while here it should should be 8443, FQDN in Coolify for this service should be https://*:8443\n  ssl:\n    enabled: false\n    cert: ReplaceConfig\n    key: ReplaceConfig\n  upload_limit: 100\nsystem:\n  data: /var/lib/pterodactyl/volumes\n  sftp:\n    bind_port: 2022\nallowed_mounts: []\nremote: ''\n"
+compose: |
+  services:
+    wings:
+      image: "ghcr.io/pterodactyl/wings:v1.12.1"
+      environment:
+        - "TZ=${TIMEZONE:-UTC}"
+        - WINGS_USERNAME=$SERVICE_USER_WINGS
+      volumes:
+        - "/var/run/docker.sock:/var/run/docker.sock"
+        - "/var/lib/docker/containers/:/var/lib/docker/containers/"
+        - "/var/lib/pterodactyl/volumes:/var/lib/pterodactyl/volumes"
+        - "/tmp/pterodactyl:/tmp/pterodactyl"
+        - wings_lib:/var/lib/pterodactyl/
+        - wings_logs:/var/log/pterodactyl/
+        - ./etc/config.yml:/etc/pterodactyl/config.yml
+      ports:
+        - '2022:2022'
+
+  volumes:
+    wings_lib: {}
+    wings_logs: {}

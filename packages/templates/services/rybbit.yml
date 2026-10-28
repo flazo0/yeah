@@ -1,0 +1,107 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Rybbit"
+description: "Open-source, privacy-first web analytics."
+icon: analytics
+logo: "rybbit.svg"
+category: analytics
+tags: ["analytics", "web", "privacy", "self-hosted", "clickhouse", "postgres"]
+docs: "https://rybbit.io/docs"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "rybbit"
+port: 3002
+env:
+  SERVICE_URL_RYBBIT: "http://localhost"
+  SERVICE_PASSWORD_CLICKHOUSE: "$generate:password"
+  SERVICE_PASSWORD_POSTGRES: "$generate:password"
+  SERVICE_BASE64_64_BACKEND: "$generate:base64long"
+files:
+  "clickhouse_config/enable_json.xml": "<clickhouse>\n    <settings>\n        <enable_json_type>1</enable_json_type>\n    </settings>\n</clickhouse>\n"
+  "clickhouse_config/logging_rules.xml": "<clickhouse>\n    <logger>\n        <level>warning</level>\n        <console>true</console>\n    </logger>\n    <query_thread_log remove=\"remove\"/>\n    <query_log remove=\"remove\"/>\n    <text_log remove=\"remove\"/>\n    <trace_log remove=\"remove\"/>\n    <metric_log remove=\"remove\"/>\n    <asynchronous_metric_log remove=\"remove\"/>\n    <session_log remove=\"remove\"/>\n    <part_log remove=\"remove\"/>\n    <latency_log remove=\"remove\"/>\n    <processors_profile_log remove=\"remove\"/>\n</clickhouse>\n"
+  "clickhouse_config/network.xml": "<clickhouse>\n    <listen_host>0.0.0.0</listen_host>\n</clickhouse>\n"
+  "clickhouse_config/user_logging.xml": "<clickhouse>\n    <profiles>\n        <default>\n            <log_queries>0</log_queries>\n            <log_query_threads>0</log_query_threads>\n            <log_processors_profiles>0</log_processors_profiles>\n        </default>\n    </profiles>\n</clickhouse>\n"
+compose: |
+  services:
+    rybbit:
+      image: 'ghcr.io/rybbit-io/rybbit-client:v2.2.3'
+      environment:
+        - NODE_ENV=production
+        - 'NEXT_PUBLIC_BACKEND_URL=${SERVICE_URL_RYBBIT}'
+        - 'NEXT_PUBLIC_DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}'
+      depends_on:
+        - rybbit_backend
+      healthcheck:
+        test: ["CMD-SHELL", "nc -z 127.0.0.1 3002"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 10s
+
+    rybbit_backend:
+      image: 'ghcr.io/rybbit-io/rybbit-backend:v2.2.3'
+      environment:
+        - NODE_ENV=production
+        - TRUST_PROXY=true
+        - 'BASE_URL=${SERVICE_URL_RYBBIT}'
+        # --- Coolify-Managed Secrets ---
+        - 'CLICKHOUSE_PASSWORD=${SERVICE_PASSWORD_CLICKHOUSE}'
+        - 'POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}'
+        - 'BETTER_AUTH_SECRET=${SERVICE_BASE64_64_BACKEND}'
+        # --- User Settings ---
+        - 'DISABLE_SIGNUP=${DISABLE_SIGNUP:-false}'
+        - 'DISABLE_TELEMETRY=${DISABLE_TELEMETRY:-true}'
+        # --- Internal Config ---
+        - 'CLICKHOUSE_HOST=http://rybbit_clickhouse:8123'
+        - 'CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}'
+        - 'CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}'
+        - POSTGRES_HOST=rybbit_postgres
+        - POSTGRES_PORT=5432
+        - 'POSTGRES_DB=${POSTGRES_DB:-analytics}'
+        - 'POSTGRES_USER=${POSTGRES_USER:-frog}'
+      depends_on:
+        rybbit_clickhouse:
+          condition: service_healthy
+        rybbit_postgres:
+          condition: service_healthy
+      healthcheck:
+        test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/api/health"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 10s
+
+    rybbit_postgres:
+      image: 'postgres:17.4'
+      environment:
+        - 'POSTGRES_DB=${POSTGRES_DB:-analytics}'
+        - 'POSTGRES_USER=${POSTGRES_USER:-frog}'
+        - 'POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}'
+      volumes:
+        - 'postgres_data:/var/lib/postgresql/data'
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+
+    rybbit_clickhouse:
+      image: 'clickhouse/clickhouse-server:25.4.2'
+      environment:
+        - 'CLICKHOUSE_DB=${CLICKHOUSE_DB:-analytics}'
+        - 'CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}'
+        - 'CLICKHOUSE_PASSWORD=${SERVICE_PASSWORD_CLICKHOUSE}'
+      healthcheck:
+        test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 10s
+      volumes:
+        - 'clickhouse_data:/var/lib/clickhouse'
+        - ./clickhouse_config/enable_json.xml:/etc/clickhouse-server/config.d/enable_json.xml
+        - ./clickhouse_config/logging_rules.xml:/etc/clickhouse-server/config.d/logging_rules.xml
+        - ./clickhouse_config/network.xml:/etc/clickhouse-server/config.d/network.xml
+        - ./clickhouse_config/user_logging.xml:/etc/clickhouse-server/config.d/user_logging.xml
+
+  volumes:
+    postgres_data: {}
+    clickhouse_data: {}

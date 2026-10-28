@@ -1,0 +1,105 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Pterodactyl Panel"
+description: "Pterodactyl is a free, open-source game server management panel"
+icon: movie
+logo: "pterodactyl-panel.png"
+category: media
+tags: ["game", "game server", "management", "panel", "minecraft"]
+docs: "https://pterodactyl.io/"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "pterodactyl"
+port: 80
+env:
+  SERVICE_PASSWORD_MYSQLROOT: "$generate:password"
+  SERVICE_USER_MYSQL: "$generate:user"
+  SERVICE_PASSWORD_MYSQL: "$generate:password"
+  SERVICE_PASSWORD_HASHIDS: "$generate:password"
+  SERVICE_USER_ADMIN: "$generate:user"
+  SERVICE_PASSWORD_ADMIN: "$generate:password"
+  SERVICE_URL_PTERODACTYL: "http://localhost"
+  MAIL_FROM: ""
+  MAIL_DRIVER: ""
+  MAIL_HOST: ""
+  MAIL_PORT: ""
+  MAIL_USERNAME: ""
+  MAIL_PASSWORD: ""
+  MAIL_ENCRYPTION: ""
+files:
+  "etc/entrypoint.sh": "#!/bin/sh\nset -e\n\n echo \"Setting logs permissions...\"\n chown -R nginx: /app/storage/logs/\n\n USER_EXISTS=$(php artisan tinker --no-ansi --execute='echo \\Pterodactyl\\Models\\User::where(\"email\", \"'\"$ADMIN_EMAIL\"'\")->exists() ? \"1\" : \"0\";')\n\n if [ \"$USER_EXISTS\" = \"0\" ]; then\n   echo \"Admin User does not exist, creating user now.\"\n   php artisan p:user:make --no-interaction \\\n     --admin=1 \\\n     --email=\"$ADMIN_EMAIL\" \\\n     --username=\"$ADMIN_USERNAME\" \\\n     --name-first=\"$ADMIN_FIRSTNAME\" \\\n     --name-last=\"$ADMIN_LASTNAME\" \\\n     --password=\"$ADMIN_PASSWORD\"\n   echo \"Admin user created successfully!\"\n else\n   echo \"Admin User already exists, skipping creation.\"\n fi\n\n exec supervisord --nodaemon\n"
+compose: |
+  services:
+    mariadb:
+      image: mariadb:11.8
+      healthcheck:
+        test:
+          ["CMD-SHELL", "healthcheck.sh --connect --innodb_initialized || exit 1"]
+        start_period: 10s
+        interval: 10s
+        timeout: 1s
+        retries: 3
+      environment:
+        - MYSQL_ROOT_PASSWORD=$SERVICE_PASSWORD_MYSQLROOT
+        - MYSQL_DATABASE=pterodactyl-db
+        - MYSQL_USER=$SERVICE_USER_MYSQL
+        - MYSQL_PASSWORD=$SERVICE_PASSWORD_MYSQL
+      volumes:
+        - pterodactyl-db:/var/lib/mysql
+
+    redis:
+      image: redis:alpine
+      healthcheck:
+        test: ["CMD-SHELL", "redis-cli ping || exit 1"]
+        interval: 10s
+        timeout: 1s
+        retries: 3
+
+    pterodactyl:
+      image: ghcr.io/pterodactyl/panel:v1.15.2
+      volumes:
+        - "panel-var:/app/var/"
+        - "panel-nginx:/etc/nginx/http.d/"
+        - "panel-certs:/etc/letsencrypt/"
+        - ./etc/entrypoint.sh:/entrypoint.sh
+      command: ["/entrypoint.sh"]
+      healthcheck:
+        test: ["CMD-SHELL", "curl -sf http://localhost:80 || exit 1"]
+        interval: 10s
+        timeout: 1s
+        retries: 3
+      environment:
+        - HASHIDS_SALT=$SERVICE_PASSWORD_HASHIDS
+        - HASHIDS_LENGTH=8
+        - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+        - ADMIN_USERNAME=${SERVICE_USER_ADMIN}
+        - ADMIN_FIRSTNAME=${ADMIN_FIRSTNAME:-Admin}
+        - ADMIN_LASTNAME=${ADMIN_LASTNAME:-User}
+        - ADMIN_PASSWORD=${SERVICE_PASSWORD_ADMIN}
+        - PTERODACTYL_HTTPS=${PTERODACTYL_HTTPS:-false}
+        - APP_ENV=production
+        - APP_ENVIRONMENT_ONLY=false
+        - APP_URL=$SERVICE_URL_PTERODACTYL
+        - APP_TIMEZONE=${TIMEZONE:-UTC}
+        - APP_SERVICE_AUTHOR=${APP_SERVICE_AUTHOR:-author@example.com}
+        - LOG_LEVEL=${LOG_LEVEL:-debug}
+        - CACHE_DRIVER=redis
+        - SESSION_DRIVER=redis
+        - QUEUE_DRIVER=redis
+        - REDIS_HOST=redis
+        - DB_DATABASE=pterodactyl-db
+        - DB_USERNAME=$SERVICE_USER_MYSQL
+        - DB_HOST=mariadb
+        - DB_PORT=3306
+        - DB_PASSWORD=$SERVICE_PASSWORD_MYSQL
+        - MAIL_FROM=$MAIL_FROM
+        - MAIL_DRIVER=$MAIL_DRIVER
+        - MAIL_HOST=$MAIL_HOST
+        - MAIL_PORT=$MAIL_PORT
+        - MAIL_USERNAME=$MAIL_USERNAME
+        - MAIL_PASSWORD=$MAIL_PASSWORD
+        - MAIL_ENCRYPTION=$MAIL_ENCRYPTION
+
+  volumes:
+    pterodactyl-db: {}
+    panel-var: {}
+    panel-nginx: {}
+    panel-certs: {}

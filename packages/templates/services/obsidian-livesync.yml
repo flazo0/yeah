@@ -1,0 +1,45 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Obsidian Livesync"
+description: "Self-hosted sync backend for Obsidian LiveSync plugin using CouchDB"
+icon: folder
+category: storage
+tags: ["obsidian", "couchdb", "sync", "notes", "markdown"]
+docs: "https://github.com/vrtmrz/obsidian-livesync/blob/main/docs/setup_own_server.md"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "couchdb"
+port: 5984
+env:
+  SERVICE_USER_COUCHDB: "$generate:user"
+  SERVICE_PASSWORD_64_COUCHDB: "$generate:hex"
+  MAX_DOCUMENT_SIZE: ""
+  MAX_HTTP_REQUEST_SIZE: ""
+files:
+  "local.ini": "[couchdb]\nsingle_node=true\nmax_document_size = ${MAX_DOCUMENT_SIZE}\n\n[chttpd]\nrequire_valid_user = true\nmax_http_request_size = ${MAX_HTTP_REQUEST_SIZE}\n\n[chttpd_auth]\nrequire_valid_user = true\nauthentication_redirect = /_utils/session.html\n\n[httpd]\nWWW-Authenticate = Basic realm=\"couchdb\"\nenable_cors = true\n\n[cors]\norigins = app://obsidian.md,capacitor://localhost,http://localhost\ncredentials = true\nheaders = accept, authorization, content-type, origin, referer\nmethods = GET, PUT, POST, HEAD, DELETE\nmax_age = 3600\n"
+compose: |
+  services:
+    couchdb:
+      image: couchdb:3.4.2
+      environment:
+        # Tells Coolify to proxy this service on port 5984 at the assigned domain
+        # Coolify auto-generates and persists these — find them under Environment Variables
+        - COUCHDB_USER=${SERVICE_USER_COUCHDB}
+        - COUCHDB_PASSWORD=${SERVICE_PASSWORD_64_COUCHDB}
+        # Max size of a single document (bytes). Default: 50MB.
+        - MAX_DOCUMENT_SIZE=${MAX_DOCUMENT_SIZE:-52428800}
+        # Max HTTP request size (bytes). Should be slightly above MAX_DOCUMENT_SIZE to allow multipart overhead.
+        # Raise only if you attach very large files to your notes. Default: 64MB.
+        - MAX_HTTP_REQUEST_SIZE=${MAX_HTTP_REQUEST_SIZE:-67108864}
+      volumes:
+        - ./local.ini:/opt/couchdb/etc/local.ini
+        - couchdb-data:/opt/couchdb/data
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - curl -f -u "$${COUCHDB_USER}:$${COUCHDB_PASSWORD}" http://localhost:5984/_up
+        interval: 30s
+        timeout: 10s
+        start_period: 40s
+        retries: 3
+
+  volumes:
+    couchdb-data:

@@ -1,0 +1,56 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Garage"
+description: "Garage is an S3-compatible distributed object storage service designed for self-hosting."
+icon: folder
+logo: "garage.svg"
+category: storage
+tags: ["object", "storage", "server", "s3", "api", "distributed"]
+docs: "https://garagehq.deuxfleurs.fr/documentation/"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real."
+main: "garage"
+port: 3900
+env:
+  GARAGE_S3_API_URL: ""
+  GARAGE_WEB_URL: ""
+  GARAGE_ADMIN_URL: ""
+  SERVICE_HEX_64_RPCSECRET: ""
+  SERVICE_PASSWORD_GARAGE: "$generate:password"
+  SERVICE_PASSWORD_GARAGEMETRICS: "$generate:password"
+  SERVICE_USER_GARAGE: "$generate:user"
+  SERVICE_PASSWORD_64_GARAGE: "$generate:hex"
+files:
+  "garage.toml": "metadata_dir = \"/var/lib/garage/meta\"\ndata_dir = \"/var/lib/garage/data\"\ndb_engine = \"lmdb\"\n\nreplication_factor = 1\nconsistency_mode = \"consistent\"\n\ncompression_level = 1\nblock_size = \"1M\"\n\nrpc_bind_addr = \"[::]:3901\"\nrpc_secret_file = \"env:GARAGE_RPC_SECRET\"\nbootstrap_peers = []\n\n[s3_api]\ns3_region = \"garage\"\napi_bind_addr = \"[::]:3900\"\nroot_domain = \".s3.garage.localhost\"\n\n[s3_web]\nbind_addr = \"[::]:3902\"\nroot_domain = \".web.garage.localhost\"\n\n[admin]\napi_bind_addr = \"[::]:3903\"\nadmin_token_file = \"env:GARAGE_ADMIN_TOKEN\"\nmetrics_token_file = \"env:GARAGE_METRICS_TOKEN\"\n"
+compose: |
+  services:
+    garage:
+      image: dxflrs/garage:v2.3.0
+      command:
+        - /garage
+        - server
+        - '--single-node'
+        - '--default-bucket'
+      environment:
+        - GARAGE_S3_API_URL=$GARAGE_S3_API_URL
+        - GARAGE_WEB_URL=$GARAGE_WEB_URL
+        - GARAGE_ADMIN_URL=$GARAGE_ADMIN_URL
+        - GARAGE_RPC_SECRET=${SERVICE_HEX_64_RPCSECRET}
+        - GARAGE_ADMIN_TOKEN=$SERVICE_PASSWORD_GARAGE
+        - GARAGE_METRICS_TOKEN=$SERVICE_PASSWORD_GARAGEMETRICS
+        - GARAGE_ALLOW_WORLD_READABLE_SECRETS=true
+        - GARAGE_DEFAULT_ACCESS_KEY=${SERVICE_USER_GARAGE}
+        - GARAGE_DEFAULT_SECRET_KEY=${SERVICE_PASSWORD_64_GARAGE}
+        - GARAGE_DEFAULT_BUCKET=${GARAGE_DEFAULT_BUCKET:-default}
+        - RUST_LOG=${RUST_LOG:-garage=info}
+      volumes:
+        - garage-meta:/var/lib/garage/meta
+        - garage-data:/var/lib/garage/data
+        - ./garage.toml:/etc/garage.toml
+      healthcheck:
+        test: ["CMD", "/garage", "stats", "-a"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+  volumes:
+    garage-meta: {}
+    garage-data: {}

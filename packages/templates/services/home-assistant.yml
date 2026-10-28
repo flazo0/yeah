@@ -1,0 +1,35 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Home Assistant"
+description: "Open source home automation that puts local control and privacy first."
+icon: bolt
+logo: "home-assistant.svg"
+category: automation
+tags: ["home-automation", "iot", "smart-home", "automation", "domotics", "mqtt", "zigbee", "zwave"]
+docs: "https://www.home-assistant.io/installation/linux#docker-compose"
+notes: "Este template traz arquivos de configuração próprios; eles foram convertidos do formato do Coolify e ainda não foram validados numa instalação real. Este serviço roda com `privileged: true`: dá ao container poder sobre o servidor."
+main: "homeassistant"
+port: 8123
+env: {}
+files:
+  "configuration.yaml": "# Loads default set of integrations. Do not remove.\ndefault_config:\n\n# Configuration for reverse proxy support (required for Coolify)\nhttp:\n  use_x_forwarded_for: true\n  trusted_proxies:\n    - 10.0.0.0/8\n    - 172.16.0.0/12\n    - 192.168.0.0/16\n  ip_ban_enabled: true\n  login_attempts_threshold: 5\n"
+compose: |
+  services:
+    homeassistant:
+      image: ghcr.io/home-assistant/home-assistant:2025.10.2
+      environment:
+        - TZ=${TZ:-UTC}
+        - DISABLE_JEMALLOC=${DISABLE_JEMALLOC:-false}
+      volumes:
+        - homeassistant-config:/config
+        - /run/dbus:/run/dbus:ro
+        - ./configuration.yaml:/config/configuration.yaml
+      privileged: true
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8123"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+        start_period: 60s
+
+  volumes:
+    homeassistant-config: {}

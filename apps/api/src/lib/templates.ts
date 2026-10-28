@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { parseComposeStack, type ServiceTemplateDto } from "@yeah/shared";
+import { parseComposeStack, validateStackFiles, type ServiceTemplateDto, type StackFiles } from "@yeah/shared";
 
 // One-click service templates: YAML files in packages/templates/services (a compose file plus metadata),
 // read from disk — adding a service is adding a file, no code.
@@ -13,6 +13,8 @@ export interface ServiceTemplate extends ServiceTemplateDto {
   env: Record<string, string>;
   /** Port of `main` the domain is proxied to. */
   port: number;
+  /** Config files written next to the compose file (bind-mounted with ./path:/target). */
+  stackFiles: StackFiles;
 }
 
 /** packages/templates/services relative to this file — the same place in dev and in the image. */
@@ -50,6 +52,14 @@ export function parseTemplate(key: string, text: string): { template: ServiceTem
     if (!ENV_KEY.test(k)) return { error: `nome de variável inválido: ${k}` };
     env[k] = String(v ?? "");
   }
+  const stackFiles: StackFiles = { files: {}, dirs: [] };
+  for (const [path, content] of Object.entries((doc.files as Record<string, unknown>) ?? {})) {
+    if (typeof content !== "string") return { error: `o arquivo ${path} precisa ser texto` };
+    stackFiles.files[path] = content;
+  }
+  if (Array.isArray(doc.dirs)) stackFiles.dirs = (doc.dirs as unknown[]).filter((x): x is string => typeof x === "string");
+  const filesError = validateStackFiles(stackFiles);
+  if (filesError) return { error: filesError };
   return {
     template: {
       key,
@@ -67,6 +77,7 @@ export function parseTemplate(key: string, text: string): { template: ServiceTem
       compose,
       env,
       port,
+      stackFiles,
     },
   };
 }
@@ -150,7 +161,7 @@ export function addMissingTemplateEnv(template: ServiceTemplate, envContent: str
 }
 
 export function toTemplateDto(t: ServiceTemplate): ServiceTemplateDto {
-  const { compose: _c, env: _e, port: _p, ...dto } = t;
-  void [_c, _e, _p];
+  const { compose: _c, env: _e, port: _p, stackFiles: _f, ...dto } = t;
+  void [_c, _e, _p, _f];
   return dto;
 }

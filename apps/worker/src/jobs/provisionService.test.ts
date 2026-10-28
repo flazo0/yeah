@@ -17,6 +17,7 @@ function makeService(overrides: Partial<Service> = {}): Service {
     domain: null,
     composeContent: null,
     templateKey: null,
+    stackFiles: null,
     mainService: null,
     domains: [],
     lastLog: "",

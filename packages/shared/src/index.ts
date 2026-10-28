@@ -19,3 +19,4 @@ export * from "./audit";
 export * from "./redact";
 export * from "./fileBrowser";
 export * from "./containerWatch";
+export * from "./stackFiles";
