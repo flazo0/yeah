@@ -520,7 +520,8 @@ export type NotificationEventType =
   | "task.success"
   | "docker-cleanup.success"
   | "server.patches"
-  | "container.unhealthy";
+  | "container.unhealthy"
+  | "traefik.outdated";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -538,6 +539,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "docker-cleanup.success": "Limpeza do Docker concluída",
   "server.patches": "Atualizações de segurança pendentes no servidor",
   "container.unhealthy": "Container reiniciando sem parar ou sem memória",
+  "traefik.outdated": "Proxy (Traefik) com atualização disponível",
 };
 
 /**

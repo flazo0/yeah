@@ -98,6 +98,8 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
           `if [ -s ${acme} ]; then cp -p ${acme} ${acme}.bak-$(date +%Y%m%d%H%M%S) && ls -1t ${acme}.bak-* | tail -n +4 | xargs -r rm -f; fi; ` +
           `touch ${shellQuote(`${PROXY_DIR}/acme.json`)} && chmod 600 ${shellQuote(`${PROXY_DIR}/acme.json`)} && ` +
           `docker network create ${shellQuote(PROXY_NETWORK_NAME)} >/dev/null 2>&1 || true && ` +
+          // Pull first so re-provisioning picks up the newest patch of the v2.11 line (best-effort: offline hosts keep the local image).
+          `docker pull traefik:v2.11 >/dev/null 2>&1 || true && ` +
           `docker rm -f ${shellQuote(PROXY_CONTAINER_NAME)} >/dev/null 2>&1 || true && ` +
           `docker run -d --name ${shellQuote(PROXY_CONTAINER_NAME)} ` +
           `--network ${shellQuote(PROXY_NETWORK_NAME)} ` +
