@@ -217,7 +217,7 @@ O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 
 - [ ] **Intervalo mínimo entre avisos de disco cheio** e **limite de repetição de notificação** (o Coolify criou `notification_throttles`) — evita enxurrada.
 - [ ] **Backup do próprio banco do yeah antes de atualizar** (`yeah update` já faz pg_dump manual; falta tornar automático e opcional) e **backup/restauração do `acme.json`** antes de mexer no proxy.
 - [ ] **Bloquear atualização quando o disco está quase cheio.**
-- [ ] **Registro de auditoria** (quem fez o quê: deploy, mudança de domínio/variável, exclusão), com filtro e níveis.
+- [x] **Registro de auditoria** (página "Auditoria" no menu do time): um hook global grava toda chamada que muda algo e deu certo (criar, alterar, excluir, parar, deploy, domínio, variáveis…) com quem fez (e-mail ou "token de API"), tipo de ação, recurso e nível (exclusões e paradas = atenção). A descrição vem só do caminho da requisição — **nunca o corpo** (pode ter segredo) —, então nenhuma rota precisou ser editada; nomes dos recursos são resolvidos na leitura. Filtro "só atenção", paginação, retenção de 1 ano (`AUDIT_RETENTION_DAYS`). Migração 0054. Limites: chamadas por `/api/v1` e logins/logouts não entram ainda. Testado: gerador de descrição, retenção, tipos; **não numa instância real**.
 
 **Novo no Coolify — aplicações e proxy**
 - [ ] **Página de erro personalizada do proxy** e **modo manutenção por aplicação/serviço** (responde 503 com uma página sua enquanto você mexe).

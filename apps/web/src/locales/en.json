@@ -17,7 +17,8 @@
     "updates": "Updates",
     "settings": "Settings",
     "themeDark": "dark theme",
-    "themeLight": "light theme"
+    "themeLight": "light theme",
+    "audit": "Audit log"
   },
   "login": {
     "title": "Sign in",
@@ -1748,5 +1749,25 @@
     "referenciaDiferente": "The reference you typed does not match; nothing was deleted.",
     "falhaAoCarregar": "failed to list images",
     "falhaAoApagar": "failed to delete the image"
+  },
+  "audit": {
+    "titulo": "Audit log",
+    "dica": "A record of who changed what in this team: create, change, delete, stop and deploy. It keeps the kind of action and the resource, never the submitted values (passwords, variables). Kept for 1 year by default.",
+    "somenteAtencao": "Show only attention actions (deletions and stops)",
+    "vazio": "No actions recorded yet.",
+    "quando": "When",
+    "quem": "Who",
+    "oQue": "What",
+    "recurso": "Resource",
+    "atencao": "attention",
+    "removido": "(removed)",
+    "maisAntigos": "Load older",
+    "carregando": "loading...",
+    "falha": "failed to load the audit log",
+    "tipoServidor": "server",
+    "tipoAplicacao": "application",
+    "tipoServico": "service",
+    "tipoBanco": "database",
+    "tipoProjeto": "project"
   }
 }

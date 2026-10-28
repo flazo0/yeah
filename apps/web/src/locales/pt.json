@@ -17,7 +17,8 @@
     "updates": "Atualizações",
     "settings": "Configurações",
     "themeDark": "tema escuro",
-    "themeLight": "tema claro"
+    "themeLight": "tema claro",
+    "audit": "Auditoria"
   },
   "login": {
     "title": "Entrar",
@@ -1748,5 +1749,25 @@
     "referenciaDiferente": "A referência digitada não confere; nada foi apagado.",
     "falhaAoCarregar": "falha ao listar as imagens",
     "falhaAoApagar": "falha ao apagar a imagem"
+  },
+  "audit": {
+    "titulo": "Auditoria",
+    "dica": "Registro de quem mudou o quê neste time: criar, alterar, excluir, parar e implantar. Guarda o tipo de ação e o recurso, nunca os valores enviados (senhas, variáveis). Mantido por 1 ano por padrão.",
+    "somenteAtencao": "Mostrar só ações de atenção (exclusões e paradas)",
+    "vazio": "Nenhuma ação registrada ainda.",
+    "quando": "Quando",
+    "quem": "Quem",
+    "oQue": "O que",
+    "recurso": "Recurso",
+    "atencao": "atenção",
+    "removido": "(removido)",
+    "maisAntigos": "Carregar mais antigos",
+    "carregando": "carregando...",
+    "falha": "falha ao carregar a auditoria",
+    "tipoServidor": "servidor",
+    "tipoAplicacao": "aplicação",
+    "tipoServico": "serviço",
+    "tipoBanco": "banco",
+    "tipoProjeto": "projeto"
   }
 }

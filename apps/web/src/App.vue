@@ -57,6 +57,7 @@ const isStoragesRoute = computed(() => Boolean(teamId.value) && route.path === `
 const isSourcesRoute = computed(() => Boolean(teamId.value) && route.path.startsWith(`/teams/${teamId.value}/sources`));
 const isNotificationsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/notifications`);
 const isLogDrainsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/log-drains`);
+const isAuditRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/audit`);
 const isVariablesRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/variables`);
 const isTeamRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/team`);
 const isSettingsRoute = computed(() => Boolean(teamId.value) && route.path === `/teams/${teamId.value}/settings`);
@@ -73,6 +74,7 @@ const breadcrumb = computed(() => {
   if (isSourcesRoute.value) return [i18n.global.t("common.sources")];
   if (isNotificationsRoute.value) return [i18n.global.t("app.notificacoes")];
   if (isLogDrainsRoute.value) return ["Log Drains"];
+  if (isAuditRoute.value) return [i18n.global.t("nav.audit")];
   if (isUpdatesRoute.value) return [i18n.global.t("app.atualizacoes")];
   if (isVariablesRoute.value) return [i18n.global.t("app.variaveis")];
   if (isTeamRoute.value) return [i18n.global.t("common.team")];
@@ -147,6 +149,10 @@ const breadcrumb = computed(() => {
           <RouterLink :to="`/teams/${teamId}/log-drains`" class="sidebar-link" :class="{ active: isLogDrainsRoute }">
             <span class="material-symbols-outlined">receipt_long</span>
             {{ t("nav.logDrains") }}
+          </RouterLink>
+          <RouterLink :to="`/teams/${teamId}/audit`" class="sidebar-link" :class="{ active: isAuditRoute }">
+            <span class="material-symbols-outlined">history</span>
+            {{ t("nav.audit") }}
           </RouterLink>
           <RouterLink :to="`/teams/${teamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
             <span class="material-symbols-outlined">deployed_code_update</span>

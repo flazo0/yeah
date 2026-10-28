@@ -8,6 +8,8 @@ import { sshKeyRoutes } from "./routes/sshKeys";
 import { caCertificateRoutes } from "./routes/caCertificates";
 import { dockerCleanupRoutes } from "./routes/dockerCleanup";
 import { serverOpsRoutes } from "./routes/serverOps";
+import { auditRoutes } from "./routes/audit";
+import { recordAuditFromRequest } from "./lib/audit";
 import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
 import { applicationRoutes } from "./routes/applications";
@@ -62,7 +64,8 @@ const app = new Elysia()
     requests.set(request, { id, start: performance.now() });
     set.headers["x-request-id"] = id;
   })
-  .onAfterResponse(({ request, set }) => {
+  .onAfterResponse(({ request, set, cookie }) => {
+    void recordAuditFromRequest(request, Number(set.status ?? 200), cookie);
     const info = requests.get(request);
     const path = new URL(request.url).pathname;
     if (!info || path.endsWith("/health")) return;
@@ -97,6 +100,7 @@ const app = new Elysia()
   .use(caCertificateRoutes)
   .use(dockerCleanupRoutes)
   .use(serverOpsRoutes)
+  .use(auditRoutes)
   .use(storageRoutes)
   .use(projectRoutes)
   .use(applicationRoutes)

@@ -379,6 +379,13 @@
       "when": 1793200576464,
       "tag": "0053_server_patching",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793200911640,
+      "tag": "0054_audit_events",
+      "breakpoints": true
     }
   ]
 }

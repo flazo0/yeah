@@ -1,5 +1,5 @@
 import { and, isNotNull, lt, ne } from "drizzle-orm";
-import { backupExecutions, deployments, dockerCleanupExecutions, platformOperations, scheduledTaskExecutions, volumeBackups } from "@yeah/db";
+import { auditEvents, backupExecutions, deployments, dockerCleanupExecutions, platformOperations, scheduledTaskExecutions, volumeBackups } from "@yeah/db";
 import type { LogRetentionJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
@@ -18,8 +18,17 @@ export function retentionCutoff(now: Date, envValue: string | undefined): Date |
 // deleting the row) keeps status/timing/size history intact while reclaiming the disk/vacuum cost.
 const LOG_TABLES = [deployments, backupExecutions, dockerCleanupExecutions, platformOperations, scheduledTaskExecutions, volumeBackups] as const;
 
+/** Audit entries are tiny and valuable: kept a year by default (`AUDIT_RETENTION_DAYS`, 0 = forever). */
+export function auditCutoff(now: Date, envValue: string | undefined): Date | null {
+  const days = envValue === undefined || envValue === "" ? 365 : Number(envValue);
+  if (!Number.isFinite(days) || days <= 0) return null;
+  return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+}
+
 export function makeLogRetentionProcessor() {
   return async function logRetention(_job: Job<LogRetentionJobData>) {
+    const audit = auditCutoff(new Date(), process.env.AUDIT_RETENTION_DAYS);
+    if (audit) await db.delete(auditEvents).where(lt(auditEvents.createdAt, audit));
     const cutoff = retentionCutoff(new Date(), process.env.LOG_RETENTION_DAYS);
     if (!cutoff) return;
     for (const table of LOG_TABLES) {

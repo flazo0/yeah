@@ -24,6 +24,7 @@ import SourcesPage from "../pages/SourcesPage.vue";
 import SourceDetailPage from "../pages/SourceDetailPage.vue";
 import NotificationsPage from "../pages/NotificationsPage.vue";
 import LogDrainsPage from "../pages/LogDrainsPage.vue";
+import AuditPage from "../pages/AuditPage.vue";
 import UpdatesPage from "../pages/UpdatesPage.vue";
 import TeamPage from "../pages/TeamPage.vue";
 import VariablesPage from "../pages/VariablesPage.vue";
@@ -92,6 +93,7 @@ export const router = createRouter({
     { path: "/teams/:teamId/sources/:sourceId", component: SourceDetailPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/github", redirect: (to) => `/teams/${to.params.teamId}/sources` },
     { path: "/teams/:teamId/notifications", component: NotificationsPage, meta: { requiresAuth: true }, props: true },
+    { path: "/teams/:teamId/audit", component: AuditPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/log-drains", component: LogDrainsPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/variables", component: VariablesPage, meta: { requiresAuth: true }, props: true },
     { path: "/teams/:teamId/team", component: TeamPage, meta: { requiresAuth: true }, props: true },

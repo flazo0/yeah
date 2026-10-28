@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { retentionCutoff } from "./logRetention";
+import { auditCutoff, retentionCutoff } from "./logRetention";
 
 describe("retentionCutoff", () => {
   const now = new Date("2026-01-30T00:00:00Z");
@@ -25,5 +25,15 @@ describe("retentionCutoff", () => {
   test("a negative or non-numeric value also disables the sweep rather than throwing", () => {
     expect(retentionCutoff(now, "-5")).toBeNull();
     expect(retentionCutoff(now, "not-a-number")).toBeNull();
+  });
+});
+
+describe("auditCutoff", () => {
+  const now = new Date("2026-01-30T00:00:00Z");
+  test("keeps a year by default", () => {
+    expect(auditCutoff(now, undefined)!.getTime()).toBe(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+  });
+  test("0 keeps everything", () => {
+    expect(auditCutoff(now, "0")).toBeNull();
   });
 });
