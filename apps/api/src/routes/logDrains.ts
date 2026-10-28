@@ -11,7 +11,7 @@ import { assertMember } from "../lib/access";
 // application deploy, a scheduled task run) to Loki, Axiom, New Relic or a Fluent Bit http input.
 // Not a continuous tail of container stdout — see docs/ROADMAP.md for that scope boundary.
 
-const KIND_SCHEMA = t.Union([t.Literal("loki"), t.Literal("axiom"), t.Literal("new_relic"), t.Literal("fluent_bit_http")]);
+const KIND_SCHEMA = t.Union([t.Literal("loki"), t.Literal("axiom"), t.Literal("new_relic"), t.Literal("fluent_bit_http"), t.Literal("cloudwatch")]);
 
 function toDto(drain: LogDrain): LogDrainDto {
   return {
@@ -23,6 +23,10 @@ function toDto(drain: LogDrain): LogDrainDto {
     url: drain.url,
     lokiUsername: drain.lokiUsername,
     axiomDataset: drain.axiomDataset,
+    awsRegion: drain.awsRegion,
+    awsAccessKeyId: drain.awsAccessKeyId,
+    awsLogGroup: drain.awsLogGroup,
+    awsLogStream: drain.awsLogStream,
     createdAt: drain.createdAt.toISOString(),
   };
 }
@@ -61,6 +65,11 @@ export const logDrainRoutes = new Elysia({ prefix: "/teams/:teamId/log-drains" }
           axiomDataset: body.axiomDataset ?? null,
           axiomToken: body.axiomToken ?? null,
           newRelicLicenseKey: body.newRelicLicenseKey ?? null,
+          awsRegion: body.awsRegion ?? null,
+          awsAccessKeyId: body.awsAccessKeyId ?? null,
+          awsSecretAccessKey: body.awsSecretAccessKey ?? null,
+          awsLogGroup: body.awsLogGroup ?? null,
+          awsLogStream: body.awsLogStream ?? null,
         })
         .returning();
       if (!drain) {
@@ -79,6 +88,11 @@ export const logDrainRoutes = new Elysia({ prefix: "/teams/:teamId/log-drains" }
         axiomDataset: t.Optional(t.String()),
         axiomToken: t.Optional(t.String()),
         newRelicLicenseKey: t.Optional(t.String()),
+        awsRegion: t.Optional(t.String({ pattern: "^[a-z]{2}(-[a-z]+)+-[0-9]$" })),
+        awsAccessKeyId: t.Optional(t.String({ maxLength: 128 })),
+        awsSecretAccessKey: t.Optional(t.String({ maxLength: 256 })),
+        awsLogGroup: t.Optional(t.String({ maxLength: 512 })),
+        awsLogStream: t.Optional(t.String({ maxLength: 512 })),
       }),
     },
   )
@@ -104,6 +118,11 @@ export const logDrainRoutes = new Elysia({ prefix: "/teams/:teamId/log-drains" }
           axiomDataset: body.axiomDataset ?? existing.axiomDataset,
           axiomToken: body.axiomToken ?? existing.axiomToken,
           newRelicLicenseKey: body.newRelicLicenseKey ?? existing.newRelicLicenseKey,
+          awsRegion: body.awsRegion ?? existing.awsRegion,
+          awsAccessKeyId: body.awsAccessKeyId ?? existing.awsAccessKeyId,
+          awsSecretAccessKey: body.awsSecretAccessKey ?? existing.awsSecretAccessKey,
+          awsLogGroup: body.awsLogGroup ?? existing.awsLogGroup,
+          awsLogStream: body.awsLogStream ?? existing.awsLogStream,
         })
         .where(eq(logDrains.id, params.drainId))
         .returning();
@@ -122,6 +141,11 @@ export const logDrainRoutes = new Elysia({ prefix: "/teams/:teamId/log-drains" }
         axiomDataset: t.Optional(t.String()),
         axiomToken: t.Optional(t.String()),
         newRelicLicenseKey: t.Optional(t.String()),
+        awsRegion: t.Optional(t.String({ pattern: "^[a-z]{2}(-[a-z]+)+-[0-9]$" })),
+        awsAccessKeyId: t.Optional(t.String({ maxLength: 128 })),
+        awsSecretAccessKey: t.Optional(t.String({ maxLength: 256 })),
+        awsLogGroup: t.Optional(t.String({ maxLength: 512 })),
+        awsLogStream: t.Optional(t.String({ maxLength: 512 })),
       }),
     },
   )

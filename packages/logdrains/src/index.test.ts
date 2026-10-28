@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { buildAxiomPayload, buildFluentBitPayload, buildLokiPayload, buildNewRelicPayload, sendLogs, splitLogLines, type LogDrainConfig, type LogLine } from "./index";
+import { buildAxiomPayload, buildCloudWatchBatches, buildFluentBitPayload, buildLokiPayload, buildNewRelicPayload, sendLogs, splitLogLines, type LogDrainConfig, type LogLine } from "./index";
 
 function baseDrain(overrides: Partial<LogDrainConfig> = {}): LogDrainConfig {
   return { kind: "loki", url: null, lokiUsername: null, lokiPassword: null, axiomDataset: null, axiomToken: null, newRelicLicenseKey: null, ...overrides };
@@ -137,5 +137,41 @@ describe("sendLogs", () => {
     } finally {
       console.error = originalError;
     }
+  });
+});
+
+describe("buildCloudWatchBatches", () => {
+  test("sorts by time and splits into batches", () => {
+    const lines = [3, 1, 2, 5, 4].map((n) => ({ message: `m${n}`, timestamp: new Date(n * 1000), labels: {} }));
+    const batches = buildCloudWatchBatches(lines, 2);
+    expect(batches.map((b) => b.map((e) => e.message))).toEqual([["m1", "m2"], ["m3", "m4"], ["m5"]]);
+  });
+  test("empty messages become a single space (CloudWatch rejects empty ones)", () => {
+    expect(buildCloudWatchBatches([{ message: "", timestamp: new Date(1), labels: {} }])[0]![0]!.message).toBe(" ");
+  });
+});
+
+describe("cloudwatch send", () => {
+  test("creates group and stream, then puts events — each call signed for the region's logs endpoint", async () => {
+    const calls: Array<{ url: string; target: string | null; auth: string | null; body: string }> = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (url: string, init: { headers: Record<string, string>; body: string }) => {
+      calls.push({ url, target: init.headers["x-amz-target"] ?? null, auth: init.headers.authorization ?? null, body: init.body });
+      return new Response("{}", { status: 200 });
+    }) as unknown as typeof fetch;
+    try {
+      const ok = await sendLogs(baseDrain({ kind: "cloudwatch", awsRegion: "eu-west-1", awsAccessKeyId: "AKIAEXAMPLE", awsSecretAccessKey: "secret", awsLogGroup: "yeah", awsLogStream: "deploys" }), lines);
+      expect(ok).toBe(true);
+    } finally {
+      globalThis.fetch = original;
+    }
+    expect(calls.map((c) => c.target)).toEqual(["Logs_20140328.CreateLogGroup", "Logs_20140328.CreateLogStream", "Logs_20140328.PutLogEvents"]);
+    expect(calls[0]!.url).toBe("https://logs.eu-west-1.amazonaws.com/");
+    expect(calls[2]!.auth).toContain("Credential=AKIAEXAMPLE/");
+    expect(JSON.parse(calls[2]!.body).logEvents).toHaveLength(2);
+  });
+
+  test("incomplete configuration sends nothing", async () => {
+    expect(await sendLogs(baseDrain({ kind: "cloudwatch", awsRegion: "eu-west-1" }), lines)).toBe(false);
   });
 });

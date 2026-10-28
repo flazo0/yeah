@@ -22,16 +22,22 @@ const form = ref({
   axiomDataset: "",
   axiomToken: "",
   newRelicLicenseKey: "",
+  awsRegion: "us-east-1",
+  awsAccessKeyId: "",
+  awsSecretAccessKey: "",
+  awsLogGroup: "yeah",
+  awsLogStream: "deploys",
 });
 const submitting = ref(false);
 const testingId = ref<string | null>(null);
 const testResult = ref<Record<string, "ok" | "failed">>({});
 
-const kindLabel: Record<LogDrainKind, string> = { loki: "Grafana Loki", axiom: "Axiom", new_relic: "New Relic", fluent_bit_http: "Fluent Bit (HTTP input)" };
+const kindLabel: Record<LogDrainKind, string> = { loki: "Grafana Loki", axiom: "Axiom", new_relic: "New Relic", fluent_bit_http: "Fluent Bit (HTTP input)", cloudwatch: "AWS CloudWatch Logs" };
 const needsUrl = computed(() => form.value.kind === "loki" || form.value.kind === "fluent_bit_http");
 const needsLokiAuth = computed(() => form.value.kind === "loki");
 const needsAxiom = computed(() => form.value.kind === "axiom");
 const needsNewRelic = computed(() => form.value.kind === "new_relic");
+const needsCloudWatch = computed(() => form.value.kind === "cloudwatch");
 
 async function loadDrains() {
   loading.value = true;
@@ -57,9 +63,14 @@ async function addDrain() {
       axiomDataset: needsAxiom.value ? form.value.axiomDataset : undefined,
       axiomToken: needsAxiom.value ? form.value.axiomToken : undefined,
       newRelicLicenseKey: needsNewRelic.value ? form.value.newRelicLicenseKey : undefined,
+      awsRegion: needsCloudWatch.value ? form.value.awsRegion : undefined,
+      awsAccessKeyId: needsCloudWatch.value ? form.value.awsAccessKeyId : undefined,
+      awsSecretAccessKey: needsCloudWatch.value ? form.value.awsSecretAccessKey : undefined,
+      awsLogGroup: needsCloudWatch.value ? form.value.awsLogGroup : undefined,
+      awsLogStream: needsCloudWatch.value ? form.value.awsLogStream : undefined,
     });
     drains.value.push(res.drain);
-    form.value = { name: "", kind: "loki", url: "", lokiUsername: "", lokiPassword: "", axiomDataset: "", axiomToken: "", newRelicLicenseKey: "" };
+    form.value = { name: "", kind: "loki", url: "", lokiUsername: "", lokiPassword: "", axiomDataset: "", axiomToken: "", newRelicLicenseKey: "", awsRegion: "us-east-1", awsAccessKeyId: "", awsSecretAccessKey: "", awsLogGroup: "yeah", awsLogStream: "deploys" };
   } catch (err) {
     error.value = err instanceof ApiError ? err.message : i18n.global.t("logDrains.falhaAoCriarODestino");
   } finally {
@@ -169,6 +180,7 @@ onMounted(loadDrains);
                 <option value="axiom">{{ $t("logDrains.axiom") }}</option>
                 <option value="new_relic">{{ $t("logDrains.newRelic") }}</option>
                 <option value="fluent_bit_http">{{ $t("logDrains.fluentBitHttpInput") }}</option>
+                <option value="cloudwatch">{{ $t("logDrains.cloudwatch") }}</option>
               </select>
             </div>
           </div>
@@ -205,6 +217,33 @@ onMounted(loadDrains);
               <label for="ld-axiom-token">{{ $t("logDrains.apiToken") }}</label>
               <input id="ld-axiom-token" v-model="form.axiomToken" type="password" class="form-control mono" required />
             </div>
+          </template>
+          <template v-if="needsCloudWatch">
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="ld-aws-region">{{ $t("logDrains.awsRegiao") }}</label>
+                <input id="ld-aws-region" v-model="form.awsRegion" class="form-control mono" placeholder="us-east-1" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="ld-aws-group">{{ $t("logDrains.awsGrupo") }}</label>
+                <input id="ld-aws-group" v-model="form.awsLogGroup" class="form-control mono" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="ld-aws-stream">{{ $t("logDrains.awsStream") }}</label>
+                <input id="ld-aws-stream" v-model="form.awsLogStream" class="form-control mono" required />
+              </div>
+            </div>
+            <div class="form-row mb-16">
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="ld-aws-key">{{ $t("logDrains.awsChave") }}</label>
+                <input id="ld-aws-key" v-model="form.awsAccessKeyId" class="form-control mono" autocomplete="off" required />
+              </div>
+              <div class="form-group" style="margin-bottom: 0">
+                <label for="ld-aws-secret">{{ $t("logDrains.awsSegredo") }}</label>
+                <input id="ld-aws-secret" v-model="form.awsSecretAccessKey" type="password" class="form-control mono" autocomplete="new-password" required />
+              </div>
+            </div>
+            <p class="hint mb-16">{{ $t("logDrains.awsDica") }}</p>
           </template>
           <div v-if="needsNewRelic" class="form-group">
             <label for="ld-nr-key">{{ $t("logDrains.licenseKey") }}</label>

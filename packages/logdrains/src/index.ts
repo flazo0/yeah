@@ -1,4 +1,6 @@
-export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http";
+import { amzDateNow, signRequest } from "./sigv4";
+
+export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http" | "cloudwatch";
 
 export interface LogDrainConfig {
   kind: LogDrainKind;
@@ -10,6 +12,12 @@ export interface LogDrainConfig {
   axiomDataset: string | null;
   axiomToken: string | null;
   newRelicLicenseKey: string | null;
+  // cloudwatch: region, an IAM access key allowed logs:CreateLogGroup/CreateLogStream/PutLogEvents, and where to write.
+  awsRegion?: string | null;
+  awsAccessKeyId?: string | null;
+  awsSecretAccessKey?: string | null;
+  awsLogGroup?: string | null;
+  awsLogStream?: string | null;
 }
 
 export interface LogLine {
@@ -36,6 +44,8 @@ export async function sendLogs(drain: LogDrainConfig, lines: LogLine[]): Promise
         return await sendNewRelic(drain, lines);
       case "fluent_bit_http":
         return await sendFluentBit(drain, lines);
+      case "cloudwatch":
+        return await sendCloudWatch(drain, lines);
     }
   } catch (err) {
     console.error(`[logdrains] failed to send via ${drain.kind}:`, err);
@@ -113,6 +123,49 @@ async function sendFluentBit(drain: LogDrainConfig, lines: LogLine[]): Promise<b
     body: JSON.stringify(buildFluentBitPayload(lines)),
   });
   return res.ok;
+}
+
+/** CloudWatch wants events sorted by time, in batches of at most 1000 (the API limit is 10000 / 1 MB; this stays well under). */
+export function buildCloudWatchBatches(lines: LogLine[], batchSize = 1000): Array<Array<{ timestamp: number; message: string }>> {
+  const events = lines
+    .map((l) => ({ timestamp: l.timestamp.getTime(), message: l.message.slice(0, 200_000) || " " }))
+    .sort((a, b) => a.timestamp - b.timestamp);
+  const batches: Array<Array<{ timestamp: number; message: string }>> = [];
+  for (let i = 0; i < events.length; i += batchSize) batches.push(events.slice(i, i + batchSize));
+  return batches;
+}
+
+async function cloudWatchCall(drain: LogDrainConfig, target: string, payload: unknown): Promise<Response> {
+  const region = drain.awsRegion!;
+  const host = `logs.${region}.amazonaws.com`;
+  const body = JSON.stringify(payload);
+  const headers = signRequest({
+    method: "POST",
+    host,
+    path: "/",
+    headers: { "content-type": "application/x-amz-json-1.1", "x-amz-target": `Logs_20140328.${target}` },
+    body,
+    region,
+    service: "logs",
+    accessKeyId: drain.awsAccessKeyId!,
+    secretAccessKey: drain.awsSecretAccessKey!,
+    amzDate: amzDateNow(),
+  });
+  return fetch(`https://${host}/`, { method: "POST", headers, body });
+}
+
+async function sendCloudWatch(drain: LogDrainConfig, lines: LogLine[]): Promise<boolean> {
+  if (!drain.awsRegion || !drain.awsAccessKeyId || !drain.awsSecretAccessKey || !drain.awsLogGroup || !drain.awsLogStream) return false;
+  const logGroupName = drain.awsLogGroup;
+  const logStreamName = drain.awsLogStream;
+  // Both already existing is the normal case (ResourceAlreadyExistsException); a real permission problem shows up on PutLogEvents.
+  await cloudWatchCall(drain, "CreateLogGroup", { logGroupName });
+  await cloudWatchCall(drain, "CreateLogStream", { logGroupName, logStreamName });
+  for (const logEvents of buildCloudWatchBatches(lines)) {
+    const res = await cloudWatchCall(drain, "PutLogEvents", { logGroupName, logStreamName, logEvents });
+    if (!res.ok) return false;
+  }
+  return true;
 }
 
 /** Splits a captured job log (with ANSI color codes and a trailing newline) into individual lines. */

@@ -414,6 +414,13 @@
       "when": 1793202084815,
       "tag": "0058_service_stack_files",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793202494718,
+      "tag": "0059_logdrain_cloudwatch",
+      "breakpoints": true
     }
   ]
 }

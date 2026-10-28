@@ -578,7 +578,7 @@ export interface CaCertificateDto {
   createdAt: string;
 }
 
-export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http";
+export type LogDrainKind = "loki" | "axiom" | "new_relic" | "fluent_bit_http" | "cloudwatch";
 
 export interface LogDrainDto {
   id: string;
@@ -589,7 +589,11 @@ export interface LogDrainDto {
   url: string | null;
   lokiUsername: string | null;
   axiomDataset: string | null;
-  // Secrets (lokiPassword, axiomToken, newRelicLicenseKey) are deliberately never sent back to the frontend.
+  awsRegion: string | null;
+  awsAccessKeyId: string | null;
+  awsLogGroup: string | null;
+  awsLogStream: string | null;
+  // Secrets (lokiPassword, axiomToken, newRelicLicenseKey, awsSecretAccessKey) are deliberately never sent back to the frontend.
   createdAt: string;
 }
 

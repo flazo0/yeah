@@ -475,7 +475,14 @@
     "criando": "criando...",
     "adicionarDestino": "Adicionar destino",
     "falhaAoCarregarOsDestinos": "falha ao carregar os destinos",
-    "falhaAoCriarODestino": "falha ao criar o destino"
+    "falhaAoCriarODestino": "falha ao criar o destino",
+    "cloudwatch": "AWS CloudWatch Logs",
+    "awsRegiao": "Região",
+    "awsGrupo": "Grupo de logs",
+    "awsStream": "Stream",
+    "awsChave": "Access key ID",
+    "awsSegredo": "Secret access key",
+    "awsDica": "Use um usuário IAM só para isto, com permissão logs:CreateLogGroup, logs:CreateLogStream e logs:PutLogEvents. O grupo e o stream são criados se não existirem."
   },
   "notifications": {
     "notificacoes": "Notificações",

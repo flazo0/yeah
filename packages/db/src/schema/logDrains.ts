@@ -2,7 +2,7 @@ import { boolean, pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/
 import { teams } from "./teams";
 import { encryptedText } from "../encryption";
 
-export const logDrainKindEnum = pgEnum("log_drain_kind", ["loki", "axiom", "new_relic", "fluent_bit_http"]);
+export const logDrainKindEnum = pgEnum("log_drain_kind", ["loki", "axiom", "new_relic", "fluent_bit_http", "cloudwatch"]);
 
 // Forwards the logs the panel already captures in full at the end of a job (an application deploy, a
 // scheduled task run) to an external log aggregator — one row per destination, per team. Not a
@@ -22,6 +22,12 @@ export const logDrains = pgTable("log_drains", {
   axiomDataset: varchar("axiom_dataset", { length: 255 }),
   axiomToken: encryptedText("axiom_token"),
   newRelicLicenseKey: encryptedText("new_relic_license_key"),
+  // cloudwatch
+  awsRegion: varchar("aws_region", { length: 32 }),
+  awsAccessKeyId: varchar("aws_access_key_id", { length: 128 }),
+  awsSecretAccessKey: encryptedText("aws_secret_access_key"),
+  awsLogGroup: varchar("aws_log_group", { length: 512 }),
+  awsLogStream: varchar("aws_log_stream", { length: 512 }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

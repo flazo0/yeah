@@ -45,6 +45,7 @@ const SECRET_COLUMNS: SecretColumn[] = [
   { label: "log_drains.loki_password", table: logDrains, column: logDrains.lokiPassword, key: "lokiPassword" },
   { label: "log_drains.axiom_token", table: logDrains, column: logDrains.axiomToken, key: "axiomToken" },
   { label: "log_drains.new_relic_license_key", table: logDrains, column: logDrains.newRelicLicenseKey, key: "newRelicLicenseKey" },
+  { label: "log_drains.aws_secret_access_key", table: logDrains, column: logDrains.awsSecretAccessKey, key: "awsSecretAccessKey" },
   { label: "shared_variables.value", table: sharedVariables, column: sharedVariables.value, key: "value" },
   { label: "users.totp_secret", table: users, column: users.totpSecret, key: "totpSecret" },
   { label: "application_volumes.file_content", table: applicationVolumes, column: applicationVolumes.fileContent, key: "fileContent" },

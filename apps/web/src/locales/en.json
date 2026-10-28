@@ -475,7 +475,14 @@
     "criando": "creating...",
     "adicionarDestino": "Add destination",
     "falhaAoCarregarOsDestinos": "failed to load the destinations",
-    "falhaAoCriarODestino": "failed to create the destination"
+    "falhaAoCriarODestino": "failed to create the destination",
+    "cloudwatch": "AWS CloudWatch Logs",
+    "awsRegiao": "Region",
+    "awsGrupo": "Log group",
+    "awsStream": "Stream",
+    "awsChave": "Access key ID",
+    "awsSegredo": "Secret access key",
+    "awsDica": "Use an IAM user just for this, allowed logs:CreateLogGroup, logs:CreateLogStream and logs:PutLogEvents. The group and stream are created if missing."
   },
   "notifications": {
     "notificacoes": "Notifications",
