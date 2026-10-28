@@ -68,6 +68,7 @@ beforeAll(async () => {
   const dockerPort = (dockerApi.address() as AddressInfo).port;
 
   const dir = mkdtempSync(join(tmpdir(), "waker-"));
+  writeFileSync(join(dir, "maint.json"), JSON.stringify({ container: "maint", hosts: ["m.test"], port: 1, idleSeconds: 0, maintenance: { message: "Voltamos <b>já</b>" } }));
   writeFileSync(join(dir, "app1.json"), JSON.stringify({ container: "app1", hosts: ["a.test"], port: appPort, idleSeconds: 1, target: `127.0.0.1:${appPort}` }));
   process.env.WAKER_CONFIG_DIR = dir;
   process.env.DOCKER_URL = `http://127.0.0.1:${dockerPort}`;
@@ -89,6 +90,14 @@ afterAll(() => {
 describe("waker", () => {
   test("unknown host is a 404", async () => {
     expect((await get("nope.test")).status).toBe(404);
+  });
+
+  test("maintenance mode answers 503 with the escaped message and never starts the app", async () => {
+    const startsBefore = starts;
+    const r = await get("m.test");
+    expect(r.status).toBe(503);
+    expect(r.body).toContain("Voltamos &lt;b&gt;já&lt;/b&gt;");
+    expect(starts).toBe(startsBefore);
   });
 
   test("wakes a stopped app, holding concurrent requests behind one start", async () => {

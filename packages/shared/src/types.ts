@@ -198,6 +198,10 @@ export interface ApplicationDto extends ResourceLimits {
   publishDirectory: string;
   staticSpa: boolean;
   sleepAfterMinutes: number | null;
+  /** Username of the HTTP basic auth in front of the app; null = no protection. The hash never leaves the server. */
+  basicAuthUser: string | null;
+  maintenanceMode: boolean;
+  maintenanceMessage: string | null;
   /** docker_compose only: compose file inside the repo, and the service the domain/port routes to. */
   composeFile: string;
   composeService: string | null;

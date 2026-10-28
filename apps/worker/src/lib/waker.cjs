@@ -5,8 +5,9 @@
 //   2. starts the container if it is stopped and waits until its port accepts connections —
 //      the HTTP request is simply held meanwhile, so the visitor sees a slower first response, no loading page,
 //   3. forwards the request (and WebSocket upgrades) and remembers when it last saw traffic,
-//   4. stops containers that were idle longer than their idleSeconds.
-// Config file: { "container": "yeah-app-<id>", "hosts": ["a.example.com"], "port": 3000, "idleSeconds": 600, "target": "optional host:port" }
+//   4. stops containers that were idle longer than their idleSeconds (0 = never sleeps).
+//   5. in maintenance mode (config.maintenance = {message}) answers 503 with a plain page and leaves the app alone.
+// Config file: { "container": "yeah-app-<id>", "hosts": ["a.example.com"], "port": 3000, "idleSeconds": 600, "target": "optional host:port", "maintenance": { "message": "..." } }
 // The waker only needs the Docker API (unix socket, or DOCKER_URL=http://host:port for tests).
 const http = require("http");
 const net = require("net");
@@ -150,6 +151,17 @@ function fail(res, status, message) {
   res.end(message);
 }
 
+function escapeHtml(text) {
+  return String(text).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split("\"").join("&quot;");
+}
+
+function maintenancePage(res, maintenance) {
+  const message = escapeHtml((maintenance && maintenance.message) || "Estamos em manutenção. Voltamos em instantes.");
+  const html = "<!doctype html><html lang=\"pt\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Em manutenção</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0;text-align:center;padding:24px}main{max-width:32rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{margin:0;line-height:1.5;color:#94a3b8}</style></head><body><main><h1>Em manutenção</h1><p>" + message + "</p></main></body></html>";
+  res.writeHead(503, { "content-type": "text/html; charset=utf-8", "retry-after": "120", "cache-control": "no-store" });
+  res.end(html);
+}
+
 const server = http.createServer(async (req, res) => {
   if (req.url === "/__waker") {
     res.writeHead(200, { "content-type": "text/plain" });
@@ -160,6 +172,7 @@ const server = http.createServer(async (req, res) => {
   const host = String(req.headers.host || "").split(":")[0].toLowerCase();
   const state = hostIndex.get(host);
   if (!state) return fail(res, 404, "no app configured for this host");
+  if (state.cfg.maintenance) return maintenancePage(res, state.cfg.maintenance);
   state.last = Date.now();
   state.inflight++;
   let finished = false;
@@ -198,6 +211,10 @@ server.on("upgrade", async (req, socket, head) => {
     socket.end("HTTP/1.1 404 Not Found\r\n\r\n");
     return;
   }
+  if (state.cfg.maintenance) {
+    socket.end("HTTP/1.1 503 Service Unavailable"+String.fromCharCode(13,10,13,10));
+    return;
+  }
   state.inflight++;
   let finished = false;
   const done = () => {
@@ -231,7 +248,8 @@ async function sweep() {
   const now = Date.now();
   for (const state of apps.values()) {
     if (!state.up || state.waking || state.inflight > 0) continue;
-    const idleMs = Number(state.cfg.idleSeconds || 600) * 1000;
+    if (!(Number(state.cfg.idleSeconds) > 0)) continue;
+    const idleMs = Number(state.cfg.idleSeconds) * 1000;
     if (now - state.last < idleMs) continue;
     try {
       await docker("POST", "/containers/" + encodeURIComponent(state.cfg.container) + "/stop?t=10");

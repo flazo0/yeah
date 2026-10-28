@@ -5,6 +5,7 @@ import { resourceSlug, type ServerDto } from "@yeah/shared";
 import { api } from "../../lib/api";
 import AppDomainsCard from "../../components/AppDomainsCard.vue";
 import AppSleepCard from "../../components/AppSleepCard.vue";
+import AppProtectionCard from "../../components/AppProtectionCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
@@ -102,6 +103,17 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :has-domain="!!app.domain"
       :put-url="`${basePath}/sleep`"
       @saved="(v) => { app!.sleepAfterMinutes = v; }"
+      @error="(msg) => (error = msg)"
+    />
+
+    <AppProtectionCard
+      v-if="app.buildPack !== 'docker_compose'"
+      :basic-auth-user="app.basicAuthUser"
+      :maintenance-mode="app.maintenanceMode"
+      :maintenance-message="app.maintenanceMessage"
+      :has-domain="!!app.domain"
+      :put-url="`${basePath}/protection`"
+      @saved="(v) => { app!.basicAuthUser = v.basicAuthUser; app!.maintenanceMode = v.maintenanceMode; app!.maintenanceMessage = v.maintenanceMessage; }"
       @error="(msg) => (error = msg)"
     />
 

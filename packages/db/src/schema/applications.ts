@@ -55,6 +55,12 @@ export const applications = pgTable("applications", {
   staticSpa: boolean("static_spa").default(false).notNull(),
   // Scale-to-zero: stop the container after this many idle minutes; the server waker starts it on the next request. null = always on.
   sleepAfterMinutes: integer("sleep_after_minutes"),
+  // HTTP basic auth in front of the app (Traefik middleware). Only the bcrypt hash is stored, never the password.
+  basicAuthUser: varchar("basic_auth_user", { length: 64 }),
+  basicAuthHash: text("basic_auth_hash"),
+  // Maintenance mode: the domain answers 503 with this message while the app itself is left alone.
+  maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
+  maintenanceMessage: varchar("maintenance_message", { length: 500 }),
   // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).
   extraDomains: text("extra_domains").array().default(sql`'{}'::text[]`).notNull(),
   wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),

@@ -1769,5 +1769,19 @@
     "tipoServico": "service",
     "tipoBanco": "database",
     "tipoProjeto": "project"
+  },
+  "appProtectionCard": {
+    "titulo": "Protection and maintenance",
+    "dica": "Password: the browser asks for a username and password before showing the app (handy for test environments). Maintenance mode: the domain answers a notice page (503) while you work, without stopping the app. Both apply right away, no redeploy.",
+    "precisaDeDominio": "Set a domain to use these options.",
+    "pedirSenha": "Ask for a username and password",
+    "usuario": "Username",
+    "senha": "Password (min. 8 characters)",
+    "manterSenha": "leave blank to keep the current one",
+    "manutencao": "Maintenance mode (show a notice page)",
+    "mensagem": "Message for visitors",
+    "mensagemPadrao": "We are down for maintenance. Back shortly.",
+    "salvo": "saved, applied right away",
+    "falha": "failed to save"
   }
 }

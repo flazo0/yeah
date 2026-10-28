@@ -76,6 +76,9 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     publishDirectory: app.publishDirectory,
     staticSpa: app.staticSpa,
     sleepAfterMinutes: app.sleepAfterMinutes,
+    basicAuthUser: app.basicAuthUser,
+    maintenanceMode: app.maintenanceMode,
+    maintenanceMessage: app.maintenanceMessage,
     composeFile: app.composeFile,
     composeService: app.composeService,
     deployKeyPublic: app.deployKeyPublic,
@@ -604,6 +607,78 @@ export const applicationRoutes = new Elysia({
       return { application: await applicationDto(updated, row.serverName) };
     },
     { body: t.Object({ sleepAfterMinutes: t.Optional(t.Nullable(t.Number())) }) },
+  )
+  .put(
+    "/:applicationId/protection",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      if (!row.application.domain) {
+        set.status = 400;
+        return { error: "senha e modo manutenção só funcionam em aplicações com domínio" };
+      }
+      if (row.application.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "senha e modo manutenção não estão disponíveis para aplicações docker compose" };
+      }
+
+      const patch: Partial<typeof applications.$inferInsert> = {};
+      if (body.basicAuth !== undefined) {
+        if (body.basicAuth === null) {
+          patch.basicAuthUser = null;
+          patch.basicAuthHash = null;
+        } else {
+          const username = body.basicAuth.user.trim();
+          if (!/^[A-Za-z0-9._-]{1,64}$/.test(username)) {
+            set.status = 400;
+            return { error: "usuário inválido: use letras, números, ponto, hífen ou sublinhado" };
+          }
+          const password = body.basicAuth.password;
+          if (password) {
+            if (password.length < 8) {
+              set.status = 400;
+              return { error: "a senha precisa ter pelo menos 8 caracteres" };
+            }
+            patch.basicAuthHash = await Bun.password.hash(password, { algorithm: "bcrypt", cost: 10 });
+          } else if (!row.application.basicAuthHash) {
+            set.status = 400;
+            return { error: "informe uma senha" };
+          }
+          patch.basicAuthUser = username;
+        }
+      }
+      if (body.maintenance !== undefined) {
+        patch.maintenanceMode = body.maintenance.enabled;
+        patch.maintenanceMessage = body.maintenance.message?.trim() ? body.maintenance.message.trim() : null;
+      }
+      if (Object.keys(patch).length === 0) return { application: await applicationDto(row.application, row.serverName) };
+      const [updated] = await db.update(applications).set(patch).where(eq(applications.id, params.applicationId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update protection" };
+      }
+      // Rewrites the proxy routing (auth middleware / maintenance page) without touching the container.
+      await applicationRoutingQueue.add("update", { applicationId: updated.id });
+      return { application: await applicationDto(updated, row.serverName) };
+    },
+    {
+      body: t.Object({
+        basicAuth: t.Optional(t.Nullable(t.Object({ user: t.String({ maxLength: 64 }), password: t.Optional(t.String({ maxLength: 200 })) }))),
+        maintenance: t.Optional(t.Object({ enabled: t.Boolean(), message: t.Optional(t.Nullable(t.String({ maxLength: 500 }))) })),
+      }),
+    },
   )
   .put(
     "/:applicationId/advanced",

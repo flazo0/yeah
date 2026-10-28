@@ -1769,5 +1769,19 @@
     "tipoServico": "serviço",
     "tipoBanco": "banco",
     "tipoProjeto": "projeto"
+  },
+  "appProtectionCard": {
+    "titulo": "Proteção e manutenção",
+    "dica": "Senha: o navegador pede usuário e senha antes de mostrar o app (útil para ambientes de teste). Modo manutenção: o domínio responde uma página de aviso (503) enquanto você mexe, sem parar o app. Os dois valem na hora, sem redeploy.",
+    "precisaDeDominio": "Defina um domínio para usar estas opções.",
+    "pedirSenha": "Pedir usuário e senha para acessar",
+    "usuario": "Usuário",
+    "senha": "Senha (mín. 8 caracteres)",
+    "manterSenha": "deixe em branco para manter a atual",
+    "manutencao": "Modo manutenção (mostrar página de aviso)",
+    "mensagem": "Mensagem para os visitantes",
+    "mensagemPadrao": "Estamos em manutenção. Voltamos em instantes.",
+    "salvo": "salvo, aplica na hora",
+    "falha": "falha ao salvar"
   }
 }

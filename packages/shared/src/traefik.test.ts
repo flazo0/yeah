@@ -127,3 +127,28 @@ describe("traefikDynamicConfig backend override", () => {
     expect(yml).not.toContain("yeah-app-1:3000");
   });
 });
+
+describe("traefikDynamicConfig basic auth", () => {
+  const routing = computeRouting("a.example.com", [], "none");
+
+  test("adds a basicAuth middleware to the router, with the hash in htpasswd form", () => {
+    const yml = traefikDynamicConfig("yeah-app-1", routing, 3000, { basicAuth: { user: "admin", hash: "$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ0123" } });
+    expect(yml).toContain("      middlewares:\n        - yeah-app-1-auth");
+    expect(yml).toContain("basicAuth:");
+    expect(yml).toContain('"admin:$2y$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ0123"');
+    expect(yml).not.toContain("$2b$");
+  });
+
+  test("auth and the www redirect share a single middlewares block", () => {
+    const withRedirect = computeRouting("example.com", [], "www_to_root");
+    const yml = traefikDynamicConfig("n", withRedirect, 80, { basicAuth: { user: "u", hash: "$2y$10$x" }, backendUrl: "http://yeah-waker:8080" });
+    expect(yml.match(/^  middlewares:$/gm)).toHaveLength(1);
+    expect(yml).toContain("n-auth:");
+    expect(yml).toContain("n-redir:");
+    expect(yml).toContain("http://yeah-waker:8080");
+  });
+
+  test("no auth, no middlewares block", () => {
+    expect(traefikDynamicConfig("n", routing, 80)).not.toContain("middlewares");
+  });
+});

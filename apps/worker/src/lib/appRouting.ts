@@ -24,14 +24,17 @@ export async function writeAppRouting(conn: Client, application: Application, co
     return;
   }
   const routing = computeRouting(domain, application.extraDomains, application.wwwRedirect);
-  if (application.sleepAfterMinutes) {
+  const basicAuth = application.basicAuthUser && application.basicAuthHash ? { user: application.basicAuthUser, hash: application.basicAuthHash } : undefined;
+  // The waker sits in front for scale-to-zero and for maintenance mode (it serves the 503 page).
+  if (application.sleepAfterMinutes || application.maintenanceMode) {
     await run(conn, prepareWakerDirsCommand());
     await writeRemoteFile(conn, `${WAKER_SCRIPT_PATH}.new`, WAKER_SCRIPT);
     await run(conn, ensureWakerCommand());
-    await writeRemoteFile(conn, wakeConfigPath(containerName), wakeConfigJson(containerName, routing.hosts, application.port, application.sleepAfterMinutes));
-    await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, routing, application.port, wakerBackendUrl()));
+    const maintenance = application.maintenanceMode ? (application.maintenanceMessage ?? "") : undefined;
+    await writeRemoteFile(conn, wakeConfigPath(containerName), wakeConfigJson(containerName, routing.hosts, application.port, application.sleepAfterMinutes, maintenance));
+    await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, routing, application.port, { backendUrl: wakerBackendUrl(), basicAuth }));
     return;
   }
-  await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, routing, application.port));
+  await writeRemoteFile(conn, dynamicPath, traefikDynamicConfig(containerName, routing, application.port, { basicAuth }));
   await execStream(conn, `${removeWakeConfigCommand(containerName)}; docker start ${shellQuote(containerName)} >/dev/null 2>&1 || true`, () => undefined);
 }

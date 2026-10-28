@@ -7,6 +7,13 @@ describe("waker commands", () => {
     expect(cfg).toEqual({ container: "yeah-app-1", hosts: ["a.example.com", "b.example.com"], port: 3000, idleSeconds: 900 });
   });
 
+  test("maintenance-only entries never sleep and carry the message", () => {
+    const cfg = JSON.parse(wakeConfigJson("c", ["a.test"], 80, null, "Volto logo"));
+    expect(cfg.idleSeconds).toBe(0);
+    expect(cfg.maintenance).toEqual({ message: "Volto logo" });
+    expect(JSON.parse(wakeConfigJson("c", ["a.test"], 80, 5)).maintenance).toBeUndefined();
+  });
+
   test("backend URL is the waker on the proxy network", () => {
     expect(wakerBackendUrl()).toBe("http://yeah-waker:8080");
   });

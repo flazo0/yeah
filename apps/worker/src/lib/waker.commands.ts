@@ -15,8 +15,12 @@ export function wakerBackendUrl(): string {
   return `http://${WAKER_CONTAINER_NAME}:${WAKER_PORT}`;
 }
 
-export function wakeConfigJson(containerName: string, hosts: string[], port: number, sleepAfterMinutes: number): string {
-  return `${JSON.stringify({ container: containerName, hosts, port, idleSeconds: sleepAfterMinutes * 60 }, null, 2)}\n`;
+/** `sleepAfterMinutes` null = the app never sleeps (the waker is only in front for maintenance mode). */
+export function wakeConfigJson(containerName: string, hosts: string[], port: number, sleepAfterMinutes: number | null, maintenanceMessage: string | null | undefined = undefined): string {
+  const config: Record<string, unknown> = { container: containerName, hosts, port, idleSeconds: sleepAfterMinutes ? sleepAfterMinutes * 60 : 0 };
+  if (maintenanceMessage !== undefined) config.maintenance = { message: maintenanceMessage ?? "" };
+  return `${JSON.stringify(config, null, 2)}
+`;
 }
 
 /** Creates the directories the waker needs; run before writing its script or any wake config. */

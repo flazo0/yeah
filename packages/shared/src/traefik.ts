@@ -88,8 +88,22 @@ export function traefikLabels(name: string, routing: Routing, port: number): str
  * routing labels at all and this file is their only router — letting a domain-only change update this
  * file alone, with no container recreate and so no redeploy.
  */
-export function traefikDynamicConfig(name: string, routing: Routing, port: number, backendUrl?: string): string {
+export interface DynamicConfigOptions {
+  /** Where Traefik forwards to instead of the container itself (the scale-to-zero / maintenance waker). */
+  backendUrl?: string;
+  /** HTTP basic auth in front of the app; `hash` is a bcrypt hash (htpasswd style), never the password. */
+  basicAuth?: { user: string; hash: string };
+}
+
+/** Traefik wants `$2y$` in htpasswd bcrypt hashes; Bun produces `$2b$` — same algorithm, different prefix. */
+export function htpasswdHash(bcryptHash: string): string {
+  return bcryptHash.replace(/^\$2[abx]\$/, "$2y$");
+}
+
+export function traefikDynamicConfig(name: string, routing: Routing, port: number, options: DynamicConfigOptions | string = {}): string {
+  const opts: DynamicConfigOptions = typeof options === "string" ? { backendUrl: options } : options;
   const rule = routing.hosts.map((h) => `Host(\`${h}\`)`).join(" || ");
+  const authName = `${name}-auth`;
   const lines = [
     "http:",
     "  routers:",
@@ -100,8 +114,9 @@ export function traefikDynamicConfig(name: string, routing: Routing, port: numbe
     "      tls:",
     "        certResolver: letsencrypt",
     `      service: ${name}`,
-    "      priority: 1000",
   ];
+  if (opts.basicAuth) lines.push("      middlewares:", `        - ${authName}`);
+  lines.push("      priority: 1000");
   if (routing.redirectFrom) {
     const r = `${name}-redir`;
     lines.push(
@@ -117,11 +132,14 @@ export function traefikDynamicConfig(name: string, routing: Routing, port: numbe
       "      priority: 1000",
     );
   }
-  lines.push("  services:", `    ${name}:`, "      loadBalancer:", "        servers:", `          - url: "${backendUrl ?? `http://${name}:${port}`}"`);
+  lines.push("  services:", `    ${name}:`, "      loadBalancer:", "        servers:", `          - url: "${opts.backendUrl ?? `http://${name}:${port}`}"`);
+  const middlewares: string[] = [];
+  if (opts.basicAuth) {
+    middlewares.push(`    ${authName}:`, "      basicAuth:", "        removeHeader: true", "        users:", `          - "${opts.basicAuth.user}:${htpasswdHash(opts.basicAuth.hash)}"`);
+  }
   if (routing.redirectFrom) {
     const r = `${name}-redir`;
-    lines.push(
-      "  middlewares:",
+    middlewares.push(
       `    ${r}:`,
       "      redirectRegex:",
       `        regex: "^https?://${regexEscape(routing.redirectFrom)}/(.*)"`,
@@ -129,5 +147,6 @@ export function traefikDynamicConfig(name: string, routing: Routing, port: numbe
       "        permanent: true",
     );
   }
+  if (middlewares.length) lines.push("  middlewares:", ...middlewares);
   return `${lines.join("\n")}\n`;
 }
