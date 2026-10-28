@@ -27,3 +27,4 @@ export * from "./metricSamples";
 export * from "./trafficSamples";
 export * from "./apiTokens";
 export * from "./auditEvents";
+export * from "./passkeys";

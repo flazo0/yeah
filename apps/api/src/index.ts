@@ -2,6 +2,7 @@ import { Elysia } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { healthRoutes } from "./routes/health";
 import { authRoutes } from "./routes/auth";
+import { passkeyRoutes } from "./routes/passkeys";
 import { teamRoutes } from "./routes/teams";
 import { serverRoutes } from "./routes/servers";
 import { sshKeyRoutes } from "./routes/sshKeys";
@@ -96,6 +97,7 @@ const app = new Elysia()
   .use(cors({ origin: webOrigins, credentials: true }))
   .use(healthRoutes)
   .use(authRoutes)
+  .use(passkeyRoutes)
   .use(teamRoutes)
   .use(serverRoutes)
   .use(sshKeyRoutes)

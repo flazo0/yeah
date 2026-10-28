@@ -30,7 +30,9 @@
     "codePlaceholder": "123456 ou código de recuperação",
     "submit": "Entrar",
     "submitting": "entrando...",
-    "failed": "não foi possível entrar"
+    "failed": "não foi possível entrar",
+    "passkey": "Entrar com passkey",
+    "passkeyFailed": "não foi possível entrar com a passkey"
   },
   "settings": {
     "title": "Configurações",
@@ -60,7 +62,18 @@
     "configurar": "Configurar",
     "falhaAoIniciar": "falha ao iniciar",
     "falhaAoAtivar": "falha ao ativar",
-    "falhaAoDesativar": "falha ao desativar"
+    "falhaAoDesativar": "falha ao desativar",
+    "passkeys": "Passkeys",
+    "passkeysDica": "Entre com biometria, PIN ou chave de segurança, sem digitar senha nem código. Uma passkey só vale no endereço do painel onde foi criada (o endereço precisa estar em WEB_ORIGIN).",
+    "passkeySemSuporte": "Este navegador não suporta passkeys.",
+    "passkeyNome": "Nome",
+    "passkeyNomeExemplo": "Meu notebook",
+    "passkeyUltimoUso": "Último uso",
+    "passkeyRemover": "Remover",
+    "passkeyAdicionar": "Adicionar passkey",
+    "passkeyAguardando": "aguardando o dispositivo...",
+    "passkeyConfirmar": "Remover esta passkey?",
+    "passkeyFalha": "falha ao usar a passkey"
   },
   "common": {
     "teams": "Times",

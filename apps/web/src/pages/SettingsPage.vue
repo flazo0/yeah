@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
+import { browserSupportsWebAuthn, startRegistration } from "@simplewebauthn/browser";
 import { useRoute } from "vue-router";
 import { useI18n } from "vue-i18n";
 import { api, ApiError } from "../lib/api";
@@ -59,7 +60,54 @@ async function disableTwoFa() {
   }
 }
 
+interface PasskeyRow {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+const passkeys = ref<PasskeyRow[]>([]);
+const passkeyName = ref("");
+const passkeyError = ref("");
+const passkeyBusy = ref(false);
+const passkeySupported = browserSupportsWebAuthn();
+
+async function loadPasskeys() {
+  try {
+    passkeys.value = (await api.get<{ passkeys: PasskeyRow[] }>("/auth/passkeys")).passkeys;
+  } catch {
+    passkeys.value = [];
+  }
+}
+
+async function addPasskey() {
+  passkeyError.value = "";
+  passkeyBusy.value = true;
+  try {
+    const optionsJSON = await api.post<Parameters<typeof startRegistration>[0]["optionsJSON"]>("/auth/passkeys/register/options");
+    const response = await startRegistration({ optionsJSON });
+    await api.post("/auth/passkeys/register/verify", { name: passkeyName.value || "Passkey", response });
+    passkeyName.value = "";
+    await loadPasskeys();
+  } catch (err) {
+    passkeyError.value = err instanceof ApiError ? err.message : i18n.global.t("settings.passkeyFalha");
+  } finally {
+    passkeyBusy.value = false;
+  }
+}
+
+async function removePasskey(id: string) {
+  if (!confirm(i18n.global.t("settings.passkeyConfirmar"))) return;
+  try {
+    await api.delete(`/auth/passkeys/${id}`);
+    await loadPasskeys();
+  } catch (err) {
+    passkeyError.value = err instanceof ApiError ? err.message : i18n.global.t("settings.passkeyFalha");
+  }
+}
+
 onMounted(async () => {
+  void loadPasskeys();
   try {
     platform.value = await api.get<PlatformInfo>("/updates/platform");
   } catch {
@@ -138,6 +186,44 @@ onMounted(async () => {
         <select id="locale-select" class="form-control" :value="locale" @change="setLocale(($event.target as HTMLSelectElement).value as Locale)">
           <option v-for="loc in LOCALES" :key="loc" :value="loc">{{ loc === "pt" ? $t("settings.portugues") : "English" }}</option>
         </select>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top: 16px">
+      <div class="card-header">
+        <span class="material-symbols-outlined" style="font-size: 18px">passkey</span>
+        {{ $t("settings.passkeys") }}
+      </div>
+      <div class="card-body">
+        <p class="hint mb-16">{{ $t("settings.passkeysDica") }}</p>
+        <div v-if="passkeyError" class="alert alert-error mb-16">{{ passkeyError }}</div>
+        <p v-if="!passkeySupported" class="hint">{{ $t("settings.passkeySemSuporte") }}</p>
+        <template v-else>
+          <div v-if="passkeys.length" class="table-wrap mb-16">
+            <table>
+              <thead><tr><th>{{ $t("settings.passkeyNome") }}</th><th>{{ $t("settings.passkeyUltimoUso") }}</th><th></th></tr></thead>
+              <tbody>
+                <tr v-for="k in passkeys" :key="k.id">
+                  <td>{{ k.name }}</td>
+                  <td>{{ k.lastUsedAt ? new Date(k.lastUsedAt).toLocaleString() : "—" }}</td>
+                  <td><button type="button" class="btn btn-secondary btn-sm" @click="removePasskey(k.id)">{{ $t("settings.passkeyRemover") }}</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom: 0">
+              <label for="passkey-name">{{ $t("settings.passkeyNome") }}</label>
+              <input id="passkey-name" v-model="passkeyName" class="form-control" :placeholder="$t('settings.passkeyNomeExemplo')" maxlength="100" />
+            </div>
+            <div class="form-group" style="margin-bottom: 0; align-self: end">
+              <button type="button" class="btn btn-secondary" :disabled="passkeyBusy" @click="addPasskey">
+                <span class="material-symbols-outlined" style="font-size: 18px">add</span>
+                {{ passkeyBusy ? $t("settings.passkeyAguardando") : $t("settings.passkeyAdicionar") }}
+              </button>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 

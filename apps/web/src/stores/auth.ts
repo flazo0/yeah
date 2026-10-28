@@ -44,6 +44,13 @@ export const useAuthStore = defineStore("auth", {
       this.loaded = true;
       await this.fetchTeams();
     },
+    /** Signs in with a passkey (discoverable credential): no email, password or 2FA code. */
+    async loginWithPasskey(response: unknown) {
+      const { user } = await api.post<{ user: SafeUser }>("/auth/passkeys/login/verify", { response });
+      this.user = user;
+      this.loaded = true;
+      await this.fetchTeams();
+    },
     async register(email: string, password: string, name?: string) {
       const { user } = await api.post<{ user: SafeUser }>("/auth/register", { email, password, name });
       this.user = user;

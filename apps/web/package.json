@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^14.0.0",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/xterm": "^6.0.0",
     "@yeah/shared": "workspace:*",

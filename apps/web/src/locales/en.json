@@ -30,7 +30,9 @@
     "codePlaceholder": "123456 or recovery code",
     "submit": "Sign in",
     "submitting": "signing in...",
-    "failed": "could not sign in"
+    "failed": "could not sign in",
+    "passkey": "Sign in with a passkey",
+    "passkeyFailed": "could not sign in with the passkey"
   },
   "settings": {
     "title": "Settings",
@@ -60,7 +62,18 @@
     "configurar": "Set up",
     "falhaAoIniciar": "failed to start",
     "falhaAoAtivar": "failed to enable",
-    "falhaAoDesativar": "failed to disable"
+    "falhaAoDesativar": "failed to disable",
+    "passkeys": "Passkeys",
+    "passkeysDica": "Sign in with biometrics, a PIN or a security key, without typing a password or code. A passkey only works on the panel address where it was created (the address must be in WEB_ORIGIN).",
+    "passkeySemSuporte": "This browser does not support passkeys.",
+    "passkeyNome": "Name",
+    "passkeyNomeExemplo": "My laptop",
+    "passkeyUltimoUso": "Last used",
+    "passkeyRemover": "Remove",
+    "passkeyAdicionar": "Add passkey",
+    "passkeyAguardando": "waiting for the device...",
+    "passkeyConfirmar": "Remove this passkey?",
+    "passkeyFalha": "passkey failed"
   },
   "common": {
     "teams": "Teams",
