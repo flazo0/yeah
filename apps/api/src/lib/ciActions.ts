@@ -35,6 +35,35 @@ export async function listDeployments(teamId: string, applicationId: string): Pr
   return { ok: true, value: rows };
 }
 
+/** Preview deployments (one per open pull request) of an application. Status and addresses only. */
+export async function listPreviews(teamId: string, applicationId: string): Promise<ActionResult<unknown[]>> {
+  const [application] = await db.select({ id: applications.id }).from(applications).where(and(eq(applications.id, applicationId), eq(applications.teamId, teamId))).limit(1);
+  if (!application) return { ok: false, status: 404, error: "application not found" };
+  const rows = await db
+    .select({ id: applications.id, name: applications.name, prNumber: applications.prNumber, branch: applications.branch, domain: applications.domain, status: applications.status, createdAt: applications.createdAt })
+    .from(applications)
+    .where(and(eq(applications.previewOfId, applicationId), eq(applications.teamId, teamId)))
+    .orderBy(desc(applications.createdAt));
+  return { ok: true, value: rows };
+}
+
+/** One preview with its latest deployments (status only — never the build log). */
+export async function getPreview(teamId: string, applicationId: string, previewId: string): Promise<ActionResult<unknown>> {
+  const [preview] = await db
+    .select({ id: applications.id, name: applications.name, prNumber: applications.prNumber, branch: applications.branch, domain: applications.domain, status: applications.status, createdAt: applications.createdAt })
+    .from(applications)
+    .where(and(eq(applications.id, previewId), eq(applications.previewOfId, applicationId), eq(applications.teamId, teamId)))
+    .limit(1);
+  if (!preview) return { ok: false, status: 404, error: "preview not found" };
+  const recent = await db
+    .select({ id: deployments.id, status: deployments.status, createdAt: deployments.createdAt, finishedAt: deployments.finishedAt })
+    .from(deployments)
+    .where(eq(deployments.applicationId, previewId))
+    .orderBy(desc(deployments.createdAt))
+    .limit(5);
+  return { ok: true, value: { ...preview, deployments: recent } };
+}
+
 export async function triggerDeploy(teamId: string, applicationId: string, force: boolean): Promise<ActionResult<{ deploymentId: string }>> {
   const [application] = await db.select().from(applications).where(and(eq(applications.id, applicationId), eq(applications.teamId, teamId))).limit(1);
   if (!application) return { ok: false, status: 404, error: "application not found" };

@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { resolveApiToken } from "../lib/apiTokenAuth";
 import { ipAllowed } from "../lib/ipAllowlist";
 import { clientIp } from "../lib/rateLimit";
-import { listDeployments, listNotificationChannels, listProjects, listScheduledTasks, listServers, listStorages, moveResource, listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
+import { getPreview, listDeployments, listPreviews, listNotificationChannels, listProjects, listScheduledTasks, listServers, listStorages, moveResource, listApplications, listDatabases, listServices, triggerBackup, triggerDeploy } from "../lib/ciActions";
 
 /**
  * A small, deliberately separate API surface for personal API tokens (Fase 7) — "pensado pra CI/CD"
@@ -90,6 +90,30 @@ const makeCiRoutes = (prefix: string) =>
       return { error: result.error };
     }
     return { deployments: result.value };
+  })
+  .get("/applications/:applicationId/previews", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    const result = await listPreviews(params.teamId, params.applicationId);
+    if (!result.ok) {
+      set.status = result.status;
+      return { error: result.error };
+    }
+    return { previews: result.value };
+  })
+  .get("/applications/:applicationId/previews/:previewId", async ({ ci, params, set }) => {
+    if ("error" in ci) {
+      set.status = ci.status;
+      return { error: ci.error };
+    }
+    const result = await getPreview(params.teamId, params.applicationId, params.previewId);
+    if (!result.ok) {
+      set.status = result.status;
+      return { error: result.error };
+    }
+    return { preview: result.value };
   })
   .post(
     "/applications/:applicationId/deploy",

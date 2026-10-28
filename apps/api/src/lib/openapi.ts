@@ -39,6 +39,12 @@ export function buildOpenApiSpec() {
       [`${base}/applications/{applicationId}/deployments`]: {
         get: { ...listOp("Últimos 10 deploys de uma aplicação (sem o log)"), parameters: [teamIdParam, idParam("applicationId")] },
       },
+      [`${base}/applications/{applicationId}/previews`]: {
+        get: { ...listOp("Previews (um por pull request aberto) de uma aplicação"), parameters: [teamIdParam, idParam("applicationId")] },
+      },
+      [`${base}/applications/{applicationId}/previews/{previewId}`]: {
+        get: { ...listOp("Um preview com os últimos deploys (sem log)"), parameters: [teamIdParam, idParam("applicationId"), idParam("previewId")] },
+      },
       [`${base}/applications/{applicationId}/deploy`]: {
         post: triggerOp("Enfileira um deploy", [idParam("applicationId"), { name: "force", in: "query", required: false, schema: { type: "string", enum: ["true"] } }]),
       },

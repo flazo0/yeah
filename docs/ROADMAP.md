@@ -454,7 +454,7 @@ O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 
 - [x] **Restaurar variáveis do template** (botão na aba de variáveis do serviço): acrescenta as variáveis do template que faltam (com segredos novos só para as geradas), sem tocar nas existentes. Testado em unidade (`addMissingTemplateEnv`); rota não exercitada contra banco real.
 - [x] **Explorador de arquivos do container (aplicações)** — aba "Arquivos": navega pastas e lê arquivos de texto (até 256 KB, binários são detectados) com `docker exec ls/head` via SSH, só leitura; caminho validado (absoluto, sem `..`/controle) e passado como argumento com aspas; compose resolve o primeiro container do serviço. Testado: parser de `ls -lAp` (GNU e BusyBox), validação, geração de comandos; **não rodado contra um container real**. Pendente: serviços e bancos, upload/edição/download.
 - [ ] **Listar imagens Docker de deploys recentes para rollback** (hoje o rollback usa o histórico do yeah).
-- [ ] **API de previews**: listar/consultar/abrir deploys de preview e ver seus logs de runtime.
+- [x] **API de previews**: `GET /api/v1/teams/:id/applications/:id/previews` (lista: id, PR, branch, domínio, status) e `.../previews/:previewId` (com os últimos 5 deploys, sem log), só leitura, no OpenAPI e em `docs/API.md`. Logs de runtime do preview continuam só pelo painel. Teste do OpenAPI atualizado; rotas não exercitadas contra banco real.
 
 **Novo no Coolify — bancos e segurança**
 - [ ] **SQLite como banco standalone** (arquivo em volume, backup agendado, restore, conectar a uma aplicação com 1 clique).

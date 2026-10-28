@@ -150,6 +150,8 @@ Autenticação por token pessoal (`Authorization: Bearer yeah_…`, criado em Ke
 |---|---|---|---|
 | GET | `/applications`, `/databases`, `/services`, `/servers`, `/projects`, `/storages`, `/notification-channels`, `/scheduled-tasks` | read | Lista recursos do time (sem segredos) |
 | GET | `/applications/:id/deployments` | read | Últimos 10 deploys (status, sem log) |
+| GET | `/applications/:id/previews` | read | Previews (um por pull request aberto): id, PR, branch, domínio, status |
+| GET | `/applications/:id/previews/:previewId` | read | Um preview com os últimos 5 deploys (status, sem log) |
 | POST | `/move-resource` | full | Move app/banco/serviço pra outro ambiente do time |
 | POST | `/applications/:id/deploy?force=true` | full | Enfileira deploy (409 `server_overloaded` sem `force`) |
 | POST | `/databases/:id/backup` | full | Dispara backup (precisa de agendamento existente) |
