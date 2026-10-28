@@ -13,7 +13,7 @@ env:
   SERVICE_URL_FORGEJO: "http://localhost"
   FORGEJO__migrations__ALLOWED_DOMAINS: ""
   FORGEJO__migrations__ALLOW_LOCALNETWORKS: ""
-  POSTGRESQL_DATABASE: "forgejo_with_postgresql"
+  SERVICE_FQDN_FORGEJO: "localhost"
   SERVICE_USER_POSTGRESQL: "$generate:user"
   SERVICE_PASSWORD_POSTGRESQL: "$generate:password"
 compose: |
@@ -24,11 +24,14 @@ compose: |
         - FORGEJO__server__ROOT_URL=${SERVICE_URL_FORGEJO}
         - FORGEJO__migrations__ALLOWED_DOMAINS=${FORGEJO__migrations__ALLOWED_DOMAINS}
         - FORGEJO__migrations__ALLOW_LOCALNETWORKS=${FORGEJO__migrations__ALLOW_LOCALNETWORKS-false}
+        - FORGEJO__server__DOMAIN=${SERVICE_FQDN_FORGEJO}
+        - FORGEJO__server__SSH_DOMAIN=${SERVICE_FQDN_FORGEJO}
+        - FORGEJO__server__SSH_PORT=${FORGEJO_SSH_PORT:-22222}
         - USER_UID=1000
         - USER_GID=1000
         - FORGEJO__database__DB_TYPE=postgres
         - FORGEJO__database__HOST=postgresql
-        - FORGEJO__database__NAME=${POSTGRESQL_DATABASE-forgejo}
+        - FORGEJO__database__NAME=${POSTGRESQL_DATABASE:-forgejo}
         - FORGEJO__database__USER=$SERVICE_USER_POSTGRESQL
         - FORGEJO__database__PASSWD=$SERVICE_PASSWORD_POSTGRESQL
       volumes:
@@ -36,7 +39,7 @@ compose: |
         - forgejo-timezone:/etc/timezone:ro
         - forgejo-localtime:/etc/localtime:ro
       ports:
-        - 22222:22
+        - ${FORGEJO_SSH_PORT:-22222}:22
       depends_on:
         postgresql:
           condition: service_healthy
@@ -53,7 +56,7 @@ compose: |
       environment:
         - POSTGRES_USER=${SERVICE_USER_POSTGRESQL}
         - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRESQL}
-        - POSTGRES_DB=${POSTGRESQL_DATABASE}
+        - POSTGRES_DB=${POSTGRESQL_DATABASE:-forgejo}
       healthcheck:
         test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
         interval: 5s

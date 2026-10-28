@@ -14,30 +14,31 @@ env:
   SERVICE_URL_FREESCOUT: "http://localhost"
   SERVICE_PASSWORD_ADMIN: "$generate:password"
   SERVICE_PASSWORD_ROOT: "$generate:password"
-  MARIADB_DATABASE: "freescout"
 compose: |
   services:
     freescout:
-      image: tiredofit/freescout:latest
+      image: nfrastack/freescout:2.2.21
       volumes:
         - freescout-data:/data
-        - freescout-logs:/www/logs
+        - freescout-logs:/logs
       depends_on:
         mariadb:
           condition: service_healthy
       environment:
+        - DB_TYPE=mariadb
         - DB_HOST=mariadb
+        - DB_PORT=3306
         - DB_NAME=${MARIADB_DATABASE:-freescout}
         - DB_USER=${SERVICE_USER_MARIADB:-freescout}
         - DB_PASS=${SERVICE_PASSWORD_MARIADB}
-        - SITE_URL=${SERVICE_URL_FREESCOUT}
+        - APP_URL=${SERVICE_URL_FREESCOUT}
         - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
         - ADMIN_PASS=${SERVICE_PASSWORD_ADMIN}
-        - DISPLAY_ERRORS=${DISPLAY_ERRORS:-FALSE}
+        - FREESCOUT_APP_DEBUG=${FREESCOUT_APP_DEBUG:-false}
         - TIMEZONE=${TIMEZONE:-UTC}
       healthcheck:
-        test: ["CMD", "curl", "-f", "http://127.0.0.1"]
-        start_period: 10s
+        test: ["CMD-SHELL", "busybox wget -qO /dev/null --header 'X-Forwarded-Proto: https' http://127.0.0.1/login || exit 1"]
+        start_period: 60s
         interval: 5s
         timeout: 10s
         retries: 15
@@ -47,7 +48,7 @@ compose: |
         - mariadb-data:/var/lib/mysql
       environment:
         - MARIADB_ROOT_PASSWORD=${SERVICE_PASSWORD_ROOT}
-        - MARIADB_DATABASE=${MARIADB_DATABASE}
+        - MARIADB_DATABASE=${MARIADB_DATABASE:-freescout}
         - MARIADB_USER=${SERVICE_USER_MARIADB}
         - MARIADB_PASSWORD=${SERVICE_PASSWORD_MARIADB}
       healthcheck:

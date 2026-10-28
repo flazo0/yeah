@@ -9,7 +9,7 @@ docs: "https://trigger.dev/docs/self-hosting/overview"
 main: "trigger"
 port: 3000
 env:
-  SERVICE_URL_TRIGGER_3000: "http://localhost"
+  SERVICE_URL_TRIGGER: "http://localhost"
   SERVICE_PASSWORD_64_SESSION: "$generate:hex"
   SERVICE_PASSWORD_64_MAGICLINK: "$generate:hex"
   SERVICE_PASSWORD_ENCRYPTIONKEY: "$generate:password"
@@ -47,9 +47,9 @@ compose: |
       command: |
         sh -c "chown -R node:node /home/node/shared && exec ./scripts/entrypoint.sh"
       environment:
-        - APP_ORIGIN=${SERVICE_URL_TRIGGER_3000}
-        - LOGIN_ORIGIN=${SERVICE_URL_TRIGGER_3000}
-        - API_ORIGIN=${SERVICE_URL_TRIGGER_3000}
+        - APP_ORIGIN=${SERVICE_URL_TRIGGER}
+        - LOGIN_ORIGIN=${SERVICE_URL_TRIGGER}
+        - API_ORIGIN=${SERVICE_URL_TRIGGER}
         - SESSION_SECRET=${SERVICE_PASSWORD_64_SESSION}
         - MAGIC_LINK_SECRET=${SERVICE_PASSWORD_64_MAGICLINK}
         - ENCRYPTION_KEY=${SERVICE_PASSWORD_ENCRYPTIONKEY}

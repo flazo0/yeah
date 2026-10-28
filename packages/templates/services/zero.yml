@@ -1,0 +1,68 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Zero"
+description: "Query-driven sync engine for TypeScript apps backed by Postgres."
+icon: dns
+logo: "zero.svg"
+category: backend
+tags: ["sync", "realtime", "postgres", "typescript", "local-first"]
+docs: "https://zero.rocicorp.dev/docs/deployment"
+main: "zero"
+port: 4848
+env:
+  SERVICE_USER_POSTGRES: "$generate:user"
+  SERVICE_PASSWORD_64_POSTGRES: "$generate:hex"
+  POSTGRES_DB: "zero"
+  SERVICE_PASSWORD_64_ADMIN: "$generate:hex"
+  ZERO_QUERY_URL: ""
+  ZERO_MUTATE_URL: ""
+compose: |
+  services:
+    zero:
+      image: rocicorp/zero:1.6.2
+      # stop_grace_period: 10m
+      environment:
+        - ZERO_UPSTREAM_DB=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB}
+        - ZERO_CVR_DB=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB}
+        - ZERO_CHANGE_DB=postgres://${SERVICE_USER_POSTGRES}:${SERVICE_PASSWORD_64_POSTGRES}@postgres:5432/${POSTGRES_DB}
+        - ZERO_REPLICA_FILE=/data/replica.db
+        - ZERO_ADMIN_PASSWORD=${SERVICE_PASSWORD_64_ADMIN}
+        - ZERO_QUERY_URL=${ZERO_QUERY_URL:?Set the URL of your API /query endpoint}
+        - ZERO_MUTATE_URL=${ZERO_MUTATE_URL:?Set the URL of your API /mutate endpoint}
+        - ZERO_ENABLE_CRUD_MUTATIONS=${ZERO_ENABLE_CRUD_MUTATIONS:-false}
+        - ZERO_NUM_SYNC_WORKERS=${ZERO_NUM_SYNC_WORKERS:-1}
+        - ZERO_APP_ID=${ZERO_APP_ID:-zero}
+        - ZERO_LOG_LEVEL=${ZERO_LOG_LEVEL:-info}
+        - ZERO_ENABLE_TELEMETRY=${ZERO_ENABLE_TELEMETRY:-true}
+        - ZERO_LAZY_STARTUP=${ZERO_LAZY_STARTUP:-false}
+        - ZERO_QUERY_API_KEY=${ZERO_QUERY_API_KEY:-}
+        - ZERO_MUTATE_API_KEY=${ZERO_MUTATE_API_KEY:-}
+      volumes:
+        - zero-data:/data
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:4848/keepalive"]
+        interval: 5s
+        timeout: 20s
+        retries: 10
+        start_period: 60s
+      depends_on:
+        postgres:
+          condition: service_healthy
+
+    postgres:
+      image: postgres:18-alpine
+      command: ["postgres", "-c", "wal_level=logical"]
+      environment:
+        - POSTGRES_USER=${SERVICE_USER_POSTGRES}
+        - POSTGRES_PASSWORD=${SERVICE_PASSWORD_64_POSTGRES}
+        - POSTGRES_DB=${POSTGRES_DB:-zero-db}
+      volumes:
+        - postgres-data:/var/lib/postgresql
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+        interval: 10s
+        timeout: 20s
+        retries: 10
+
+  volumes:
+    zero-data: {}
+    postgres-data: {}

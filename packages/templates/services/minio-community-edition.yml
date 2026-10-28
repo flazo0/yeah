@@ -5,7 +5,7 @@ icon: folder
 logo: "minio-community-edition.svg"
 category: storage
 tags: ["object", "storage", "server", "s3", "api"]
-docs: "https://github.com/coollabsio/minio?tab=readme-ov-file#minio-docker-images"
+docs: "https://silo.pigsty.io/docs/"
 main: "minio"
 port: 80
 env:
@@ -16,7 +16,7 @@ env:
 compose: |
   services:
     minio:
-      image: ghcr.io/coollabsio/minio:RELEASE.2025-10-15T17-29-55Z # Released on 15 October 2025
+      image: pgsty/silo:RELEASE.2026-10-15T00-00-00Z # Released on 15 October 2026
       command: server /data --console-address ":9001"
       environment:
         - MINIO_SERVER_URL=$MINIO_SERVER_URL

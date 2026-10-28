@@ -15,11 +15,12 @@ env:
 compose: |
   services:
     autobase:
-      image: autobase/console_ui:2.5.2
+      image: autobase/console_ui:2.11.0
       platform: linux/amd64
       environment:
         - PG_CONSOLE_AUTHORIZATION_TOKEN=${SERVICE_PASSWORD_UI}
         - PG_CONSOLE_API_HOST=autobase-api
+        - PG_CONSOLE_DBDESK_STUDIO_HOST=dbdesk-studio
       healthcheck:
         test: [ "CMD", "curl", "http://localhost:80/" ]
         interval: 10s
@@ -30,7 +31,7 @@ compose: |
           condition: service_healthy
 
     autobase-db:
-      image: autobase/console_db:2.5.2
+      image: autobase/console_db:2.11.0
       platform: linux/amd64
       environment:
         - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
@@ -43,7 +44,7 @@ compose: |
         retries: 10
 
     autobase-api:
-      image: autobase/console_api:2.5.2
+      image: autobase/console_api:2.11.0
       platform: linux/amd64
       environment:
         - PG_CONSOLE_DB_HOST=autobase-db
@@ -66,5 +67,26 @@ compose: |
         autobase-db:
           condition: service_healthy
 
+    dbdesk-studio:
+      image: docker.io/bhavikagarwal2001/dbdesk-studio:0.1.5
+      container_name: dbdesk-studio
+      environment:
+        - PORT=6789
+        - CORS_ORIGIN=${CORS_ORIGIN:-*}
+        - NODE_ENV=production
+        - DEFAULT_SSL_MODE=require
+        - STORAGE_PATH=/opt/dbdesk-studio/data
+      volumes:
+        - dbdesk_studio_data:/opt/dbdesk-studio
+      healthcheck:
+        test: ["CMD", "curl", "-fsS", "http://localhost:6789/health"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+      depends_on:
+        autobase-api:
+          condition: service_healthy
+
   volumes:
     autobase-db-data: {}
+    dbdesk_studio_data: {}

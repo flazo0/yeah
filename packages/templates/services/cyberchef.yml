@@ -7,7 +7,7 @@ category: security
 tags: ["encryption", "encoding", "compression", "data analysis", "tools", "development"]
 docs: "https://github.com/gchq/CyberChef"
 main: "cyberchef"
-port: 80
+port: 8080
 env: {}
 compose: |
   services:
@@ -21,7 +21,7 @@ compose: |
           - CMD
           - curl
           - '-f'
-          - 'http://127.0.0.1:80'
+          - 'http://127.0.0.1:8080'
         interval: 30s
         timeout: 10s
         retries: 3

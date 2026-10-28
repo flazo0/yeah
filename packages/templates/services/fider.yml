@@ -9,7 +9,7 @@ docs: "https://fider.io"
 main: "fider"
 port: 3000
 env:
-  SERVICE_URL_FIDER_3000: "http://localhost"
+  SERVICE_URL_FIDER: "http://localhost"
   SERVICE_USER_POSTGRES: "$generate:user"
   SERVICE_PASSWORD_POSTGRES: "$generate:password"
   SERVICE_PASSWORD_64_FIDER: "$generate:hex"
@@ -26,7 +26,7 @@ compose: |
     fider:
       image: getfider/fider:stable
       environment:
-        - BASE_URL=$SERVICE_URL_FIDER_3000
+        - BASE_URL=$SERVICE_URL_FIDER
         - DATABASE_URL=postgres://$SERVICE_USER_POSTGRES:$SERVICE_PASSWORD_POSTGRES@database:5432/fider?sslmode=disable
         - JWT_SECRET=$SERVICE_PASSWORD_64_FIDER
         - EMAIL_NOREPLY=${EMAIL_NOREPLY:-noreply@example.com}

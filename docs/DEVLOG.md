@@ -902,3 +902,7 @@ Painel de produção atualizado (50 migrações) e **sandbox isolado** (stack `y
 ## Dormir quando ocioso (scale-to-zero)
 
 Pedido: desligar container sem uso e ligar sozinho quando chegar requisição, rápido e sem tela de loading. Solução: `yeah-waker` (proxy HTTP que segura a requisição, `docker start`, espera a porta, encaminha; para quem fica ocioso). Escolhi um proxy único por servidor, e não um passo extra no Traefik, porque o Traefik não sabe segurar a requisição enquanto algo sobe. O custo é um salto a mais de proxy nos apps com a opção ligada (desprezível perto da economia). Verificado só com API Docker falsa em portas locais; falta medir numa VPS real.
+
+## Atualização do Coolify (28/10/2026)
+
+Pull do `coolify/` trouxe 1.420 commits. Comparação feita e registrada na Fase 10 do roadmap (o que já temos, o que falta, o que fica de fora por decisão de produto). Primeiro item feito: reimportação do catálogo (348 templates). Validação com `docker compose config` na VPS fica pendente até haver acesso.

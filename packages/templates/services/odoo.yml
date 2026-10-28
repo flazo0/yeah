@@ -15,6 +15,7 @@ compose: |
   services:
     odoo:
       image: odoo:18
+      command: --proxy-mode
       environment:
         - HOST=postgresql
         - USER=$SERVICE_USER_POSTGRES

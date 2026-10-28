@@ -2,7 +2,6 @@
 name: "Celld"
 description: "Self-hosted, distributed Durable Objects powered by Deno."
 icon: dns
-logo: "celld.svg"
 category: backend
 tags: ["deno", "durable-objects", "workers", "sqlite", "distributed", "backend", "serverless"]
 docs: "https://celld.dev/docs"

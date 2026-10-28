@@ -1,0 +1,32 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Deno KV"
+description: "The Denoland key-value database"
+icon: database
+logo: "deno-kv.svg"
+category: database
+tags: ["deno", "kv", "key-value", "database"]
+docs: "https://docs.deno.com/deploy/kv/manual/"
+main: "denokv"
+port: 4512
+env:
+  SERVICE_PASSWORD_DENOKV: "$generate:password"
+  COOLIFY_VOLUME_APP: ""
+compose: |
+  services:
+    denokv:
+      image: ghcr.io/denoland/denokv:latest
+      environment:
+        - 'ACCESS_TOKEN=${SERVICE_PASSWORD_DENOKV}'
+      volumes:
+        - '${COOLIFY_VOLUME_APP}:/data'
+      command: '--sqlite-path /data/denokv.sqlite serve --access-token ${SERVICE_PASSWORD_DENOKV}'
+      healthcheck:
+        test:
+          - CMD
+          - nc
+          - '-zv'
+          - 127.0.0.1
+          - '4512'
+        interval: 5s
+        timeout: 5s
+        retries: 3

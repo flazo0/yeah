@@ -1,0 +1,29 @@
+# Importado do catálogo de templates do Coolify (Apache-2.0) por scripts/import-coolify-templates.ts — ver NOTICE.
+name: "Docling"
+description: "Convert documents (PDF, DOCX, PPTX, images, HTML) to Markdown, JSON, and more using AI-powered document processing."
+icon: psychology
+logo: "docling.png"
+category: ai
+tags: ["ai", "document", "pdf", "ocr", "markdown", "extraction", "ibm", "rag"]
+docs: "https://github.com/DS4SD/docling-serve"
+main: "docling-serve"
+port: 5001
+env: {}
+compose: |
+  services:
+    docling-serve:
+      image: ghcr.io/docling-project/docling-serve-cpu:latest
+      environment:
+        - DOCLING_SERVE_ENABLE_UI=${DOCLING_SERVE_ENABLE_UI:-true}
+        - DOCLING_SERVE_LOG_LEVEL=${DOCLING_SERVE_LOG_LEVEL:-WARNING}
+        - DOCLING_NUM_THREADS=${DOCLING_NUM_THREADS:-4}
+      healthcheck:
+        test:
+          - CMD
+          - wget
+          - "-qO-"
+          - "http://127.0.0.1:5001/health"
+        interval: 30s
+        timeout: 30s
+        retries: 10
+        start_period: 120s

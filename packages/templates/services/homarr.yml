@@ -13,7 +13,7 @@ env:
 compose: |
   services:
     homarr:
-      image: ghcr.io/homarr-labs/homarr:v1.40.0
+      image: ghcr.io/homarr-labs/homarr:v1.74.0
       environment:
         - 'SECRET_ENCRYPTION_KEY=${SERVICE_HEX_64_HOMARR}'
       volumes:

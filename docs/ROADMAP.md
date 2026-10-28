@@ -204,6 +204,45 @@ Disparado por um pedido direto: o painel precisa rodar confortavelmente numa KVM
 
 ---
 
+## Fase 10 — Paridade com o Coolify (atualização de 28/10/2026)
+
+O `coolify/` local foi atualizado (pull de 15/09 → 28/10/2026: 1.420 commits, 233 `feat`, ~85 migrações novas, ~100 arquivos de template alterados). Comparei com o que o yeah tem. **Decisões de produto continuam valendo**: sem multiusuário/OIDC, sem Swarm (o próprio Coolify marcou Swarm como deprecated), sem hospedar terceiros. Tudo que for novo entra como **opção** (o cliente liga se quiser).
+
+**Já temos (paridade fechada, só conferir)**: fonte Gitea/GitLab/Bitbucket, Pushover, registries Docker, tags, health check, domínios extras e redirect www permanente, Traefik com resolver de certificado, log drains (Axiom incluso), Cloudflare Tunnel, criar VPS (Hetzner/DigitalOcean/Vultr), Railpack, backups S3 (path-style já é o padrão do Bun), 333 templates, dormir quando ocioso (o Coolify **não** tem).
+
+**Novo no Coolify e ainda faltando aqui — operação de servidor**
+- [ ] **Patching de servidor**: checar atualizações do sistema pendentes (`apt`), marcar as de segurança e se precisa reiniciar, mostrar na lista de servidores e avisar por notificação; opcional: atualizações automáticas de segurança por servidor (`unattended-upgrades`) com confirmação.
+- [ ] **Página de imagens Docker por servidor**: listar, ver tamanho e apagar imagem (confirmando digitando a referência).
+- [ ] **Aviso de Traefik desatualizado** e de **container que mudou de status / atingiu limite de restarts** (já listado como lacuna de notificações).
+- [ ] **Intervalo mínimo entre avisos de disco cheio** e **limite de repetição de notificação** (o Coolify criou `notification_throttles`) — evita enxurrada.
+- [ ] **Backup do próprio banco do yeah antes de atualizar** (`yeah update` já faz pg_dump manual; falta tornar automático e opcional) e **backup/restauração do `acme.json`** antes de mexer no proxy.
+- [ ] **Bloquear atualização quando o disco está quase cheio.**
+- [ ] **Registro de auditoria** (quem fez o quê: deploy, mudança de domínio/variável, exclusão), com filtro e níveis.
+
+**Novo no Coolify — aplicações e proxy**
+- [ ] **Página de erro personalizada do proxy** e **modo manutenção por aplicação/serviço** (responde 503 com uma página sua enquanto você mexe).
+- [ ] **Autenticação HTTP básica por aplicação** (usuário/senha, com hash configurável) na frente do app.
+- [ ] **Prefixo de nome de container** personalizável (nomes legíveis em vez de `yeah-app-<uuid>`).
+- [ ] **Ocultar valores de variáveis nos logs** (redação de segredos) como opção por recurso.
+- [ ] **Pular o build do compose quando as imagens não mudaram**; **drain seconds** no rolling update.
+- [ ] **Diretivas por variável** no editor de variáveis (somente build / somente runtime) e botão **"restaurar variáveis padrão"**.
+- [ ] **Explorador de arquivos** dos volumes de aplicação/serviço/banco no painel.
+- [ ] **Listar imagens Docker de deploys recentes para rollback** (hoje o rollback usa o histórico do yeah).
+- [ ] **API de previews**: listar/consultar/abrir deploys de preview e ver seus logs de runtime.
+
+**Novo no Coolify — bancos e segurança**
+- [ ] **SQLite como banco standalone** (arquivo em volume, backup agendado, restore, conectar a uma aplicação com 1 clique).
+- [ ] **Passkeys (WebAuthn)** no login, além do TOTP.
+- [ ] **Exigir 2FA** (opção do administrador) e **reencriptar segredos após rotação de chave**.
+- [ ] **Integração com gerenciadores de segredos** (referências remotas resolvidas no deploy).
+- [ ] **Log drain CloudWatch** (Axiom já existe).
+
+**Novo no Coolify — fora do escopo por ora (decisão registrada)**: runners self-hosted do GitHub Actions, canvas/dashboards arrastáveis, DNS gerenciado por provedor (Cloudflare DNS automático), assinatura/Stripe, OIDC, migração de instância entre servidores, VMs de desenvolvimento (KVM/Lima), Hostinger como provedor de VPS (API de VPS fechada sem como testar de graça).
+
+**Catálogo**: o `templates/` do Coolify mudou 101 arquivos (templates novos como Linkwarden, Lidarr, PeerTube, Snipe-IT, Obsidian, Honcho, OpenWA, 9router e atualizações de Plausible, Appwrite, Vikunja, Signoz...). Reimportar com `bun scripts/import-coolify-templates.ts` e revalidar (`docker compose config` na VPS) é item próprio.
+- [x] **Reimportar o catálogo atualizado**: 333 → **348 templates** (15 novos: Linkwarden, PeerTube, Snipe-IT, Obsidian, Honcho, OpenWA (2), 9router, Bulwark, Docling, Engram, Hermes Agent, Portabase, Zero, Deno KV), 63 existentes atualizados, 74 pulados (usam `content:`). Os testes de unidade passam (468). **Ainda não validado com `docker compose config` numa VPS real** — falta o acesso nesta sessão; os templates novos podem ter os mesmos defeitos que o importador já corrigiu antes.
+- [ ] **Suporte a `content:`/arquivos de configuração embutidos** nos templates (destrava os ~73 pulados: Supabase, PostHog, Plausible, Home Assistant, Dify...).
+
 ## Salvo do roadmap anterior (ainda não desenvolvido)
 
 Itens que estavam pendentes no `ROADMAP.md` antigo, salvos antes da reescrita. Os que já estão nas fases acima aparecem com a referência; os marcados **(só aqui)** não cabem em nenhuma fase acima.
