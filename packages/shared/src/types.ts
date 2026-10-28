@@ -77,6 +77,12 @@ export interface ServerDto {
   cloudflareTunnelError: string | null;
   /** Off by default — turns on Traefik's loopback-only Prometheus metrics entrypoint for the traffic-analytics job. */
   trafficAnalyticsEnabled: boolean;
+  /** OS updates (apt) from the last patch check — null until one ran. */
+  patchUpdates: number | null;
+  patchSecurity: number | null;
+  patchRebootRequired: boolean;
+  patchCheckedAt: string | null;
+  autoSecurityUpdates: boolean;
   /** Set when the server's key was copied in from an existing entry in Keys & Tokens. */
   sshKeyId: string | null;
   createdAt: string;
@@ -507,7 +513,8 @@ export type NotificationEventType =
   | "api-token.expiring"
   | "backup.success"
   | "task.success"
-  | "docker-cleanup.success";
+  | "docker-cleanup.success"
+  | "server.patches";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
   "deploy.success": "Deploy concluído",
@@ -523,6 +530,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "backup.success": "Backup concluído",
   "task.success": "Tarefa agendada concluída",
   "docker-cleanup.success": "Limpeza do Docker concluída",
+  "server.patches": "Atualizações de segurança pendentes no servidor",
 };
 
 /**

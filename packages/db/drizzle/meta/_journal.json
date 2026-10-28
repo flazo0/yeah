@@ -372,6 +372,13 @@
       "when": 1791675347703,
       "tag": "0052_app_sleep",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793200576464,
+      "tag": "0053_server_patching",
+      "breakpoints": true
     }
   ]
 }

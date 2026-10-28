@@ -1,4 +1,4 @@
-import { boolean, integer, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, real, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { teams } from "./teams";
 import { sshKeys } from "./sshKeys";
 import { encryptedText } from "../encryption";
@@ -58,6 +58,15 @@ export const servers = pgTable("servers", {
   // Updates page's "atualizar plataforma"/"atualizar sistema" buttons target this row specifically,
   // never an arbitrary managed server, so there's no ambiguity about which host gets touched.
   isPlatformHost: boolean("is_platform_host").default(false).notNull(),
+  // OS updates (apt) — snapshot from the periodic/on-demand patch check; null until the first run.
+  patchCheckedAt: timestamp("patch_checked_at", { withTimezone: true }),
+  patchUpdates: integer("patch_updates"),
+  patchSecurity: integer("patch_security"),
+  patchRebootRequired: boolean("patch_reboot_required").default(false).notNull(),
+  patchPackages: jsonb("patch_packages").$type<Array<{ name: string; version: string; security: boolean; risky: boolean }>>(),
+  // Highest security-update count already announced, so the same pending set is notified once.
+  patchNotifiedSecurity: integer("patch_notified_security").default(0).notNull(),
+  autoSecurityUpdates: boolean("auto_security_updates").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

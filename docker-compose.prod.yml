@@ -114,6 +114,7 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DB_POOL_MAX: ${DB_POOL_MAX:-}
       METRICS_INTERVAL_SECONDS: ${METRICS_INTERVAL_SECONDS:-}
+      PATCH_CHECK_INTERVAL_SECONDS: ${PATCH_CHECK_INTERVAL_SECONDS:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
       # Chave dos segredos criptografados no banco (packages/db/src/encryption.ts). Instalações antigas,

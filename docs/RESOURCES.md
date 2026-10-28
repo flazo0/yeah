@@ -21,6 +21,7 @@ Soma ≈ 2 GB no pior caso, sobrando o resto da máquina pros apps (se ela tamb�
 Todos no `.env` (veja `.env.example`); vazio = padrão.
 
 - `METRICS_INTERVAL_SECONDS` — intervalo da coleta de métricas (padrão 60, mínimo 15). Subir reduz SSH e CPU quando há muitos servidores.
+- `PATCH_CHECK_INTERVAL_SECONDS` — de quanto em quanto tempo o worker checa atualizações do sistema (apt) em cada servidor conectado (padrão 21600 = 6 h, mínimo 600).
 - Desligar o monitoramento por servidor: aba Geral do servidor → "Monitoramento".
 - Analytics de tráfego é opt-in por servidor (aba Proxy) e custa uma leitura local do Traefik a cada 5 min.
 - `DB_POOL_MAX` — tamanho máximo do pool do Postgres por processo (`api`, `worker`). Não tem valor recomendado ainda: precisa ser medido sob carga numa VPS real.

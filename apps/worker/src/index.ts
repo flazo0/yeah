@@ -56,6 +56,7 @@ import { makeApiTokenExpiryProcessor } from "./jobs/apiTokenExpiry";
 import { log, logJobEvents } from "./lib/logger";
 import { intervalMsFromEnv } from "./lib/intervals";
 import { ensureDefaultCleanups } from "./lib/defaultCleanup";
+import { runPatchChecks } from "./jobs/patchCheck";
 
 const redisUrl = process.env.REDIS_URL;
 if (!redisUrl) {
@@ -183,6 +184,12 @@ const reconcileCleanups = () =>
     .catch((err) => log.error("default cleanup reconcile failed", { err }));
 await reconcileCleanups();
 setInterval(reconcileCleanups, 10 * 60 * 1000);
+
+// OS-update check (apt) a few times a day per connected server; first pass a couple of minutes after boot.
+const PATCH_CHECK_EVERY_MS = intervalMsFromEnv(process.env.PATCH_CHECK_INTERVAL_SECONDS, 6 * 60 * 60, 600);
+const patchCheckTick = () => runPatchChecks().catch((err) => log.error("patch check run failed", { err }));
+setTimeout(patchCheckTick, 2 * 60 * 1000);
+setInterval(patchCheckTick, PATCH_CHECK_EVERY_MS);
 
 const dockerCleanupWorker = createDockerCleanupWorker(dockerCleanupConnection, makeDockerCleanupProcessor());
 logJobEvents(dockerCleanupWorker, "docker-cleanup");

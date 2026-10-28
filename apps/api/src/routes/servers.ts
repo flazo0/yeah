@@ -35,6 +35,11 @@ function toServerDto(server: Server): ServerDto {
     cloudflareTunnelStatus: server.cloudflareTunnelStatus,
     cloudflareTunnelError: server.cloudflareTunnelError,
     trafficAnalyticsEnabled: server.trafficAnalyticsEnabled,
+    patchUpdates: server.patchUpdates,
+    patchSecurity: server.patchSecurity,
+    patchRebootRequired: server.patchRebootRequired,
+    patchCheckedAt: server.patchCheckedAt ? server.patchCheckedAt.toISOString() : null,
+    autoSecurityUpdates: server.autoSecurityUpdates,
     createdAt: server.createdAt.toISOString(),
   };
 }

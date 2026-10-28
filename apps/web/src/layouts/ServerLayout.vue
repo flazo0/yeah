@@ -58,6 +58,8 @@ const tabs = [
   { path: "general", label: i18n.global.t("common.general"), icon: "tune" },
   { path: "proxy", label: "Proxy", icon: "shield_lock" },
   { path: "maintenance", label: i18n.global.t("serverLayout.manutencao"), icon: "cleaning_services" },
+  { path: "patches", label: i18n.global.t("serverLayout.atualizacoes"), icon: "system_update" },
+  { path: "images", label: i18n.global.t("serverLayout.imagens"), icon: "deployed_code" },
   { path: "metrics", label: i18n.global.t("common.resources"), icon: "monitor_heart" },
   { path: "terminal", label: "Terminal", icon: "terminal" },
 ];
