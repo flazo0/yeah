@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildLaunchCommand, buildLogTailCommand, FAIL_MARKER, OK_MARKER, REMOTE_LOG_PATH } from "./platformOperation.commands";
+import { buildLaunchCommand, buildLogTailCommand, FAIL_MARKER, OK_MARKER, PRE_UPDATE_GUARD, REMOTE_LOG_PATH } from "./platformOperation.commands";
 
 describe("buildLaunchCommand", () => {
   test("backgrounds the update and returns immediately", () => {
@@ -28,6 +28,22 @@ describe("buildLaunchCommand", () => {
     expect(cmd).toContain("git reset --hard --quiet origin/main");
     expect(cmd).toContain("docker compose -f docker-compose.prod.yml --env-file .env up -d --build");
     expect(cmd).toContain("db:migrate");
+  });
+});
+
+describe("PRE_UPDATE_GUARD", () => {
+  test("runs first, checks the disk and backs up the database, and can be skipped", () => {
+    expect(buildLaunchCommand()).toContain(PRE_UPDATE_GUARD + " && git fetch");
+    expect(PRE_UPDATE_GUARD).toContain("df --output=pcent /");
+    expect(PRE_UPDATE_GUARD).toContain("pg_dump");
+    expect(PRE_UPDATE_GUARD).toContain("YEAH_SKIP_DISK_CHECK");
+    expect(PRE_UPDATE_GUARD).toContain("YEAH_BACKUP_BEFORE_UPDATE");
+    expect(PRE_UPDATE_GUARD).toContain("tail -n +6");
+  });
+
+  test("is valid bash", () => {
+    const r = Bun.spawnSync(["bash", "-n", "-c", PRE_UPDATE_GUARD]);
+    expect(r.exitCode).toBe(0);
   });
 });
 

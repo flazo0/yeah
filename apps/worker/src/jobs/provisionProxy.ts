@@ -91,7 +91,11 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
 
         await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail, server.trafficAnalyticsEnabled));
 
+        // The issued certificates live in acme.json: keep the last three snapshots before touching the proxy, so a
+        // bad provision never costs a Let's Encrypt rate-limit window.
+        const acme = shellQuote(`${PROXY_DIR}/acme.json`);
         const command =
+          `if [ -s ${acme} ]; then cp -p ${acme} ${acme}.bak-$(date +%Y%m%d%H%M%S) && ls -1t ${acme}.bak-* | tail -n +4 | xargs -r rm -f; fi; ` +
           `touch ${shellQuote(`${PROXY_DIR}/acme.json`)} && chmod 600 ${shellQuote(`${PROXY_DIR}/acme.json`)} && ` +
           `docker network create ${shellQuote(PROXY_NETWORK_NAME)} >/dev/null 2>&1 || true && ` +
           `docker rm -f ${shellQuote(PROXY_CONTAINER_NAME)} >/dev/null 2>&1 || true && ` +
