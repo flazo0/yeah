@@ -33,6 +33,7 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     basicAuthUser: null,
     basicAuthHash: null,
     maintenanceMode: false,
+    redactEnvInLogs: false,
     maintenanceMessage: null,
     composeFile: "docker-compose.yml",
     composeService: null,

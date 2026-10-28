@@ -1,0 +1,1 @@
+ALTER TABLE "applications" ADD COLUMN "redact_env_in_logs" boolean DEFAULT false NOT NULL;

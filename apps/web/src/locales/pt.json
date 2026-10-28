@@ -974,7 +974,10 @@
     "saoControladosPeloYeahE": "são controlados pelo yeah e não podem ser trocados.",
     "salvando": "salvando...",
     "salvoAplicaNoProximoDeploy": "salvo — aplica no próximo deploy",
-    "falhaAoSalvar": "falha ao salvar"
+    "falhaAoSalvar": "falha ao salvar",
+    "logsTitulo": "Logs de deploy",
+    "ocultarValores": "Ocultar os valores das variáveis de ambiente nos logs de deploy",
+    "ocultarDica": "Vale a partir do próximo deploy: valores com 6 ou mais caracteres aparecem como *** nos logs gravados e transmitidos. Valores curtos (como true ou 3000) não são ocultados."
   },
   "applicationDanger": {
     "zonaDePerigo": "Zona de perigo",

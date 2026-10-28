@@ -15,6 +15,7 @@ const form = ref({
   healthStartPeriodSeconds: 30,
   dockerOptions: "",
   stopGraceSeconds: 10,
+  redactEnvInLogs: false,
 });
 const saving = ref(false);
 const saved = ref(false);
@@ -29,6 +30,7 @@ watchEffect(() => {
     healthStartPeriodSeconds: app.value.healthStartPeriodSeconds,
     dockerOptions: app.value.dockerOptions,
     stopGraceSeconds: app.value.stopGraceSeconds,
+    redactEnvInLogs: app.value.redactEnvInLogs,
   };
 });
 
@@ -95,6 +97,15 @@ async function save() {
           <p class="hint" style="margin-top: 6px">
             {{ $t("applicationAdvanced.quantoTempoOContainerAntigo") }}
           </p>
+        </div>
+
+        <h3 class="section-title">{{ $t("applicationAdvanced.logsTitulo") }}</h3>
+        <div class="form-group">
+          <label for="redact-env" style="display: flex; gap: 8px; align-items: center">
+            <input id="redact-env" v-model="form.redactEnvInLogs" type="checkbox" />
+            {{ $t("applicationAdvanced.ocultarValores") }}
+          </label>
+          <p class="hint" style="margin-top: 6px">{{ $t("applicationAdvanced.ocultarDica") }}</p>
         </div>
 
         <h3 class="section-title">{{ $t("applicationAdvanced.opcoesExtrasDo") }} <span class="mono">{{ $t("applicationAdvanced.dockerRun") }}</span></h3>

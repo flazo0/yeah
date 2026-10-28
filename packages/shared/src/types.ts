@@ -202,6 +202,7 @@ export interface ApplicationDto extends ResourceLimits {
   basicAuthUser: string | null;
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
+  redactEnvInLogs: boolean;
   /** docker_compose only: compose file inside the repo, and the service the domain/port routes to. */
   composeFile: string;
   composeService: string | null;

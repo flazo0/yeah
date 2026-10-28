@@ -393,6 +393,13 @@
       "when": 1793201129748,
       "tag": "0055_app_protection",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793201338432,
+      "tag": "0056_redact_env_logs",
+      "breakpoints": true
     }
   ]
 }

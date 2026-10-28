@@ -79,6 +79,7 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     basicAuthUser: app.basicAuthUser,
     maintenanceMode: app.maintenanceMode,
     maintenanceMessage: app.maintenanceMessage,
+    redactEnvInLogs: app.redactEnvInLogs,
     composeFile: app.composeFile,
     composeService: app.composeService,
     deployKeyPublic: app.deployKeyPublic,
@@ -715,6 +716,7 @@ export const applicationRoutes = new Elysia({
           healthStartPeriodSeconds: body.healthStartPeriodSeconds,
           dockerOptions: body.dockerOptions,
           stopGraceSeconds: body.stopGraceSeconds,
+          ...(body.redactEnvInLogs !== undefined ? { redactEnvInLogs: body.redactEnvInLogs } : {}),
         })
         .where(eq(applications.id, params.applicationId))
         .returning();
@@ -733,6 +735,7 @@ export const applicationRoutes = new Elysia({
         healthStartPeriodSeconds: t.Number(),
         dockerOptions: t.String({ maxLength: 4000 }),
         stopGraceSeconds: t.Number(),
+        redactEnvInLogs: t.Optional(t.Boolean()),
       }),
     },
   )

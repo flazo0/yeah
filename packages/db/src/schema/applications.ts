@@ -59,6 +59,8 @@ export const applications = pgTable("applications", {
   basicAuthUser: varchar("basic_auth_user", { length: 64 }),
   basicAuthHash: text("basic_auth_hash"),
   // Maintenance mode: the domain answers 503 with this message while the app itself is left alone.
+  // Opt-in: mask every environment-variable value (6+ characters) in stored/streamed deploy logs.
+  redactEnvInLogs: boolean("redact_env_in_logs").default(false).notNull(),
   maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
   maintenanceMessage: varchar("maintenance_message", { length: 500 }),
   // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).

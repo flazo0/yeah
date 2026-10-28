@@ -974,7 +974,10 @@
     "saoControladosPeloYeahE": "are controlled by yeah and cannot be changed.",
     "salvando": "saving...",
     "salvoAplicaNoProximoDeploy": "saved — applies on the next deploy",
-    "falhaAoSalvar": "failed to save"
+    "falhaAoSalvar": "failed to save",
+    "logsTitulo": "Deploy logs",
+    "ocultarValores": "Hide environment variable values in deploy logs",
+    "ocultarDica": "Applies from the next deploy: values with 6 or more characters show as *** in stored and streamed logs. Short values (such as true or 3000) are not hidden."
   },
   "applicationDanger": {
     "zonaDePerigo": "Danger zone",

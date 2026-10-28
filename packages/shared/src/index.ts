@@ -16,3 +16,4 @@ export * from "./databaseConnection";
 export * from "./composeStack";
 export * from "./serverOps";
 export * from "./audit";
+export * from "./redact";

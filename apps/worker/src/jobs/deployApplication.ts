@@ -6,6 +6,7 @@ import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh"
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
 import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath, PROXY_DIR } from "@yeah/shared";
+import { redactSecrets, secretValues } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikDynamicConfig, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -61,7 +62,12 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     }
 
     let log = "";
-    const appendAndPublish = async (line: string) => {
+    // Opt-in per app: every env value (6+ chars) is masked before the line is stored or streamed.
+    const secrets = application.redactEnvInLogs
+      ? secretValues(expandReferences(parseEnvContent(application.envContent), await loadSharedVariables(application)).entries.map((e) => e.value))
+      : [];
+    const appendAndPublish = async (rawLine: string) => {
+      const line = secrets.length ? redactSecrets(rawLine, secrets) : rawLine;
       log += line;
       await publishServerEvent(publishConnection, { type: "deployment.log", deploymentId, line });
     };
