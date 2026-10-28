@@ -35,6 +35,7 @@ import ApplicationGeneralPage from "../pages/application/ApplicationGeneralPage.
 import ApplicationEnvPage from "../pages/application/ApplicationEnvPage.vue";
 import ApplicationStoragePage from "../pages/application/ApplicationStoragePage.vue";
 import ApplicationLogsPage from "../pages/application/ApplicationLogsPage.vue";
+import ApplicationFilesPage from "../pages/application/ApplicationFilesPage.vue";
 import ApplicationAdvancedPage from "../pages/application/ApplicationAdvancedPage.vue";
 import ApplicationWebhooksPage from "../pages/application/ApplicationWebhooksPage.vue";
 import ApplicationTasksPage from "../pages/application/ApplicationTasksPage.vue";
@@ -132,6 +133,7 @@ export const router = createRouter({
         { path: "webhooks", name: "app-webhooks", component: ApplicationWebhooksPage },
         { path: "tasks", name: "app-tasks", component: ApplicationTasksPage },
         { path: "terminal", name: "app-terminal", component: ApplicationTerminalPage },
+        { path: "files", name: "app-files", component: ApplicationFilesPage },
         { path: "metrics", name: "app-metrics", component: ApplicationMetricsPage },
         { path: "source", name: "app-source", component: ApplicationSourcePage },
         { path: "server", name: "app-server", component: ApplicationServerPage },

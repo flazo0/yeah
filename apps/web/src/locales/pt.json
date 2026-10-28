@@ -304,7 +304,8 @@
     "avancado": "Avançado",
     "operacoes": "Operações",
     "zonaDePerigo": "Zona de perigo",
-    "falhaAoExecutarAAcao": "falha ao executar a ação"
+    "falhaAoExecutarAAcao": "falha ao executar a ação",
+    "arquivos": "Arquivos"
   },
   "databaseLayout": {
     "bancoDeDadosNaoEncontrado": "Banco de dados não encontrado.",
@@ -1795,5 +1796,19 @@
     "mensagemPadrao": "Estamos em manutenção. Voltamos em instantes.",
     "salvo": "salvo, aplica na hora",
     "falha": "falha ao salvar"
+  },
+  "applicationFiles": {
+    "titulo": "Arquivos do container",
+    "dica": "Navegue pelos arquivos dentro do container em execução (somente leitura). Arquivos grandes são cortados em 256 KB.",
+    "subir": "Subir",
+    "atualizar": "Atualizar",
+    "binario": "Arquivo binário: não dá para mostrar aqui.",
+    "truncado": "Arquivo grande: mostrando só o começo.",
+    "fechar": "Fechar arquivo",
+    "vazio": "Pasta vazia.",
+    "nome": "Nome",
+    "tamanho": "Tamanho",
+    "falhaAoListar": "falha ao listar a pasta",
+    "falhaAoLer": "falha ao ler o arquivo"
   }
 }

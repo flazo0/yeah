@@ -304,7 +304,8 @@
     "avancado": "Advanced",
     "operacoes": "Operations",
     "zonaDePerigo": "Danger zone",
-    "falhaAoExecutarAAcao": "failed to run the action"
+    "falhaAoExecutarAAcao": "failed to run the action",
+    "arquivos": "Files"
   },
   "databaseLayout": {
     "bancoDeDadosNaoEncontrado": "Database not found.",
@@ -1795,5 +1796,19 @@
     "mensagemPadrao": "We are down for maintenance. Back shortly.",
     "salvo": "saved, applied right away",
     "falha": "failed to save"
+  },
+  "applicationFiles": {
+    "titulo": "Container files",
+    "dica": "Browse the files inside the running container (read-only). Large files are cut at 256 KB.",
+    "subir": "Up",
+    "atualizar": "Refresh",
+    "binario": "Binary file: it cannot be shown here.",
+    "truncado": "Large file: showing only the beginning.",
+    "fechar": "Close file",
+    "vazio": "Empty folder.",
+    "nome": "Name",
+    "tamanho": "Size",
+    "falhaAoListar": "failed to list the folder",
+    "falhaAoLer": "failed to read the file"
   }
 }

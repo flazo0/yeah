@@ -10,6 +10,7 @@ import { dockerCleanupRoutes } from "./routes/dockerCleanup";
 import { serverOpsRoutes } from "./routes/serverOps";
 import { auditRoutes } from "./routes/audit";
 import { teamSecurityRoutes } from "./routes/teamSecurity";
+import { applicationFilesRoutes } from "./routes/applicationFiles";
 import { recordAuditFromRequest } from "./lib/audit";
 import { storageRoutes } from "./routes/storages";
 import { projectRoutes } from "./routes/projects";
@@ -107,6 +108,7 @@ const app = new Elysia()
   .use(projectRoutes)
   .use(applicationRoutes)
   .use(applicationOpsRoutes)
+  .use(applicationFilesRoutes)
   .use(volumeBackupRoutes)
   .use(databaseRoutes)
   .use(databaseBackupRoutes)

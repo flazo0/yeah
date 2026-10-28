@@ -80,6 +80,7 @@ const tabs = computed(() => [
   { to: `${routeBase}/logs`, label: "Logs", icon: "article", active: route.name === "app-logs" },
   { to: `${routeBase}/metrics`, label: i18n.global.t("applicationLayout.metricas"), icon: "monitoring", active: route.name === "app-metrics" },
   { to: `${routeBase}/terminal`, label: "Terminal", icon: "terminal", active: route.name === "app-terminal" },
+  { to: `${routeBase}/files`, label: i18n.global.t("applicationLayout.arquivos"), icon: "folder_open", active: route.name === "app-files" },
   { to: `${routeBase}/general`, label: i18n.global.t("common.configuration"), icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [
