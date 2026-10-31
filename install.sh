@@ -310,8 +310,13 @@ case "${1:-}" in
   stop)
     docker compose -f docker-compose.prod.yml stop
     ;;
+  reset-password)
+    # Lost password: yeah reset-password [email] [--disable-2fa]   (YEAH_NEW_PASSWORD=... to choose it; otherwise one is generated)
+    shift
+    docker compose -f docker-compose.prod.yml --env-file .env run --rm -e YEAH_NEW_PASSWORD api bun run --cwd ../../packages/db reset-password "$@" < /dev/null
+    ;;
   *)
-    echo "usage: yeah {update|logs [service]|restart|status|stop}"
+    echo "usage: yeah {update|logs [service]|restart|status|stop|reset-password [email] [--disable-2fa]}"
     exit 1
     ;;
 esac
@@ -336,5 +341,5 @@ fi
 if grep -q '^CLOUDFLARE_TUNNEL_TOKEN=.' "$ENV_FILE"; then
   log "Cloudflare Tunnel active: point the public hostname at http://web:80 in the Cloudflare dashboard. The local port only listens on 127.0.0.1."
 fi
-log "Commands: yeah update | yeah logs [service] | yeah restart | yeah status | yeah stop"
+log "Commands: yeah update | yeah logs [service] | yeah restart | yeah status | yeah stop | yeah reset-password"
 warn "No real domain + TLS in front yet — put Caddy/nginx with a certificate in front if you expose this to the internet. See docs/installation.md."

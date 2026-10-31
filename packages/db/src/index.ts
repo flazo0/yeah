@@ -4,3 +4,4 @@ export { encryptSecret, decryptSecret, isEncrypted, usesCurrentKey } from "./enc
 export { encryptExistingSecrets, reencryptSecrets } from "./encryptExisting";
 export * from "./sessions";
 export * from "./instanceSettings";
+export * from "./passwordReset";

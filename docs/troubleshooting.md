@@ -43,6 +43,25 @@ Reconnect GitHub on the Sources page. For webhooks, check the repository's *Sett
 
 A passkey is bound to the address of the panel it was created on, and that address must be listed in `WEB_ORIGIN`. If you changed the domain, add it to `WEB_ORIGIN`, restart the API and register the passkey again.
 
+## I lost my password (or my authenticator)
+
+There is no e-mail reset: this is a single-admin panel, and whoever has root on the machine can already do anything. Run on the machine where the panel is installed:
+
+```bash
+sudo yeah reset-password                     # the only account, with a generated password
+sudo yeah reset-password me@example.com      # when there is more than one account
+sudo yeah reset-password --disable-2fa       # also turn off two-factor authentication (lost authenticator and recovery codes)
+sudo YEAH_NEW_PASSWORD='a-long-password' yeah reset-password   # choose the password yourself
+```
+
+A generated password is printed once; change it in *Settings* after signing in. Every open session of that account is signed out. The password is never taken from the command line, so it does not end up in the shell history. If the `yeah` helper does not know `reset-password` (it is written when the panel is installed, and an update does not rewrite it), run the same thing directly:
+
+```bash
+cd /opt/yeah && docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db reset-password
+```
+
+Passkeys are not touched.
+
 ## Server shows as offline
 
 The worker cannot open SSH. Check the IP and port, the key under Keys & Tokens, and that `sshd` accepts the key (`~/.ssh/authorized_keys`).

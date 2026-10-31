@@ -11,7 +11,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:rekey": "bun run src/rekey.ts"
+    "db:rekey": "bun run src/rekey.ts",
+    "reset-password": "bun run src/resetPassword.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.44.7"

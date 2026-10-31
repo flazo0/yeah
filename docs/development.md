@@ -33,6 +33,7 @@ Create an account at `http://localhost:5173/register`; it gets a personal team a
 | `bun run db:migrate` | Applies pending migrations |
 | `bun run db:studio` | Opens Drizzle Studio (a GUI for Postgres) |
 | `bun run --cwd packages/db db:rekey` | Re-encrypts every stored secret with the current `ENCRYPTION_KEY` (after rotating it) |
+| `bun run --cwd packages/db reset-password [email] [--disable-2fa]` | Sets a new password for an account (generated, or `YEAH_NEW_PASSWORD`) and signs it out everywhere |
 
 Generating a migration without a database: `DATABASE_URL=postgres://x:x@localhost/x bun run db:generate --name <name>` from `packages/db`. Never edit a migration that was already committed.
 
