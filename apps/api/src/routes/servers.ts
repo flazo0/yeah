@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { and, count, eq, gte } from "drizzle-orm";
 import { applications, databases, serverMetricSamples, servers, services, sshKeys, type Server } from "@yeah/db";
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
-import { buildProxyIsRunningCommand, buildProxyLogsCommand, ERROR_PAGE_MESSAGE_MAX, ERROR_PAGE_TITLE_MAX, normalizeErrorPageText, validateMemoryGuardLimits, type ServerDto } from "@yeah/shared";
+import { buildProxyIsRunningCommand, buildProxyLogsCommand, summarizeCapacity, ERROR_PAGE_MESSAGE_MAX, ERROR_PAGE_TITLE_MAX, normalizeErrorPageText, validateMemoryGuardLimits, type ServerCapacityDto, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { createVps } from "../lib/vpsProviders";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -28,6 +28,7 @@ function toServerDto(server: Server): ServerDto {
     cpuPercent: server.cpuPercent,
     memPercent: server.memPercent,
     diskPercent: server.diskPercent,
+    memTotalMb: server.memTotalMb,
     metricsCheckedAt: server.metricsCheckedAt ? server.metricsCheckedAt.toISOString() : null,
     metricsEnabled: server.metricsEnabled,
     sshKeyId: server.sshKeyId,
@@ -452,6 +453,35 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
     },
     { body: t.Object({ enabled: t.Boolean(), title: t.Optional(t.Nullable(t.String({ maxLength: 400 }))), message: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))) }) },
   )
+  .get("/:serverId/capacity", async ({ cookie, params, set }): Promise<{ capacity: ServerCapacityDto } | { error: string }> => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const [server] = await db.select().from(servers).where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId))).limit(1);
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    const [apps, svcs, dbs] = await Promise.all([
+      db.select({ memoryLimitMb: applications.memoryLimitMb }).from(applications).where(eq(applications.serverId, server.id)),
+      db.select({ memoryLimitMb: services.memoryLimitMb }).from(services).where(eq(services.serverId, server.id)),
+      db.select({ memoryLimitMb: databases.memoryLimitMb }).from(databases).where(eq(databases.serverId, server.id)),
+    ]);
+    const resources = [...apps, ...svcs, ...dbs];
+    if (!server.memTotalMb) {
+      // No metrics yet: the sums still help, but there is nothing to compare them with.
+      const s = summarizeCapacity(0, resources, 0);
+      return { capacity: { memTotalMb: null, availableMb: 0, committedMb: s.committedMb, resourceCount: s.resourceCount, unlimitedCount: s.unlimitedCount, commitRatio: null, evenShareMb: 0, status: "unknown" } };
+    }
+    const s = summarizeCapacity(server.memTotalMb, resources);
+    return { capacity: { ...s, commitRatio: Number.isFinite(s.commitRatio) ? s.commitRatio : null } };
+  })
   .put(
     "/:serverId/memory-guard",
     async ({ cookie, params, body, set }) => {

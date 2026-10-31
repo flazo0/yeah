@@ -463,6 +463,13 @@
       "when": 1793498661161,
       "tag": "0065_memory_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1793498662161,
+      "tag": "0066_server_mem_total",
+      "breakpoints": true
     }
   ]
 }

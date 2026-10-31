@@ -2,6 +2,10 @@ services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    # Sized for a small host (1 vCPU / 4 GB running many projects): the panel is a single-admin app that holds
+    # about 18 connections at most (3 services x DB_POOL_MAX), so the defaults (100 connections, 128 MB of shared
+    # buffers) only waste memory. Raise POSTGRES_SHARED_BUFFERS on a bigger machine.
+    command: postgres -c shared_buffers=${POSTGRES_SHARED_BUFFERS:-64MB} -c max_connections=50 -c work_mem=4MB -c maintenance_work_mem=32MB -c effective_cache_size=256MB
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-yeah}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
@@ -16,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: ${POSTGRES_MEMORY_LIMIT:-384M}
     logging:
       driver: json-file
       options:
@@ -26,7 +30,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    command: redis-server --appendonly yes --maxmemory 128mb --maxmemory-policy noeviction
     volumes:
       - yeah_redis_data:/data
     healthcheck:
@@ -37,7 +41,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 320M
+          memory: 192M
     logging:
       driver: json-file
       options:
@@ -60,7 +64,7 @@ services:
       # Optional (see .env.example): log format/level and Postgres pool size.
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DB_POOL_MAX: ${DB_POOL_MAX:-6}
       # Container file browser writes (edit, upload, create folder, delete): off unless set to true.
       FILE_BROWSER_WRITES: ${FILE_BROWSER_WRITES:-false}
       FILE_BROWSER_UPLOAD_MAX_MB: ${FILE_BROWSER_UPLOAD_MAX_MB:-10}
@@ -115,7 +119,7 @@ services:
       # Optional (see .env.example): log format/level and Postgres pool size.
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DB_POOL_MAX: ${DB_POOL_MAX:-6}
       METRICS_INTERVAL_SECONDS: ${METRICS_INTERVAL_SECONDS:-}
       PATCH_CHECK_INTERVAL_SECONDS: ${PATCH_CHECK_INTERVAL_SECONDS:-}
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
@@ -153,7 +157,7 @@ services:
       # Optional (see .env.example): log format/level and Postgres pool size.
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DB_POOL_MAX: ${DB_POOL_MAX:-6}
       # The socket is authenticated: sessions and team memberships are read from Postgres.
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379

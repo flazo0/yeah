@@ -68,6 +68,8 @@ export interface ServerDto {
   cpuPercent: number | null;
   memPercent: number | null;
   diskPercent: number | null;
+  /** Total RAM in MB, from the last metrics check. */
+  memTotalMb: number | null;
   metricsCheckedAt: string | null;
   /** Off switch for the periodic docker-stats-over-SSH poll — see servers.metrics_enabled in packages/db. */
   metricsEnabled: boolean;
@@ -186,6 +188,18 @@ export function resourceLimitFlags(limits: ResourceLimits): string {
   if (limits.memoryLimitMb) flags.push(`--memory=${limits.memoryLimitMb}m`);
   if (limits.cpuLimit) flags.push(`--cpus=${limits.cpuLimit}`);
   return flags.length > 0 ? `${flags.join(" ")} ` : "";
+}
+
+/** Memory planning for one server (see capacity.ts): what the resource limits add up to against the RAM it has. */
+export interface ServerCapacityDto {
+  memTotalMb: number | null;
+  availableMb: number;
+  committedMb: number;
+  resourceCount: number;
+  unlimitedCount: number;
+  commitRatio: number | null;
+  evenShareMb: number;
+  status: "ok" | "tight" | "over" | "unknown";
 }
 
 export interface ApplicationDto extends ResourceLimits {

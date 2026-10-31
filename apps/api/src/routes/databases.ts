@@ -15,7 +15,7 @@ import {
 } from "@yeah/db";
 import { DATABASE_ENGINES, databaseConnectionUrl, databaseDataVolumeName, internalHostName, isValidDockerImage, isValidSqliteName, isSafeMountPath, isValidVariableKey, setEnvVariable, SQLITE_MOUNT_DIR, sqliteConnectionUrl, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
-import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
+import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
 import { requireEnvironmentScope } from "../lib/scope";
 import { loadResourceMetricHistory } from "../lib/metricsHistory";

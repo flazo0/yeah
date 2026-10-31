@@ -28,3 +28,4 @@ export * from "./errorPage";
 export * from "./serviceMaintenance";
 export * from "./traefikStatic";
 export * from "./memoryGuard";
+export * from "./capacity";

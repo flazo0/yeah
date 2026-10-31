@@ -1059,7 +1059,7 @@
     "saving": "saving...",
     "savedAppliesNextDeploy": "saved — applies on the next deploy",
     "failedToSave": "failed to save",
-    "logsTitulo": "Deploy logs",
+    "logsTitle": "Deploy logs",
     "hideEnvironmentVariableValuesDeploy": "Hide environment variable values in deploy logs",
     "appliesNextDeployValues6": "Applies from the next deploy: values with 6 or more characters show as *** in stored and streamed logs. Short values (such as true or 3000) are not hidden."
   },
@@ -1808,6 +1808,18 @@
     "n1000Lines": "1000 lines",
     "refresh": "Refresh",
     "failedReadLogs": "failed to read the logs"
+  },
+  "serverCapacity": {
+    "title": "Capacity",
+    "hint": "How much memory the resource limits on this server add up to, compared with the RAM it has. Limits are ceilings, not reservations, so going over 100% can work when most resources sit well below their limit, but a burst by several of them at once can make the server slow or kill processes.",
+    "committed": "{committed} promised of {available} available",
+    "serverHas": "The server has {total} of RAM; about {available} is left for projects after the system, Docker and the panel.",
+    "resources": "{count} resources, about {share} each if the memory were shared evenly.",
+    "unlimited": "{count} without a memory limit: they can grow until the server runs out. Set a limit on each, or use the memory guard.",
+    "over": "The limits add up to far more than this server has. Lower some limits, put idle applications to sleep, or move projects to another server.",
+    "tight": "Close to or above what this server has. Fine while most resources stay idle; consider the memory guard and sleep when idle.",
+    "waitingForMetrics": "Waiting for the first metrics check to learn how much memory this server has.",
+    "failedToLoad": "failed to load the capacity"
   },
   "memoryGuard": {
     "title": "Memory guard",

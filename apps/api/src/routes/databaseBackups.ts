@@ -3,7 +3,8 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import { backupExecutions, backupSchedules, databaseRestores, s3Storages, servers, type BackupExecution, type BackupSchedule, type Database, type DatabaseRestore } from "@yeah/db";
 import { DATABASE_ENGINES, type DatabaseRestoreDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
-import { connectSsh, execStream, readRemoteFile, shellQuote, writeRemoteFile } from "@yeah/ssh";
+import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
+import { remoteFileResponse } from "../lib/remoteFileResponse";
 import { s3ClientFor } from "@yeah/storage";
 import { requireEnvironmentScope } from "../lib/scope";
 import { db } from "../lib/db";
@@ -357,13 +358,9 @@ export const databaseBackupRoutes = new Elysia({
       set.status = 404;
       return { error: "server not found" };
     }
-    try {
-      const fileBuffer = await readRemoteFile(conn, execution.filePath);
-      const fileName = execution.filePath.split("/").pop() ?? "backup.sql.gz";
-      return new Response(new Uint8Array(fileBuffer), { headers: { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${fileName}"` } });
-    } finally {
-      conn.end();
-    }
+    const fileName = execution.filePath.split("/").pop() ?? "backup.sql.gz";
+    // Streamed; the connection is closed when the download ends (see remoteFileResponse).
+    return remoteFileResponse(conn, execution.filePath, { "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename="${fileName}"` });
   })
   .delete("/:databaseId/backup-executions/:executionId", async ({ ctx, params, set }) => {
     if ("error" in ctx) {

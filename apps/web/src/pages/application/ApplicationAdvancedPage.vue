@@ -107,7 +107,7 @@ async function save() {
           <p class="hint" style="margin-top: 6px">{{ $t("applicationAdvanced.rollbackImagesHint") }}</p>
         </div>
 
-        <h3 class="section-title">{{ $t("applicationAdvanced.logsTitulo") }}</h3>
+        <h3 class="section-title">{{ $t("applicationAdvanced.logsTitle") }}</h3>
         <div class="form-group">
           <label for="redact-env" style="display: flex; gap: 8px; align-items: center">
             <input id="redact-env" v-model="form.redactEnvInLogs" type="checkbox" />

@@ -97,6 +97,7 @@ async function checkOne(server: Server, publishConnection: Redis) {
         cpuPercent: metrics.cpu,
         memPercent: metrics.mem,
         diskPercent: metrics.disk,
+        ...(metrics.memTotalMb ? { memTotalMb: metrics.memTotalMb } : {}),
         metricsCheckedAt: new Date(),
       })
       .where(eq(servers.id, server.id));

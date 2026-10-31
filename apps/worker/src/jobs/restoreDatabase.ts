@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { backupExecutions, backupSchedules, databaseRestores, databases, s3Storages, servers } from "@yeah/db";
-import { connectSsh, execStream, shellQuote, writeRemoteFile, type Client } from "@yeah/ssh";
-import { s3ClientFor } from "@yeah/storage";
+import { connectSsh, execStream, shellQuote, writeRemoteFileStream, type Client } from "@yeah/ssh";
+import { downloadStream, s3ClientFor } from "@yeah/storage";
 import type { DatabaseRestoreJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
@@ -65,9 +65,9 @@ export function makeRestoreDatabaseProcessor() {
           const [storage] = await db.select().from(s3Storages).where(eq(s3Storages.id, execution.s3StorageId)).limit(1);
           if (!storage) throw new Error("this backup's S3 destination no longer exists");
           await append(`\x1b[36m$ downloading from S3 (${storage.name})\x1b[0m\n`);
-          const bytes = await s3ClientFor(storage).file(execution.filePath).arrayBuffer();
           filePath = `${dir}/restore-${Date.now()}-${execution.filePath.split("/").pop()}`;
-          await writeRemoteFile(conn, filePath, new Uint8Array(bytes));
+          // Streamed from S3 to the server: the backup is never held in the worker's memory.
+          await writeRemoteFileStream(conn, filePath, downloadStream(s3ClientFor(storage), execution.filePath));
           tempFile = filePath;
         } else {
           filePath = execution.filePath;

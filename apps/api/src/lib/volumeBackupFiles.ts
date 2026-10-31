@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { s3Storages, servers, type S3Storage, type VolumeBackup } from "@yeah/db";
 import type { VolumeBackupDto } from "@yeah/shared";
-import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
+import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
+import { remoteFileResponse } from "./remoteFileResponse";
 import { s3ClientFor } from "@yeah/storage";
 import { db } from "./db";
 
@@ -47,12 +48,7 @@ export async function volumeBackupDownload(b: VolumeBackup, serverId: string): P
   }
   const conn = await sshTo(serverId);
   if (!conn) return null;
-  try {
-    const buf = await readRemoteFile(conn, b.filePath);
-    return new Response(new Uint8Array(buf), { headers: { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="${b.filePath.split("/").pop()}"` } });
-  } finally {
-    conn.end();
-  }
+  return remoteFileResponse(conn, b.filePath, { "Content-Type": "application/gzip", "Content-Disposition": `attachment; filename="${b.filePath.split("/").pop()}"` });
 }
 
 /** Removes an archive's file (S3 object or file on the server) — best effort; only a backup row owns a file. */

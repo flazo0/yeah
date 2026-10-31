@@ -17,15 +17,17 @@ mem=$(( (memtotal-memavail)*100/memtotal ))
 disk=$(df -P / | tail -1 | awk '{print $5}' | tr -d '%')
 echo "CPU:$cpu"
 echo "MEM:$mem"
+echo "MEMTOTAL:$((memtotal/1024))"
 echo "DISK:$disk"
 `.trim();
 
-export function parseMetrics(output: string): { cpu: number; mem: number; disk: number } | null {
+export function parseMetrics(output: string): { cpu: number; mem: number; disk: number; memTotalMb?: number } | null {
   const cpu = /CPU:(\d+)/.exec(output)?.[1];
   const mem = /MEM:(\d+)/.exec(output)?.[1];
   const disk = /DISK:(\d+)/.exec(output)?.[1];
   if (!cpu || !mem || !disk) return null;
-  return { cpu: Number(cpu), mem: Number(mem), disk: Number(disk) };
+  const total = /MEMTOTAL:(\d+)/.exec(output)?.[1];
+  return { cpu: Number(cpu), mem: Number(mem), disk: Number(disk), ...(total ? { memTotalMb: Number(total) } : {}) };
 }
 
 /** Only alert on the transition into trouble, not on every tick while it stays there. */

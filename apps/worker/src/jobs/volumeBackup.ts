@@ -1,8 +1,8 @@
 import { and, desc, eq, type SQL } from "drizzle-orm";
 import { applicationVolumes, applications, s3Storages, servers, services, volumeBackups, type VolumeBackup } from "@yeah/db";
 import { composeLifecycleCommand, composeNamedVolumes } from "@yeah/shared";
-import { connectSsh, execStream, readRemoteFile, shellQuote, writeRemoteFile, type Client } from "@yeah/ssh";
-import { s3ClientFor } from "@yeah/storage";
+import { connectSsh, execStream, shellQuote, writeRemoteFileStream, type Client } from "@yeah/ssh";
+import { downloadStream, s3ClientFor } from "@yeah/storage";
 import type { VolumeBackupJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
@@ -94,7 +94,7 @@ export function makeVolumeBackupProcessor() {
           await run(`mkdir -p ${shellQuote(dir)}`, "preparing the folder");
           await append(`[36m$ downloading from S3 (${storage.name})[0m
 `);
-          await writeRemoteFile(conn, staged, new Uint8Array(await s3ClientFor(storage).file(sourceRow.filePath!).arrayBuffer()));
+          await writeRemoteFileStream(conn, staged, downloadStream(s3ClientFor(storage), sourceRow.filePath!));
           archive = staged;
         }
         const commands = target.restore(archive);
@@ -113,7 +113,7 @@ export function makeVolumeBackupProcessor() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await append(`\n\x1b[31mFalhou: ${message}\x1b[0m\n`);
+      await append(`\n\x1b[31mFailed: ${message}\x1b[0m\n`);
       await db.update(volumeBackups).set({ status: "failed", finishedAt: new Date() }).where(eq(volumeBackups.id, row.id));
       await notifyTeam(row.teamId, "backup.failed", `${row.operation === "restore" ? "Restore" : "Backup"} of volume ${row.label} failed`, message, "error");
     } finally {

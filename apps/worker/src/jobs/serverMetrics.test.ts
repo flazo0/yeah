@@ -10,6 +10,10 @@ describe("parseMetrics", () => {
     expect(parseMetrics("some banner\nDISK:5\nCPU:0\nMEM:99\ntrailing junk")).toEqual({ cpu: 0, mem: 99, disk: 5 });
   });
 
+  test("reads the total memory in MB when the server reports it", () => {
+    expect(parseMetrics("CPU:1\nMEM:50\nMEMTOTAL:3891\nDISK:7\n")).toEqual({ cpu: 1, mem: 50, disk: 7, memTotalMb: 3891 });
+  });
+
   test("returns null when a field is missing", () => {
     expect(parseMetrics("CPU:42\nMEM:73\n")).toBeNull();
   });

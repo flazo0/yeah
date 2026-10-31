@@ -158,7 +158,7 @@ async function provisionStack(service: typeof services.$inferSelect, server: typ
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[worker] service-provision: stack ${service.id} failed:`, message);
-    await setStatus("error", log + `\nFalhou: ${message}\n`);
+    await setStatus("error", log + `\nFailed: ${message}\n`);
   } finally {
     conn?.end();
   }

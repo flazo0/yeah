@@ -1059,7 +1059,7 @@
     "saving": "salvando...",
     "savedAppliesNextDeploy": "salvo — aplica no próximo deploy",
     "failedToSave": "falha ao salvar",
-    "logsTitulo": "Logs de deploy",
+    "logsTitle": "Logs de deploy",
     "hideEnvironmentVariableValuesDeploy": "Ocultar os valores das variáveis de ambiente nos logs de deploy",
     "appliesNextDeployValues6": "Vale a partir do próximo deploy: valores com 6 ou mais caracteres aparecem como *** nos logs gravados e transmitidos. Valores curtos (como true ou 3000) não são ocultados."
   },
@@ -1808,6 +1808,18 @@
     "n1000Lines": "1000 linhas",
     "refresh": "Atualizar",
     "failedReadLogs": "falha ao ler os logs"
+  },
+  "serverCapacity": {
+    "title": "Capacidade",
+    "hint": "Quanto de memória os limites dos recursos deste servidor somam, comparado com a RAM que ele tem. Limites são tetos, não reservas: passar de 100% pode funcionar quando a maioria fica bem abaixo do limite, mas se vários subirem juntos o servidor pode ficar lento ou matar processos.",
+    "committed": "{committed} prometidos de {available} disponíveis",
+    "serverHas": "O servidor tem {total} de RAM; cerca de {available} sobra para os projetos depois do sistema, do Docker e do painel.",
+    "resources": "{count} recursos, cerca de {share} cada se a memória fosse dividida igualmente.",
+    "unlimited": "{count} sem limite de memória: podem crescer até o servidor acabar. Defina um limite em cada um, ou use a guarda de memória.",
+    "over": "Os limites somam bem mais do que este servidor tem. Reduza alguns limites, ponha aplicações ociosas para dormir ou mova projetos para outro servidor.",
+    "tight": "Perto ou acima do que este servidor tem. Tudo bem enquanto a maioria dos recursos ficar ociosa; considere a guarda de memória e dormir quando ocioso.",
+    "waitingForMetrics": "Aguardando a primeira verificação de métricas para saber quanta memória este servidor tem.",
+    "failedToLoad": "falha ao carregar a capacidade"
   },
   "memoryGuard": {
     "title": "Guarda de memória",

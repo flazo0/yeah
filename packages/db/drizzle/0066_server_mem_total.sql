@@ -1,0 +1,1 @@
+ALTER TABLE "servers" ADD COLUMN "mem_total_mb" integer;

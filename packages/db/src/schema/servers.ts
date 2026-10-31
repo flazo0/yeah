@@ -59,6 +59,8 @@ export const servers = pgTable("servers", {
   cpuPercent: real("cpu_percent"),
   memPercent: real("mem_percent"),
   diskPercent: real("disk_percent"),
+  // Total RAM in MB as reported by the same check (capacity planning, see shared/capacity.ts).
+  memTotalMb: integer("mem_total_mb"),
   metricsCheckedAt: timestamp("metrics_checked_at", { withTimezone: true }),
   // Off switch for the periodic docker-stats-over-SSH poll (server + per-container history) — costs
   // one SSH connect/exec per tick plus DB writes, so whoever is optimizing for a minimal footprint

@@ -99,6 +99,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     cloudflareTunnelError: null,
     trafficAnalyticsEnabled: false,
     errorPageEnabled: false,
+    memTotalMb: null,
     memoryGuardEnabled: false,
     memoryGuardThreshold: 92,
     memoryGuardRecover: 80,

@@ -1,4 +1,7 @@
 import { Client } from "ssh2";
+import { Readable } from "node:stream";
+import { once } from "node:events";
+import { shellQuote } from "@yeah/shared";
 import type { TestConnectionResult } from "@yeah/shared";
 
 export type { Client, ClientChannel } from "ssh2";
@@ -184,6 +187,71 @@ export function readRemoteFile(conn: Client, remotePath: string): Promise<Buffer
       stream.on("data", (chunk: Buffer) => chunks.push(chunk));
       stream.on("error", reject);
       stream.on("end", () => resolve(Buffer.concat(chunks)));
+    });
+  });
+}
+
+/**
+ * Opens `remotePath` as a stream over SFTP, with its size, without reading it into memory. The SFTP session
+ * ends with the stream; closing the SSH connection afterwards is up to the caller.
+ */
+export function openRemoteReadStream(conn: Client, remotePath: string): Promise<{ stream: Readable; size: number }> {
+  return new Promise((resolve, reject) => {
+    conn.sftp((err, sftp) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      sftp.stat(remotePath, (statErr, stats) => {
+        if (statErr) {
+          sftp.end();
+          reject(statErr);
+          return;
+        }
+        const stream = sftp.createReadStream(remotePath);
+        stream.on("close", () => sftp.end());
+        resolve({ stream, size: stats.size });
+      });
+    });
+  });
+}
+
+/**
+ * Writes a stream to `remotePath` (creating/overwriting it) with real back-pressure, so nothing is buffered beyond
+ * the SSH channel window (a few MB). The bytes go through the stdin of a `cat` on the server rather than through
+ * SFTP: ssh2's SFTP write queue does not push back when the server is slower than the source (measured: about
+ * half of a 120 MB file stayed in memory), and a plain channel does. Rejects when `cat` fails or the stream errors.
+ */
+export function writeRemoteFileStream(conn: Client, remotePath: string, source: Readable | AsyncIterable<Uint8Array>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    conn.exec(`cat > ${shellQuote(remotePath)}`, (err, channel) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      let stderr = "";
+      let settled = false;
+      const fail = (e: Error) => {
+        if (settled) return;
+        settled = true;
+        channel.destroy();
+        reject(e);
+      };
+      channel.on("error", fail);
+      channel.stderr.on("data", (d: Buffer) => (stderr += d.toString()));
+      channel.resume(); // cat prints nothing on stdout; an unread channel would stall
+      channel.on("close", (code: number | null) => {
+        if (settled) return;
+        settled = true;
+        if ((code ?? 0) === 0) resolve();
+        else reject(new Error(`writing ${remotePath} failed (exit ${code}): ${stderr.trim()}`));
+      });
+      (async () => {
+        for await (const chunk of source) {
+          if (!channel.write(chunk)) await once(channel, "drain");
+        }
+        channel.end();
+      })().catch((e) => fail(e instanceof Error ? e : new Error(String(e))));
     });
   });
 }

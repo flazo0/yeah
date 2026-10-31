@@ -1,8 +1,8 @@
 import { and, desc, eq } from "drizzle-orm";
 import { backupExecutions, backupSchedules, databases, s3Storages, servers, type Database, type S3Storage } from "@yeah/db";
-import { connectSsh, execStream, readRemoteFile, removeRemoteFile, shellQuote, type Client } from "@yeah/ssh";
+import { connectSsh, execStream, openRemoteReadStream, removeRemoteFile, shellQuote, type Client } from "@yeah/ssh";
 import { publishServerEvent, type DatabaseBackupJobData } from "@yeah/queue";
-import { s3ClientFor } from "@yeah/storage";
+import { s3ClientFor, uploadStream } from "@yeah/storage";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
@@ -87,8 +87,10 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
 
         const objectKey = `${database.id}/${fileName}`;
         append(`$ uploading to S3 (${storage.name}) → ${objectKey}\n`);
-        const buffer = await readRemoteFile(conn, filePath);
-        await s3ClientFor(storage).write(objectKey, buffer);
+        // Streamed: the dump is never held in the worker's memory, whatever its size.
+        const { stream } = await openRemoteReadStream(conn, filePath);
+        const sent = await uploadStream(s3ClientFor(storage), objectKey, stream);
+        if (sizeBytes > 0 && sent !== sizeBytes) throw new Error(`the upload sent ${sent} bytes but the backup file has ${sizeBytes}`);
         // The remote copy was only ever a staging area for the upload — S3 is now the record of truth.
         await removeRemoteFile(conn, filePath);
 
