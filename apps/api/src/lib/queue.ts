@@ -4,6 +4,7 @@ import {
   createDatabaseBackupQueue,
   createDatabaseProvisionQueue,
   createDockerCleanupQueue,
+  createInstanceBackupQueue,
   createCaCertificateQueue,
   createCloudflareTunnelQueue,
   createApplicationRoutingQueue,
@@ -36,6 +37,7 @@ export const scheduledTaskQueue = createScheduledTaskQueue(connection);
 export const databaseRestoreQueue = createDatabaseRestoreQueue(connection);
 export const volumeBackupQueue = createVolumeBackupQueue(connection);
 export const dockerCleanupQueue = createDockerCleanupQueue(connection);
+export const instanceBackupQueue = createInstanceBackupQueue(connection);
 export const caCertificateQueue = createCaCertificateQueue(connection);
 export const cloudflareTunnelQueue = createCloudflareTunnelQueue(connection);
 export const applicationRoutingQueue = createApplicationRoutingQueue(connection);

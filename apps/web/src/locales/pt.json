@@ -1839,6 +1839,28 @@
       }
     }
   },
+  "panelBackup": {
+    "title": "Backup do painel",
+    "hint": "Uma cópia diária do banco de dados do próprio painel (projetos, servidores, configurações, segredos criptografados) enviada para um armazenamento compatível com S3. Sem ela, perder a máquina onde o painel roda significa perder tudo o que o painel sabe.",
+    "keyWarning": "O banco guarda segredos criptografados com a ENCRYPTION_KEY do arquivo .env do painel. Um backup não serve sem essa chave: guarde uma cópia do .env em um lugar seguro, separado dos backups.",
+    "noServer": "Este painel não roda em um servidor gerenciado pelo yeah, então não consegue extrair o próprio banco daqui.",
+    "noStorage": "Adicione um armazenamento S3 primeiro: os backups precisam de um destino.",
+    "openStorages": "Abrir armazenamentos",
+    "enable": "Fazer backup do banco do painel todos os dias",
+    "storage": "Guardar em",
+    "chooseStorage": "Escolha um armazenamento...",
+    "hour": "Às (hora, UTC)",
+    "retention": "Backups a manter",
+    "runNow": "Fazer backup agora",
+    "running": "fazendo backup...",
+    "lastOk": "Último backup: {when}, {size}.",
+    "lastFailed": "O último backup falhou: {error}",
+    "saved": "salvo",
+    "restoreHint": "Para restaurar, baixe o arquivo do seu armazenamento e carregue no banco do painel; os passos estão no guia de problemas comuns.",
+    "failedToLoad": "falha ao carregar as configurações de backup",
+    "failedToSave": "falha ao salvar as configurações de backup",
+    "failedToRun": "falha ao iniciar o backup"
+  },
   "panelDomain": {
     "title": "Domínio do painel",
     "hint": "Sirva este painel no seu próprio domínio com certificado HTTPS automático (Let's Encrypt). Ele passa pelo proxy do servidor onde o painel roda, então o domínio precisa apontar para esse servidor.",

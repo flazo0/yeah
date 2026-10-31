@@ -9,6 +9,7 @@ import { isDark, toggleTheme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 import { i18n } from "../lib/i18n";
 import PanelDomainCard from "../components/PanelDomainCard.vue";
+import PanelBackupCard from "../components/PanelBackupCard.vue";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -127,6 +128,7 @@ onMounted(async () => {
     </div>
 
     <PanelDomainCard v-if="teamId" :team-id="teamId" />
+    <PanelBackupCard v-if="teamId" :team-id="teamId" />
 
     <div class="card mb-16">
       <div class="card-header">

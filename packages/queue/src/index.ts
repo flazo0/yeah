@@ -18,6 +18,7 @@ export const PLATFORM_OPERATION_QUEUE = "platform-operation";
 export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
 export const CA_CERTIFICATE_QUEUE = "ca-certificate";
 export const LOG_RETENTION_QUEUE = "log-retention";
+export const INSTANCE_BACKUP_QUEUE = "instance-backup";
 export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
 export const TRAFFIC_ANALYTICS_QUEUE = "traffic-analytics";
 export const APPLICATION_ROUTING_QUEUE = "application-routing";
@@ -29,6 +30,8 @@ export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
 export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
 /** Fixed id for the single system-wide repeatable job that ticks the log-retention sweep. */
 export const LOG_RETENTION_SCHEDULER_ID = "system-log-retention";
+/** Fixed id for the repeatable job that checks, every few minutes, whether the panel's own database backup is due. */
+export const INSTANCE_BACKUP_SCHEDULER_ID = "system-instance-backup";
 /** Fixed id for the single system-wide repeatable job that ticks the traffic-analytics poll. */
 export const TRAFFIC_ANALYTICS_SCHEDULER_ID = "system-traffic-analytics";
 /** Fixed id for the single system-wide repeatable job that ticks the api-token expiry check. */
@@ -88,6 +91,11 @@ export type TlsCheckJobData = Record<string, never>;
 
 /** Tick job, no per-run data — it sweeps every log-bearing execution table each time it fires. */
 export type LogRetentionJobData = Record<string, never>;
+
+export interface InstanceBackupJobData {
+  /** "Back up now": ignore the schedule. */
+  force?: boolean;
+}
 
 /** Tick job, no per-run data — it re-reads every opted-in server's Traefik metrics each time it fires. */
 export type TrafficAnalyticsJobData = Record<string, never>;
@@ -264,6 +272,19 @@ export function createTlsCheckWorker(connection: Redis, processor: Processor<Tls
 /** Called once at worker boot — idempotent (upsert). Certs don't need minute-level polling, so this defaults to once a day. */
 export async function ensureTlsCheckScheduler(queue: Queue<TlsCheckJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
   await queue.upsertJobScheduler(TLS_CHECK_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createInstanceBackupQueue(connection: Redis): Queue<InstanceBackupJobData> {
+  return new Queue<InstanceBackupJobData>(INSTANCE_BACKUP_QUEUE, { connection });
+}
+
+export function createInstanceBackupWorker(connection: Redis, processor: Processor<InstanceBackupJobData>): Worker<InstanceBackupJobData> {
+  return new Worker<InstanceBackupJobData>(INSTANCE_BACKUP_QUEUE, processor, { connection });
+}
+
+/** Idempotent. The tick is cheap (one query); the job itself decides whether a backup is due. */
+export async function ensureInstanceBackupScheduler(queue: Queue<InstanceBackupJobData>, everyMs = 15 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(INSTANCE_BACKUP_SCHEDULER_ID, { every: everyMs }, { data: {} });
 }
 
 export function createLogRetentionQueue(connection: Redis): Queue<LogRetentionJobData> {

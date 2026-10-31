@@ -49,6 +49,9 @@ Settings of the whole installation, reached through a team so that changes land 
 |---|---|---|---|
 | GET | `/teams/:teamId/instance/panel-domain` | — | `{ domain, platformServer }`: the panel's own domain (or `null`) and the server that hosts the panel (`{ id, name, host, proxyActive, hasAcmeEmail }`, or `null`) |
 | POST | `/teams/:teamId/instance/panel-domain/check` | `{ domain }` | Resolves the domain with the system resolver and compares it with the panel server's address: `{ domain, found, expected, matches }` |
+| GET | `/teams/:teamId/instance/backup` | — | The panel-database backup settings and the result of the last run: `{ enabled, storageId, hourUtc, retention, lastAt, lastStatus, lastError, lastSizeBytes, hasPlatformServer }` |
+| PUT | `/teams/:teamId/instance/backup` | `{ enabled, storageId, hourUtc (0-23, UTC), retention (1-90) }` | Saves the schedule. 400 when the storage is not in the team, when enabling without a storage, or without a server that hosts the panel |
+| POST | `/teams/:teamId/instance/backup/run` | — | Queues a backup now, ignoring the schedule |
 | PUT | `/teams/:teamId/instance/panel-domain` | `{ domain }` (`null` removes it) | Saves the domain and queues the proxy route. 400 when the name is not a public domain, when no server hosts the panel, or when its proxy is not active / has no Let's Encrypt e-mail |
 
 ## S3 storage (`/teams/:teamId/storages`)

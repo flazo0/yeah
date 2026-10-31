@@ -2,12 +2,13 @@ import { Elysia, t } from "elysia";
 import { lookup } from "node:dns/promises";
 import { isIP } from "node:net";
 import { and, eq } from "drizzle-orm";
-import { servers, setPanelDomain } from "@yeah/db";
-import { normalizePanelDomain } from "@yeah/shared";
+import { getInstanceBackupSettings, servers, setPanelDomain, updateInstanceBackupColumns } from "@yeah/db";
+import { INSTANCE_BACKUP_DEFAULTS, normalizePanelDomain, validateInstanceBackupSettings } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
-import { proxyProvisionQueue } from "../lib/queue";
+import { instanceBackupQueue, proxyProvisionQueue } from "../lib/queue";
+import { findTeamStorage } from "../lib/volumeBackupFiles";
 import { currentPanelDomain, refreshPanelDomain } from "../lib/origins";
 
 // Settings of the whole installation, reached through a team like every other route so that changes are audited.
@@ -39,6 +40,22 @@ export async function addressesOf(host: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+async function backupState(teamId: string) {
+  const s = await getInstanceBackupSettings(db);
+  return {
+    enabled: s.enabled,
+    storageId: s.storageId,
+    hourUtc: s.hourUtc,
+    retention: s.retention,
+    lastAt: s.lastAt ? s.lastAt.toISOString() : null,
+    lastStatus: s.lastStatus,
+    lastError: s.lastError,
+    lastSizeBytes: s.lastSizeBytes,
+    defaults: INSTANCE_BACKUP_DEFAULTS,
+    hasPlatformServer: (await platformServer(teamId)) !== null,
+  };
 }
 
 export const instanceRoutes = new Elysia({ prefix: "/teams/:teamId/instance" })
@@ -125,4 +142,72 @@ export const instanceRoutes = new Elysia({ prefix: "/teams/:teamId/instance" })
       return { domain: parsed.domain, platformServer: server };
     },
     { body: t.Object({ domain: t.Nullable(t.String({ maxLength: 255 })) }) },
-  );
+  )
+  .get("/backup", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    return backupState(params.teamId);
+  })
+  .put(
+    "/backup",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const problem = validateInstanceBackupSettings(body.hourUtc, body.retention);
+      if (problem) {
+        set.status = 400;
+        return { error: problem };
+      }
+      if (body.storageId && !(await findTeamStorage(params.teamId, body.storageId))) {
+        set.status = 400;
+        return { error: "that storage does not exist in this team" };
+      }
+      if (body.enabled && !body.storageId) {
+        set.status = 400;
+        return { error: "choose where to store the backups first" };
+      }
+      if (body.enabled && !(await platformServer(params.teamId))) {
+        set.status = 400;
+        return { error: "this installation has no server that hosts the panel, so there is no database to back up from here" };
+      }
+      await updateInstanceBackupColumns(db, { backupEnabled: body.enabled, backupStorageId: body.storageId, backupHourUtc: body.hourUtc, backupRetention: body.retention });
+      return backupState(params.teamId);
+    },
+    { body: t.Object({ enabled: t.Boolean(), storageId: t.Nullable(t.String({ maxLength: 64 })), hourUtc: t.Integer(), retention: t.Integer() }) },
+  )
+  .post("/backup/run", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const settings = await getInstanceBackupSettings(db);
+    if (!settings.storageId) {
+      set.status = 400;
+      return { error: "choose where to store the backups first" };
+    }
+    if (!(await platformServer(params.teamId))) {
+      set.status = 400;
+      return { error: "this installation has no server that hosts the panel" };
+    }
+    await instanceBackupQueue.add("backup", { force: true });
+    return { ok: true };
+  });

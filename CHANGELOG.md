@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - A domain with automatic HTTPS for the panel itself (*Settings → Panel domain*): served through the Traefik of the server that hosts the panel with a Let's Encrypt certificate, with a DNS check, and without touching `.env`. The panel accepts the domain as a browser origin (CORS, WebSocket, passkeys, terminal) and marks the session cookie `Secure` for requests that arrive over HTTPS.
 - A *Get started* checklist on the dashboard for a new installation: add a server, activate the proxy, deploy the first resource and (when the panel runs on a managed server) give the panel its own domain. It reads the real state, links to each step and can be hidden.
 - `yeah reset-password [email] [--disable-2fa]` for a lost password (and a lost authenticator): runs on the host, needs no e-mail, signs the account out everywhere and prints a generated password once. The password is only ever read from `YEAH_NEW_PASSWORD`, never from the command line.
+- Scheduled backup of the panel's own database to S3 (*Settings → Panel backup*): daily at a chosen UTC hour, with retention, *Back up now* and a failure notification. Streamed, so it does not load the dump into memory. Includes the restore steps in the troubleshooting guide and a warning that a backup is useless without the `ENCRYPTION_KEY` from `.env`.
 
 ### Fixed
 

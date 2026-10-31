@@ -19,6 +19,8 @@ import {
   createServerMetricsWorker,
   createTlsCheckQueue,
   createTlsCheckWorker,
+  createInstanceBackupQueue,
+  createInstanceBackupWorker,
   createLogRetentionQueue,
   createLogRetentionWorker,
   createCloudflareTunnelWorker,
@@ -30,6 +32,7 @@ import {
   ensureApiTokenExpiryScheduler,
   ensureServerMetricsScheduler,
   ensureTlsCheckScheduler,
+  ensureInstanceBackupScheduler,
   ensureLogRetentionScheduler,
   ensureTrafficAnalyticsScheduler,
 } from "@yeah/queue";
@@ -48,6 +51,7 @@ import { makeProvisionServiceProcessor } from "./jobs/provisionService";
 import { makePlatformOperationProcessor } from "./jobs/platformOperation";
 import { makeServerMetricsProcessor } from "./jobs/serverMetrics";
 import { makeTlsCheckProcessor } from "./jobs/tlsCheck";
+import { makeInstanceBackupProcessor } from "./jobs/instanceBackup";
 import { makeLogRetentionProcessor } from "./jobs/logRetention";
 import { makeCloudflareTunnelProcessor } from "./jobs/cloudflareTunnel";
 import { makeTrafficAnalyticsProcessor } from "./jobs/trafficAnalytics";
@@ -78,6 +82,7 @@ const serviceJobConnection = createRedisConnection(redisUrl);
 const metricsJobConnection = createRedisConnection(redisUrl);
 const tlsJobConnection = createRedisConnection(redisUrl);
 const logRetentionJobConnection = createRedisConnection(redisUrl);
+const instanceBackupJobConnection = createRedisConnection(redisUrl);
 const cloudflareTunnelConnection = createRedisConnection(redisUrl);
 const trafficAnalyticsConnection = createRedisConnection(redisUrl);
 const applicationRoutingConnection = createRedisConnection(redisUrl);
@@ -149,6 +154,11 @@ logJobEvents(logRetentionWorker, "log-retention");
 
 const logRetentionSchedulerQueue = createLogRetentionQueue(sharedConnection);
 await ensureLogRetentionScheduler(logRetentionSchedulerQueue);
+
+// The panel's own database backup (off unless configured in Settings): a cheap tick every 15 minutes decides whether one is due.
+const instanceBackupWorker = createInstanceBackupWorker(instanceBackupJobConnection, makeInstanceBackupProcessor());
+logJobEvents(instanceBackupWorker, "instance-backup", true);
+await ensureInstanceBackupScheduler(createInstanceBackupQueue(sharedConnection));
 
 const cloudflareTunnelWorker = createCloudflareTunnelWorker(cloudflareTunnelConnection, makeCloudflareTunnelProcessor());
 logJobEvents(cloudflareTunnelWorker, "cloudflare-tunnel");

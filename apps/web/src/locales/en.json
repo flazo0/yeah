@@ -1839,6 +1839,28 @@
       }
     }
   },
+  "panelBackup": {
+    "title": "Panel backup",
+    "hint": "A daily copy of this panel's own database (projects, servers, settings, encrypted secrets) sent to S3-compatible storage. Without it, losing the machine the panel runs on means losing everything the panel knows.",
+    "keyWarning": "The database holds secrets encrypted with the ENCRYPTION_KEY in the panel's .env file. A backup is useless without that key: keep a copy of the .env file somewhere safe, separate from the backups.",
+    "noServer": "This panel does not run on a server managed by yeah, so it cannot dump its own database from here.",
+    "noStorage": "Add an S3 storage first: the backups need somewhere to go.",
+    "openStorages": "Open storages",
+    "enable": "Back up the panel's database every day",
+    "storage": "Store in",
+    "chooseStorage": "Choose a storage...",
+    "hour": "At (hour, UTC)",
+    "retention": "Backups to keep",
+    "runNow": "Back up now",
+    "running": "backing up...",
+    "lastOk": "Last backup: {when}, {size}.",
+    "lastFailed": "The last backup failed: {error}",
+    "saved": "saved",
+    "restoreHint": "To restore, download the file from your storage and run it into the panel's database; the steps are in the troubleshooting guide.",
+    "failedToLoad": "failed to load the backup settings",
+    "failedToSave": "failed to save the backup settings",
+    "failedToRun": "failed to start the backup"
+  },
   "panelDomain": {
     "title": "Panel domain",
     "hint": "Serve this panel on your own domain with an automatic HTTPS certificate (Let's Encrypt). It goes through the proxy of the server the panel runs on, so the domain must point at that server.",

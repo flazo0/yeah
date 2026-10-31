@@ -62,6 +62,24 @@ cd /opt/yeah && docker compose -f docker-compose.prod.yml --env-file .env run --
 
 Passkeys are not touched.
 
+## Restoring the panel's own database
+
+*Settings → Panel backup* sends a daily `pg_dump` of the panel's database to your S3 storage, under `yeah-instance/yeah-YYYYMMDD-HHMMSS.sql.gz` (UTC). To restore it on a machine where the panel is installed:
+
+1. Download the file you want from the storage.
+2. Make sure the `.env` is the one the backup was made with. **The database holds secrets encrypted with `ENCRYPTION_KEY`; without that key a restored database cannot be read.** Keep a copy of `.env` somewhere safe, apart from the backups.
+3. Stop the services that use the database, load the dump into an empty database, then start everything again:
+
+```bash
+cd /opt/yeah
+docker compose -f docker-compose.prod.yml --env-file .env stop api worker ws
+docker compose -f docker-compose.prod.yml --env-file .env exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --if-exists "$POSTGRES_DB" && createdb -U "$POSTGRES_USER" "$POSTGRES_DB"' < /dev/null
+gunzip -c yeah-20260101-030000.sql.gz | docker compose -f docker-compose.prod.yml --env-file .env exec -T postgres sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'
+docker compose -f docker-compose.prod.yml --env-file .env up -d
+```
+
+The same dump command is what `yeah update` runs before an update (those copies stay on the host in `/root/yeah-backups`).
+
 ## Server shows as offline
 
 The worker cannot open SSH. Check the IP and port, the key under Keys & Tokens, and that `sshd` accepts the key (`~/.ssh/authorized_keys`).
