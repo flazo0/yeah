@@ -57,7 +57,7 @@ ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 # Invoking the .bin scripts directly lets the OS honor their "#!/usr/bin/env node" shebang.
 RUN apk add --no-cache nodejs && ./node_modules/.bin/vue-tsc -b && ./node_modules/.bin/vite build
 
-FROM nginx:1.27-alpine AS web
+FROM nginx:1.31-alpine AS web
 COPY --from=web-build /app/apps/web/dist /usr/share/nginx/html
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 # Empty by default; apps/web/docker-entrypoint-realip.sh fills it when TRUST_CF_CONNECTING_IP=1.
