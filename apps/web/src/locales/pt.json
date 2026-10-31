@@ -1897,6 +1897,16 @@
     "waitingForMetrics": "Aguardando a primeira verificação de métricas para saber quanta memória este servidor tem.",
     "failedToLoad": "falha ao carregar a capacidade"
   },
+  "deployCommands": {
+    "title": "Comandos em volta do deploy",
+    "hint": "Opcional. Cada um roda pelo shell, então dá para encadear passos com && ou ;. A imagem precisa ter um shell (sh). Um comando pode rodar por até 10 minutos. Não é usado em rollback, então um rollback nunca roda suas migrações de novo.",
+    "pre": "Antes de a nova versão subir (pré-deploy)",
+    "preHint": "Por exemplo migrações de banco. Roda num container temporário da imagem nova, com as variáveis, a rede e os volumes desta aplicação, enquanto a versão atual ainda atende. Se falhar, o deploy para e a versão atual continua no ar.",
+    "post": "Depois de a nova versão estar rodando (pós-deploy)",
+    "postHint": "Roda dentro do container novo quando ele já está de pé e saudável. Se falhar, a falha é registrada, mas o deploy continua contando como bem-sucedido.",
+    "saved": "salvo, vale a partir do próximo deploy",
+    "failedToSave": "falha ao salvar os comandos"
+  },
   "memoryGuard": {
     "title": "Guarda de memória",
     "hint": "Quando o servidor ficar com pouca memória, para as aplicações e serviços menos importantes para manter no ar os que importam. Bancos de dados nunca são parados. Desligado por padrão.",

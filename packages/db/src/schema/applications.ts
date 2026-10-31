@@ -63,6 +63,10 @@ export const applications = pgTable("applications", {
   redactEnvInLogs: boolean("redact_env_in_logs").default(false).notNull(),
   maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
   maintenanceMessage: varchar("maintenance_message", { length: 500 }),
+  // Commands around a deployment (see shared/deployCommands.ts): pre runs in a throwaway container of the new image
+  // before the old container is stopped (migrations), post runs inside the new container once it is healthy.
+  preDeployCommand: varchar("pre_deploy_command", { length: 1000 }),
+  postDeployCommand: varchar("post_deploy_command", { length: 1000 }),
   // Memory guard (see shared/memoryGuard.ts): which resources the server may stop first when it runs out of RAM.
   // "critical" is never stopped. shed_by_guard marks one the guard stopped, so it is the only kind it starts again.
   priority: varchar("priority", { length: 16 }).$type<"critical" | "normal" | "low">().default("normal").notNull(),

@@ -6,7 +6,7 @@ import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh"
 import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
 import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath, PROXY_DIR } from "@yeah/shared";
-import { redactSecrets, secretValues } from "@yeah/shared";
+import { buildPostDeployCommand, buildPreDeployCommand, redactSecrets, resourceLimitFlags, secretValues, volumeFlags } from "@yeah/shared";
 import { appImagesCommand, deploymentsToRetain, imageExistsCommand, parseAppImages, removeRefsCommand, staleDeploymentRefs, tagDeploymentImageCommand } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikDynamicConfig, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
@@ -102,6 +102,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     const rollbackTarget = deployment.commitSha;
     // A rollback created from a retained Docker image: no clone, no build, just retag and start it.
     const fromImage = deployment.rollbackImage;
+    // A rollback goes back to something that already ran: it must not run migrations (or any other release step) again.
+    const isRollback = Boolean(rollbackTarget || fromImage);
     // Built inside the try below: minting the GitHub token can throw (App uninstalled, GITHUB_APP_* missing),
     // and a throw out here would leave this deployment "running" forever instead of failing it.
     const makeCloneOrPullStep = async (): Promise<Step> => {
@@ -351,6 +353,23 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         // Keep this deployment's image under its own tag so it can be rolled back to later without a rebuild.
         await runStep(conn, { label: "keeping the image for rollback", command: tagDeploymentImageCommand(application.id, deploymentId) }, appendAndPublish);
       }
+      if (application.preDeployCommand && !isRollback) {
+        // Before the old container is stopped: if this fails, the previous version is still serving.
+        await runStep(
+          conn,
+          {
+            label: `running the pre-deploy command: ${application.preDeployCommand}`,
+            command: buildPreDeployCommand(application.preDeployCommand, {
+              applicationId: application.id,
+              imageRef,
+              envFile: `${appDir}/.env`,
+              network: envNetwork,
+              mirrorFlags: resourceLimitFlags(application) + volumeFlags(volumes, application.id),
+            }),
+          },
+          appendAndPublish,
+        );
+      }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
       await runStep(
@@ -377,6 +396,15 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
             label: `waiting for the healthcheck (${application.healthPath})`,
             command: buildHealthWaitCommand(containerName, healthWaitSeconds(application)),
           },
+          appendAndPublish,
+        );
+      }
+
+      if (application.postDeployCommand && application.buildPack !== "docker_compose" && !isRollback) {
+        // The new version is live by now, so a failure here is reported but does not fail the deployment.
+        await runStep(
+          conn,
+          { label: `running the post-deploy command: ${application.postDeployCommand}`, command: buildPostDeployCommand(application.postDeployCommand, containerName), allowFailure: true },
           appendAndPublish,
         );
       }

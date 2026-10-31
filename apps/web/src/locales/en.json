@@ -1897,6 +1897,16 @@
     "waitingForMetrics": "Waiting for the first metrics check to learn how much memory this server has.",
     "failedToLoad": "failed to load the capacity"
   },
+  "deployCommands": {
+    "title": "Commands around a deploy",
+    "hint": "Optional. Each runs through the shell, so you can chain steps with && or ;. The image needs a shell (sh). A command can run for up to 10 minutes. Not used when you roll back, so a rollback never runs your migrations again.",
+    "pre": "Before the new version starts (pre-deploy)",
+    "preHint": "For example database migrations. It runs in a temporary container of the new image with this application's variables, network and volumes, while the current version is still serving. If it fails, the deploy stops and the current version stays up.",
+    "post": "After the new version is running (post-deploy)",
+    "postHint": "Runs inside the new container once it is up and healthy. If it fails, the failure is logged but the deployment still counts as successful.",
+    "saved": "saved, applies from the next deploy",
+    "failedToSave": "failed to save the commands"
+  },
   "memoryGuard": {
     "title": "Memory guard",
     "hint": "When this server runs low on memory, stop the least important applications and services so the ones that matter stay online. Databases are never stopped. Off by default.",

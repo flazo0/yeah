@@ -31,3 +31,4 @@ export * from "./memoryGuard";
 export * from "./capacity";
 export * from "./panelDomain";
 export * from "./instanceBackup";
+export * from "./deployCommands";

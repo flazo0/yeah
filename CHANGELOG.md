@@ -36,6 +36,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `yeah reset-password [email] [--disable-2fa]` for a lost password (and a lost authenticator): runs on the host, needs no e-mail, signs the account out everywhere and prints a generated password once. The password is only ever read from `YEAH_NEW_PASSWORD`, never from the command line.
 - Scheduled backup of the panel's own database to S3 (*Settings → Panel backup*): daily at a chosen UTC hour, with retention, *Back up now* and a failure notification. Streamed, so it does not load the dump into memory. Includes the restore steps in the troubleshooting guide and a warning that a backup is useless without the `ENCRYPTION_KEY` from `.env`.
 - A per-server switch for the web terminal (*Servers → General → Web terminal*, on by default): when off, new terminal sessions on the server and inside its containers are refused with an explanation.
+- Pre-deploy and post-deploy commands for applications (*General → Commands around a deploy*). The pre-deploy command (migrations, say) runs in a temporary container of the new image with the application's variables, network and volumes **before the old container is stopped**, so if it fails the deploy stops and the current version stays up. The post-deploy command runs in the new container once it is healthy; its failure is logged but does not fail the deployment. Neither runs on a rollback.
 
 ### Fixed
 

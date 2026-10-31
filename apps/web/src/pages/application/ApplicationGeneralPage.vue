@@ -8,6 +8,7 @@ import AppSleepCard from "../../components/AppSleepCard.vue";
 import AppProtectionCard from "../../components/AppProtectionCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import ResourcePriorityCard from "../../components/ResourcePriorityCard.vue";
+import DeployCommandsCard from "../../components/DeployCommandsCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
@@ -125,6 +126,15 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :hint="$t('applicationGeneral.appliesNextDeploy')"
       :saved-message="$t('applicationGeneral.savedAppliesNextDeploy')"
       @saved="(limits) => { app!.memoryLimitMb = limits.memoryLimitMb; app!.cpuLimit = limits.cpuLimit; }"
+      @error="(msg) => (error = msg)"
+    />
+
+    <DeployCommandsCard
+      v-if="app.buildPack !== 'docker_compose'"
+      :pre-deploy-command="app.preDeployCommand"
+      :post-deploy-command="app.postDeployCommand"
+      :put-url="`${basePath}/deploy-commands`"
+      @saved="(c) => { app!.preDeployCommand = c.preDeployCommand; app!.postDeployCommand = c.postDeployCommand; }"
       @error="(msg) => (error = msg)"
     />
 

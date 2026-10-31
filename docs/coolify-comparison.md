@@ -31,7 +31,7 @@ Priorities: **P0** blocks a normal first-day experience, **P1** is a real produc
 |---|---|---|
 | Multi-user teams | Invitations (link or e-mail), roles (owner, admin, member), member management. | Single admin, a documented product decision (see *Not planned* in the roadmap). The `team_members.role` and invitation tables exist but no routes use them. Worth revisiting for a public project. |
 | SSO / OAuth login | GitHub, Google, Azure, Authentik, Discord and more, configured in *Settings → OAuth*. | Password, TOTP and passkeys only. |
-| Pre/post-deployment commands | Run a command in the container before or after a deploy (migrations, cache warm-up). | Not available; scheduled tasks are the closest thing. |
+| Pre/post-deployment commands | Run a command in the container before or after a deploy (migrations, cache warm-up). | **Done** (*General → Commands around a deploy*): pre-deploy runs before the old container stops, so a failed migration keeps the old version up. Not for Compose applications. |
 | Custom proxy configuration | Editor for Traefik dynamic files, per-application custom labels, certificate list, proxy logs. | Proxy logs and the error page only; no editor, no certificate view. |
 | Active-deployments indicator and fleet view | Live indicator in the top bar, fleet-wide metrics, dashboard charts. | Dashboard shows counts and recent deployments; metrics are per server. |
 | Per-server terminal switch | *Security → Terminal access* turns the web terminal off per server. | **Done**: *Servers → General → Web terminal*. Covers the shell on the server and the shells inside its containers; new sessions are refused, open ones are not closed. |

@@ -35,6 +35,8 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     maintenanceMode: false,
     redactEnvInLogs: false,
     maintenanceMessage: null,
+    preDeployCommand: null,
+    postDeployCommand: null,
     priority: "normal",
     shedByGuard: false,
     composeFile: "docker-compose.yml",

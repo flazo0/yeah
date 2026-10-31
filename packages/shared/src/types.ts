@@ -227,6 +227,8 @@ export interface ApplicationDto extends ResourceLimits {
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
   redactEnvInLogs: boolean;
+  preDeployCommand: string | null;
+  postDeployCommand: string | null;
   /** Memory guard priority: "critical" is never stopped for lack of RAM, "low" goes first. */
   priority: "critical" | "normal" | "low";
   /** True while the memory guard is the reason this application is stopped. */

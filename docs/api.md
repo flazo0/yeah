@@ -132,6 +132,7 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | PUT | `.../applications/:id/domain` | `{ domain? }` | Sets/clears the domain |
 | PUT | `.../applications/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Sets/clears resource limits (`null` = no limit); applies on the next deployment |
 | PUT | `.../applications/:id/sleep` | `{ sleepAfterMinutes? }` | Enables or disables sleep-when-idle (only for applications with a domain) |
+| PUT | `.../applications/:id/deploy-commands` | `{ preDeployCommand?, postDeployCommand? }` (`null` or empty clears one) | Commands around a deploy: pre runs in a temporary container of the new image before the old one is stopped, post runs in the new container once it is healthy. One line, up to 1000 characters; 400 for Docker Compose applications |
 | PUT | `.../applications/:id/priority` | `{ priority: "critical" \| "normal" \| "low" }` | Priority for the server's memory guard (default `normal`) |
 | PUT | `.../applications/:id/protection` | `{ basicAuthUser?, basicAuthPassword?, maintenanceMode?, maintenanceMessage? }` | Password protection and maintenance mode |
 | GET | `.../applications/:id/deployments` | — | History (last 20) |

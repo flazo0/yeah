@@ -36,6 +36,7 @@ The following were verified **only** with unit tests and local fakes, and still 
 
 Verified on a real Docker daemon (Docker Desktop, 2026-10-31, throwaway containers):
 
+- the pre/post-deploy commands as shell: the application's `.env`, the environment network, volumes, an image with its own `ENTRYPOINT`, quoting, the exit status, the timeout killing a hung command and removing its container, and a leftover container with the same name. **Not verified:** the wiring inside a full deployment (it is covered by the type checker and the command tests, not by a real deploy),
 - the panel's own database backup: the dump command against a real PostgreSQL in a real compose project (valid archive, restored into a fresh database with every row, a failure leaves no file), and the whole job with real SSH, real S3 and the real database (upload, retention that never touches foreign files, failure recording). The `docker` binary on the SSH host was a stand-in that prints a dump, so the compose path on a real panel host is covered only by the first part,
 - the panel domain: the route file and the `yeah-panel-web` alias through a real Traefik v2.11 (HTTPS to the panel, http redirected to https, only the panel's own compose project picked, reattach after an update, removal), and the API routes, CORS, `Secure` cookie and DNS check against a running API. **Not verified:** the Let's Encrypt certificate itself (it needs a public domain and open ports 80/443; the test used Traefik's default certificate) and the update script on a real host,
 - all 380 templates pass `docker compose config`; the 18 that fail do so only because they declare variables as required on purpose,
@@ -48,7 +49,7 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 From the [comparison with Coolify](coolify-comparison.md), in priority order:
 
-- **Pre/post-deployment commands** and a **custom proxy configuration** editor with a certificate view.
+- A **custom proxy configuration** editor with a certificate view.
 - **A visual pass** over spacing, surfaces and the light theme (see the interface notes in the comparison).
 
 Also planned:

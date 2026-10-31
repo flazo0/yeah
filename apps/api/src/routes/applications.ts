@@ -20,7 +20,7 @@ import {
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
 import { appImagesCommand, deploymentImageRef, imageExistsCommand, matchImagesToDeployments, parseAppImages, validateRollbackImages } from "@yeah/shared";
-import { gitRepoUrl, isValidGitRepoPath, MAX_SLEEP_MINUTES, MIN_SLEEP_MINUTES } from "@yeah/shared";
+import { gitRepoUrl, isValidGitRepoPath, MAX_SLEEP_MINUTES, MIN_SLEEP_MINUTES, normalizeDeployCommand } from "@yeah/shared";
 import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
 import { computeRouting, configSnapshot, DEPLOY_AFFECTING_FIELDS, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
 import { buildPackUsesGit, composeLogsCommand, composeProjectName, composeTeardownCommand, DEFAULT_COMPOSE_FILE, isSafeComposeFile, isValidComposeService, isSafePublishDirectory, isSshGitUrl, isValidDockerImage, volumeName, type BuildPack } from "@yeah/shared";
@@ -79,6 +79,8 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     sleepAfterMinutes: app.sleepAfterMinutes,
     basicAuthUser: app.basicAuthUser,
     maintenanceMode: app.maintenanceMode,
+    preDeployCommand: app.preDeployCommand,
+    postDeployCommand: app.postDeployCommand,
     priority: app.priority,
     shedByGuard: app.shedByGuard,
     maintenanceMessage: app.maintenanceMessage,
@@ -684,6 +686,46 @@ export const applicationRoutes = new Elysia({
         maintenance: t.Optional(t.Object({ enabled: t.Boolean(), message: t.Optional(t.Nullable(t.String({ maxLength: 500 }))) })),
       }),
     },
+  )
+  .put(
+    "/:applicationId/deploy-commands",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      if (row.application.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "pre/post-deploy commands are not available for Docker Compose applications: run them as a service of the Compose file instead" };
+      }
+      const pre = normalizeDeployCommand(body.preDeployCommand);
+      if (!pre.ok) {
+        set.status = 400;
+        return { error: `pre-deploy command: ${pre.error}` };
+      }
+      const post = normalizeDeployCommand(body.postDeployCommand);
+      if (!post.ok) {
+        set.status = 400;
+        return { error: `post-deploy command: ${post.error}` };
+      }
+      const [updated] = await db.update(applications).set({ preDeployCommand: pre.command, postDeployCommand: post.command }).where(eq(applications.id, params.applicationId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to save the commands" };
+      }
+      return { application: await applicationDto(updated, row.serverName) };
+    },
+    { body: t.Object({ preDeployCommand: t.Nullable(t.String({ maxLength: 2000 })), postDeployCommand: t.Nullable(t.String({ maxLength: 2000 })) }) },
   )
   .put(
     "/:applicationId/priority",
