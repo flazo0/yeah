@@ -21,7 +21,7 @@ Priorities: **P0** blocks a normal first-day experience, **P1** is a real produc
 | Gap | Coolify | yeah today |
 |---|---|---|
 | **Domain and HTTPS for the panel itself** | *Settings → Instance domain*: Coolify serves itself through its Traefik with a Let's Encrypt certificate. | **Done**: *Settings → Panel domain* routes the domain through the panel server's Traefik (see [installation.md](installation.md)). The certificate request itself is not verified yet. |
-| **First-run onboarding** | A boarding wizard: add a server (or use localhost), set the domain, create the first resource. | An empty dashboard. The "local server" exists only when install-time SSH variables are set. |
+| **First-run onboarding** | A boarding wizard: add a server (or use localhost), set the domain, create the first resource. | **Done**: a *Get started* checklist on the dashboard (server, proxy, first resource, panel domain), derived from the real state and dismissable. Not a modal wizard. |
 | **Password reset and instance e-mail** | Instance-level SMTP, password reset, e-mail verification, invitations by e-mail. | No password reset (a lost password needs a database edit). E-mail exists only as a notification channel. A host command may suit a single-admin install better than an e-mail link. |
 | **Backup of the panel itself** | *Settings → Backup*: the panel's own database to S3 on a schedule. | Only the dump taken right before `yeah update`. |
 

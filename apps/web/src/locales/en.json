@@ -1809,6 +1809,36 @@
     "refresh": "Refresh",
     "failedReadLogs": "failed to read the logs"
   },
+  "gettingStarted": {
+    "title": "Get started",
+    "titleDone": "One more thing",
+    "hint": "{done} of {total} steps done. Each one takes a minute or two.",
+    "hintDone": "Everything essential is set up. This is optional but worth doing.",
+    "dismiss": "Hide",
+    "optional": "optional",
+    "steps": {
+      "server": {
+        "title": "Add a server",
+        "hint": "Any Linux machine you can reach over SSH: a VPS, a home server, or the machine this panel runs on.",
+        "action": "Add a server"
+      },
+      "proxy": {
+        "title": "Activate the proxy",
+        "hint": "Gives your applications domains and HTTPS certificates. Needs an e-mail address for Let's Encrypt.",
+        "action": "Set up the proxy"
+      },
+      "resource": {
+        "title": "Deploy your first application, database or service",
+        "hint": "From a Git repository, a Docker image, or one of the ready-made services such as a database or a WordPress site.",
+        "action": "Create one"
+      },
+      "domain": {
+        "title": "Give this panel its own domain",
+        "hint": "Open the panel on https://panel.yourdomain.com instead of an IP address and port.",
+        "action": "Set a domain"
+      }
+    }
+  },
   "panelDomain": {
     "title": "Panel domain",
     "hint": "Serve this panel on your own domain with an automatic HTTPS certificate (Let's Encrypt). It goes through the proxy of the server the panel runs on, so the domain must point at that server.",

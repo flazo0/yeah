@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Server capacity card (*Metrics*): adds up the memory limits of everything on a server against the RAM it has and flags servers that promise more than they can give. The metrics check now also reports the server's total memory.
 - Documentation: [small-server.md](docs/small-server.md) (running many projects on 1 vCPU / 4 GB, with what is measured and what is not) and [coolify-comparison.md](docs/coolify-comparison.md) (feature gaps against Coolify 4.5.3).
 - A domain with automatic HTTPS for the panel itself (*Settings → Panel domain*): served through the Traefik of the server that hosts the panel with a Let's Encrypt certificate, with a DNS check, and without touching `.env`. The panel accepts the domain as a browser origin (CORS, WebSocket, passkeys, terminal) and marks the session cookie `Secure` for requests that arrive over HTTPS.
+- A *Get started* checklist on the dashboard for a new installation: add a server, activate the proxy, deploy the first resource and (when the panel runs on a managed server) give the panel its own domain. It reads the real state, links to each step and can be hidden.
 
 ### Fixed
 

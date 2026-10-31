@@ -1809,6 +1809,36 @@
     "refresh": "Atualizar",
     "failedReadLogs": "falha ao ler os logs"
   },
+  "gettingStarted": {
+    "title": "Primeiros passos",
+    "titleDone": "Mais uma coisa",
+    "hint": "{done} de {total} passos concluídos. Cada um leva um ou dois minutos.",
+    "hintDone": "O essencial está configurado. Isto é opcional, mas vale a pena.",
+    "dismiss": "Ocultar",
+    "optional": "opcional",
+    "steps": {
+      "server": {
+        "title": "Adicione um servidor",
+        "hint": "Qualquer máquina Linux acessível por SSH: uma VPS, um servidor em casa, ou a própria máquina onde este painel roda.",
+        "action": "Adicionar servidor"
+      },
+      "proxy": {
+        "title": "Ative o proxy",
+        "hint": "Dá domínios e certificados HTTPS às suas aplicações. Precisa de um e-mail para o Let's Encrypt.",
+        "action": "Configurar o proxy"
+      },
+      "resource": {
+        "title": "Publique sua primeira aplicação, banco de dados ou serviço",
+        "hint": "A partir de um repositório Git, de uma imagem Docker ou de um serviço pronto, como um banco ou um site WordPress.",
+        "action": "Criar um"
+      },
+      "domain": {
+        "title": "Dê um domínio próprio a este painel",
+        "hint": "Abra o painel em https://painel.seudominio.com em vez de um IP com porta.",
+        "action": "Definir domínio"
+      }
+    }
+  },
   "panelDomain": {
     "title": "Domínio do painel",
     "hint": "Sirva este painel no seu próprio domínio com certificado HTTPS automático (Let's Encrypt). Ele passa pelo proxy do servidor onde o painel roda, então o domínio precisa apontar para esse servidor.",

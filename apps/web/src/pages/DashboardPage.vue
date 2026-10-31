@@ -4,6 +4,7 @@ import type { DeploymentStatus, ProjectDto, ServerDto, TeamOverviewDto } from "@
 import { useAuthStore } from "../stores/auth";
 import { api } from "../lib/api";
 import StatusBadge from "../components/StatusBadge.vue";
+import GettingStartedCard from "../components/GettingStartedCard.vue";
 import { dateLocale } from "../lib/i18n";
 
 const auth = useAuthStore();
@@ -80,6 +81,13 @@ watch(
     </div>
 
     <template v-else>
+      <GettingStartedCard
+        v-if="overview && primaryTeam"
+        :team-id="primaryTeam.id"
+        :servers="servers"
+        :projects="projects"
+        :resource-count="overview.counts.applications + overview.counts.databases + overview.counts.services"
+      />
       <div v-if="overview" class="quick-links mb-16">
         <div class="stat-card">
           <div class="stat-label">{{ $t("dashboard.applications") }}</div>

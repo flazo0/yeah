@@ -47,7 +47,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 From the [comparison with Coolify](coolify-comparison.md), in priority order:
 
-- **A first-run guide**: add a server, set the domain, create the first resource.
 - **Lost-password recovery.** Without an e-mail service, a command run on the host (`yeah reset-password`) fits a single-admin install better than a reset link.
 - **Backup of the panel's own database** to S3 on a schedule.
 - **Pre/post-deployment commands**, a **custom proxy configuration** editor with a certificate view, and a **per-server switch for the web terminal**.
