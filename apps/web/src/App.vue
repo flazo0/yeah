@@ -38,6 +38,8 @@ watch(
 );
 
 const teamId = computed(() => (typeof route.params.teamId === "string" ? route.params.teamId : null));
+// The sidebar links need a team even on /dashboard (no :teamId in its URL): fall back to the first one.
+const navTeamId = computed(() => teamId.value ?? auth.teams[0]?.id ?? null);
 // The topbar switcher needs a team to show even on /dashboard, which has no :teamId in its URL —
 // falls back to the user's first (for single-admin, only) team.
 const currentTeamName = computed(() => {
@@ -104,61 +106,61 @@ const breadcrumb = computed(() => {
           {{ t("nav.dashboard") }}
         </RouterLink>
 
-        <template v-if="teamId">
-          <RouterLink :to="`/teams/${teamId}`" class="sidebar-link" :class="{ active: isProjectsRoute }">
+        <template v-if="navTeamId">
+          <RouterLink :to="`/teams/${navTeamId}`" class="sidebar-link" :class="{ active: isProjectsRoute }">
             <span class="material-symbols-outlined">layers</span>
             {{ t("nav.projects") }}
           </RouterLink>
 
           <div class="sidebar-section">{{ t("nav.infrastructure") }}</div>
-          <RouterLink :to="`/teams/${teamId}/servers`" class="sidebar-link" :class="{ active: isServersRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/servers`" class="sidebar-link" :class="{ active: isServersRoute }">
             <span class="material-symbols-outlined">dns</span>
             {{ t("nav.servers") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/sources`" class="sidebar-link" :class="{ active: isSourcesRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/sources`" class="sidebar-link" :class="{ active: isSourcesRoute }">
             <span class="material-symbols-outlined">hub</span>
             {{ t("nav.sources") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/keys-tokens`" class="sidebar-link" :class="{ active: isKeysTokensRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/keys-tokens`" class="sidebar-link" :class="{ active: isKeysTokensRoute }">
             <span class="material-symbols-outlined">key</span>
             {{ t("nav.keysTokens") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/variables`" class="sidebar-link" :class="{ active: isVariablesRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/variables`" class="sidebar-link" :class="{ active: isVariablesRoute }">
             <span class="material-symbols-outlined">data_object</span>
             {{ t("nav.variables") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/storages`" class="sidebar-link" :class="{ active: isStoragesRoute }">
             <span class="material-symbols-outlined">cloud</span>
             {{ t("nav.storage") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/registries`" class="sidebar-link" :class="{ active: isRegistriesRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/registries`" class="sidebar-link" :class="{ active: isRegistriesRoute }">
             <span class="material-symbols-outlined">inventory_2</span>
             {{ t("nav.registries") }}
           </RouterLink>
 
 
           <div class="sidebar-section">{{ t("nav.manage") }}</div>
-          <RouterLink :to="`/teams/${teamId}/team`" class="sidebar-link" :class="{ active: isTeamRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/team`" class="sidebar-link" :class="{ active: isTeamRoute }">
             <span class="material-symbols-outlined">group</span>
             {{ t("nav.team") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/notifications`" class="sidebar-link" :class="{ active: isNotificationsRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/notifications`" class="sidebar-link" :class="{ active: isNotificationsRoute }">
             <span class="material-symbols-outlined">notifications</span>
             {{ t("nav.notifications") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/log-drains`" class="sidebar-link" :class="{ active: isLogDrainsRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/log-drains`" class="sidebar-link" :class="{ active: isLogDrainsRoute }">
             <span class="material-symbols-outlined">receipt_long</span>
             {{ t("nav.logDrains") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/audit`" class="sidebar-link" :class="{ active: isAuditRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/audit`" class="sidebar-link" :class="{ active: isAuditRoute }">
             <span class="material-symbols-outlined">history</span>
             {{ t("nav.audit") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/updates`" class="sidebar-link" :class="{ active: isUpdatesRoute }">
             <span class="material-symbols-outlined">deployed_code_update</span>
             {{ t("nav.updates") }}
           </RouterLink>
-          <RouterLink :to="`/teams/${teamId}/settings`" class="sidebar-link" :class="{ active: isSettingsRoute }">
+          <RouterLink :to="`/teams/${navTeamId}/settings`" class="sidebar-link" :class="{ active: isSettingsRoute }">
             <span class="material-symbols-outlined">settings</span>
             {{ t("nav.settings") }}
           </RouterLink>
