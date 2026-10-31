@@ -48,7 +48,7 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 From the [comparison with Coolify](coolify-comparison.md), in priority order:
 
-- **Pre/post-deployment commands**, a **custom proxy configuration** editor with a certificate view, and a **per-server switch for the web terminal**.
+- **Pre/post-deployment commands** and a **custom proxy configuration** editor with a certificate view.
 - **A visual pass** over spacing, surfaces and the light theme (see the interface notes in the comparison).
 
 Also planned:

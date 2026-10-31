@@ -52,6 +52,9 @@ export const servers = pgTable("servers", {
   errorPageMessage: varchar("error_page_message", { length: 500 }),
   // Optional memory guard: stops the least important applications/services when RAM runs low, starts them again
   // when there is room. Off by default; limits are percentages of memory in use (see shared/memoryGuard.ts).
+  // The web terminal (a shell on the server or inside one of its containers). On by default; a team that does not
+  // want a browser session able to run commands on this machine turns it off here.
+  terminalEnabled: boolean("terminal_enabled").default(true).notNull(),
   memoryGuardEnabled: boolean("memory_guard_enabled").default(false).notNull(),
   memoryGuardThreshold: integer("memory_guard_threshold").default(92).notNull(),
   memoryGuardRecover: integer("memory_guard_recover").default(80).notNull(),

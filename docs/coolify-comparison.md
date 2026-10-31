@@ -34,7 +34,7 @@ Priorities: **P0** blocks a normal first-day experience, **P1** is a real produc
 | Pre/post-deployment commands | Run a command in the container before or after a deploy (migrations, cache warm-up). | Not available; scheduled tasks are the closest thing. |
 | Custom proxy configuration | Editor for Traefik dynamic files, per-application custom labels, certificate list, proxy logs. | Proxy logs and the error page only; no editor, no certificate view. |
 | Active-deployments indicator and fleet view | Live indicator in the top bar, fleet-wide metrics, dashboard charts. | Dashboard shows counts and recent deployments; metrics are per server. |
-| Per-server terminal switch | *Security → Terminal access* turns the web terminal off per server. | The terminal is always available to team members. |
+| Per-server terminal switch | *Security → Terminal access* turns the web terminal off per server. | **Done**: *Servers → General → Web terminal*. Covers the shell on the server and the shells inside its containers; new sessions are refused, open ones are not closed. |
 | Cloud-init scripts and provider tokens | Reusable cloud-init scripts, tokens page, Hetzner / DigitalOcean / Vultr / Hostinger. | Hetzner, DigitalOcean and Vultr. No Hostinger, no script library. |
 
 ### P2

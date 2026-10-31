@@ -82,6 +82,8 @@ async function openSession(ws: Ws, resolve: (userId: string) => Promise<Target |
 
   const target = await resolve(user.id);
   if (!target) return fail(4404, "not-found", "resource not found");
+  // Turned off per server (Servers → General): covers the shell on the server and the shells inside its containers.
+  if (!target.server.terminalEnabled) return fail(4403, "terminal-disabled", "the web terminal is turned off for this server (Servers → General)");
 
   const session: Session = { userId: user.id, conn: null, stream: null, cols: 80, rows: 24, idle: setTimeout(() => {}, 0), closed: false };
   sessions.set(ws.id, session);

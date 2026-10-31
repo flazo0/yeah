@@ -39,6 +39,7 @@ function toServerDto(server: Server): ServerDto {
     errorPageEnabled: server.errorPageEnabled,
     errorPageTitle: server.errorPageTitle,
     errorPageMessage: server.errorPageMessage,
+    terminalEnabled: server.terminalEnabled,
     memoryGuardEnabled: server.memoryGuardEnabled,
     memoryGuardThreshold: server.memoryGuardThreshold,
     memoryGuardRecover: server.memoryGuardRecover,
@@ -311,6 +312,31 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       return { server: toServerDto(server) };
     },
     { body: t.Object({ sshTimeoutSeconds: t.Number() }) },
+  )
+  .put(
+    "/:serverId/terminal-enabled",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ terminalEnabled: body.terminalEnabled })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ terminalEnabled: t.Boolean() }) },
   )
   .put(
     "/:serverId/metrics-enabled",

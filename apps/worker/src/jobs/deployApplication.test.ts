@@ -100,6 +100,7 @@ function makeServer(overrides: Partial<Server> = {}): Server {
     trafficAnalyticsEnabled: false,
     errorPageEnabled: false,
     memTotalMb: null,
+    terminalEnabled: true,
     memoryGuardEnabled: false,
     memoryGuardThreshold: 92,
     memoryGuardRecover: 80,

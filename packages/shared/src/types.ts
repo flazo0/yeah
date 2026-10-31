@@ -84,6 +84,8 @@ export interface ServerDto {
   errorPageTitle: string | null;
   errorPageMessage: string | null;
   /** Optional memory guard: stops the least important apps/services when RAM runs low (see memoryGuard.ts). Off by default. */
+  /** Whether the web terminal may open a shell on this server or in its containers. */
+  terminalEnabled: boolean;
   memoryGuardEnabled: boolean;
   memoryGuardThreshold: number;
   memoryGuardRecover: number;

@@ -1567,6 +1567,9 @@
     "failedToSave": "falha ao salvar"
   },
   "serverGeneral": {
+    "webTerminal": "Terminal web",
+    "webTerminalHint": "Permite que membros do time abram um shell neste servidor, e dentro dos containers dele, pelo navegador. Desligue se ninguém deve poder executar comandos nesta máquina pelo painel. Sessões abertas não são encerradas; novas são recusadas.",
+    "allowWebTerminal": "Permitir o terminal web neste servidor",
     "details": "Detalhes",
     "address": "Endereço",
     "status": "Status",

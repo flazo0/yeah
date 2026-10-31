@@ -31,6 +31,23 @@ async function saveTimeout() {
   }
 }
 
+const savingTerminalEnabled = ref(false);
+
+async function toggleTerminalEnabled(enabled: boolean) {
+  if (!server.value) return;
+  savingTerminalEnabled.value = true;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: { terminalEnabled: boolean } }>(`/teams/${teamId}/servers/${server.value.id}/terminal-enabled`, { terminalEnabled: enabled });
+    server.value.terminalEnabled = res.server.terminalEnabled;
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serverGeneral.failedToSave");
+    if (server.value) server.value.terminalEnabled = !enabled;
+  } finally {
+    savingTerminalEnabled.value = false;
+  }
+}
+
 const savingMetricsEnabled = ref(false);
 
 async function toggleMetricsEnabled(enabled: boolean) {
@@ -190,6 +207,20 @@ onBeforeUnmount(() => clearInterval(certPoll));
       <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0">
         <input id="metrics-enabled" type="checkbox" :checked="server.metricsEnabled" :disabled="savingMetricsEnabled" @change="toggleMetricsEnabled(($event.target as HTMLInputElement).checked)" />
         <label for="metrics-enabled" style="margin: 0">{{ $t("serverGeneral.collectMetricsServer") }}</label>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">terminal</span>
+      {{ $t("serverGeneral.webTerminal") }}
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">{{ $t("serverGeneral.webTerminalHint") }}</p>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0">
+        <input id="terminal-enabled" type="checkbox" :checked="server.terminalEnabled" :disabled="savingTerminalEnabled" @change="toggleTerminalEnabled(($event.target as HTMLInputElement).checked)" />
+        <label for="terminal-enabled" style="margin: 0">{{ $t("serverGeneral.allowWebTerminal") }}</label>
       </div>
     </div>
   </div>

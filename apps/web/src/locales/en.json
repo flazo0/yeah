@@ -1567,6 +1567,9 @@
     "failedToSave": "failed to save"
   },
   "serverGeneral": {
+    "webTerminal": "Web terminal",
+    "webTerminalHint": "Lets team members open a shell on this server, and inside its containers, from the browser. Turn it off if nobody should be able to run commands on this machine through the panel. Open sessions are not closed; new ones are refused.",
+    "allowWebTerminal": "Allow the web terminal on this server",
     "details": "Details",
     "address": "Address",
     "status": "Status",
