@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { and, count, eq, gte } from "drizzle-orm";
 import { applications, databases, serverMetricSamples, servers, services, sshKeys, type Server } from "@yeah/db";
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
-import { buildProxyIsRunningCommand, buildProxyLogsCommand, ERROR_PAGE_MESSAGE_MAX, ERROR_PAGE_TITLE_MAX, normalizeErrorPageText, type ServerDto } from "@yeah/shared";
+import { buildProxyIsRunningCommand, buildProxyLogsCommand, ERROR_PAGE_MESSAGE_MAX, ERROR_PAGE_TITLE_MAX, normalizeErrorPageText, validateMemoryGuardLimits, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { createVps } from "../lib/vpsProviders";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -38,6 +38,9 @@ function toServerDto(server: Server): ServerDto {
     errorPageEnabled: server.errorPageEnabled,
     errorPageTitle: server.errorPageTitle,
     errorPageMessage: server.errorPageMessage,
+    memoryGuardEnabled: server.memoryGuardEnabled,
+    memoryGuardThreshold: server.memoryGuardThreshold,
+    memoryGuardRecover: server.memoryGuardRecover,
     patchUpdates: server.patchUpdates,
     patchSecurity: server.patchSecurity,
     patchRebootRequired: server.patchRebootRequired,
@@ -448,6 +451,36 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       return { server: toServerDto(server) };
     },
     { body: t.Object({ enabled: t.Boolean(), title: t.Optional(t.Nullable(t.String({ maxLength: 400 }))), message: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))) }) },
+  )
+  .put(
+    "/:serverId/memory-guard",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const problem = validateMemoryGuardLimits(body.threshold, body.recover);
+      if (problem) {
+        set.status = 400;
+        return { error: problem };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({ memoryGuardEnabled: body.enabled, memoryGuardThreshold: body.threshold, memoryGuardRecover: body.recover })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ enabled: t.Boolean(), threshold: t.Integer(), recover: t.Integer() }) },
   )
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

@@ -38,6 +38,8 @@ function toServiceDto(service: Service, serverName: string): ServiceDto {
       return parsed.ok ? Object.keys(parsed.services) : [];
     })(),
     maintenanceMode: service.maintenanceMode,
+    priority: service.priority,
+    shedByGuard: service.shedByGuard,
     maintenanceMessage: service.maintenanceMessage,
     maintenanceContainers: service.maintenanceContainers,
     lastLog: service.lastLog,
@@ -345,6 +347,32 @@ export const serviceRoutes = new Elysia({
       return { service: toServiceDto(updated, row.serverName) };
     },
     { body: t.Object({ domain: t.Optional(t.String()) }) },
+  )
+  .put(
+    "/:serviceId/priority",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadService(params.environmentId, params.serviceId);
+      if (!row) {
+        set.status = 404;
+        return { error: "service not found" };
+      }
+      const [updated] = await db.update(services).set({ priority: body.priority }).where(eq(services.id, params.serviceId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update the priority" };
+      }
+      return { service: toServiceDto(updated, row.serverName) };
+    },
+    { body: t.Object({ priority: t.Union([t.Literal("critical"), t.Literal("normal"), t.Literal("low")]) }) },
   )
   .put(
     "/:serviceId/limits",

@@ -81,6 +81,10 @@ export interface ServerDto {
   errorPageEnabled: boolean;
   errorPageTitle: string | null;
   errorPageMessage: string | null;
+  /** Optional memory guard: stops the least important apps/services when RAM runs low (see memoryGuard.ts). Off by default. */
+  memoryGuardEnabled: boolean;
+  memoryGuardThreshold: number;
+  memoryGuardRecover: number;
   /** OS updates (apt) from the last patch check — null until one ran. */
   patchUpdates: number | null;
   patchSecurity: number | null;
@@ -207,6 +211,10 @@ export interface ApplicationDto extends ResourceLimits {
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
   redactEnvInLogs: boolean;
+  /** Memory guard priority: "critical" is never stopped for lack of RAM, "low" goes first. */
+  priority: "critical" | "normal" | "low";
+  /** True while the memory guard is the reason this application is stopped. */
+  shedByGuard: boolean;
   /** docker_compose only: compose file inside the repo, and the service the domain/port routes to. */
   composeFile: string;
   composeService: string | null;
@@ -507,6 +515,8 @@ export interface ServiceDto extends ResourceLimits {
   maintenanceMode: boolean;
   maintenanceMessage: string | null;
   maintenanceContainers: string[];
+  priority: "critical" | "normal" | "low";
+  shedByGuard: boolean;
   lastLog: string;
   status: ServiceStatus;
   createdAt: string;

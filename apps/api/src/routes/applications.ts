@@ -79,6 +79,8 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     sleepAfterMinutes: app.sleepAfterMinutes,
     basicAuthUser: app.basicAuthUser,
     maintenanceMode: app.maintenanceMode,
+    priority: app.priority,
+    shedByGuard: app.shedByGuard,
     maintenanceMessage: app.maintenanceMessage,
     redactEnvInLogs: app.redactEnvInLogs,
     composeFile: app.composeFile,
@@ -682,6 +684,32 @@ export const applicationRoutes = new Elysia({
         maintenance: t.Optional(t.Object({ enabled: t.Boolean(), message: t.Optional(t.Nullable(t.String({ maxLength: 500 }))) })),
       }),
     },
+  )
+  .put(
+    "/:applicationId/priority",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadApplication(params.environmentId, params.applicationId);
+      if (!row) {
+        set.status = 404;
+        return { error: "application not found" };
+      }
+      const [updated] = await db.update(applications).set({ priority: body.priority }).where(eq(applications.id, params.applicationId)).returning();
+      if (!updated) {
+        set.status = 500;
+        return { error: "failed to update the priority" };
+      }
+      return { application: await applicationDto(updated, row.serverName) };
+    },
+    { body: t.Object({ priority: t.Union([t.Literal("critical"), t.Literal("normal"), t.Literal("low")]) }) },
   )
   .put(
     "/:applicationId/advanced",

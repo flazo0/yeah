@@ -63,6 +63,10 @@ export const applications = pgTable("applications", {
   redactEnvInLogs: boolean("redact_env_in_logs").default(false).notNull(),
   maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
   maintenanceMessage: varchar("maintenance_message", { length: 500 }),
+  // Memory guard (see shared/memoryGuard.ts): which resources the server may stop first when it runs out of RAM.
+  // "critical" is never stopped. shed_by_guard marks one the guard stopped, so it is the only kind it starts again.
+  priority: varchar("priority", { length: 16 }).$type<"critical" | "normal" | "low">().default("normal").notNull(),
+  shedByGuard: boolean("shed_by_guard").default(false).notNull(),
   // Extra hostnames served alongside `domain`, and an optional www <-> root redirect (see shared/traefik.ts).
   extraDomains: text("extra_domains").array().default(sql`'{}'::text[]`).notNull(),
   wwwRedirect: wwwRedirectEnum("www_redirect").default("none").notNull(),

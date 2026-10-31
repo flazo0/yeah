@@ -36,6 +36,7 @@ There is no invitation route — on purpose, a second person cannot gain a login
 | POST | `/teams/:teamId/servers` | `{ name, host, port?, sshUser?, privateKey }` | Registers a server (initial status `pending`) |
 | POST | `/teams/:teamId/servers/:serverId/test-connection` | — | Enqueues an asynchronous SSH check (`server-check`); the result arrives over WebSocket (`server.status`) |
 | PUT | `/teams/:teamId/servers/:serverId/domain` | `{ wildcardDomain?, acmeEmail? }` | Sets the wildcard domain and the Let's Encrypt e-mail |
+| PUT | `/teams/:teamId/servers/:serverId/memory-guard` | `{ enabled, threshold, recover }` | Optional memory guard (off by default). `threshold` 70-99 and `recover` ≥ 40 are percentages of memory in use; `recover` must be at least 5 points below `threshold` (400 otherwise) |
 | POST | `/teams/:teamId/servers/:serverId/proxy` | — | Enqueues Traefik provisioning (`proxy-provision`); the result arrives over WebSocket (`server.proxy`) |
 
 CPU, RAM and disk (`cpuPercent`, `memPercent`, `diskPercent`, `metricsCheckedAt` in `ServerDto`) are refreshed in the background by a system job (`server-metrics`, every 60 s per connected server). There is no route to trigger it by hand — only the latest value on the list `GET` and `server.metrics` WebSocket events.
@@ -93,6 +94,7 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | PUT | `.../services/:id/env` | `{ envContent }` | Replaces the raw `.env` |
 | PUT | `.../services/:id/domain` | `{ domain? }` | Sets/clears a custom domain |
 | PUT | `.../services/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Sets/clears resource limits (`null` = no limit); applies on the next redeploy |
+| PUT | `.../services/:id/priority` | `{ priority: "critical" \| "normal" \| "low" }` | Priority for the server's memory guard (default `normal`) |
 | POST | `.../services/:id/redeploy` | — | Re-provisions with the current configuration |
 | DELETE | `.../services/:id` | — | Removes the container and remote volume over SSH (best effort) and deletes the row |
 
@@ -117,6 +119,7 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | PUT | `.../applications/:id/domain` | `{ domain? }` | Sets/clears the domain |
 | PUT | `.../applications/:id/limits` | `{ memoryLimitMb?, cpuLimit? }` | Sets/clears resource limits (`null` = no limit); applies on the next deployment |
 | PUT | `.../applications/:id/sleep` | `{ sleepAfterMinutes? }` | Enables or disables sleep-when-idle (only for applications with a domain) |
+| PUT | `.../applications/:id/priority` | `{ priority: "critical" \| "normal" \| "low" }` | Priority for the server's memory guard (default `normal`) |
 | PUT | `.../applications/:id/protection` | `{ basicAuthUser?, basicAuthPassword?, maintenanceMode?, maintenanceMessage? }` | Password protection and maintenance mode |
 | GET | `.../applications/:id/deployments` | — | History (last 20) |
 | GET | `.../applications/:id/deployments/:deploymentId` | — | One deployment, with its full log |

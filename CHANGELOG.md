@@ -28,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Pre-update safety checks (disk space guard, database dump) in `yeah update`.
 - English as the default interface language, with an optional Portuguese translation.
 - Project documentation: README, contributing guide, security policy, code of conduct and the `docs/` folder.
+- Memory guard (optional, per server): when RAM stays above a threshold, stops the least important applications and services first (priority low, then normal; critical and databases are never stopped) and starts them again once memory recovers. Priority is set per application and service. Actions are written to the audit log and sent as notifications.
 
 ### Fixed
 

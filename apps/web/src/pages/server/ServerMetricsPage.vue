@@ -2,9 +2,10 @@
 import { useServerContext } from "../../composables/useServerContext";
 import ServerMetricBars from "../../components/ServerMetricBars.vue";
 import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
+import ServerMemoryGuardCard from "../../components/ServerMemoryGuardCard.vue";
 import { api } from "../../lib/api";
 
-const { server, teamId } = useServerContext();
+const { server, teamId, replaceServer } = useServerContext();
 
 interface ServerHistoryPoint {
   at: string;
@@ -37,4 +38,5 @@ async function fetchHistory(hours: number) {
       </template>
     </div>
   </div>
+  <ServerMemoryGuardCard v-if="server" :server="server" :team-id="teamId" @saved="replaceServer" />
 </template>

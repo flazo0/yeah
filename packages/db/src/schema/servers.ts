@@ -50,6 +50,11 @@ export const servers = pgTable("servers", {
   errorPageEnabled: boolean("error_page_enabled").default(false).notNull(),
   errorPageTitle: varchar("error_page_title", { length: 120 }),
   errorPageMessage: varchar("error_page_message", { length: 500 }),
+  // Optional memory guard: stops the least important applications/services when RAM runs low, starts them again
+  // when there is room. Off by default; limits are percentages of memory in use (see shared/memoryGuard.ts).
+  memoryGuardEnabled: boolean("memory_guard_enabled").default(false).notNull(),
+  memoryGuardThreshold: integer("memory_guard_threshold").default(92).notNull(),
+  memoryGuardRecover: integer("memory_guard_recover").default(80).notNull(),
   // Latest snapshot from the periodic `server-metrics` job — null until the first check runs.
   cpuPercent: real("cpu_percent"),
   memPercent: real("mem_percent"),

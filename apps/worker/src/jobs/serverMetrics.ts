@@ -2,7 +2,7 @@ import { and, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { applications, containerMetricSamples, databases, serverMetricSamples, servers, services, type Server } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
 import { allContainerStatsCommand, ContainerStatusTracker, containerWatchCommand, detectContainerProblems, parseContainerWatch, parseDockerStats } from "@yeah/shared";
-import { createDockerCleanupQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
+import { createApplicationLifecycleQueue, createDockerCleanupQueue, createServiceProvisionQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import type { Queue } from "bullmq";
 import type { DockerCleanupJobData } from "@yeah/queue";
@@ -12,6 +12,7 @@ import { notifyTeam } from "../lib/notify";
 import { CircuitBreaker } from "../lib/circuitBreaker";
 import { Throttle } from "../lib/throttle";
 import { crossedThreshold, METRICS_COMMAND, parseMetrics } from "./serverMetrics.commands";
+import { runMemoryGuard, type GuardQueues } from "./memoryGuard";
 
 // How long a sample sticks around for the "last 24h/7d" charts before the next tick prunes it.
 const SAMPLE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -36,9 +37,12 @@ const statusTrackers = new Map<string, ContainerStatusTracker>();
 // Set by makeServerMetricsProcessor: lets a disk that just filled up trigger the cleanup right away
 // (the daily schedule would otherwise leave it full until 04:00).
 let cleanupQueue: Queue<DockerCleanupJobData> | null = null;
+// Stop/start jobs the memory guard queues (opt-in per server, see memoryGuard.ts).
+let guardQueues: GuardQueues | null = null;
 
 export function makeServerMetricsProcessor(publishConnection: Redis) {
   cleanupQueue = createDockerCleanupQueue(publishConnection);
+  guardQueues = { applications: createApplicationLifecycleQueue(publishConnection), services: createServiceProvisionQueue(publishConnection) };
   return async function serverMetrics(_job: Job<ServerMetricsJobData>) {
     const allServers = await db
       .select()
@@ -107,6 +111,7 @@ async function checkOne(server: Server, publishConnection: Redis) {
 
     await recordHistory(server, metrics, containerOutput);
     await watchContainers(server, watchOutput);
+    if (guardQueues) await runMemoryGuard(server, metrics.mem, containerOutput, guardQueues);
 
     if (crossedThreshold(server.cpuPercent, metrics.cpu, CPU_THRESHOLD) && alertThrottle.allow(`${server.id}:cpu`)) {
       await notifyTeam(server.teamId, "server.metrics", `CPU alta em ${server.name}`, `CPU em ${metrics.cpu}% (limiar: ${CPU_THRESHOLD}%).`, "warning");

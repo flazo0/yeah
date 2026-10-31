@@ -43,6 +43,10 @@ export const services = pgTable("services", {
   // maintenance_containers limits it to some compose services (empty = every container with a domain).
   maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
   maintenanceMessage: varchar("maintenance_message", { length: 500 }),
+  // Memory guard (see shared/memoryGuard.ts): which resources the server may stop first when it runs out of RAM.
+  // "critical" is never stopped. shed_by_guard marks one the guard stopped, so it is the only kind it starts again.
+  priority: varchar("priority", { length: 16 }).$type<"critical" | "normal" | "low">().default("normal").notNull(),
+  shedByGuard: boolean("shed_by_guard").default(false).notNull(),
   maintenanceContainers: jsonb("maintenance_containers").$type<string[]>().default([]).notNull(),
   // Output of the last deploy of the stack, so a failure is readable in the panel.
   lastLog: text("last_log").default("").notNull(),

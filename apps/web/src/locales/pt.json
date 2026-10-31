@@ -1809,6 +1809,27 @@
     "refresh": "Atualizar",
     "failedReadLogs": "falha ao ler os logs"
   },
+  "memoryGuard": {
+    "title": "Guarda de memória",
+    "hint": "Quando o servidor ficar com pouca memória, para as aplicações e serviços menos importantes para manter no ar os que importam. Bancos de dados nunca são parados. Desligado por padrão.",
+    "enable": "Proteger este servidor contra falta de memória",
+    "stopAbove": "Parar algo quando o uso de memória chegar a (%)",
+    "startBelow": "Iniciar de novo quando o uso cair para (%)",
+    "howItWorks": "Depois de duas verificações seguidas acima do primeiro limite, a guarda para uma aplicação ou serviço: prioridade Baixa primeiro, depois Normal, começando pelo que mais consome memória. Os Críticos nunca são parados. Quando a memória ficar abaixo do segundo limite por três verificações, o que foi parado volta, um de cada vez. As verificações rodam cerca de uma vez por minuto.",
+    "saved": "salvo",
+    "failedToSave": "falha ao salvar"
+  },
+  "resourcePriority": {
+    "title": "Prioridade sob pressão de memória",
+    "hint": "Só importa quando a guarda de memória está ativada no servidor. Crítico nunca é parado por falta de memória, Baixo é parado primeiro.",
+    "label": "Prioridade",
+    "critical": "Crítico: nunca parar",
+    "normal": "Normal",
+    "low": "Baixo: parar primeiro",
+    "stoppedByGuard": "A guarda de memória parou isto para liberar memória. Volta sozinho quando o servidor tiver espaço, ou você pode iniciar manualmente.",
+    "saved": "salvo",
+    "failedToSave": "falha ao salvar"
+  },
   "appSleepCard": {
     "title": "Dormir quando ocioso",
     "hint": "Sem acessos pelo tempo escolhido, o container é desligado para liberar memória e CPU. Na próxima requisição ele liga sozinho: o visitante espera um pouco mais naquela primeira resposta (normalmente 1 a 5 segundos, depende do app), sem tela de carregamento. Parar manualmente não adianta: o próximo acesso liga de novo.",

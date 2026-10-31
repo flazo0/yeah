@@ -7,6 +7,7 @@ import AppDomainsCard from "../../components/AppDomainsCard.vue";
 import AppSleepCard from "../../components/AppSleepCard.vue";
 import AppProtectionCard from "../../components/AppProtectionCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
+import ResourcePriorityCard from "../../components/ResourcePriorityCard.vue";
 import { useApplicationContext } from "../../composables/useApplicationContext";
 
 const { app, basePath, error, reloadApp } = useApplicationContext();
@@ -124,6 +125,14 @@ const suggestion = computed(() => (app.value && wildcard.value ? `${resourceSlug
       :hint="$t('applicationGeneral.appliesNextDeploy')"
       :saved-message="$t('applicationGeneral.savedAppliesNextDeploy')"
       @saved="(limits) => { app!.memoryLimitMb = limits.memoryLimitMb; app!.cpuLimit = limits.cpuLimit; }"
+      @error="(msg) => (error = msg)"
+    />
+
+    <ResourcePriorityCard
+      :priority="app.priority"
+      :shed-by-guard="app.shedByGuard"
+      :put-url="`${basePath}/priority`"
+      @saved="(p) => { app!.priority = p; }"
       @error="(msg) => (error = msg)"
     />
   </div>

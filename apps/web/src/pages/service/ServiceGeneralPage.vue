@@ -5,6 +5,7 @@ import { api, ApiError } from "../../lib/api";
 import DomainCard from "../../components/DomainCard.vue";
 import ServiceMaintenanceCard from "../../components/ServiceMaintenanceCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
+import ResourcePriorityCard from "../../components/ResourcePriorityCard.vue";
 import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
 import { useServiceContext } from "../../composables/useServiceContext";
 import { i18n } from "../../lib/i18n";
@@ -143,6 +144,14 @@ async function lifecycle(action: "start" | "stop" | "restart") {
       :hint="$t('serviceGeneral.redeployToApply')"
       :saved-message="$t('serviceGeneral.savedRedeployApply')"
       @saved="(limits) => { service!.memoryLimitMb = limits.memoryLimitMb; service!.cpuLimit = limits.cpuLimit; }"
+      @error="(msg) => (error = msg)"
+    />
+
+    <ResourcePriorityCard
+      :priority="service.priority"
+      :shed-by-guard="service.shedByGuard"
+      :put-url="`${basePath}/priority`"
+      @saved="(p) => { service!.priority = p; }"
       @error="(msg) => (error = msg)"
     />
 
