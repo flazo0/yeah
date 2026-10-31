@@ -22,18 +22,23 @@ Everything above is covered by unit tests, `tsc` and `vue-tsc`. There is no auto
 
 The following were verified **only** with unit tests and local fakes, and still need a run against real infrastructure:
 
-- scale to zero: wake latency and the stop sweep against a real Docker daemon and Traefik (the waker is tested against a fake Docker API),
-- the 32 service templates that ship configuration files (for example Supabase, Dify, SigNoz) — the importer converts them, but none has been through `docker compose config` or a real start,
+- scale to zero: the wake itself is verified (see below); the idle stop sweep is not, and neither is wake latency on a cold image pull,
+- the 32 service templates that ship configuration files (for example Supabase, Dify, SigNoz) have passed `docker compose config` but none has been started for real,
 - OS patch checks, automatic security updates, Docker image removal and the pre-update guard on a real host,
-- HTTP basic auth: that Traefik accepts the generated bcrypt hashes,
 - `db:rekey` on a database with real data, and team-wide 2FA enforcement end to end,
 - the AWS CloudWatch log drain (the SigV4 signer is checked against AWS's published test vector, not against the service),
 - passkey registration and sign-in with a real authenticator,
 - the container file browser against real containers, including the write side (save, upload, create folder, delete) for applications, services and databases: only the command builders, path validators and audit descriptions are unit tested, the `docker exec -i` staging flow and the per-container resolution were never run against Docker,
 - the authenticated WebSocket channel: cookie validation, per-team routing and the browser reconnect logic are unit tested (cookie parsing, origin check, event routing); the `ws` service was not run against a real browser, Postgres, Redis or the Traefik/Cloudflare path.
-- SQLite databases: the holder container (the `keinos/sqlite3` image with its entrypoint replaced, run as root), the `sqlite3 .dump` backup and restore, and connecting an application (volume mount plus `DATABASE_URL`) are only unit tested on the generated commands. Nothing has run on a real Docker host, and the image's tags and shell have not been checked.
+- SQLite databases: connecting an application (volume mount plus `DATABASE_URL`) is only unit tested; the holder, backup and restore are verified (see below).
 - Rollback to retained Docker images: the per-deployment tagging (`yeah-app-<id>:dep-<12 hex>`), the image listing parser, the match to deployments, the retention selection and the cleanup that spares protected images instead of `prune -a` are only unit tested on the generated commands and parsers (migration `0063_rollback_images`). Nothing has run against a real Docker host, so `docker image ls --filter reference=` output, the retag and the cleanup behaviour are unverified.
-- The proxy-wide error page and maintenance mode for services/stacks: the generated Traefik config (catch-all router, `errors` middleware on the entry point, maintenance routers), the waker's pages and the HTML escaping are unit tested only. Not verified against a real Traefik v2.11: that the `errors` middleware forwards the original `Host` header (maintenance hosts rely on it to keep their own 503 page when the error page is on), that the lowest-priority `HostRegexp` catch-all behaves with the TLS default certificate, and that the high-priority file router overrides the Docker-label routers of a stack.
+- The proxy-wide error page for services/stacks is verified against a real Traefik (see below), except that the high-priority file router overriding the Docker-label routers of a stack, and the catch-all with a real certificate, have not been exercised.
+
+Verified on a real Docker daemon (Docker Desktop, 2026-10-31, throwaway containers):
+
+- all 380 templates pass `docker compose config`; the 18 that fail do so only because they declare variables as required on purpose,
+- SQLite: holder start and health probe, `.dump` backup, restore, rejection of a corrupt or empty dump with the data untouched, no staging files left, the restored file writable by a non-root user, and `sqlite3 -safe` blocking dot-commands such as `.shell`,
+- Traefik v2.11 with the generated static config and error-page middleware: file-provider routing, http to https redirect, the 502 error page with its custom text HTML-escaped, maintenance mode (503, message escaped), scale-to-zero wake through the waker (about 0.2 s with the image local), and HTTP basic auth with the bcrypt hash.
 
 If you run any of these, a report of what worked and what did not is a valuable contribution.
 
