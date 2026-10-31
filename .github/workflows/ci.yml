@@ -19,7 +19,7 @@ jobs:
           # Keep in sync with the Dockerfile (newer 1.4.x releases break vue-tsc .vue resolution).
           bun-version: 1.3.14
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
