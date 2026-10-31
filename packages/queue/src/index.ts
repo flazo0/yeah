@@ -66,7 +66,7 @@ export interface DatabaseBackupJobData {
 export interface ProxyProvisionJobData {
   serverId: string;
   /** Default "provision" (recreate the container from scratch). "restart" just restarts it in place. */
-  action?: "provision" | "restart";
+  action?: "provision" | "restart" | "panel-route";
 }
 
 export interface ServiceProvisionJobData {

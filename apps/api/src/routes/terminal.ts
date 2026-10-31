@@ -6,6 +6,7 @@ import { containerTerminalCommand, parseTerminalMessage } from "@yeah/shared";
 import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
+import { allowedOrigins } from "../lib/origins";
 
 // Interactive terminals: browser <-> this WebSocket <-> SSH PTY. This is a deliberate exception to
 // "only the worker speaks SSH" (like the backup download and container logs reads): an interactive
@@ -13,7 +14,6 @@ import { assertMember } from "../lib/access";
 // session cookie as every other route, plus team membership, plus an Origin check (a WebSocket is not
 // protected by CORS, so a page on another origin could otherwise ride the cookie).
 
-const webOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:5173,http://localhost:5174").split(",").map((o) => o.trim());
 const IDLE_TIMEOUT_MS = 30 * 60 * 1000;
 const MAX_SESSIONS_PER_USER = 5;
 
@@ -71,7 +71,7 @@ async function openSession(ws: Ws, resolve: (userId: string) => Promise<Target |
   };
 
   const origin = ws.data.headers.origin;
-  if (!origin || !webOrigins.includes(origin)) return fail(4403, "origin", "origin not allowed");
+  if (!origin || !allowedOrigins().includes(origin)) return fail(4403, "origin", "origin not allowed");
 
   const user = await getUserFromSessionId(ws.data.cookie[SESSION_COOKIE]?.value);
   if (!user) return fail(4401, "unauthorized", "invalid session — sign in again");

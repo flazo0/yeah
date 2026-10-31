@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Memory guard (optional, per server): when RAM stays above a threshold, stops the least important applications and services first (priority low, then normal; critical and databases are never stopped) and starts them again once memory recovers. Priority is set per application and service. Actions are written to the audit log and sent as notifications.
 - Server capacity card (*Metrics*): adds up the memory limits of everything on a server against the RAM it has and flags servers that promise more than they can give. The metrics check now also reports the server's total memory.
 - Documentation: [small-server.md](docs/small-server.md) (running many projects on 1 vCPU / 4 GB, with what is measured and what is not) and [coolify-comparison.md](docs/coolify-comparison.md) (feature gaps against Coolify 4.5.3).
+- A domain with automatic HTTPS for the panel itself (*Settings → Panel domain*): served through the Traefik of the server that hosts the panel with a Let's Encrypt certificate, with a DNS check, and without touching `.env`. The panel accepts the domain as a browser origin (CORS, WebSocket, passkeys, terminal) and marks the session cookie `Secure` for requests that arrive over HTTPS.
 
 ### Fixed
 

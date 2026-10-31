@@ -151,6 +151,14 @@ For applications that opt in, routing points at a small proxy (`yeah-waker`, a N
 
 Optional per server (columns `error_page_*` on `servers`). When enabled, provisioning the proxy adds an `errors` middleware (statuses 502-504, served by the waker at `/__error/<status>`) to the HTTPS entry point of the static config, writes a lowest-priority catch-all router for unknown hosts (404) and installs the waker with an `errorpage.conf` holding the operator title and message. The waker renders the page and escapes the operator text. When disabled the static config is byte-identical to before and the extra files are removed. Config generation lives in `packages/shared/src/errorPage.ts` and `traefikStatic.ts`. Applications without a domain, or with sleeping disabled, are routed directly and never go through it.
 
+### Panel domain
+
+The panel can be served on its own domain with HTTPS (*Settings → Panel domain*, table `instance_settings`). It reuses the Traefik of the server that hosts the panel (the `is_platform_host` server) instead of adding a second proxy that would fight for ports 80 and 443. Saving the domain queues a `panel-route` job on the proxy queue, which writes `yeah-panel.yml` into the proxy's dynamic directory (Traefik watches it, so nothing restarts) and connects the panel's web container to the proxy network under the alias `yeah-panel-web`. The route has a high priority so it wins over the catch-all error page.
+
+That connection is made by command rather than in `docker-compose.prod.yml`: an external network in the compose file would make `compose up` fail on every host without a proxy, and the first update from an older version runs the older update script, which would not create it. Because an update recreates the web container, the update command (and `install.sh` when run as an update) reconnects it when the route file exists. Without a domain the web container is not on the proxy network, so applications cannot reach the panel.
+
+The accepted browser origins are `WEB_ORIGIN` plus `https://<domain>`: the API keeps the domain in memory and refreshes it every 30 seconds (CORS is synchronous), and the ws service re-reads it at most every 15 seconds. An empty `WEB_ORIGIN` (accept any, the development default) stays empty. The session cookie is `Secure` when `WEB_ORIGIN` starts with https or when the sign-in request itself came from an https origin, so signing in by IP over http keeps working.
+
 ### Memory guard
 
 Optional per server (`memory_guard_*` columns on `servers`, off by default). Applications and services carry a `priority` (`critical`, `normal` or `low`; default `normal`) and a `shed_by_guard` flag. The policy is pure code in `packages/shared/src/memoryGuard.ts`; the worker runs it from the metrics tick (`apps/worker/src/jobs/memoryGuard.ts`), once a minute per server.

@@ -1,4 +1,4 @@
-import { shellQuote } from "@yeah/shared";
+import { panelAttachCommand, PROXY_DIR, PROXY_NETWORK_NAME, shellQuote } from "@yeah/shared";
 
 // Pure command-building logic lives in its own file, separate from platformOperation.ts's actual
 // SSH execution — same rationale as deployApplication.commands.ts: importing @yeah/ssh pulls in
@@ -47,6 +47,8 @@ export function buildLaunchCommand(): string {
     "git fetch --quiet origin && git reset --hard --quiet origin/main && " +
     "export YEAH_COMMIT=$(git rev-parse HEAD) && " +
     "docker compose -f docker-compose.prod.yml --env-file .env up -d --build && " +
+    // the update recreates the web container: put it back on the proxy network when the panel has a domain
+    `{ ${panelAttachCommand(PROXY_NETWORK_NAME, PROXY_DIR, true)}; true; } && ` +
     "docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db db:migrate < /dev/null " +
     `&& echo ${shellQuote(OK_MARKER)} || echo ${shellQuote(FAIL_MARKER)}`;
   return (

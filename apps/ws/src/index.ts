@@ -7,6 +7,7 @@ import {
   databases,
   deployments,
   findSessionUserId,
+  getPanelDomain,
   servers,
   services,
   teamMembers,
@@ -19,6 +20,7 @@ import {
   parseLogLevel,
   routeEvent,
   sessionIdFromCookieHeader,
+  withPanelOrigin,
   type WsEventRoute,
   type WsResourceKind,
   type WsServerEvent,
@@ -104,7 +106,16 @@ async function ownerOf(route: WsEventRoute & { scope: "resource" }): Promise<str
   return teamId; // misses (e.g. a just-deleted resource) are not cached
 }
 
-const allowedOrigins = process.env.WEB_ORIGIN;
+// WEB_ORIGIN plus the panel's own domain once one is set in the settings; the domain is re-read at most every 15 s.
+let panelDomain: string | null = null;
+let panelDomainLoadedAt = 0;
+async function allowedOrigins(): Promise<string> {
+  if (Date.now() - panelDomainLoadedAt > 15_000) {
+    panelDomainLoadedAt = Date.now();
+    panelDomain = await getPanelDomain(db).catch(() => panelDomain);
+  }
+  return withPanelOrigin(process.env.WEB_ORIGIN, panelDomain);
+}
 
 const server = Bun.serve<ConnData>({
   port,
@@ -112,7 +123,7 @@ const server = Bun.serve<ConnData>({
     if (req.headers.get("upgrade")?.toLowerCase() !== "websocket") {
       return new Response("yeah ws service", { status: 200 });
     }
-    if (!isOriginAllowed(req.headers.get("origin"), allowedOrigins)) {
+    if (!isOriginAllowed(req.headers.get("origin"), await allowedOrigins())) {
       return new Response("forbidden", { status: 403 });
     }
     const sessionId = sessionIdFromCookieHeader(req.headers.get("cookie"));

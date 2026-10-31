@@ -1,11 +1,12 @@
 import { eq } from "drizzle-orm";
-import { servers } from "@yeah/db";
+import { getPanelDomain, servers } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ProxyProvisionJobData } from "@yeah/queue";
-import { buildProxyRestartCommand, ERROR_PAGE_DYNAMIC_FILE, ERROR_PAGE_WAKER_FILE, errorPageConfigJson, errorPageDynamicConfig, PROXY_CONTAINER_NAME, PROXY_DIR, PROXY_NETWORK_NAME, traefikStaticConfig } from "@yeah/shared";
+import { buildProxyRestartCommand, ERROR_PAGE_DYNAMIC_FILE, ERROR_PAGE_WAKER_FILE, errorPageConfigJson, errorPageDynamicConfig, PANEL_ROUTE_FILE, panelAttachCommand, panelDetachCommand, panelRouteConfig, PROXY_CONTAINER_NAME, PROXY_DIR, PROXY_NETWORK_NAME, traefikStaticConfig } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { notifyTeam } from "../lib/notify";
 import { installWaker } from "../lib/appRouting";
 import { WAKE_CONFIG_DIR } from "../lib/waker.commands";
 
@@ -36,6 +37,33 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
       } catch (err) {
         console.error(`[worker] proxy-provision: restart failed for ${serverId}:`, err);
         await fail(serverId, publishConnection, err instanceof Error ? err.message : String(err));
+      }
+      return;
+    }
+
+    // The panel's own domain: one file in the proxy's dynamic directory (Traefik watches it, no restart needed).
+    if (action === "panel-route") {
+      try {
+        const domain = await getPanelDomain(db);
+        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+        try {
+          const file = `${PROXY_DIR}/dynamic/${PANEL_ROUTE_FILE}`;
+          if (domain) {
+            await execStream(conn, `mkdir -p ${shellQuote(`${PROXY_DIR}/dynamic`)}`, () => {});
+            await writeRemoteFile(conn, file, panelRouteConfig(domain));
+            const attached = await execStream(conn, panelAttachCommand(PROXY_NETWORK_NAME, PROXY_DIR), () => {});
+            if (attached.exitCode !== 0) throw new Error("the route was written, but the panel's web container could not be connected to the proxy network (is the panel installed in /opt/yeah?)");
+          } else {
+            await execStream(conn, `rm -f ${shellQuote(file)}`, () => {});
+            await execStream(conn, panelDetachCommand(PROXY_NETWORK_NAME), () => {});
+          }
+        } finally {
+          conn.end();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`[worker] proxy-provision: panel route failed for ${serverId}:`, message);
+        await notifyTeam(server.teamId, "deploy.failed", `Could not set up the panel domain on ${server.name}`, message, "error");
       }
       return;
     }

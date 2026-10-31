@@ -28,3 +28,4 @@ export * from "./trafficSamples";
 export * from "./apiTokens";
 export * from "./auditEvents";
 export * from "./passkeys";
+export * from "./instanceSettings";

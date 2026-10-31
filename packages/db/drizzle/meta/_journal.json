@@ -470,6 +470,13 @@
       "when": 1793498662161,
       "tag": "0066_server_mem_total",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1793498663161,
+      "tag": "0067_instance_settings",
+      "breakpoints": true
     }
   ]
 }

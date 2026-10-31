@@ -39,7 +39,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   })
   .post(
     "/register",
-    async ({ body, cookie, set }) => {
+    async ({ body, cookie, set, request }) => {
       if (await hasAnyUser()) {
         set.status = 403;
         return { error: "sign-up disabled — this instance already has an account" };
@@ -72,7 +72,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       }
 
       const session = await createSession(user.id);
-      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
+      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt, request.headers.get("origin")) });
 
       return { user: toSafeUser(user) };
     },
@@ -110,7 +110,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       }
 
       const session = await createSession(user.id);
-      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
+      cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt, request.headers.get("origin")) });
       void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in", ip, path: "/auth/login" });
 
       return { user: toSafeUser(user) };

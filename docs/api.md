@@ -41,6 +41,16 @@ There is no invitation route — on purpose, a second person cannot gain a login
 
 CPU, RAM and disk (`cpuPercent`, `memPercent`, `diskPercent`, `metricsCheckedAt` in `ServerDto`) are refreshed in the background by a system job (`server-metrics`, every 60 s per connected server). There is no route to trigger it by hand — only the latest value on the list `GET` and `server.metrics` WebSocket events.
 
+## Instance settings (`/teams/:teamId/instance`)
+
+Settings of the whole installation, reached through a team so that changes land in the audit log.
+
+| Method | Route | Body | Description |
+|---|---|---|---|
+| GET | `/teams/:teamId/instance/panel-domain` | — | `{ domain, platformServer }`: the panel's own domain (or `null`) and the server that hosts the panel (`{ id, name, host, proxyActive, hasAcmeEmail }`, or `null`) |
+| POST | `/teams/:teamId/instance/panel-domain/check` | `{ domain }` | Resolves the domain with the system resolver and compares it with the panel server's address: `{ domain, found, expected, matches }` |
+| PUT | `/teams/:teamId/instance/panel-domain` | `{ domain }` (`null` removes it) | Saves the domain and queues the proxy route. 400 when the name is not a public domain, when no server hosts the panel, or when its proxy is not active / has no Let's Encrypt e-mail |
+
 ## S3 storage (`/teams/:teamId/storages`)
 
 | Method | Route | Body | Description |

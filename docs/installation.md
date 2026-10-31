@@ -27,7 +27,17 @@ When it finishes, open `http://<your-host>:<port>` and create your account at `/
 
 > **This machine becomes the first server.** Before generating `.env`, the script creates an SSH key and authorizes it in the host's `~/.ssh/authorized_keys`. When you create the admin account, the machine appears as "Local server" (status `connected`), so you can deploy without registering a server by hand. Use `--control-plane-only` to opt out.
 
-> **No HTTPS by default.** The installer serves the dashboard over plain HTTP to keep the first login simple. Before exposing it to the internet, put a reverse proxy with a certificate in front of it — [Caddy](https://caddyserver.com/) is the simplest (automatic HTTPS, a three-line `Caddyfile`); Traefik or nginx + certbot work too. This is infrastructure for whoever hosts `yeah`; it is separate from the Traefik that `yeah` itself starts on the servers it manages.
+> **No HTTPS at first.** The installer serves the dashboard over plain HTTP so the first login is simple. Once the panel runs on a server that has the proxy active, open *Settings → Panel domain*, enter a domain that points at the server and save: the panel is then served over HTTPS with a Let's Encrypt certificate through that server's Traefik (see below). When the panel is installed on a machine yeah does not manage (control-plane-only), use a reverse proxy such as [Caddy](https://caddyserver.com/), a Cloudflare Tunnel or Tailscale instead.
+
+### A domain with HTTPS for the panel
+
+1. Point a DNS **A record** (for example `panel.example.com`) at the server's public IP. Ports 80 and 443 must be open.
+2. Make sure the proxy is active on that server (*Servers → the server → Proxy*) and that the Let's Encrypt e-mail is set there.
+3. Open *Settings → Panel domain*, enter the domain, use **Check DNS**, then **Save and enable HTTPS**.
+
+The certificate is requested the first time the domain is opened and can take a minute. The address you used before (the IP and port) keeps working as a fallback, and removing the domain from the same page undoes everything. Passkeys belong to one address, so a passkey created on the IP does not work on the domain: register a new one there.
+
+How it works: the panel's web container joins the proxy network under the alias `yeah-panel-web`, and a file in the proxy's dynamic directory (`/opt/yeah-proxy/dynamic/yeah-panel.yml`) routes the domain to it. Nothing in `.env` changes. The panel also starts accepting `https://<domain>` as an origin (CORS, WebSocket, passkeys, terminal) and sets the session cookie as `Secure` for requests that arrive over HTTPS.
 
 ### Control plane only (panel separate from the servers)
 

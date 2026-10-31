@@ -23,8 +23,13 @@ export async function destroySession(sessionId: unknown) {
   await db.delete(sessions).where(eq(sessions.id, sessionId));
 }
 
-/** Cookie flags for the session: Secure whenever the panel is served over https (e.g. behind a Cloudflare Tunnel). */
-export function sessionCookieOptions(expires: Date) {
-  const origin = (process.env.WEB_ORIGIN ?? "").split(",")[0]?.trim() ?? "";
-  return { httpOnly: true, sameSite: "lax" as const, secure: origin.startsWith("https://"), path: "/", expires };
+/**
+ * Cookie flags for the session: Secure whenever the panel is served over https — configured that way in WEB_ORIGIN
+ * (e.g. behind a Cloudflare Tunnel) or reached that way right now (the panel's own domain). `requestOrigin` is the
+ * Origin header of the sign-in request: a visit over plain http, still possible by IP, must not get a Secure cookie.
+ */
+export function sessionCookieOptions(expires: Date, requestOrigin?: string | null) {
+  const configured = (process.env.WEB_ORIGIN ?? "").split(",")[0]?.trim() ?? "";
+  const secure = configured.startsWith("https://") || (requestOrigin ?? "").startsWith("https://");
+  return { httpOnly: true, sameSite: "lax" as const, secure, path: "/", expires };
 }

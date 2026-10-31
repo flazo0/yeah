@@ -289,6 +289,12 @@ case "${1:-}" in
     export YEAH_COMMIT
     YEAH_COMMIT=$(git rev-parse HEAD)
     docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+    # The update recreated the web container: when the panel has its own domain, put it back on the proxy network.
+    web=$(docker ps -q --filter label=com.docker.compose.service=web --filter "label=com.docker.compose.project.working_dir=$PWD" | head -n 1)
+    if [ -f /opt/yeah-proxy/dynamic/yeah-panel.yml ] && [ -n "$web" ] && docker network inspect yeah-proxy-net >/dev/null 2>&1; then
+      docker network disconnect yeah-proxy-net "$web" >/dev/null 2>&1 || true
+      docker network connect --alias yeah-panel-web yeah-proxy-net "$web" || true
+    fi
     docker compose -f docker-compose.prod.yml --env-file .env run --rm api bun run --cwd ../../packages/db db:migrate < /dev/null
     ;;
   logs)

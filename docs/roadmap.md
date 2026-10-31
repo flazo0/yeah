@@ -36,6 +36,7 @@ The following were verified **only** with unit tests and local fakes, and still 
 
 Verified on a real Docker daemon (Docker Desktop, 2026-10-31, throwaway containers):
 
+- the panel domain: the route file and the `yeah-panel-web` alias through a real Traefik v2.11 (HTTPS to the panel, http redirected to https, only the panel's own compose project picked, reattach after an update, removal), and the API routes, CORS, `Secure` cookie and DNS check against a running API. **Not verified:** the Let's Encrypt certificate itself (it needs a public domain and open ports 80/443; the test used Traefik's default certificate) and the update script on a real host,
 - all 380 templates pass `docker compose config`; the 18 that fail do so only because they declare variables as required on purpose,
 - SQLite: holder start and health probe, `.dump` backup, restore, rejection of a corrupt or empty dump with the data untouched, no staging files left, the restored file writable by a non-root user, and `sqlite3 -safe` blocking dot-commands such as `.shell`,
 - Traefik v2.11 with the generated static config and error-page middleware: file-provider routing, http to https redirect, the 502 error page with its custom text HTML-escaped, maintenance mode (503, message escaped), scale-to-zero wake through the waker (about 0.2 s with the image local), and HTTP basic auth with the bcrypt hash.
@@ -46,7 +47,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 From the [comparison with Coolify](coolify-comparison.md), in priority order:
 
-- **A domain with automatic HTTPS for the panel itself** (an instance domain in *Settings*, served through the server's Traefik with Let's Encrypt), so a normal install does not need Caddy, nginx or a tunnel in front.
 - **A first-run guide**: add a server, set the domain, create the first resource.
 - **Lost-password recovery.** Without an e-mail service, a command run on the host (`yeah reset-password`) fits a single-admin install better than a reset link.
 - **Backup of the panel's own database** to S3 on a schedule.

@@ -8,6 +8,7 @@ import { createSession, getUserFromSessionId, SESSION_COOKIE, sessionCookieOptio
 import { challenges, relyingParty } from "../lib/webauthnChallenges";
 import { recordAuthEvent } from "../lib/audit";
 import { clientIp } from "../lib/rateLimit";
+import { allowedOrigins } from "../lib/origins";
 
 // Passkeys (WebAuthn): register one or more from the profile, then sign in with it instead of password + 2FA.
 // The relying party is the hostname the panel is served from (must be one of WEB_ORIGIN), so a passkey only
@@ -16,10 +17,7 @@ import { clientIp } from "../lib/rateLimit";
 const RP_NAME = "yeah";
 const CHALLENGE_COOKIE = "yeah_webauthn";
 
-const webOrigins = () =>
-  (process.env.WEB_ORIGIN ?? "http://localhost:5173,http://localhost:5174")
-    .split(",")
-    .map((o) => o.trim());
+const webOrigins = allowedOrigins;
 
 const toBase64Url = (bytes: Uint8Array) => Buffer.from(bytes).toString("base64url");
 const fromBase64Url = (value: string) => new Uint8Array(Buffer.from(value, "base64url"));
@@ -169,7 +167,7 @@ export const passkeyRoutes = new Elysia({ prefix: "/auth/passkeys" })
           return { error: "user not found" };
         }
         const session = await createSession(user.id);
-        cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
+        cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt, request.headers.get("origin")) });
         void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in-passkey", ip: clientIp(request.headers, server?.requestIP(request)?.address), path: "/auth/passkeys/login/verify" });
         return { user: { id: user.id, email: user.email } };
       } catch (err) {

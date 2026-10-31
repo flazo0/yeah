@@ -1809,6 +1809,27 @@
     "refresh": "Atualizar",
     "failedReadLogs": "falha ao ler os logs"
   },
+  "panelDomain": {
+    "title": "Domínio do painel",
+    "hint": "Sirva este painel no seu próprio domínio com certificado HTTPS automático (Let's Encrypt). Ele passa pelo proxy do servidor onde o painel roda, então o domínio precisa apontar para esse servidor.",
+    "noServer": "Este painel não roda em um servidor gerenciado pelo yeah, então não há proxy para servir o domínio. Coloque um proxy reverso na frente (veja o guia de instalação) ou use um Cloudflare Tunnel.",
+    "proxyNotReady": "O proxy não está pronto em {server}: ative-o e defina o e-mail do Let's Encrypt primeiro.",
+    "openProxy": "Abrir as configurações do proxy",
+    "current": "Servido atualmente em",
+    "domain": "Domínio",
+    "checkDns": "Verificar DNS",
+    "checking": "verificando...",
+    "saveHttps": "Salvar e ativar HTTPS",
+    "remove": "Remover domínio",
+    "saved": "salvo. O certificado é pedido na primeira vez que o domínio for aberto: pode levar um minuto.",
+    "afterSave": "Guarde o endereço que você usa agora (o IP e a porta) como alternativa: ele continua funcionando. Passkeys criadas em um endereço só funcionam nesse endereço.",
+    "dnsOk": "{domain} aponta para este servidor.",
+    "dnsMissing": "{domain} ainda não resolve. Crie um registro A apontando para {expected} e verifique de novo.",
+    "dnsWrong": "{domain} aponta para {found}, mas este servidor é {expected}. Corrija o registro DNS antes de ativar o HTTPS, ou o certificado vai falhar.",
+    "failedToLoad": "falha ao carregar o domínio do painel",
+    "failedToCheck": "falha ao verificar o DNS",
+    "failedToSave": "falha ao salvar o domínio"
+  },
   "serverCapacity": {
     "title": "Capacidade",
     "hint": "Quanto de memória os limites dos recursos deste servidor somam, comparado com a RAM que ele tem. Limites são tetos, não reservas: passar de 100% pode funcionar quando a maioria fica bem abaixo do limite, mas se vários subirem juntos o servidor pode ficar lento ou matar processos.",

@@ -39,6 +39,8 @@ import { terminalRoutes } from "./routes/terminal";
 import { ciRoutes, apiV1Routes } from "./routes/ci";
 import { buildOpenApiSpec, SWAGGER_HTML } from "./lib/openapi";
 import { mcpRoutes } from "./routes/mcp";
+import { instanceRoutes } from "./routes/instance";
+import { allowedOrigins, startOriginRefresh } from "./lib/origins";
 import { apiTokenRoutes } from "./routes/apiTokens";
 import { encryptExistingSecrets } from "@yeah/db";
 import { db } from "./lib/db";
@@ -47,10 +49,9 @@ import { createLogger, parseLogLevel } from "@yeah/shared";
 
 const port = process.env.API_PORT ? Number(process.env.API_PORT) : 3000;
 
-// Credentialed cookies mean the origin list must be explicit — "*" is rejected by browsers here.
-const webOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:5173,http://localhost:5174")
-  .split(",")
-  .map((origin) => origin.trim());
+// Credentialed cookies mean the origin list must be explicit — "*" is rejected by browsers here. The list is
+// WEB_ORIGIN plus the panel's own domain once one is set in the settings (see lib/origins.ts).
+startOriginRefresh();
 
 const limiter = new RateLimiter();
 
@@ -94,7 +95,7 @@ const app = new Elysia()
       },
     });
   })
-  .use(cors({ origin: webOrigins, credentials: true }))
+  .use(cors({ origin: (request) => allowedOrigins().includes(request.headers.get("origin")?.trim() ?? ""), credentials: true }))
   .use(healthRoutes)
   .use(authRoutes)
   .use(passkeyRoutes)
@@ -106,6 +107,7 @@ const app = new Elysia()
   .use(serverOpsRoutes)
   .use(auditRoutes)
   .use(teamSecurityRoutes)
+  .use(instanceRoutes)
   .use(storageRoutes)
   .use(projectRoutes)
   .use(applicationRoutes)

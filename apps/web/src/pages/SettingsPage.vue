@@ -8,6 +8,7 @@ import { LOCALES, setLocale, type Locale } from "../lib/i18n";
 import { isDark, toggleTheme } from "../lib/theme";
 import { useAuthStore } from "../stores/auth";
 import { i18n } from "../lib/i18n";
+import PanelDomainCard from "../components/PanelDomainCard.vue";
 
 const { t, locale } = useI18n();
 const route = useRoute();
@@ -124,6 +125,8 @@ onMounted(async () => {
         <p>{{ t("settings.subtitle") }}</p>
       </div>
     </div>
+
+    <PanelDomainCard v-if="teamId" :team-id="teamId" />
 
     <div class="card mb-16">
       <div class="card-header">
