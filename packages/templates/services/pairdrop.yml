@@ -1,0 +1,25 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Pairdrop"
+description: "Pairdrop is a self-hosted file sharing and collaboration platform, offering secure file sharing and collaboration capabilities for efficient teamwork."
+icon: task_alt
+logo: "pairdrop.png"
+category: productivity
+tags: ["file", "sharing", "collaboration", "teamwork"]
+docs: "https://pairdrop.net/"
+main: "pairdrop"
+port: 3000
+env: {}
+compose: |
+  services:
+    pairdrop:
+      image: lscr.io/linuxserver/pairdrop:latest
+      environment:
+        - PUID=1000
+        - PGID=1000
+        - TZ=Europe/Madrid
+        - DEBUG_MODE=false
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1:3000"]
+        interval: 2s
+        timeout: 10s
+        retries: 15

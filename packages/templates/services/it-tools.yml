@@ -1,0 +1,15 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "IT Tools"
+description: "Collection of developer tools in the browser (converters, generators, hashes…)."
+icon: build
+category: dev
+website: "https://it-tools.tech"
+main: it-tools
+port: 80
+env: {}
+compose: |
+  services:
+    it-tools:
+      image: corentinth/it-tools:latest
+      restart: unless-stopped

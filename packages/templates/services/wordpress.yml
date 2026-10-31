@@ -1,0 +1,40 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "WordPress"
+description: "WordPress com MariaDB — o site e o banco sobem juntos."
+icon: language
+category: cms
+website: "https://wordpress.org"
+docs: "https://developer.wordpress.org/"
+main: wordpress
+port: 80
+env:
+  DB_PASSWORD: "$generate:password"
+  DB_ROOT_PASSWORD: "$generate:password"
+compose: |
+  services:
+    wordpress:
+      image: wordpress:latest
+      restart: unless-stopped
+      depends_on:
+        - db
+      environment:
+        - WORDPRESS_DB_HOST=db
+        - WORDPRESS_DB_USER=wordpress
+        - WORDPRESS_DB_PASSWORD=${DB_PASSWORD}
+        - WORDPRESS_DB_NAME=wordpress
+      volumes:
+        - wp:/var/www/html
+    db:
+      image: mariadb:11
+      restart: unless-stopped
+      environment:
+        - MARIADB_DATABASE=wordpress
+        - MARIADB_USER=wordpress
+        - MARIADB_PASSWORD=${DB_PASSWORD}
+        - MARIADB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+      volumes:
+        - db:/var/lib/mysql
+  volumes:
+    wp: {}
+    db: {}

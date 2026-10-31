@@ -1,0 +1,23 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Gotify"
+description: "Self-hosted push notification server with a simple API."
+icon: notifications
+category: messaging
+website: "https://gotify.net"
+notes: "Initial user: admin."
+main: gotify
+port: 80
+env:
+  GOTIFY_DEFAULTUSER_PASS: "$generate:password"
+compose: |
+  services:
+    gotify:
+      image: gotify/server:latest
+      restart: unless-stopped
+      environment:
+        - GOTIFY_DEFAULTUSER_PASS=${GOTIFY_DEFAULTUSER_PASS}
+      volumes:
+        - data:/app/data
+  volumes:
+    data: {}

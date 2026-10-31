@@ -1,0 +1,1 @@
+ALTER TABLE "deployments" ADD COLUMN "commit_sha" varchar(40);

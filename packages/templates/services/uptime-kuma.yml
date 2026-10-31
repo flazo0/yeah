@@ -1,0 +1,20 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Uptime Kuma"
+description: "Self-hosted uptime monitoring with alerts — like your own Pingdom."
+icon: monitor_heart
+category: monitoring
+website: "https://uptime.kuma.pet"
+docs: "https://github.com/louislam/uptime-kuma/wiki"
+main: kuma
+port: 3001
+env: {}
+compose: |
+  services:
+    kuma:
+      image: louislam/uptime-kuma:1
+      restart: unless-stopped
+      volumes:
+        - data:/app/data
+  volumes:
+    data: {}

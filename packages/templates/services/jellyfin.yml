@@ -1,0 +1,23 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Jellyfin"
+description: "Media server (movies, shows, music) with no subscription."
+icon: movie
+category: media
+website: "https://jellyfin.org"
+main: jellyfin
+port: 8096
+env: {}
+compose: |
+  services:
+    jellyfin:
+      image: jellyfin/jellyfin:latest
+      restart: unless-stopped
+      volumes:
+        - config:/config
+        - cache:/cache
+        - media:/media
+  volumes:
+    config: {}
+    cache: {}
+    media: {}

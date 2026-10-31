@@ -1,0 +1,433 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1789499916542,
+      "tag": "0000_foamy_iron_patriot",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789509504441,
+      "tag": "0001_sharp_layla_miller",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789511653483,
+      "tag": "0002_motionless_true_believers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789513112352,
+      "tag": "0003_clumsy_mattie_franklin",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789514728170,
+      "tag": "0004_acoustic_patch",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789559580310,
+      "tag": "0005_green_puck",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789561139019,
+      "tag": "0006_young_marvel_zombies",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789577797245,
+      "tag": "0007_wet_wildside",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789597169181,
+      "tag": "0008_lazy_saracen",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789652296043,
+      "tag": "0009_far_mesmero",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789653619923,
+      "tag": "0010_spicy_valkyrie",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789829662350,
+      "tag": "0011_oval_winter_soldier",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1790087175713,
+      "tag": "0012_useful_wrecking_crew",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1790088499721,
+      "tag": "0013_woozy_ronan",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1790094481193,
+      "tag": "0014_right_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790188368740,
+      "tag": "0015_encrypt_secret_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790191449423,
+      "tag": "0016_team_description",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790203973803,
+      "tag": "0017_application_lifecycle_and_advanced",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790206708270,
+      "tag": "0018_build_packs_and_deploy_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790207737095,
+      "tag": "0019_shared_variables",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790208844204,
+      "tag": "0020_scheduled_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790255794974,
+      "tag": "0021_server_ssh_timeout",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790255923685,
+      "tag": "0022_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790256802855,
+      "tag": "0023_docker_compose",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1790270718516,
+      "tag": "0024_domains_pending",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790271825313,
+      "tag": "0025_previews",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790273346865,
+      "tag": "0026_storage_kinds_railpack",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1790273810130,
+      "tag": "0027_registries",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1790274314540,
+      "tag": "0028_git_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790276985521,
+      "tag": "0029_database_engines_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790344313847,
+      "tag": "0030_restores",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790345659608,
+      "tag": "0031_volume_backups",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790346846209,
+      "tag": "0032_service_stacks",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790379922556,
+      "tag": "0033_volume_backup_s3",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790542720348,
+      "tag": "0034_docker_cleanup",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790543224661,
+      "tag": "0035_ssh_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790543749636,
+      "tag": "0036_log_drains",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1790544145941,
+      "tag": "0037_ca_certificates",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1790544420413,
+      "tag": "0038_build_server",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1790544883616,
+      "tag": "0039_metric_samples",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791586373737,
+      "tag": "0040_server_metrics_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791586881477,
+      "tag": "0041_backup_sync",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791588607799,
+      "tag": "0042_server_cloudflare_tunnel",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791603298479,
+      "tag": "0043_traffic_analytics",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791604278570,
+      "tag": "0044_api_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791605518802,
+      "tag": "0045_api_token_allowed_ips",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791605679244,
+      "tag": "0046_team_mcp_enabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791606114529,
+      "tag": "0047_user_totp",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1791606554583,
+      "tag": "0048_project_icon",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1791606769437,
+      "tag": "0049_notification_ntfy",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1791668990115,
+      "tag": "0050_notification_pushover",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1791669712215,
+      "tag": "0051_static_spa",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1791675347703,
+      "tag": "0052_app_sleep",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793200576464,
+      "tag": "0053_server_patching",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793200911640,
+      "tag": "0054_audit_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793201129748,
+      "tag": "0055_app_protection",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793201338432,
+      "tag": "0056_redact_env_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793201450159,
+      "tag": "0057_team_require_2fa",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793202084815,
+      "tag": "0058_service_stack_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1793202494718,
+      "tag": "0059_logdrain_cloudwatch",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1793202645129,
+      "tag": "0060_passkeys",
+      "breakpoints": true
+    }
+  ]
+}

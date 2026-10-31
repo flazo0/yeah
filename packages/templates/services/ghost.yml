@@ -1,0 +1,25 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Ghost"
+description: "Plataforma de blog e newsletter — roda com SQLite embutido, sem banco externo."
+icon: article
+category: cms
+website: "https://ghost.org"
+docs: "https://ghost.org/docs/"
+notes: "Set GHOST_URL to the public address (https://your-domain) and deploy again."
+main: ghost
+port: 2368
+env:
+  GHOST_URL: "http://localhost:2368"
+compose: |
+  services:
+    ghost:
+      image: ghost:5-alpine
+      restart: unless-stopped
+      environment:
+        - NODE_ENV=production
+        - url=${GHOST_URL}
+      volumes:
+        - content:/var/lib/ghost/content
+  volumes:
+    content: {}

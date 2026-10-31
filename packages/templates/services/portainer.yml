@@ -1,0 +1,22 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Portainer"
+description: "Docker administration GUI — the server's containers, images and volumes."
+icon: dns
+category: devops
+website: "https://www.portainer.io"
+docs: "https://docs.portainer.io"
+notes: "Mounts the server's docker.sock: whoever gets in controls Docker. Only use it on a trusted server."
+main: portainer
+port: 9000
+env: {}
+compose: |
+  services:
+    portainer:
+      image: portainer/portainer-ce:latest
+      restart: unless-stopped
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - data:/data
+  volumes:
+    data: {}

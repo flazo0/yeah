@@ -1,0 +1,1 @@
+ALTER TABLE "applications" ADD COLUMN "sleep_after_minutes" integer;

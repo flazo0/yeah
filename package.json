@@ -1,0 +1,44 @@
+{
+  "name": "yeah",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Self-hosted, agentless deployment platform: deploy apps, databases and services to your own servers over SSH.",
+  "license": "MIT",
+  "homepage": "https://github.com/flazo0/yeah#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flazo0/yeah.git"
+  },
+  "bugs": {
+    "url": "https://github.com/flazo0/yeah/issues"
+  },
+  "keywords": [
+    "self-hosted",
+    "paas",
+    "deployment",
+    "docker",
+    "ssh",
+    "bun",
+    "typescript"
+  ],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,worker,ws,web -c blue,magenta,yellow,green \"bun run --cwd apps/api --env-file=../../.env dev\" \"bun run --cwd apps/worker --env-file=../../.env dev\" \"bun run --cwd apps/ws --env-file=../../.env dev\" \"bun run --cwd apps/web --env-file=../../.env dev\"",
+    "dev:infra": "docker compose -f docker-compose.dev.yml up -d",
+    "dev:infra:down": "docker compose -f docker-compose.dev.yml down",
+    "db:generate": "bun run --cwd packages/db --env-file=../../.env db:generate",
+    "db:migrate": "bun run --cwd packages/db --env-file=../../.env db:migrate",
+    "db:push": "bun run --cwd packages/db --env-file=../../.env db:push",
+    "db:studio": "bun run --cwd packages/db --env-file=../../.env db:studio",
+    "typecheck": "bun run --filter '*' typecheck",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.2",
+    "concurrently": "^9.1.0",
+    "typescript": "^5.7.3"
+  }
+}

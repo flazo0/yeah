@@ -1,0 +1,190 @@
+import { and, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
+import { applications, containerMetricSamples, databases, serverMetricSamples, servers, services, type Server } from "@yeah/db";
+import { connectSsh, execStream } from "@yeah/ssh";
+import { allContainerStatsCommand, containerWatchCommand, detectContainerProblems, parseContainerWatch, parseDockerStats } from "@yeah/shared";
+import { createDockerCleanupQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
+import type { Job } from "bullmq";
+import type { Queue } from "bullmq";
+import type { DockerCleanupJobData } from "@yeah/queue";
+import type Redis from "ioredis";
+import { db } from "../lib/db";
+import { notifyTeam } from "../lib/notify";
+import { CircuitBreaker } from "../lib/circuitBreaker";
+import { Throttle } from "../lib/throttle";
+import { crossedThreshold, METRICS_COMMAND, parseMetrics } from "./serverMetrics.commands";
+
+// How long a sample sticks around for the "last 24h/7d" charts before the next tick prunes it.
+const SAMPLE_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+export { crossedThreshold, parseMetrics } from "./serverMetrics.commands";
+
+const CPU_THRESHOLD = 90;
+const MEM_THRESHOLD = 90;
+const DISK_THRESHOLD = 85;
+
+// A dead server is polled every 60s; after 5 straight failures back off (5min, 10min... up to 30min)
+// instead of retrying and logging forever.
+const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, maxCooldownMs: 30 * 60_000 });
+
+// Flapping thresholds / crash loops must not flood the channels: one alert per condition per hour per server.
+const alertThrottle = new Throttle(60 * 60 * 1000);
+// Last restart count seen per container, per server — a crash loop is a *change* in the count.
+const restartCounts = new Map<string, Map<string, number>>();
+
+// Set by makeServerMetricsProcessor: lets a disk that just filled up trigger the cleanup right away
+// (the daily schedule would otherwise leave it full until 04:00).
+let cleanupQueue: Queue<DockerCleanupJobData> | null = null;
+
+export function makeServerMetricsProcessor(publishConnection: Redis) {
+  cleanupQueue = createDockerCleanupQueue(publishConnection);
+  return async function serverMetrics(_job: Job<ServerMetricsJobData>) {
+    const allServers = await db
+      .select()
+      .from(servers)
+      .where(and(eq(servers.status, "connected"), eq(servers.metricsEnabled, true)));
+
+    await Promise.all(allServers.map((server) => checkOne(server, publishConnection)));
+  };
+}
+
+async function checkOne(server: Server, publishConnection: Redis) {
+  if (!breaker.shouldAttempt(server.id)) return;
+  try {
+    const conn = await connectSsh({
+      host: server.host,
+      port: server.port,
+      username: server.sshUser,
+      privateKey: server.privateKey,
+    timeoutMs: server.sshTimeoutSeconds * 1000,
+    });
+
+    let output = "";
+    let containerOutput = "";
+    let watchOutput = "";
+    try {
+      await execStream(conn, METRICS_COMMAND, (chunk) => {
+        output += chunk;
+      });
+      await execStream(conn, allContainerStatsCommand(), (chunk) => {
+        containerOutput += chunk;
+      });
+      await execStream(conn, containerWatchCommand(), (chunk) => {
+        watchOutput += chunk;
+      });
+    } finally {
+      conn.end();
+    }
+
+    if (breaker.recordSuccess(server.id) === "closed") {
+      console.log(`[worker] server-metrics: ${server.name} (${server.id}) reachable again — resuming normal polling`);
+    }
+
+    const metrics = parseMetrics(output);
+    if (!metrics) {
+      console.warn(`[worker] server-metrics: couldn't parse output for ${server.id}: ${output.slice(0, 200)}`);
+      return;
+    }
+
+    await db
+      .update(servers)
+      .set({
+        cpuPercent: metrics.cpu,
+        memPercent: metrics.mem,
+        diskPercent: metrics.disk,
+        metricsCheckedAt: new Date(),
+      })
+      .where(eq(servers.id, server.id));
+
+    await publishServerEvent(publishConnection, {
+      type: "server.metrics",
+      serverId: server.id,
+      cpuPercent: metrics.cpu,
+      memPercent: metrics.mem,
+      diskPercent: metrics.disk,
+    });
+
+    await recordHistory(server, metrics, containerOutput);
+    await watchContainers(server, watchOutput);
+
+    if (crossedThreshold(server.cpuPercent, metrics.cpu, CPU_THRESHOLD) && alertThrottle.allow(`${server.id}:cpu`)) {
+      await notifyTeam(server.teamId, "server.metrics", `CPU alta em ${server.name}`, `CPU em ${metrics.cpu}% (limiar: ${CPU_THRESHOLD}%).`, "warning");
+    }
+    if (crossedThreshold(server.memPercent, metrics.mem, MEM_THRESHOLD) && alertThrottle.allow(`${server.id}:mem`)) {
+      await notifyTeam(server.teamId, "server.metrics", `High memory on ${server.name}`, `RAM at ${metrics.mem}% (threshold: ${MEM_THRESHOLD}%) — new deployments/provisioning may fail for lack of memory.`, "warning");
+    }
+    if (crossedThreshold(server.diskPercent, metrics.disk, DISK_THRESHOLD) && alertThrottle.allow(`${server.id}:disk`)) {
+      await notifyTeam(server.teamId, "server.metrics", `Disk almost full on ${server.name}`, `Disk at ${metrics.disk}% (threshold: ${DISK_THRESHOLD}%) — running the automatic cleanup now (if enabled); also consider cleaning unused images/volumes.`, "error");
+      // Not a "manual" job on purpose: a server whose owner turned the cleanup off stays untouched.
+      await cleanupQueue?.add("cleanup", { serverId: server.id, manual: false });
+    }
+  } catch (err) {
+    // A single unreachable server shouldn't break the metrics tick for every other server —
+    // log and move on. This deliberately doesn't touch `servers.status`, which only reflects
+    // the result of an explicit "test connection" — see docs/architecture.md.
+    console.error(`[worker] server-metrics: failed to reach ${server.id}:`, err instanceof Error ? err.message : err);
+    if (breaker.recordFailure(server.id) === "opened") {
+      console.warn(`[worker] server-metrics: ${server.name} (${server.id}) failed 5 times in a row — backing off polling (5min, doubling up to 30min) until it answers`);
+    }
+  }
+}
+
+/** Alerts about crash-looping or OOM-killed containers (apps put to sleep on purpose are ignored). */
+async function watchContainers(server: Server, watchOutput: string): Promise<void> {
+  try {
+    const rows = parseContainerWatch(watchOutput);
+    if (rows.length === 0) return;
+    let previous = restartCounts.get(server.id);
+    if (!previous) {
+      previous = new Map();
+      restartCounts.set(server.id, previous);
+    }
+    const sleeping = await db.select({ id: applications.id }).from(applications).where(and(eq(applications.serverId, server.id), isNotNull(applications.sleepAfterMinutes)));
+    const ignore = new Set(sleeping.map((a) => `yeah-app-${a.id}`));
+    for (const problem of detectContainerProblems(previous, rows, ignore)) {
+      if (!alertThrottle.allow(`${server.id}:container:${problem.name}`)) continue;
+      await notifyTeam(server.teamId, "container.unhealthy", `Container com problema em ${server.name}`, `${problem.name}: ${problem.detail}.`, "error");
+    }
+  } catch (err) {
+    console.warn(`[worker] server-metrics: container watch failed for ${server.id}:`, err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * Appends one row of history for the server and for every single-container resource on it (see
+ * container_metric_samples in packages/db for the multi-container scope cut), then prunes anything
+ * older than 7 days. Best-effort — a failure here must never break the metrics tick itself.
+ */
+async function recordHistory(server: Server, metrics: { cpu: number; mem: number; disk: number }, containerOutput: string): Promise<void> {
+  try {
+    const cutoff = new Date(Date.now() - SAMPLE_RETENTION_MS);
+    await db.insert(serverMetricSamples).values({ serverId: server.id, cpuPercent: metrics.cpu, memPercent: metrics.mem, diskPercent: metrics.disk });
+    await db.delete(serverMetricSamples).where(and(eq(serverMetricSamples.serverId, server.id), lt(serverMetricSamples.capturedAt, cutoff)));
+
+    const stats = parseDockerStats(containerOutput);
+    if (stats.length === 0) return;
+    const byName = new Map(stats.map((s) => [s.name, s]));
+
+    const [apps, dbs, svcs] = await Promise.all([
+      db.select({ id: applications.id }).from(applications).where(and(eq(applications.serverId, server.id), ne(applications.buildPack, "docker_compose"))),
+      db.select({ id: databases.id }).from(databases).where(eq(databases.serverId, server.id)),
+      db.select({ id: services.id }).from(services).where(and(eq(services.serverId, server.id), isNull(services.composeContent))),
+    ]);
+    const resources: Array<{ resourceType: "application" | "database" | "service"; resourceId: string; containerName: string }> = [
+      ...apps.map((a) => ({ resourceType: "application" as const, resourceId: a.id, containerName: `yeah-app-${a.id}` })),
+      ...dbs.map((d) => ({ resourceType: "database" as const, resourceId: d.id, containerName: `yeah-db-${d.id}` })),
+      ...svcs.map((s) => ({ resourceType: "service" as const, resourceId: s.id, containerName: `yeah-svc-${s.id}` })),
+    ];
+
+    const rows = resources
+      .map(({ resourceType, resourceId, containerName }) => {
+        const s = byName.get(containerName);
+        if (!s) return null;
+        return { serverId: server.id, resourceType, resourceId, cpuPercent: s.cpuPercent, memPercent: s.memPercent, memUsedBytes: s.memUsedBytes, netRxBytes: s.netRxBytes, netTxBytes: s.netTxBytes, pids: s.pids };
+      })
+      .filter((r): r is NonNullable<typeof r> => r !== null);
+    if (rows.length > 0) await db.insert(containerMetricSamples).values(rows);
+    await db.delete(containerMetricSamples).where(and(eq(containerMetricSamples.serverId, server.id), lt(containerMetricSamples.capturedAt, cutoff)));
+  } catch (err) {
+    console.error(`[worker] server-metrics: failed to record history for ${server.id}:`, err instanceof Error ? err.message : err);
+  }
+}

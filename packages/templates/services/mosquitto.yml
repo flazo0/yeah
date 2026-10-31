@@ -1,0 +1,57 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Mosquitto"
+description: "Mosquitto is lightweight and suitable for use on all devices, from low-power single-board computers to full servers."
+icon: forum
+logo: "mosquitto.svg"
+category: messaging
+tags: ["mosquitto", "mqtt", "open-source"]
+docs: "https://mosquitto.org/documentation/"
+notes: "Publishes ports directly on the server (`ports:`); check for conflicts with other resources."
+main: "mosquitto"
+port: 1883
+env:
+  SERVICE_USER_MOSQUITTO: "$generate:user"
+  SERVICE_PASSWORD_MOSQUITTO: "$generate:password"
+  REQUIRE_CERTIFICATE: ""
+  ALLOW_ANONYMOUS: ""
+compose: |
+  services:
+    mosquitto:
+      image: eclipse-mosquitto
+      environment:
+        - MQTT_USERNAME=${SERVICE_USER_MOSQUITTO}
+        - MQTT_PASSWORD=${SERVICE_PASSWORD_MOSQUITTO}
+        - REQUIRE_CERTIFICATE=${REQUIRE_CERTIFICATE:-false}
+        - ALLOW_ANONYMOUS=${ALLOW_ANONYMOUS:-true}
+      volumes:
+        - "./mosquitto/config:/mosquitto/config"
+        - "./certs:/certs"
+      ports:
+        - "8883:8883"
+      healthcheck:
+        test: ["CMD-SHELL", "exit 0"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+      entrypoint: 'sh -c "
+        if [ ''$REQUIRE_CERTIFICATE'' = ''true'' ]; then
+        echo ''listener 8883'' > /mosquitto/config/mosquitto.conf &&
+        echo ''cafile /certs/ca.crt'' >> /mosquitto/config/mosquitto.conf &&
+        echo ''certfile /certs/server.crt'' >> /mosquitto/config/mosquitto.conf &&
+        echo ''keyfile  /certs/server.key'' >> /mosquitto/config/mosquitto.conf;
+        else
+        echo ''listener 1883'' > /mosquitto/config/mosquitto.conf;
+        fi &&
+        echo ''require_certificate ''$REQUIRE_CERTIFICATE >> /mosquitto/config/mosquitto.conf &&
+        echo ''allow_anonymous ''$ALLOW_ANONYMOUS >> /mosquitto/config/mosquitto.conf;
+        if [ -n ''$SERVICE_USER_MOSQUITTO'' ] && [ -n ''$SERVICE_PASSWORD_MOSQUITTO'' ]; then
+        echo ''password_file /mosquitto/config/passwords'' >> /mosquitto/config/mosquitto.conf &&
+        rm -f /mosquitto/config/passwords &&
+        mosquitto_passwd -b -c /mosquitto/config/passwords $SERVICE_USER_MOSQUITTO $SERVICE_PASSWORD_MOSQUITTO &&
+        chown mosquitto:mosquitto /mosquitto/config/passwords;
+        fi &&
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
+        "'
+      labels:
+        - traefik.tcp.routers.mqtt.entrypoints=mqtt
+        - traefik.tcp.routers.mqtts.entrypoints=mqtts

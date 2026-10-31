@@ -1,0 +1,22 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "File Browser"
+description: "Web file manager with users and sharing."
+icon: folder_open
+category: storage
+website: "https://filebrowser.org"
+notes: "Login inicial: admin / admin — troque na primeira entrada."
+main: filebrowser
+port: 80
+env: {}
+compose: |
+  services:
+    filebrowser:
+      image: filebrowser/filebrowser:latest
+      restart: unless-stopped
+      volumes:
+        - files:/srv
+        - config:/config
+  volumes:
+    files: {}
+    config: {}

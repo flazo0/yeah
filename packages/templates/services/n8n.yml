@@ -1,0 +1,28 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "n8n"
+description: "Low-code workflow automation (like Zapier/Make, self-hosted)."
+icon: hub
+category: automation
+website: "https://n8n.io"
+docs: "https://docs.n8n.io"
+notes: "After attaching a domain, set N8N_HOST and N8N_PROTOCOL=https in the variables and deploy again."
+main: n8n
+port: 5678
+env:
+  N8N_HOST: "localhost"
+  N8N_PROTOCOL: "http"
+  GENERIC_TIMEZONE: "America/Sao_Paulo"
+compose: |
+  services:
+    n8n:
+      image: n8nio/n8n:latest
+      restart: unless-stopped
+      environment:
+        - N8N_HOST=${N8N_HOST}
+        - N8N_PROTOCOL=${N8N_PROTOCOL}
+        - GENERIC_TIMEZONE=${GENERIC_TIMEZONE}
+      volumes:
+        - data:/home/node/.n8n
+  volumes:
+    data: {}

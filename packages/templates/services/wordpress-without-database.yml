@@ -1,0 +1,25 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Wordpress Without Database"
+description: "WordPress is open source software you can use to create a beautiful website, blog, or app."
+icon: language
+logo: "wordpress-without-database.svg"
+category: cms
+tags: ["cms", "blog", "content", "management"]
+docs: "https://wordpress.org"
+main: "wordpress"
+port: 80
+env: {}
+compose: |
+  services:
+    wordpress:
+      image: wordpress:latest
+      volumes:
+        - wordpress-files:/var/www/html
+      healthcheck:
+        test: ["CMD", "curl", "-f", "http://127.0.0.1"]
+        interval: 2s
+        timeout: 10s
+        retries: 10
+
+  volumes:
+    wordpress-files: {}

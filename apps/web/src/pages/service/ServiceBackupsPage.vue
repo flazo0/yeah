@@ -1,0 +1,162 @@
+<script setup lang="ts">
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import type { S3StorageDto, ServiceVolumeDto, VolumeBackupDto } from "@yeah/shared";
+import StatusBadge from "../../components/StatusBadge.vue";
+import { api, ApiError } from "../../lib/api";
+import { useServiceContext } from "../../composables/useServiceContext";
+import { i18n } from "../../lib/i18n";
+import { dateLocale } from "../../lib/i18n";
+
+const { basePath, error } = useServiceContext();
+
+const teamId = useRoute().params.teamId as string;
+const storages = ref<S3StorageDto[]>([]);
+const storageId = ref("");
+const volumes = ref<ServiceVolumeDto[]>([]);
+const backups = ref<VolumeBackupDto[]>([]);
+const loaded = ref(false);
+const openLogId = ref<string | null>(null);
+const confirmingRestore = ref("");
+let confirmTimer: ReturnType<typeof setTimeout> | undefined;
+let poll: ReturnType<typeof setInterval> | undefined;
+const busy = computed(() => backups.value.some((b) => b.status === "queued" || b.status === "running"));
+
+async function loadBackups() {
+  try {
+    backups.value = (await api.get<{ backups: VolumeBackupDto[] }>(`${basePath}/volume-backups`)).backups;
+  } catch {
+    /* next poll */
+  }
+}
+
+async function load() {
+  try {
+    volumes.value = (await api.get<{ volumes: ServiceVolumeDto[] }>(`${basePath}/volumes`)).volumes;
+    storages.value = (await api.get<{ storages: S3StorageDto[] }>(`/teams/${teamId}/storages`)).storages;
+    await loadBackups();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.failedLoadVolumes");
+  } finally {
+    loaded.value = true;
+  }
+}
+
+async function backupVolume(v: ServiceVolumeDto) {
+  error.value = "";
+  try {
+    await api.post(`${basePath}/volumes/${encodeURIComponent(v.key)}/backup`, { storageId: storageId.value || null });
+    await loadBackups();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.failedStartBackup");
+  }
+}
+
+async function restoreBackup(b: VolumeBackupDto) {
+  if (confirmingRestore.value !== b.id) {
+    confirmingRestore.value = b.id;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => (confirmingRestore.value = ""), 4000);
+    return;
+  }
+  confirmingRestore.value = "";
+  error.value = "";
+  try {
+    await api.post(`${basePath}/volume-backups/${b.id}/restore`, {});
+    await loadBackups();
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.failedStartRestore");
+  }
+}
+
+async function deleteBackup(b: VolumeBackupDto) {
+  try {
+    await api.delete(`${basePath}/volume-backups/${b.id}`);
+    backups.value = backups.value.filter((x) => x.id !== b.id);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serviceBackups.failedToDelete");
+  }
+}
+
+const downloadUrl = (id: string) => `${import.meta.env.VITE_API_URL ?? "http://localhost:3000"}${basePath}/volume-backups/${id}/download`;
+const size = (n: number | null) => (!n ? "-" : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1048576).toFixed(1)} MB`);
+
+onMounted(() => {
+  void load();
+  poll = setInterval(() => {
+    if (busy.value) void loadBackups();
+  }, 3000);
+});
+onBeforeUnmount(() => {
+  clearInterval(poll);
+  clearTimeout(confirmTimer);
+});
+</script>
+
+<template>
+  <div class="card">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">backup</span>
+      {{ $t("serviceBackups.volumesEBackups") }}
+    </div>
+    <div class="card-body">
+      <p class="hint" style="margin: 0">
+        <strong>{{ $t("serviceBackups.aPersistentVolumeNotBackup") }}</strong> {{ $t("serviceBackups.itSurvivesRedeploysButIf") }} <span class="mono">{{ $t("serviceBackups.tarGz") }}</span> {{ $t("serviceBackups.ofVolumeSContentServer") }}
+        <strong>{{ $t("serviceBackups.replaces") }}</strong> {{ $t("serviceBackups.theVolumeSContentRestarts") }}
+      </p>
+    </div>
+    <div v-if="loaded && volumes.length === 0" class="card-body">
+      <p class="hint" style="margin: 0">{{ $t("serviceBackups.thisServiceSComposeFile") }} <span class="mono">{{ $t("serviceBackups.volumes") }}</span> {{ $t("serviceBackups.keyTopLevelSoThere") }}</p>
+    </div>
+    <div v-if="volumes.length && storages.length" class="card-body" style="display: flex; align-items: center; gap: 8px">
+      <label for="backup-destination" class="hint" style="margin: 0">{{ $t("serviceBackups.storeIn") }}</label>
+      <select id="backup-destination" v-model="storageId" class="input" style="max-width: 320px">
+        <option value="">{{ $t("serviceBackups.onThisServer") }}</option>
+        <option v-for="st in storages" :key="st.id" :value="st.id">{{ $t("serviceBackups.s3P0P1", { p0: st.name, p1: st.bucket }) }}</option>
+      </select>
+    </div>
+    <div v-if="volumes.length" class="table-wrap">
+      <table>
+        <thead><tr><th>{{ $t("serviceBackups.volume") }}</th><th>{{ $t("serviceBackups.nameInDocker") }}</th><th></th></tr></thead>
+        <tbody>
+          <tr v-for="v in volumes" :key="v.key">
+            <td class="mono">{{ v.key }}</td>
+            <td class="mono">{{ v.dockerName }}</td>
+            <td><button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="backupVolume(v)">{{ $t("serviceBackups.backup") }}</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div v-if="backups.length" class="card" style="margin-top: 16px">
+    <div class="card-header">{{ $t("serviceBackups.history") }}</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>{{ $t("serviceBackups.when") }}</th><th>{{ $t("serviceBackups.volume") }}</th><th>{{ $t("serviceBackups.operation") }}</th><th>{{ $t("serviceBackups.status") }}</th><th>{{ $t("serviceBackups.size") }}</th><th></th></tr></thead>
+        <tbody>
+          <template v-for="b in backups" :key="b.id">
+            <tr>
+              <td>{{ new Date(b.createdAt).toLocaleString(dateLocale()) }}</td>
+              <td class="mono">{{ b.label }}</td>
+              <td>{{ b.operation === "backup" ? "backup" : "restore" }}</td>
+              <td><StatusBadge :status="b.status" kind="job" /></td>
+              <td class="mono">{{ size(b.sizeBytes) }}<span v-if="b.inS3" class="hint"> {{ $t("serviceBackups.s3") }}</span></td>
+              <td>
+                <div class="btn-row">
+                  <template v-if="b.operation === 'backup' && b.status === 'success'">
+                    <a class="btn btn-secondary btn-sm" :href="downloadUrl(b.id)">{{ $t("serviceBackups.download") }}</a>
+                    <button type="button" class="btn btn-secondary btn-sm" :disabled="busy" @click="restoreBackup(b)">{{ confirmingRestore === b.id ? $t("serviceBackups.replaceTheData") : $t("common.restore") }}</button>
+                  </template>
+                  <button type="button" class="btn btn-secondary btn-sm" @click="openLogId = openLogId === b.id ? null : b.id">{{ $t("serviceBackups.log") }}</button>
+                  <button type="button" class="btn btn-secondary btn-sm" style="color: var(--bad)" @click="deleteBackup(b)">{{ $t("serviceBackups.delete") }}</button>
+                </div>
+              </td>
+            </tr>
+            <tr v-if="openLogId === b.id"><td colspan="6"><pre class="callout-code" style="max-height: 240px; overflow: auto; margin: 0">{{ b.log || $t('common.noOutputYet') }}</pre></td></tr>
+          </template>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</template>

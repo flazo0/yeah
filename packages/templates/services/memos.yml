@@ -1,0 +1,19 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Memos"
+description: "Quick notes in a timeline style, with Markdown."
+icon: sticky_note_2
+category: productivity
+website: "https://usememos.com"
+main: memos
+port: 5230
+env: {}
+compose: |
+  services:
+    memos:
+      image: neosmemo/memos:stable
+      restart: unless-stopped
+      volumes:
+        - data:/var/opt/memos
+  volumes:
+    data: {}

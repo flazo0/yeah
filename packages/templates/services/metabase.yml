@@ -1,0 +1,22 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Metabase"
+description: "BI e dashboards conectando em qualquer banco de dados."
+icon: bar_chart
+category: analytics
+website: "https://www.metabase.com"
+docs: "https://www.metabase.com/docs/latest/"
+main: metabase
+port: 3000
+env: {}
+compose: |
+  services:
+    metabase:
+      image: metabase/metabase:latest
+      restart: unless-stopped
+      environment:
+        - MB_DB_FILE=/metabase-data/metabase.db
+      volumes:
+        - data:/metabase-data
+  volumes:
+    data: {}

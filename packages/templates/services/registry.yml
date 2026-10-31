@@ -1,0 +1,20 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Docker Registry"
+description: "Your own Docker image registry (no authentication — put it behind a proxy/VPN)."
+icon: inventory_2
+category: devops
+website: "https://distribution.github.io/distribution/"
+notes: "No login by default: do not expose it to the internet without protection."
+main: registry
+port: 5000
+env: {}
+compose: |
+  services:
+    registry:
+      image: registry:2
+      restart: unless-stopped
+      volumes:
+        - data:/var/lib/registry
+  volumes:
+    data: {}

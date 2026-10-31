@@ -1,0 +1,46 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Beszel Agent"
+description: "Monitoring agent for Beszel"
+icon: monitor_heart
+logo: "beszel-agent.svg"
+category: monitoring
+tags: ["beszel", "monitoring", "server", "stats", "alerts"]
+docs: "https://www.beszel.dev/guide/agent-installation"
+notes: "Uses `network_mode: host`: the container shares the server's network."
+main: "beszel-agent"
+port: 80
+env:
+  TOKEN: ""
+  KEY: ""
+  SYSTEM_NAME: ""
+  SERVICE_URL_BESZEL: "http://localhost"
+compose: |
+  services:
+    beszel-agent:
+      image: 'henrygd/beszel-agent:0.19.0' # Released on 3 September 2026
+      network_mode: host # Network stats graphs won't work if agent cannot access host system network stack
+      environment:
+        # Required
+        - LISTEN=${LISTEN:-/beszel_socket/beszel.sock}   # Must stay inside the beszel_socket volume
+        - HUB_URL=${HUB_URL:-$SERVICE_URL_BESZEL}        # Defaults to the hub from the beszel template
+        - TOKEN=${TOKEN}            # From hub token settings
+        - KEY=${KEY}                # SSH public key(s) from hub
+        # Optional
+        - DISABLE_SSH=${DISABLE_SSH:-false}         # Disable SSH
+        - LOG_LEVEL=${LOG_LEVEL:-warn}              # Logging level
+        - SKIP_GPU=${SKIP_GPU:-false}               # Skip GPU monitoring
+        - SYSTEM_NAME=${SYSTEM_NAME}                # Custom system name
+      volumes:
+        - beszel_agent_data:/var/lib/beszel-agent
+        - beszel_socket:/beszel_socket
+        - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      healthcheck:
+        test: ['CMD', '/agent', 'health']
+        interval: 60s
+        timeout: 20s
+        retries: 10
+        start_period: 5s
+
+  volumes:
+    beszel_agent_data: {}
+    beszel_socket: {}

@@ -1,0 +1,228 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-yeah}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-yeah}
+    volumes:
+      - yeah_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-yeah} -d ${POSTGRES_DB:-yeah}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    volumes:
+      - yeah_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          memory: 320M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  api:
+    build:
+      context: .
+      target: api
+      args:
+        YEAH_COMMIT: ${YEAH_COMMIT:-dev}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Optional (see .env.example): log format/level and Postgres pool size.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      # Key for the secrets encrypted in the database (packages/db/src/encryption.ts). Old installations
+      # without ENCRYPTION_KEY in .env fall back to SESSION_SECRET — rotate later using ENCRYPTION_KEY_PREVIOUS.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${SESSION_SECRET}}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
+      API_PORT: 3000
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
+      YEAH_COMMIT: ${YEAH_COMMIT:-dev}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+      GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}
+      GITHUB_APP_WEBHOOK_SECRET: ${GITHUB_APP_WEBHOOK_SECRET:-}
+      # Used once, right when the first (only) account registers, to add this machine itself as
+      # a deploy target — see apps/api/src/lib/localhostServer.ts. Empty means skip it entirely.
+      LOCALHOST_SSH_PRIVATE_KEY_BASE64: ${LOCALHOST_SSH_PRIVATE_KEY_BASE64:-}
+      LOCALHOST_SSH_HOST: ${LOCALHOST_SSH_HOST:-host.docker.internal}
+      LOCALHOST_SSH_PORT: ${LOCALHOST_SSH_PORT:-22}
+      LOCALHOST_SSH_USER: ${LOCALHOST_SSH_USER:-root}
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    # Lets the worker's SSH client reach the host machine itself at host.docker.internal —
+    # needed for the auto-registered "Local server" (see apps/api/src/lib/localhostServer.ts).
+    # Docker only maps this on Linux when told to; it's automatic on Docker Desktop (Mac/Windows).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Optional (see .env.example): log format/level and Postgres pool size.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      METRICS_INTERVAL_SECONDS: ${METRICS_INTERVAL_SECONDS:-}
+      PATCH_CHECK_INTERVAL_SECONDS: ${PATCH_CHECK_INTERVAL_SECONDS:-}
+      DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
+      REDIS_URL: redis://redis:6379
+      # Key for the secrets encrypted in the database (packages/db/src/encryption.ts). Old installations
+      # without ENCRYPTION_KEY in .env fall back to SESSION_SECRET — rotate later using ENCRYPTION_KEY_PREVIOUS.
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-${SESSION_SECRET}}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-}
+      GITHUB_APP_PRIVATE_KEY_BASE64: ${GITHUB_APP_PRIVATE_KEY_BASE64:-}
+      # Days until the text log of finished deployments/backups/tasks is cleared (0 disables it) — see .env.example.
+      LOG_RETENTION_DAYS: ${LOG_RETENTION_DAYS:-90}
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  ws:
+    build:
+      context: .
+      target: ws
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      # Optional (see .env.example): log format/level and Postgres pool size.
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      REDIS_URL: redis://redis:6379
+      WS_PORT: 3001
+    ports:
+      - "127.0.0.1:${WS_PORT:-3001}:3001"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  web:
+    build:
+      context: .
+      target: web
+      args:
+        # Empty by default — the frontend then talks to same-origin /api and /ws, reverse-proxied
+        # by this container's own nginx (see apps/web/nginx.conf) straight to the api/ws
+        # containers. Only set these if you're deploying api/ws on a different host/port than the
+        # dashboard itself (no shared nginx in front of them in that case).
+        VITE_API_URL: ${VITE_API_URL:-}
+        VITE_WS_URL: ${VITE_WS_URL:-}
+        # Opt-in (empty/unset by default, see install.sh) — set PANEL_PATH in .env if you want the
+        # dashboard to only answer under a random/secret path instead of "/" (anything else then
+        # gets a bare closed connection from nginx, see apps/web/docker-entrypoint-panel-path.sh).
+        # Baked into the frontend build (Vite `base`) here, and read by nginx at container start
+        # via the PANEL_PATH env var below — both need to agree, hence the same variable twice.
+        # NOTE: ":-" treats PANEL_PATH="" (what install.sh writes when it's off) the same as unset,
+        # so this must default to empty too — defaulting to "/" here would silently re-enable a
+        # broken half-camouflaged state (nginx.conf.template's old duplicate-location "/" bug).
+        VITE_BASE_PATH: ${PANEL_PATH:-}
+    environment:
+      PANEL_PATH: ${PANEL_PATH:-}
+      # "1" when the panel sits behind the Cloudflare tunnel: nginx then uses the CF-Connecting-IP
+      # header as the visitor IP (only if the connection comes from Docker's internal network).
+      TRUST_CF_CONNECTING_IP: ${TRUST_CF_CONNECTING_IP:-}
+    restart: unless-stopped
+    ports:
+      # WEB_BIND=127.0.0.1 keeps the port local-only (used with the tunnel, which needs no open port).
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80"
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Cloudflare Tunnel for the panel (optional): only starts with COMPOSE_PROFILES=tunnel (install.sh writes
+  # that when it receives --cloudflare-tunnel-token). The public hostname is set up in the Cloudflare
+  # dashboard, pointing at http://web:80.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    profiles: ["tunnel"]
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - web
+    deploy:
+      resources:
+        limits:
+          memory: 96M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  yeah_postgres_data:
+  yeah_redis_data:

@@ -1,0 +1,64 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Freescout"
+description: "FreeScout is the super lightweight and powerful free open source help desk and shared inbox written in PHP (Laravel framework)."
+icon: task_alt
+logo: "freescout.png"
+category: productivity
+tags: ["helpdesk", "support", "ticketing", "customer-support"]
+docs: "https://github.com/freescout-help-desk/freescout/wiki/"
+main: "freescout"
+port: 80
+env:
+  SERVICE_USER_MARIADB: "$generate:user"
+  SERVICE_PASSWORD_MARIADB: "$generate:password"
+  SERVICE_URL_FREESCOUT: "http://localhost"
+  SERVICE_PASSWORD_ADMIN: "$generate:password"
+  SERVICE_PASSWORD_ROOT: "$generate:password"
+compose: |
+  services:
+    freescout:
+      image: nfrastack/freescout:2.2.21
+      volumes:
+        - freescout-data:/data
+        - freescout-logs:/logs
+      depends_on:
+        mariadb:
+          condition: service_healthy
+      environment:
+        - DB_TYPE=mariadb
+        - DB_HOST=mariadb
+        - DB_PORT=3306
+        - DB_NAME=${MARIADB_DATABASE:-freescout}
+        - DB_USER=${SERVICE_USER_MARIADB:-freescout}
+        - DB_PASS=${SERVICE_PASSWORD_MARIADB}
+        - APP_URL=${SERVICE_URL_FREESCOUT}
+        - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+        - ADMIN_PASS=${SERVICE_PASSWORD_ADMIN}
+        - FREESCOUT_APP_DEBUG=${FREESCOUT_APP_DEBUG:-false}
+        - TIMEZONE=${TIMEZONE:-UTC}
+      healthcheck:
+        test: ["CMD-SHELL", "busybox wget -qO /dev/null --header 'X-Forwarded-Proto: https' http://127.0.0.1/login || exit 1"]
+        start_period: 60s
+        interval: 5s
+        timeout: 10s
+        retries: 15
+    mariadb:
+      image: mariadb
+      volumes:
+        - mariadb-data:/var/lib/mysql
+      environment:
+        - MARIADB_ROOT_PASSWORD=${SERVICE_PASSWORD_ROOT}
+        - MARIADB_DATABASE=${MARIADB_DATABASE:-freescout}
+        - MARIADB_USER=${SERVICE_USER_MARIADB}
+        - MARIADB_PASSWORD=${SERVICE_PASSWORD_MARIADB}
+      healthcheck:
+        test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+        start_period: 10s
+        interval: 5s
+        timeout: 10s
+        retries: 15
+
+  volumes:
+    freescout-data: {}
+    freescout-logs: {}
+    mariadb-data: {}

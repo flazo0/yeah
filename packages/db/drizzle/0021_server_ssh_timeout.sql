@@ -1,0 +1,1 @@
+ALTER TABLE "servers" ADD COLUMN "ssh_timeout_seconds" integer DEFAULT 15 NOT NULL;

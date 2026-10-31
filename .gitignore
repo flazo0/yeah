@@ -1,0 +1,24 @@
+node_modules/
+coolify/
+savvy/
+# Private research notes about a real production instance (real domains/accounts) — must never go in a public repo.
+docs/coolify-research.md
+docs/dokploy-research.md
+.env
+.env.*
+!.env.example
+dist/
+build/
+*.log
+.DS_Store
+apps/web/dist/
+*.tsbuildinfo
+.claude/
+*.pem
+*.key
+*.key.pub
+.vscode/
+.idea/
+tmp/
+dokploy/
+coverage/

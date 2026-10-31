@@ -1,0 +1,22 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Homepage"
+description: "Start page with links and the status of your services."
+icon: home
+category: dev
+website: "https://gethomepage.dev"
+main: homepage
+port: 3000
+env:
+  HOMEPAGE_ALLOWED_HOSTS: "*"
+compose: |
+  services:
+    homepage:
+      image: ghcr.io/gethomepage/homepage:latest
+      restart: unless-stopped
+      environment:
+        - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS}
+      volumes:
+        - config:/app/config
+  volumes:
+    config: {}

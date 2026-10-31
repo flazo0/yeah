@@ -1,0 +1,23 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Vaultwarden"
+description: "Bitwarden-compatible server — a password manager for your team."
+icon: key
+category: security
+website: "https://github.com/dani-garcia/vaultwarden"
+notes: "Needs HTTPS to work in the browser: attach a domain with the proxy enabled. The admin panel uses ADMIN_TOKEN at /admin."
+main: vaultwarden
+port: 80
+env:
+  ADMIN_TOKEN: "$generate:hex"
+compose: |
+  services:
+    vaultwarden:
+      image: vaultwarden/server:latest
+      restart: unless-stopped
+      environment:
+        - ADMIN_TOKEN=${ADMIN_TOKEN}
+      volumes:
+        - data:/data
+  volumes:
+    data: {}

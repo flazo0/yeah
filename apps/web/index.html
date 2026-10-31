@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>yeah</title>
+    <meta name="description" content="Self-hosted platform to deploy apps, databases and services — with no dependency on third-party clouds." />
+
+    <!-- Never index / crawl: a self-hosted instance, not a public showcase product. -->
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet" />
+
+    <!--
+      No CDNs or third-party services: everything (fonts, icons, images) is served by the instance itself.
+      connect-src only allows this instance's api/ws — in production %VITE_API_URL%/%VITE_WS_URL%
+      are empty (api/ws are same-origin via /api and /ws, reverse-proxied by nginx — see
+      apps/web/nginx.conf), so 'self' alone already covers it; they only become an explicit host if someone
+      chooses to run api/ws outside the shared proxy. The api over ws:// is also part of connect-src (interactive terminals open a WebSocket straight to it).
+      Never a Google domain or any
+      other third party. In production, enforce it via a header on the proxy in addition to this meta tag.
+    -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; frame-ancestors 'self'; object-src 'none'; img-src 'self' data: blob:; font-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' %VITE_API_URL% %VITE_WS_URL% __API_WS_URL__;" />
+
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preload" href="/fonts/GoogleSansCode-Variable.ttf" as="font" type="font/ttf" crossorigin />
+    <!-- material-symbols-outlined is used on nearly every page (sidebar, buttons, badges) from the
+         very first paint, so it's worth the same treatment — the browser only discovers a @font-face
+         needs fetching once CSS is parsed AND a matching element is about to lay out; preloading
+         starts the fetch immediately instead, in parallel with everything else. -->
+    <link rel="preload" href="/fonts/MaterialSymbolsOutlined.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- Open Graph / share previews (self-hosted, no external service is called) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="yeah" />
+    <meta property="og:title" content="yeah" />
+    <meta property="og:description" content="Self-hosted platform to deploy apps, databases and services — with no dependency on third-party clouds." />
+    <meta property="og:image" content="/og-image.jpg" />
+    <meta property="og:image:width" content="1440" />
+    <meta property="og:image:height" content="675" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="yeah" />
+    <meta name="twitter:description" content="Self-hosted platform to deploy apps, databases and services." />
+    <meta name="twitter:image" content="/og-image.jpg" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

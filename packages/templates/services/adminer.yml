@@ -1,0 +1,15 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Adminer"
+description: "Lightweight web client for PostgreSQL, MySQL and SQLite — connect using the internal names of the environment's databases."
+icon: table_view
+category: database
+website: "https://www.adminer.org"
+main: adminer
+port: 8080
+env: {}
+compose: |
+  services:
+    adminer:
+      image: adminer:latest
+      restart: unless-stopped

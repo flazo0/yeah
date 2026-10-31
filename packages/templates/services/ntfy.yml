@@ -1,0 +1,20 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "ntfy"
+description: "Push notifications over HTTP pub/sub — one curl and your phone buzzes."
+icon: campaign
+category: messaging
+website: "https://ntfy.sh"
+main: ntfy
+port: 80
+env: {}
+compose: |
+  services:
+    ntfy:
+      image: binwiederhier/ntfy:latest
+      command: serve
+      restart: unless-stopped
+      volumes:
+        - cache:/var/cache/ntfy
+  volumes:
+    cache: {}

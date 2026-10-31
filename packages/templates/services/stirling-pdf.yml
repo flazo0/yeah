@@ -1,0 +1,15 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Stirling PDF"
+description: "Ferramentas de PDF (juntar, dividir, converter, OCR) no seu servidor."
+icon: picture_as_pdf
+category: productivity
+website: "https://github.com/Stirling-Tools/Stirling-PDF"
+main: pdf
+port: 8080
+env: {}
+compose: |
+  services:
+    pdf:
+      image: frooodle/s-pdf:latest
+      restart: unless-stopped

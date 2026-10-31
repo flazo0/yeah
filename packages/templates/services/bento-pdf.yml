@@ -1,0 +1,20 @@
+# Imported from the Coolify service template catalog (Apache-2.0) by scripts/import-coolify-templates.ts — see NOTICE.
+name: "Bento Pdf"
+description: "Process PDFs entirely in your browser. No uploads. No servers. Complete privacy."
+icon: task_alt
+logo: "bento-pdf.png"
+category: productivity
+tags: ["pdf", "manipulation", "web", "tool"]
+docs: "https://bentopdf.com/docs"
+main: "bento-pdf"
+port: 8080
+env: {}
+compose: |
+  services:
+    bento-pdf:
+      image: ghcr.io/alam00000/bentopdf:v1.16.1
+      healthcheck:
+        test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080"]
+        interval: 5s
+        timeout: 20s
+        retries: 10

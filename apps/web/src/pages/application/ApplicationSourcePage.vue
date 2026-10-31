@@ -1,0 +1,275 @@
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+import type { GithubRepoDto, RegistryDto, ServerDto } from "@yeah/shared";
+import { api, ApiError } from "../../lib/api";
+import { useApplicationContext } from "../../composables/useApplicationContext";
+import { i18n } from "../../lib/i18n";
+
+const { app, basePath, error, reloadApp } = useApplicationContext();
+const teamId = useRoute().params.teamId as string;
+
+const form = ref({ gitRepo: "", repoUrl: "", branch: "", githubRepo: "", dockerImage: "", dockerfileContent: "", publishDirectory: ".", staticSpa: false, composeFile: "", composeService: "", port: 3000 });
+const githubRepos = ref<GithubRepoDto[]>([]);
+const saving = ref(false);
+const saved = ref(false);
+const registries = ref<RegistryDto[]>([]);
+const registryId = ref("");
+const registryRepo = ref("");
+const savingRegistry = ref(false);
+const registrySaved = ref(false);
+const servers = ref<ServerDto[]>([]);
+const buildServerId = ref("");
+const savingBuildServer = ref(false);
+const buildServerSaved = ref(false);
+
+onMounted(async () => {
+  const a = app.value;
+  if (!a) return;
+  form.value = {
+    repoUrl: a.repoUrl,
+    branch: a.branch,
+    githubRepo: a.githubRepo ?? "",
+    gitRepo: a.gitRepo ?? "",
+    dockerImage: a.dockerImage ?? "",
+    dockerfileContent: a.dockerfileContent ?? "",
+    publishDirectory: a.publishDirectory,
+    staticSpa: a.staticSpa,
+    composeFile: a.composeFile,
+    composeService: a.composeService ?? "",
+    port: a.port,
+  };
+  registryId.value = a.registryId ?? "";
+  registryRepo.value = a.registryImage ?? "";
+  buildServerId.value = a.buildServerId ?? "";
+  try {
+    registries.value = (await api.get<{ registries: RegistryDto[] }>(`/teams/${teamId}/registries`)).registries;
+  } catch {
+    registries.value = [];
+  }
+  try {
+    servers.value = (await api.get<{ servers: ServerDto[] }>(`/teams/${teamId}/servers`)).servers;
+  } catch {
+    servers.value = [];
+  }
+  if (a.githubRepo) {
+    try {
+      githubRepos.value = (await api.get<{ repos: GithubRepoDto[] }>(`/teams/${teamId}/github/repos`)).repos;
+    } catch {
+      githubRepos.value = [];
+    }
+  }
+});
+
+async function saveRegistry() {
+  savingRegistry.value = true;
+  registrySaved.value = false;
+  error.value = "";
+  try {
+    await api.put(`${basePath}/registry`, { registryId: registryId.value || null, repository: registryRepo.value });
+    await reloadApp();
+    registrySaved.value = true;
+    setTimeout(() => (registrySaved.value = false), 2500);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.failedSaveRegistry");
+  } finally {
+    savingRegistry.value = false;
+  }
+}
+
+async function saveBuildServer() {
+  savingBuildServer.value = true;
+  buildServerSaved.value = false;
+  error.value = "";
+  try {
+    await api.put(`${basePath}/build-server`, { buildServerId: buildServerId.value || null });
+    await reloadApp();
+    buildServerSaved.value = true;
+    setTimeout(() => (buildServerSaved.value = false), 2500);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.failedSaveBuildServer");
+  } finally {
+    savingBuildServer.value = false;
+  }
+}
+
+async function save() {
+  const a = app.value;
+  if (!a) return;
+  saving.value = true;
+  saved.value = false;
+  error.value = "";
+  try {
+    const f = form.value;
+    const body: Record<string, unknown> = { port: f.port };
+    if (a.buildPack === "image") body.dockerImage = f.dockerImage;
+    else if (a.buildPack === "dockerfile_inline") body.dockerfileContent = f.dockerfileContent;
+    else {
+      body.branch = f.branch;
+      if (a.githubRepo) body.githubRepo = f.githubRepo;
+      else if (a.gitSourceId) body.gitRepo = f.gitRepo;
+      else body.repoUrl = f.repoUrl;
+      if (a.buildPack === "static") {
+        body.publishDirectory = f.publishDirectory;
+        body.staticSpa = f.staticSpa;
+      }
+      if (a.buildPack === "docker_compose") {
+        body.composeFile = f.composeFile;
+        body.composeService = f.composeService;
+      }
+    }
+    await api.put(`${basePath}/source`, body);
+    await reloadApp();
+    saved.value = true;
+    setTimeout(() => (saved.value = false), 2500);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("applicationSource.failedSaveSource");
+  } finally {
+    saving.value = false;
+  }
+}
+</script>
+
+<template>
+  <form v-if="app" class="card" style="margin-bottom: 0" @submit.prevent="save">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">merge</span>
+      {{ $t("applicationSource.codeSource") }}
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        {{ $t("applicationSource.whereDeployTakesCodeBuild") }}<span class="mono">{{ app.buildPack }}</span>{{ $t("applicationSource.doesnTChangeAfterCreation") }}
+      </p>
+
+      <template v-if="app.buildPack === 'image'">
+        <div class="form-group">
+          <label for="src-image">{{ $t("applicationSource.image") }}</label>
+          <input id="src-image" v-model="form.dockerImage" class="form-control mono" required />
+        </div>
+      </template>
+      <template v-else-if="app.buildPack === 'dockerfile_inline'">
+        <div class="form-group">
+          <label for="src-dockerfile">{{ $t("applicationSource.dockerfile") }}</label>
+          <textarea id="src-dockerfile" v-model="form.dockerfileContent" class="form-control mono" rows="10" required></textarea>
+        </div>
+      </template>
+      <template v-else>
+        <div v-if="app.githubRepo" class="form-group">
+          <label for="src-github">{{ $t("applicationSource.githubRepository") }}</label>
+          <select v-if="githubRepos.length" id="src-github" v-model="form.githubRepo" class="form-control">
+            <option v-for="repo in githubRepos" :key="repo.fullName" :value="repo.fullName">{{ repo.fullName }}</option>
+          </select>
+          <input v-else id="src-github" v-model="form.githubRepo" class="form-control mono" />
+        </div>
+        <div v-else-if="app.gitSourceId" class="form-group">
+          <label for="src-gitrepo">{{ $t("applicationSource.repositoryGroupProject") }}</label>
+          <input id="src-gitrepo" v-model="form.gitRepo" class="form-control mono" required />
+          <p class="hint" style="margin-top: 6px">{{ $t("applicationSource.comesConnectedGitSourceGitlab") }}</p>
+        </div>
+        <div v-else class="form-group">
+          <label for="src-repo">{{ $t("applicationSource.repositoryUrl") }}</label>
+          <input id="src-repo" v-model="form.repoUrl" class="form-control mono" required />
+          <p v-if="app.deployKeyPublic" class="hint" style="margin-top: 6px">{{ $t("applicationSource.withDeployKeyUrlMust") }}<span class="mono">git@host:org/repo.git</span>).</p>
+        </div>
+        <div class="form-group">
+          <label for="src-branch">{{ $t("applicationSource.branch") }}</label>
+          <input id="src-branch" v-model="form.branch" class="form-control mono" required />
+        </div>
+        <div v-if="app.buildPack === 'static'" class="form-group">
+          <label for="src-publish">{{ $t("applicationSource.publishedFolder") }}</label>
+          <input id="src-publish" v-model="form.publishDirectory" class="form-control mono" />
+        </div>
+        <div v-if="app.buildPack === 'static'" class="form-group">
+          <label style="display: flex; gap: 8px; align-items: center">
+            <input id="src-spa" v-model="form.staticSpa" type="checkbox" />
+            {{ $t("applicationSource.spaMode") }}
+          </label>
+          <p class="hint">{{ $t("applicationSource.spaHint") }}</p>
+        </div>
+        <template v-if="app.buildPack === 'docker_compose'">
+          <div class="form-group">
+            <label for="src-compose">{{ $t("applicationSource.composeFile") }}</label>
+            <input id="src-compose" v-model="form.composeFile" class="form-control mono" required />
+          </div>
+          <div class="form-group">
+            <label for="src-service">{{ $t("applicationSource.serviceReceivesDomain") }}</label>
+            <input id="src-service" v-model="form.composeService" class="form-control mono" :placeholder="$t('applicationSource.web')" />
+          </div>
+        </template>
+      </template>
+
+      <div v-if="app.buildPack !== 'static'" class="form-group">
+        <label for="src-port">{{ $t("applicationSource.appPort") }}</label>
+        <input id="src-port" v-model.number="form.port" type="number" class="form-control" style="max-width: 160px" />
+      </div>
+
+      <div class="btn-row">
+        <button type="submit" class="btn btn-secondary" :disabled="saving">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ saving ? $t("applicationSource.saving") : $t("common.save") }}
+        </button>
+        <span v-if="saved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.savedAppliesNextDeploy") }}</span>
+      </div>
+    </div>
+  </form>
+
+  <div v-if="app && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">inventory_2</span>
+      {{ $t("applicationSource.registry") }}
+    </div>
+    <div class="card-body">
+      <p v-if="app.buildPack === 'image'" class="hint mb-16">{{ $t("applicationSource.pickRegistrySignBeforePulling") }}</p>
+      <p v-else class="hint mb-16">
+        {{ $t("applicationSource.afterBuildingYeahPushesImage") }}
+      </p>
+      <div class="form-group">
+        <label for="reg-select">{{ $t("applicationSource.registry") }}</label>
+        <select id="reg-select" v-model="registryId" class="form-control" style="max-width: 320px">
+          <option value="">{{ $t("applicationSource.none") }}</option>
+          <option v-for="r in registries" :key="r.id" :value="r.id">{{ r.name }} ({{ r.host }})</option>
+        </select>
+        <p v-if="registries.length === 0" class="hint" style="margin-top: 6px">{{ $t("applicationSource.noRegistryRegistered") }} <RouterLink :to="`/teams/${teamId}/registries`" class="label-link">{{ $t("applicationSource.registerOne") }}</RouterLink>.</p>
+      </div>
+      <div v-if="registryId && app.buildPack !== 'image'" class="form-group">
+        <label for="reg-repo">{{ $t("applicationSource.repositoryRegistry") }}</label>
+        <input id="reg-repo" v-model="registryRepo" class="form-control mono" placeholder="my-org/my-app" />
+        <p class="hint" style="margin-top: 6px">{{ $t("applicationSource.inLowercaseImageGoes") }} <span class="mono">{{ $t("applicationSource.registryRepositoryCommit") }}</span>.</p>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary" :disabled="savingRegistry" @click="saveRegistry">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ savingRegistry ? $t("applicationSource.saving") : $t("common.save") }}
+        </button>
+        <span v-if="registrySaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.savedAppliesNextDeploy") }}</span>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="app && app.buildPack !== 'image' && app.buildPack !== 'docker_compose'" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">precision_manufacturing</span>
+      {{ $t("applicationSource.buildServer") }}
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">
+        {{ $t("applicationSource.buildsPushesImageServerSeparate") }}
+      </p>
+      <div v-if="!(app?.registryId && app?.registryImage)" class="hint mb-16">{{ $t("applicationSource.configureRegistryAboveFirst") }}</div>
+      <div v-else class="form-group">
+        <label for="build-server-select">{{ $t("applicationSource.buildOn") }}</label>
+        <select id="build-server-select" v-model="buildServerId" class="form-control" style="max-width: 320px">
+          <option value="">{{ $t("applicationSource.thisServerDefault") }}</option>
+          <option v-for="s in servers" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
+      </div>
+      <div class="btn-row" style="margin-top: 12px">
+        <button type="button" class="btn btn-secondary" :disabled="savingBuildServer || !(app?.registryId && app?.registryImage)" @click="saveBuildServer">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ savingBuildServer ? $t("applicationSource.saving") : $t("common.save") }}
+        </button>
+        <span v-if="buildServerSaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("applicationSource.savedAppliesNextDeploy") }}</span>
+      </div>
+    </div>
+  </div>
+</template>

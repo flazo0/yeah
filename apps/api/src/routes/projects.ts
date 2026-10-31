@@ -1,0 +1,261 @@
+import { PROJECT_ICONS, DEFAULT_PROJECT_ICON } from "@yeah/shared";
+import { Elysia, t } from "elysia";
+import { eq, sql } from "drizzle-orm";
+import { applications, databases, environments, projects, services } from "@yeah/db";
+import type { EnvironmentDto, ProjectDto } from "@yeah/shared";
+import { db } from "../lib/db";
+import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
+import { assertMember } from "../lib/access";
+import { loadEnvironment, loadProject } from "../lib/projects";
+
+async function countProjectResources(projectId: string): Promise<number> {
+  const counts = await Promise.all(
+    [applications, databases, services].map(async (table) => {
+      const [row] = await db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(table)
+        .innerJoin(environments, eq(environments.id, table.environmentId))
+        .where(eq(environments.projectId, projectId));
+      return row?.n ?? 0;
+    }),
+  );
+  return counts.reduce((a, b) => a + b, 0);
+}
+
+export const projectRoutes = new Elysia({ prefix: "/teams/:teamId/projects" })
+  .get("/", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const rows = await db
+      .select({
+        project: projects,
+        environmentCount: sql<number>`count(distinct ${environments.id})::int`,
+        resourceCount: sql<number>`(
+          (select count(*) from applications a join environments e on e.id = a.environment_id where e.project_id = ${projects.id}) +
+          (select count(*) from databases d join environments e on e.id = d.environment_id where e.project_id = ${projects.id}) +
+          (select count(*) from services s join environments e on e.id = s.environment_id where e.project_id = ${projects.id})
+        )::int`,
+      })
+      .from(projects)
+      .leftJoin(environments, eq(environments.projectId, projects.id))
+      .where(eq(projects.teamId, params.teamId))
+      .groupBy(projects.id);
+
+    const result: ProjectDto[] = rows.map((row) => ({
+      id: row.project.id,
+      teamId: row.project.teamId,
+      name: row.project.name,
+      icon: row.project.icon ?? DEFAULT_PROJECT_ICON,
+      environmentCount: row.environmentCount,
+      resourceCount: row.resourceCount,
+      createdAt: row.project.createdAt.toISOString(),
+    }));
+
+    return { projects: result };
+  })
+  .post(
+    "/",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+
+      const [project] = await db.insert(projects).values({ teamId: params.teamId, name: body.name }).returning();
+      if (!project) {
+        set.status = 500;
+        return { error: "failed to create project" };
+      }
+      const [environment] = await db
+        .insert(environments)
+        .values({ projectId: project.id, name: body.firstEnvironmentName ?? "production" })
+        .returning();
+
+      const dto: ProjectDto = {
+        id: project.id,
+        teamId: project.teamId,
+        name: project.name,
+        icon: DEFAULT_PROJECT_ICON,
+        environmentCount: environment ? 1 : 0,
+        resourceCount: 0,
+        createdAt: project.createdAt.toISOString(),
+      };
+      return { project: dto };
+    },
+    { body: t.Object({ name: t.String({ minLength: 1 }), firstEnvironmentName: t.Optional(t.String()) }) },
+  )
+  .put(
+    "/:projectId/icon",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!(PROJECT_ICONS as readonly string[]).includes(body.icon)) {
+        set.status = 400;
+        return { error: "invalid icon" };
+      }
+      const project = await loadProject(params.teamId, params.projectId);
+      if (!project) {
+        set.status = 404;
+        return { error: "project not found" };
+      }
+      await db.update(projects).set({ icon: body.icon }).where(eq(projects.id, project.id));
+      return { icon: body.icon };
+    },
+    { body: t.Object({ icon: t.String() }) },
+  )
+  .get("/:projectId", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const project = await loadProject(params.teamId, params.projectId);
+    if (!project) {
+      set.status = 404;
+      return { error: "project not found" };
+    }
+
+    const environmentRows = await db.select().from(environments).where(eq(environments.projectId, project.id));
+
+    const dto: ProjectDto = {
+      id: project.id,
+      teamId: project.teamId,
+      name: project.name,
+      icon: project.icon ?? DEFAULT_PROJECT_ICON,
+      environmentCount: environmentRows.length,
+      resourceCount: await countProjectResources(project.id),
+      createdAt: project.createdAt.toISOString(),
+    };
+    return { project: dto };
+  })
+  // Just the names needed to render a breadcrumb (Project › Environment › resource) on every
+  // resource detail page — those routes already carry teamId/projectId/environmentId, so this
+  // is the one extra call each of them makes instead of duplicating project/environment name
+  // joins into every Application/Database/Service route.
+  .get("/:projectId/environments/:environmentId", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const loaded = await loadEnvironment(params.teamId, params.projectId, params.environmentId);
+    if (!loaded) {
+      set.status = 404;
+      return { error: "environment not found" };
+    }
+
+    return {
+      project: { id: loaded.project.id, name: loaded.project.name },
+      environment: { id: loaded.environment.id, name: loaded.environment.name },
+    };
+  })
+  .get("/:projectId/environments", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    if (!(await loadProject(params.teamId, params.projectId))) {
+      set.status = 404;
+      return { error: "project not found" };
+    }
+
+    const rows = await db
+      .select({
+        environment: environments,
+        applicationCount: sql<number>`count(distinct ${applications.id})::int`,
+        databaseCount: sql<number>`count(distinct ${databases.id})::int`,
+        serviceCount: sql<number>`count(distinct ${services.id})::int`,
+      })
+      .from(environments)
+      .leftJoin(applications, eq(applications.environmentId, environments.id))
+      .leftJoin(databases, eq(databases.environmentId, environments.id))
+      .leftJoin(services, eq(services.environmentId, environments.id))
+      .where(eq(environments.projectId, params.projectId))
+      .groupBy(environments.id);
+
+    const result: EnvironmentDto[] = rows.map((row) => ({
+      id: row.environment.id,
+      projectId: row.environment.projectId,
+      name: row.environment.name,
+      applicationCount: row.applicationCount,
+      databaseCount: row.databaseCount,
+      serviceCount: row.serviceCount,
+      createdAt: row.environment.createdAt.toISOString(),
+    }));
+
+    return { environments: result };
+  })
+  .post(
+    "/:projectId/environments",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      if (!(await loadProject(params.teamId, params.projectId))) {
+        set.status = 404;
+        return { error: "project not found" };
+      }
+
+      const [environment] = await db
+        .insert(environments)
+        .values({ projectId: params.projectId, name: body.name })
+        .returning();
+      if (!environment) {
+        set.status = 500;
+        return { error: "failed to create environment" };
+      }
+
+      const dto: EnvironmentDto = {
+        id: environment.id,
+        projectId: environment.projectId,
+        name: environment.name,
+        applicationCount: 0,
+        databaseCount: 0,
+        serviceCount: 0,
+        createdAt: environment.createdAt.toISOString(),
+      };
+      return { environment: dto };
+    },
+    { body: t.Object({ name: t.String({ minLength: 1 }) }) },
+  );

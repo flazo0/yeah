@@ -1,0 +1,187 @@
+import { Elysia, redirect, t } from "elysia";
+import { and, eq, isNotNull } from "drizzle-orm";
+import { applications, environments, githubInstallations, projects, type GithubInstallation } from "@yeah/db";
+import type { GithubInstallationDto, GithubRepoDto, GithubSourceResourceDto } from "@yeah/shared";
+import { getGithubConfig, getInstallation, getInstallationToken, listInstallationRepos } from "@yeah/github";
+import { db } from "../lib/db";
+import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
+import { assertMember } from "../lib/access";
+import { createOAuthState, verifyOAuthState } from "../lib/oauthState";
+
+function toInstallationDto(installation: GithubInstallation): GithubInstallationDto {
+  return {
+    id: installation.id,
+    teamId: installation.teamId,
+    installationId: installation.installationId,
+    accountLogin: installation.accountLogin,
+    accountType: installation.accountType,
+    createdAt: installation.createdAt.toISOString(),
+  };
+}
+
+function webOrigin(): string {
+  return (process.env.WEB_ORIGIN ?? "http://localhost:5173").split(",")[0]!.trim();
+}
+
+export const githubRoutes = new Elysia()
+  .get("/teams/:teamId/github", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const rows = await db.select().from(githubInstallations).where(eq(githubInstallations.teamId, params.teamId)).limit(1);
+    return { configured: getGithubConfig() !== null, installation: rows[0] ? toInstallationDto(rows[0]) : null };
+  })
+  .get("/teams/:teamId/github/install-url", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const config = getGithubConfig();
+    if (!config) {
+      set.status = 400;
+      return { error: "GitHub App is not configured on this server" };
+    }
+
+    // Signed + 10 min expiry + bound to this user (see lib/oauthState.ts) — a bare teamId would let
+    // anyone attach an installation they control to that team by hitting the callback directly.
+    const state = createOAuthState(params.teamId, user.id);
+    return { url: `https://github.com/apps/${config.appSlug}/installations/new?state=${encodeURIComponent(state)}` };
+  })
+  .get(
+    "/github/callback",
+    async ({ cookie, query, set }) => {
+      const config = getGithubConfig();
+      const origin = webOrigin();
+      if (!config) {
+        set.status = 400;
+        return { error: "GitHub App is not configured on this server" };
+      }
+
+      const { installation_id: installationIdRaw, state } = query;
+      if (!installationIdRaw || !state) {
+        set.status = 400;
+        return { error: "invalid callback — installation_id or state is missing" };
+      }
+      const installationId = Number(installationIdRaw);
+      if (!Number.isInteger(installationId) || installationId <= 0) {
+        set.status = 400;
+        return { error: "invalid callback — installation_id" };
+      }
+
+      const verified = verifyOAuthState(state);
+      if (!verified) {
+        set.status = 400;
+        return { error: "invalid or expired state — go back to the GitHub screen and click connect again" };
+      }
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user || user.id !== verified.userId || !(await assertMember(verified.teamId, user.id))) {
+        set.status = 403;
+        return { error: "this connection was started by another session — sign in to the right account and try again" };
+      }
+      const teamId = verified.teamId;
+
+      const info = await getInstallation(config.appId, config.privateKey, installationId);
+
+      await db
+        .insert(githubInstallations)
+        .values({ teamId, installationId, accountLogin: info.accountLogin, accountType: info.accountType })
+        .onConflictDoUpdate({
+          target: githubInstallations.teamId,
+          set: { installationId, accountLogin: info.accountLogin, accountType: info.accountType },
+        });
+
+      return redirect(`${origin}/teams/${teamId}/servers`);
+    },
+    {
+      query: t.Object({
+        installation_id: t.Optional(t.String()),
+        setup_action: t.Optional(t.String()),
+        state: t.Optional(t.String()),
+      }),
+    },
+  )
+  .get("/teams/:teamId/github/repos", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const config = getGithubConfig();
+    if (!config) {
+      set.status = 400;
+      return { error: "GitHub App is not configured on this server" };
+    }
+
+    const rows = await db.select().from(githubInstallations).where(eq(githubInstallations.teamId, params.teamId)).limit(1);
+    const installation = rows[0];
+    if (!installation) {
+      set.status = 404;
+      return { error: "no GitHub installation connected" };
+    }
+
+    const { token } = await getInstallationToken(config.appId, config.privateKey, installation.installationId);
+    const repos: GithubRepoDto[] = await listInstallationRepos(token);
+    return { repos };
+  })
+  // Which applications deploy from this team's GitHub source — the "blast radius" of disconnecting it.
+  .get("/teams/:teamId/github/resources", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    const rows = await db
+      .select({
+        applicationId: applications.id,
+        applicationName: applications.name,
+        repo: applications.githubRepo,
+        branch: applications.branch,
+        projectId: projects.id,
+        projectName: projects.name,
+        environmentId: environments.id,
+        environmentName: environments.name,
+      })
+      .from(applications)
+      .innerJoin(environments, eq(environments.id, applications.environmentId))
+      .innerJoin(projects, eq(projects.id, environments.projectId))
+      .where(and(eq(applications.teamId, params.teamId), isNotNull(applications.githubInstallationId)));
+    const resources: GithubSourceResourceDto[] = rows.map((row) => ({ ...row, repo: row.repo ?? "" }));
+    return { resources };
+  })
+  .delete("/teams/:teamId/github", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+
+    await db.delete(githubInstallations).where(eq(githubInstallations.teamId, params.teamId));
+    return { ok: true };
+  });

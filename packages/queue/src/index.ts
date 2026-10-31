@@ -1,0 +1,404 @@
+import Redis from "ioredis";
+import { Queue, Worker, type Processor } from "bullmq";
+import type { ApplicationLifecycleAction, WsServerEvent } from "@yeah/shared";
+
+export const SERVER_CHECK_QUEUE = "server-check";
+export const APPLICATION_DEPLOY_QUEUE = "application-deploy";
+export const APPLICATION_LIFECYCLE_QUEUE = "application-lifecycle";
+export const SCHEDULED_TASK_QUEUE = "scheduled-task";
+export const DATABASE_PROVISION_QUEUE = "database-provision";
+export const DATABASE_BACKUP_QUEUE = "database-backup";
+export const DATABASE_RESTORE_QUEUE = "database-restore";
+export const VOLUME_BACKUP_QUEUE = "volume-backup";
+export const PROXY_PROVISION_QUEUE = "proxy-provision";
+export const SERVICE_PROVISION_QUEUE = "service-provision";
+export const SERVER_METRICS_QUEUE = "server-metrics";
+export const TLS_CHECK_QUEUE = "tls-check";
+export const PLATFORM_OPERATION_QUEUE = "platform-operation";
+export const DOCKER_CLEANUP_QUEUE = "docker-cleanup";
+export const CA_CERTIFICATE_QUEUE = "ca-certificate";
+export const LOG_RETENTION_QUEUE = "log-retention";
+export const CLOUDFLARE_TUNNEL_QUEUE = "cloudflare-tunnel";
+export const TRAFFIC_ANALYTICS_QUEUE = "traffic-analytics";
+export const APPLICATION_ROUTING_QUEUE = "application-routing";
+export const API_TOKEN_EXPIRY_QUEUE = "api-token-expiry";
+export const SERVER_EVENTS_CHANNEL = "server-events";
+/** Fixed id for the single system-wide repeatable job that ticks the metrics poll — not per-server. */
+export const SERVER_METRICS_SCHEDULER_ID = "system-server-metrics";
+/** Fixed id for the single system-wide repeatable job that ticks the TLS expiry check. */
+export const TLS_CHECK_SCHEDULER_ID = "system-tls-check";
+/** Fixed id for the single system-wide repeatable job that ticks the log-retention sweep. */
+export const LOG_RETENTION_SCHEDULER_ID = "system-log-retention";
+/** Fixed id for the single system-wide repeatable job that ticks the traffic-analytics poll. */
+export const TRAFFIC_ANALYTICS_SCHEDULER_ID = "system-traffic-analytics";
+/** Fixed id for the single system-wide repeatable job that ticks the api-token expiry check. */
+export const API_TOKEN_EXPIRY_SCHEDULER_ID = "system-api-token-expiry";
+
+export interface ServerCheckJobData {
+  serverId: string;
+}
+
+export interface ApplicationDeployJobData {
+  deploymentId: string;
+}
+
+export interface ApplicationLifecycleJobData {
+  applicationId: string;
+  action: ApplicationLifecycleAction;
+}
+
+export interface ScheduledTaskJobData {
+  taskId: string;
+  /** Set when queued by "Run now" instead of the cron tick. */
+  manual?: boolean;
+}
+
+export interface DatabaseProvisionJobData {
+  databaseId: string;
+}
+
+export interface DatabaseBackupJobData {
+  scheduleId: string;
+  /** Set when a job was queued via "Backup Now" rather than the cron schedule. */
+  manual?: boolean;
+}
+
+export interface ProxyProvisionJobData {
+  serverId: string;
+  /** Default "provision" (recreate the container from scratch). "restart" just restarts it in place. */
+  action?: "provision" | "restart";
+}
+
+export interface ServiceProvisionJobData {
+  serviceId: string;
+  /** Default "deploy" (create/recreate). The others act on the running stack without recreating it. */
+  action?: "deploy" | "start" | "stop" | "restart";
+}
+
+export interface PlatformOperationJobData {
+  operationId: string;
+}
+
+/** Tick job, no per-run data — it just re-checks every connected server each time it fires. */
+export type ServerMetricsJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it re-checks every domain in use each time it fires. */
+export type TlsCheckJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it sweeps every log-bearing execution table each time it fires. */
+export type LogRetentionJobData = Record<string, never>;
+
+/** Tick job, no per-run data — it re-reads every opted-in server's Traefik metrics each time it fires. */
+export type TrafficAnalyticsJobData = Record<string, never>;
+
+/**
+ * Each BullMQ `Worker` needs its own dedicated connection — it blocks on it waiting for jobs, which
+ * would stall any other command sharing that socket. `Queue` instances and plain PUBLISH/SUBSCRIBE
+ * calls are non-blocking and safe to share a single connection across many roles (see apps/worker's
+ * `sharedConnection` and apps/api's `lib/queue.ts`).
+ */
+export function createRedisConnection(url: string): Redis {
+  return new Redis(url, { maxRetriesPerRequest: null });
+}
+
+export function createServerCheckQueue(connection: Redis): Queue<ServerCheckJobData> {
+  return new Queue<ServerCheckJobData>(SERVER_CHECK_QUEUE, { connection });
+}
+
+export function createServerCheckWorker(
+  connection: Redis,
+  processor: Processor<ServerCheckJobData>,
+): Worker<ServerCheckJobData> {
+  return new Worker<ServerCheckJobData>(SERVER_CHECK_QUEUE, processor, { connection });
+}
+
+export function createApplicationDeployQueue(connection: Redis): Queue<ApplicationDeployJobData> {
+  return new Queue<ApplicationDeployJobData>(APPLICATION_DEPLOY_QUEUE, { connection });
+}
+
+export function createApplicationDeployWorker(
+  connection: Redis,
+  processor: Processor<ApplicationDeployJobData>,
+): Worker<ApplicationDeployJobData> {
+  return new Worker<ApplicationDeployJobData>(APPLICATION_DEPLOY_QUEUE, processor, { connection });
+}
+
+export function createApplicationLifecycleQueue(connection: Redis): Queue<ApplicationLifecycleJobData> {
+  return new Queue<ApplicationLifecycleJobData>(APPLICATION_LIFECYCLE_QUEUE, { connection });
+}
+
+export function createApplicationLifecycleWorker(
+  connection: Redis,
+  processor: Processor<ApplicationLifecycleJobData>,
+): Worker<ApplicationLifecycleJobData> {
+  return new Worker<ApplicationLifecycleJobData>(APPLICATION_LIFECYCLE_QUEUE, processor, { connection });
+}
+
+export function createScheduledTaskQueue(connection: Redis): Queue<ScheduledTaskJobData> {
+  return new Queue<ScheduledTaskJobData>(SCHEDULED_TASK_QUEUE, { connection });
+}
+
+export function createScheduledTaskWorker(
+  connection: Redis,
+  processor: Processor<ScheduledTaskJobData>,
+): Worker<ScheduledTaskJobData> {
+  return new Worker<ScheduledTaskJobData>(SCHEDULED_TASK_QUEUE, processor, { connection });
+}
+
+/** Keyed by the task id so the same scheduler can be edited in place or removed later. */
+export async function addScheduledTask(queue: Queue<ScheduledTaskJobData>, taskId: string, cron: string, timezone: string): Promise<void> {
+  await queue.upsertJobScheduler(taskId, { pattern: cron, tz: timezone }, { data: { taskId } });
+}
+
+export async function removeScheduledTask(queue: Queue<ScheduledTaskJobData>, taskId: string): Promise<void> {
+  await queue.removeJobScheduler(taskId);
+}
+
+export function createDatabaseProvisionQueue(connection: Redis): Queue<DatabaseProvisionJobData> {
+  return new Queue<DatabaseProvisionJobData>(DATABASE_PROVISION_QUEUE, { connection });
+}
+
+export function createDatabaseProvisionWorker(
+  connection: Redis,
+  processor: Processor<DatabaseProvisionJobData>,
+): Worker<DatabaseProvisionJobData> {
+  return new Worker<DatabaseProvisionJobData>(DATABASE_PROVISION_QUEUE, processor, { connection });
+}
+
+export interface DatabaseRestoreJobData {
+  restoreId: string;
+  /** A backup execution of the database, or a file already uploaded to the server. */
+  source: { kind: "execution"; executionId: string } | { kind: "upload"; path: string };
+}
+
+export function createDatabaseRestoreQueue(connection: Redis): Queue<DatabaseRestoreJobData> {
+  return new Queue<DatabaseRestoreJobData>(DATABASE_RESTORE_QUEUE, { connection });
+}
+
+export function createDatabaseRestoreWorker(connection: Redis, processor: Processor<DatabaseRestoreJobData>): Worker<DatabaseRestoreJobData> {
+  return new Worker<DatabaseRestoreJobData>(DATABASE_RESTORE_QUEUE, processor, { connection });
+}
+
+export interface VolumeBackupJobData {
+  /** The volume_backups row to fill in: a backup, or a restore that names its source. */
+  backupId: string;
+}
+
+export function createVolumeBackupQueue(connection: Redis): Queue<VolumeBackupJobData> {
+  return new Queue<VolumeBackupJobData>(VOLUME_BACKUP_QUEUE, { connection });
+}
+
+export function createVolumeBackupWorker(connection: Redis, processor: Processor<VolumeBackupJobData>): Worker<VolumeBackupJobData> {
+  return new Worker<VolumeBackupJobData>(VOLUME_BACKUP_QUEUE, processor, { connection });
+}
+
+export function createDatabaseBackupQueue(connection: Redis): Queue<DatabaseBackupJobData> {
+  return new Queue<DatabaseBackupJobData>(DATABASE_BACKUP_QUEUE, { connection });
+}
+
+export function createDatabaseBackupWorker(
+  connection: Redis,
+  processor: Processor<DatabaseBackupJobData>,
+): Worker<DatabaseBackupJobData> {
+  return new Worker<DatabaseBackupJobData>(DATABASE_BACKUP_QUEUE, processor, { connection });
+}
+
+export function createProxyProvisionQueue(connection: Redis): Queue<ProxyProvisionJobData> {
+  return new Queue<ProxyProvisionJobData>(PROXY_PROVISION_QUEUE, { connection });
+}
+
+export function createProxyProvisionWorker(
+  connection: Redis,
+  processor: Processor<ProxyProvisionJobData>,
+): Worker<ProxyProvisionJobData> {
+  return new Worker<ProxyProvisionJobData>(PROXY_PROVISION_QUEUE, processor, { connection });
+}
+
+export function createServiceProvisionQueue(connection: Redis): Queue<ServiceProvisionJobData> {
+  return new Queue<ServiceProvisionJobData>(SERVICE_PROVISION_QUEUE, { connection });
+}
+
+export function createServiceProvisionWorker(
+  connection: Redis,
+  processor: Processor<ServiceProvisionJobData>,
+): Worker<ServiceProvisionJobData> {
+  return new Worker<ServiceProvisionJobData>(SERVICE_PROVISION_QUEUE, processor, { connection });
+}
+
+export function createServerMetricsQueue(connection: Redis): Queue<ServerMetricsJobData> {
+  return new Queue<ServerMetricsJobData>(SERVER_METRICS_QUEUE, { connection });
+}
+
+export function createServerMetricsWorker(
+  connection: Redis,
+  processor: Processor<ServerMetricsJobData>,
+): Worker<ServerMetricsJobData> {
+  return new Worker<ServerMetricsJobData>(SERVER_METRICS_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert), so restarting the worker never double-schedules it. */
+export async function ensureServerMetricsScheduler(queue: Queue<ServerMetricsJobData>, everyMs = 60_000): Promise<void> {
+  await queue.upsertJobScheduler(SERVER_METRICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createPlatformOperationQueue(connection: Redis): Queue<PlatformOperationJobData> {
+  return new Queue<PlatformOperationJobData>(PLATFORM_OPERATION_QUEUE, { connection });
+}
+
+export function createPlatformOperationWorker(
+  connection: Redis,
+  processor: Processor<PlatformOperationJobData>,
+): Worker<PlatformOperationJobData> {
+  return new Worker<PlatformOperationJobData>(PLATFORM_OPERATION_QUEUE, processor, { connection });
+}
+
+export function createTlsCheckQueue(connection: Redis): Queue<TlsCheckJobData> {
+  return new Queue<TlsCheckJobData>(TLS_CHECK_QUEUE, { connection });
+}
+
+export function createTlsCheckWorker(connection: Redis, processor: Processor<TlsCheckJobData>): Worker<TlsCheckJobData> {
+  return new Worker<TlsCheckJobData>(TLS_CHECK_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Certs don't need minute-level polling, so this defaults to once a day. */
+export async function ensureTlsCheckScheduler(queue: Queue<TlsCheckJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(TLS_CHECK_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createLogRetentionQueue(connection: Redis): Queue<LogRetentionJobData> {
+  return new Queue<LogRetentionJobData>(LOG_RETENTION_QUEUE, { connection });
+}
+
+export function createLogRetentionWorker(connection: Redis, processor: Processor<LogRetentionJobData>): Worker<LogRetentionJobData> {
+  return new Worker<LogRetentionJobData>(LOG_RETENTION_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Once a day is plenty for a day-granularity retention window. */
+export async function ensureLogRetentionScheduler(queue: Queue<LogRetentionJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(LOG_RETENTION_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function createTrafficAnalyticsQueue(connection: Redis): Queue<TrafficAnalyticsJobData> {
+  return new Queue<TrafficAnalyticsJobData>(TRAFFIC_ANALYTICS_QUEUE, { connection });
+}
+
+export function createTrafficAnalyticsWorker(connection: Redis, processor: Processor<TrafficAnalyticsJobData>): Worker<TrafficAnalyticsJobData> {
+  return new Worker<TrafficAnalyticsJobData>(TRAFFIC_ANALYTICS_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Every 5 minutes: it's opt-in and one more SSH round-trip, no need for CPU/mem's 60s cadence. */
+export async function ensureTrafficAnalyticsScheduler(queue: Queue<TrafficAnalyticsJobData>, everyMs = 5 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(TRAFFIC_ANALYTICS_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+/** A schedule's job scheduler is keyed by `scheduleId` so it can be found again to remove or edit in place. */
+export async function addBackupSchedule(
+  queue: Queue<DatabaseBackupJobData>,
+  scheduleId: string,
+  cron: string,
+  timezone: string,
+): Promise<void> {
+  await queue.upsertJobScheduler(scheduleId, { pattern: cron, tz: timezone }, { data: { scheduleId } });
+}
+
+export async function removeBackupSchedule(queue: Queue<DatabaseBackupJobData>, scheduleId: string): Promise<void> {
+  await queue.removeJobScheduler(scheduleId);
+}
+
+export interface DockerCleanupJobData {
+  serverId: string;
+  manual?: boolean;
+}
+
+export function createDockerCleanupQueue(connection: Redis): Queue<DockerCleanupJobData> {
+  return new Queue<DockerCleanupJobData>(DOCKER_CLEANUP_QUEUE, { connection });
+}
+
+export function createDockerCleanupWorker(connection: Redis, processor: Processor<DockerCleanupJobData>): Worker<DockerCleanupJobData> {
+  return new Worker<DockerCleanupJobData>(DOCKER_CLEANUP_QUEUE, processor, { connection });
+}
+
+/** One schedule per server, keyed by the server's own id (upsert re-keys cron/timezone in place). */
+export async function addDockerCleanupSchedule(queue: Queue<DockerCleanupJobData>, serverId: string, cron: string, timezone: string): Promise<void> {
+  await queue.upsertJobScheduler(serverId, { pattern: cron, tz: timezone }, { data: { serverId } });
+}
+
+export async function removeDockerCleanupSchedule(queue: Queue<DockerCleanupJobData>, serverId: string): Promise<void> {
+  await queue.removeJobScheduler(serverId);
+}
+
+export interface CaCertificateJobData {
+  serverId: string;
+  host: string;
+  action: "install" | "remove";
+  /** The CA's PEM content — required for "install", unused for "remove". */
+  pem?: string;
+}
+
+export function createCaCertificateQueue(connection: Redis): Queue<CaCertificateJobData> {
+  return new Queue<CaCertificateJobData>(CA_CERTIFICATE_QUEUE, { connection });
+}
+
+export function createCaCertificateWorker(connection: Redis, processor: Processor<CaCertificateJobData>): Worker<CaCertificateJobData> {
+  return new Worker<CaCertificateJobData>(CA_CERTIFICATE_QUEUE, processor, { connection });
+}
+
+export interface CloudflareTunnelJobData {
+  serverId: string;
+  action: "install" | "remove";
+  /** The tunnel token from Cloudflare's dashboard — required for "install", unused for "remove". */
+  token?: string;
+}
+
+export function createCloudflareTunnelQueue(connection: Redis): Queue<CloudflareTunnelJobData> {
+  return new Queue<CloudflareTunnelJobData>(CLOUDFLARE_TUNNEL_QUEUE, { connection });
+}
+
+export function createCloudflareTunnelWorker(connection: Redis, processor: Processor<CloudflareTunnelJobData>): Worker<CloudflareTunnelJobData> {
+  return new Worker<CloudflareTunnelJobData>(CLOUDFLARE_TUNNEL_QUEUE, processor, { connection });
+}
+
+export interface ApplicationRoutingJobData {
+  applicationId: string;
+}
+
+export function createApplicationRoutingQueue(connection: Redis): Queue<ApplicationRoutingJobData> {
+  return new Queue<ApplicationRoutingJobData>(APPLICATION_ROUTING_QUEUE, { connection });
+}
+
+export function createApplicationRoutingWorker(connection: Redis, processor: Processor<ApplicationRoutingJobData>): Worker<ApplicationRoutingJobData> {
+  return new Worker<ApplicationRoutingJobData>(APPLICATION_ROUTING_QUEUE, processor, { connection });
+}
+
+/** Tick job, no per-run data — see apps/worker/src/jobs/apiTokenExpiry.ts. */
+export type ApiTokenExpiryJobData = Record<string, never>;
+
+export function createApiTokenExpiryQueue(connection: Redis): Queue<ApiTokenExpiryJobData> {
+  return new Queue<ApiTokenExpiryJobData>(API_TOKEN_EXPIRY_QUEUE, { connection });
+}
+
+export function createApiTokenExpiryWorker(connection: Redis, processor: Processor<ApiTokenExpiryJobData>): Worker<ApiTokenExpiryJobData> {
+  return new Worker<ApiTokenExpiryJobData>(API_TOKEN_EXPIRY_QUEUE, processor, { connection });
+}
+
+/** Called once at worker boot — idempotent (upsert). Once a day, same cadence as the TLS expiry check. */
+export async function ensureApiTokenExpiryScheduler(queue: Queue<ApiTokenExpiryJobData>, everyMs = 24 * 60 * 60 * 1000): Promise<void> {
+  await queue.upsertJobScheduler(API_TOKEN_EXPIRY_SCHEDULER_ID, { every: everyMs }, { data: {} });
+}
+
+export function publishServerEvent(connection: Redis, event: WsServerEvent): Promise<number> {
+  return connection.publish(SERVER_EVENTS_CHANNEL, JSON.stringify(event));
+}
+
+/** `connection` is dedicated to this subscription once called — ioredis puts it in subscriber mode. */
+export function subscribeServerEvents(connection: Redis, onEvent: (event: WsServerEvent) => void): void {
+  connection.subscribe(SERVER_EVENTS_CHANNEL);
+  connection.on("message", (channel, message) => {
+    if (channel !== SERVER_EVENTS_CHANNEL) return;
+    try {
+      onEvent(JSON.parse(message) as WsServerEvent);
+    } catch {
+      // ignore malformed payloads rather than crashing the subscriber
+    }
+  });
+}

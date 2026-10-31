@@ -1,0 +1,15 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "Excalidraw"
+description: "Collaborative whiteboard with a hand-drawn look."
+icon: draw
+category: productivity
+website: "https://excalidraw.com"
+main: excalidraw
+port: 80
+env: {}
+compose: |
+  services:
+    excalidraw:
+      image: excalidraw/excalidraw:latest
+      restart: unless-stopped

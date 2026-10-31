@@ -1,0 +1,26 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "RabbitMQ"
+description: "Fila de mensagens com o plugin de management incluso."
+icon: sync_alt
+category: messaging
+website: "https://www.rabbitmq.com"
+docs: "https://www.rabbitmq.com/docs"
+notes: "The management UI is on 15672 (the domain); applications in the environment use 5672 through the internal name."
+main: rabbitmq
+port: 15672
+env:
+  RABBITMQ_DEFAULT_USER: "admin"
+  RABBITMQ_DEFAULT_PASS: "$generate:password"
+compose: |
+  services:
+    rabbitmq:
+      image: rabbitmq:3-management-alpine
+      restart: unless-stopped
+      environment:
+        - RABBITMQ_DEFAULT_USER=${RABBITMQ_DEFAULT_USER}
+        - RABBITMQ_DEFAULT_PASS=${RABBITMQ_DEFAULT_PASS}
+      volumes:
+        - data:/var/lib/rabbitmq
+  volumes:
+    data: {}

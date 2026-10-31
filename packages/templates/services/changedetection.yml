@@ -1,0 +1,19 @@
+# yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
+# port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
+name: "changedetection.io"
+description: "Alerts you when a web page changes (prices, stock, documentation)."
+icon: difference
+category: monitoring
+website: "https://changedetection.io"
+main: changedetection
+port: 5000
+env: {}
+compose: |
+  services:
+    changedetection:
+      image: ghcr.io/dgtlmoon/changedetection.io:latest
+      restart: unless-stopped
+      volumes:
+        - data:/datastore
+  volumes:
+    data: {}
