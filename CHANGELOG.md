@@ -29,12 +29,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - English as the default interface language, with an optional Portuguese translation.
 - Project documentation: README, contributing guide, security policy, code of conduct and the `docs/` folder.
 - Memory guard (optional, per server): when RAM stays above a threshold, stops the least important applications and services first (priority low, then normal; critical and databases are never stopped) and starts them again once memory recovers. Priority is set per application and service. Actions are written to the audit log and sent as notifications.
+- Server capacity card (*Metrics*): adds up the memory limits of everything on a server against the RAM it has and flags servers that promise more than they can give. The metrics check now also reports the server's total memory.
+- Documentation: [small-server.md](docs/small-server.md) (running many projects on 1 vCPU / 4 GB, with what is measured and what is not) and [coolify-comparison.md](docs/coolify-comparison.md) (feature gaps against Coolify 4.5.3).
 
 ### Fixed
 
 - Service templates converted from Coolify: `${VAR:?value}` is now a default (`${VAR:-value}`) instead of a mandatory variable (Palworld, Satisfactory, Convex, Healthchecks), Deno KV uses a named volume instead of `COOLIFY_VOLUME_APP`, and every template now passes `docker compose config` (the remaining 18 failures are variables that are required on purpose).
-
 - The API failed to start because the container file browser routes named the resource id `:resourceId` while the application, service and database routes on the same path use `:applicationId`, `:serviceId` and `:databaseId`. A test now compiles every route module together so this cannot slip through again.
+- Database backups to S3 and restores from S3 no longer load the whole file into the worker's memory (a large dump could exhaust the worker on a small server): they are streamed in both directions, and so are backup downloads through the API. Measured against a real SSH server and S3: sending 200 MB to S3 grew the process by 25 MB, restoring 400 MB from S3 grew it by 31 MB. Writing to the server now goes through a `cat` on an SSH channel instead of SFTP, which is also about 20 times faster.
+- The sidebar showed only *Dashboard* on the landing page; Servers, Projects, Settings and the other sections now appear there too.
+- A migration whose timestamp is older than the previous one is skipped silently by drizzle; a test now checks that the journal only moves forward.
+- Production compose is sized for small hosts: PostgreSQL tuned for about 18 connections, Redis capped at 128 MB, a database pool of 6 per service.
 
 ### Known limitations
 

@@ -44,6 +44,17 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 ## Planned
 
+From the [comparison with Coolify](coolify-comparison.md), in priority order:
+
+- **A domain with automatic HTTPS for the panel itself** (an instance domain in *Settings*, served through the server's Traefik with Let's Encrypt), so a normal install does not need Caddy, nginx or a tunnel in front.
+- **A first-run guide**: add a server, set the domain, create the first resource.
+- **Lost-password recovery.** Without an e-mail service, a command run on the host (`yeah reset-password`) fits a single-admin install better than a reset link.
+- **Backup of the panel's own database** to S3 on a schedule.
+- **Pre/post-deployment commands**, a **custom proxy configuration** editor with a certificate view, and a **per-server switch for the web terminal**.
+- **A visual pass** over spacing, surfaces and the light theme (see the interface notes in the comparison).
+
+Also planned:
+
 - **Secret-manager integrations**: remote references resolved at deployment time (Vault, Infisical, AWS Secrets Manager). Needs a provider decision and testing against a real one.
 - **Skip the Compose build when images did not change**, and **drain seconds** for rolling updates. Optimisations that need to be measured on real builds.
 - **Container name prefix**: readable names instead of `yeah-app-<id>`. Deferred on purpose: the current name is the key for routing, the waker, metrics and backups, so changing it is a migration.

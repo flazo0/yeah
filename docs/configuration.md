@@ -35,7 +35,7 @@ All optional; empty means the default.
 | `PATCH_CHECK_INTERVAL_SECONDS` | 21600 (6 h, minimum 600) | How often the worker checks each connected server for OS updates (`apt`) |
 | `LOG_RETENTION_DAYS` | 90 | Days until the text log of finished deployments, backups, tasks, cleanups and updates is cleared (history stays). `0` disables |
 | `AUDIT_RETENTION_DAYS` | 365 | How long the audit log is kept. `0` keeps it forever |
-| `DB_POOL_MAX` | Bun default | Maximum Postgres pool size per process (`api`, `worker`). No recommended value yet; it needs measuring under load |
+| `DB_POOL_MAX` | Bun default (6 in `docker-compose.prod.yml`) | Maximum Postgres pool size per process (`api`, `worker`, `ws`). The production compose uses 6, so the panel holds at most about 18 connections against `max_connections=50` |
 | `FILE_BROWSER_WRITES` | `false` | Allows changing files from the container file browser (save, upload, create folder, delete). Reading is always allowed. See [security.md](security.md#container-file-browser-writes) |
 | `FILE_BROWSER_UPLOAD_MAX_MB` | 10 (1 to 100) | Largest file the file browser accepts as an upload |
 | `LOG_FORMAT` | `json` | `json` (one JSON line per event) or `text` |
@@ -49,15 +49,17 @@ Memory limits already applied in `docker-compose.prod.yml`:
 
 | Service | Maximum memory |
 |---|---|
-| postgres | 512 MB |
-| redis | 320 MB (`maxmemory 256mb`) |
+| postgres | 384 MB (`POSTGRES_MEMORY_LIMIT`), started with `shared_buffers=64MB` (`POSTGRES_SHARED_BUFFERS`) and `max_connections=50` |
+| redis | 192 MB (`maxmemory 128mb`) |
 | api | 384 MB |
 | worker | 512 MB |
 | ws | 128 MB |
 | web | 64 MB |
 | cloudflared (optional) | 96 MB |
 
-That adds up to about 2 GB in the worst case, leaving the rest of the machine to your apps if it is also a deploy server.
+That adds up to about 1.5 GB in the worst case (a fraction of that in practice), leaving the rest of the machine to your apps if it is also a deploy server.
+
+For the full picture of a 1 vCPU / 4 GB server running many projects (memory budget, limits, sleep, the memory guard, disk), see [small-server.md](small-server.md).
 
 Levers to squeeze further:
 

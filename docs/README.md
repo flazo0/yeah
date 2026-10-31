@@ -9,6 +9,8 @@
 | [api.md](api.md) | HTTP routes, WebSocket events, CI API and CLI |
 | [security.md](security.md) | Security model: encryption at rest, authentication, abuse protection, audit |
 | [troubleshooting.md](troubleshooting.md) | Common problems and fixes |
+| [small-server.md](small-server.md) | Running many projects on a 1 vCPU / 4 GB server: budget, settings, what is verified |
+| [coolify-comparison.md](coolify-comparison.md) | Feature gaps against Coolify 4.5.3, with priorities |
 | [roadmap.md](roadmap.md) | What exists, what is unverified, what is planned |
 
 ## Guides
