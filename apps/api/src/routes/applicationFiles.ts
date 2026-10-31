@@ -40,6 +40,8 @@ import { loadDatabase } from "./databases";
 // packages/shared/src/fileBrowser.ts and fileWrite.ts). Request bodies are never logged.
 
 type Kind = "applications" | "services" | "databases";
+/** Each resource type already names its id parameter that way elsewhere; two routes on one path must agree on it. */
+const PARAM: Record<Kind, string> = { applications: "applicationId", services: "serviceId", databases: "databaseId" };
 type Resolved = { ok: true; serverId: string; target: BrowserTarget } | { ok: false; status: number; error: string };
 
 const writesEnabled = () => fileWritesEnabled(process.env.FILE_BROWSER_WRITES);
@@ -48,7 +50,7 @@ async function authorize(kind: Kind, cookie: Record<string, { value?: unknown } 
   const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value as string | undefined);
   if (!user) return { ok: false, status: 401, error: "unauthorized" };
   if (!(await assertMember(params.teamId!, user.id))) return { ok: false, status: 403, error: "forbidden" };
-  const id = params.resourceId!;
+  const id = params[PARAM[kind]]!;
   if (kind === "applications") {
     const row = await loadApplication(params.environmentId!, id);
     if (!row) return { ok: false, status: 404, error: "application not found" };
@@ -118,6 +120,7 @@ async function stageAndWrite(serverId: string, target: BrowserTarget, path: stri
 const containerQuery = t.Optional(t.String({ maxLength: 64 }));
 
 function containerFileRoutes(kind: Kind) {
+  const param = PARAM[kind];
   const writeGate = (op: FileWriteOp, rawPath: string): { status: number; error: string } | { path: string } => {
     if (!writesEnabled()) return { status: 403, error: "file writes are disabled on this instance (set FILE_BROWSER_WRITES=true to allow them)" };
     const path = normalizeBrowserPath(rawPath);
@@ -130,7 +133,7 @@ function containerFileRoutes(kind: Kind) {
   return new Elysia({ prefix: `/teams/:teamId/projects/:projectId/environments/:environmentId/${kind}` })
     .onBeforeHandle(requireEnvironmentScope)
     .get(
-      "/:resourceId/files",
+      `/:${param}/files`,
       async ({ cookie, params, query, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -161,7 +164,7 @@ function containerFileRoutes(kind: Kind) {
       { query: t.Object({ path: t.Optional(t.String({ maxLength: 1100 })), container: containerQuery }) },
     )
     .get(
-      "/:resourceId/files/content",
+      `/:${param}/files/content`,
       async ({ cookie, params, query, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -199,7 +202,7 @@ function containerFileRoutes(kind: Kind) {
       { query: t.Object({ path: t.String({ maxLength: 1100 }), container: containerQuery, edit: t.Optional(t.String({ maxLength: 1 })) }) },
     )
     .put(
-      "/:resourceId/file-save",
+      `/:${param}/file-save`,
       async ({ cookie, params, query, body, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -239,7 +242,7 @@ function containerFileRoutes(kind: Kind) {
       { query: t.Object({ container: containerQuery }), body: t.Object({ path: t.String({ maxLength: 1100 }), content: t.String({ maxLength: MAX_EDIT_FILE_BYTES * 2 }), create: t.Optional(t.Boolean()) }) },
     )
     .post(
-      "/:resourceId/file-upload",
+      `/:${param}/file-upload`,
       async ({ cookie, params, query, body, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -293,7 +296,7 @@ function containerFileRoutes(kind: Kind) {
       { query: t.Object({ container: containerQuery }), body: t.Object({ dir: t.String({ maxLength: 1100 }), name: t.String({ maxLength: 255 }), contentBase64: t.String({ maxLength: 140 * 1024 * 1024 }), overwrite: t.Optional(t.Boolean()) }) },
     )
     .post(
-      "/:resourceId/file-mkdir",
+      `/:${param}/file-mkdir`,
       async ({ cookie, params, query, body, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -324,7 +327,7 @@ function containerFileRoutes(kind: Kind) {
       { query: t.Object({ container: containerQuery }), body: t.Object({ path: t.String({ maxLength: 1100 }) }) },
     )
     .post(
-      "/:resourceId/file-delete",
+      `/:${param}/file-delete`,
       async ({ cookie, params, query, body, set }) => {
         const ctx = await authorize(kind, cookie, params, query.container);
         if (!ctx.ok) {
@@ -363,7 +366,7 @@ function containerFileRoutes(kind: Kind) {
 const applicationFiles = containerFileRoutes("applications") as unknown as Elysia;
 const databaseFiles = containerFileRoutes("databases") as unknown as Elysia;
 const servicesFiles = containerFileRoutes("services") as unknown as Elysia;
-const serviceContainers = new Elysia({ prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/services" }).onBeforeHandle(requireEnvironmentScope).get("/:resourceId/files/containers", async ({ cookie, params, set }) => {
+const serviceContainers = new Elysia({ prefix: "/teams/:teamId/projects/:projectId/environments/:environmentId/services" }).onBeforeHandle(requireEnvironmentScope).get("/:serviceId/files/containers", async ({ cookie, params, set }) => {
   const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
   if (!user) {
     set.status = 401;
@@ -373,7 +376,7 @@ const serviceContainers = new Elysia({ prefix: "/teams/:teamId/projects/:project
     set.status = 403;
     return { error: "forbidden" };
   }
-  const row = await loadService(params.environmentId, params.resourceId);
+  const row = await loadService(params.environmentId, params.serviceId);
   if (!row) {
     set.status = 404;
     return { error: "service not found" };

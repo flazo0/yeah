@@ -33,6 +33,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - Service templates converted from Coolify: `${VAR:?value}` is now a default (`${VAR:-value}`) instead of a mandatory variable (Palworld, Satisfactory, Convex, Healthchecks), Deno KV uses a named volume instead of `COOLIFY_VOLUME_APP`, and every template now passes `docker compose config` (the remaining 18 failures are variables that are required on purpose).
 
+- The API failed to start because the container file browser routes named the resource id `:resourceId` while the application, service and database routes on the same path use `:applicationId`, `:serviceId` and `:databaseId`. A test now compiles every route module together so this cannot slip through again.
+
 ### Known limitations
 
 - Several features were verified with unit tests only and have not been exercised on real infrastructure yet; see [docs/roadmap.md](docs/roadmap.md#verification-status).
