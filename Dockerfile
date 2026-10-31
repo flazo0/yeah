@@ -4,7 +4,7 @@
 # Pinned exact (not the floating "1-alpine" tag) — 1.4.x broke vue-tsc's .vue module
 # resolution silently (every .vue import became a TS2307 "module not found" even though
 # the files and deps were all present); 1.3.14 is what local dev actually uses and verified working.
-FROM oven/bun:1.3.14-alpine AS base
+FROM oven/bun:1.4.4-alpine AS base
 WORKDIR /app
 # Baked in at build time so the running API can report "you're N commits behind" — the image has
 # no .git directory (only specific paths get COPY'd below), so this is the only way it knows.
