@@ -139,7 +139,7 @@ async function engineUid(database: typeof databases.$inferSelect, run: (command:
   const user = ENGINE_RUN_USER[database.engine];
   try {
     const out = (await run(`docker run --rm --entrypoint sh ${shellQuote(database.image)} -c ${shellQuote(`id -u ${user} 2>/dev/null`)}`, "uid lookup")).trim();
-    return /^d+$/.test(out) ? out : null;
+    return /^\d+$/.test(out) ? out : null;
   } catch {
     return null;
   }
