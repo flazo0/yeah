@@ -67,9 +67,13 @@ Deployment logs can redact environment variable values (a per-application option
 - Per-application password protection is HTTP basic auth enforced by Traefik; only the bcrypt hash is stored.
 - The `SECURITY.md` hardening checklist summarizes what operators should do.
 
+## WebSocket channel
+
+The `ws` service refuses an upgrade without a valid `yeah_session` cookie (401) and, when `WEB_ORIGIN` is set, with a foreign `Origin` (403). Sessions are validated against the same `sessions` table as the API (`findSessionUserId` in `@yeah/db`); the service never reads encrypted columns. Each event is routed to the team that owns the resource it concerns (resolved from Postgres and cached for five minutes), and only sockets of members of that team receive it; events that cannot be attributed are dropped. Every 60 seconds each socket re-checks its session and team list and is closed (code 4401) if the session ended.
+
 ## Known gaps
 
-- The WebSocket server has no authentication of its own; the stream carries state and log events only, and clients filter by IDs they already know. A private per-user channel is on the roadmap.
+- The WebSocket channel is authenticated, but membership changes and session revocation take up to 60 seconds to reach already-open sockets, and platform-operation events (self-update and host update logs) go to every signed-in user because they belong to the instance, not to a team. The channel is also not yet tested end to end (see [roadmap.md](roadmap.md#verification-status)).
 - The installer serves the dashboard over plain HTTP by default; HTTPS in front of it is the operator's responsibility.
 - Read-only token calls (`GET`) are not audited; only changes and authentication events are.
 - Several security-relevant flows were tested with unit tests only; see the verification status in [roadmap.md](roadmap.md#verification-status).

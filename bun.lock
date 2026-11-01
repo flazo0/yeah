@@ -89,8 +89,10 @@
       "name": "@yeah/ws",
       "version": "0.0.1",
       "dependencies": {
+        "@yeah/db": "workspace:*",
         "@yeah/queue": "workspace:*",
         "@yeah/shared": "workspace:*",
+        "drizzle-orm": "^0.44.7",
       },
       "devDependencies": {
         "typescript": "^5.7.3",
