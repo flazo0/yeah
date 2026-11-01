@@ -5,6 +5,7 @@ import { db } from "../lib/db";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
 import { assertMember } from "../lib/access";
 import { resolveApiToken } from "../lib/apiTokenAuth";
+import { recordTokenAction } from "../lib/audit";
 import { ipAllowed } from "../lib/ipAllowlist";
 import { clientIp } from "../lib/rateLimit";
 import { listApplications, listDatabases, listServices, listDeployments, triggerBackup, triggerDeploy } from "../lib/ciActions";
@@ -23,7 +24,8 @@ export const mcpRoutes = new Elysia({ prefix: "/teams/:teamId" })
       set.status = 401;
       return { error: "unauthorized" };
     }
-    if (!ipAllowed(clientIp(request.headers, server?.requestIP(request)?.address), token.allowedIps)) {
+    const ip = clientIp(request.headers, server?.requestIP(request)?.address);
+    if (!ipAllowed(ip, token.allowedIps)) {
       set.status = 403;
       return { error: "IP not allowed for this token" };
     }
@@ -38,8 +40,16 @@ export const mcpRoutes = new Elysia({ prefix: "/teams/:teamId" })
       listDatabases: () => listDatabases(teamId),
       listServices: () => listServices(teamId),
       listDeployments: (id) => listDeployments(teamId, id),
-      deploy: (id, force) => triggerDeploy(teamId, id, force),
-      backup: (id) => triggerBackup(teamId, id),
+      deploy: async (id, force) => {
+        const result = await triggerDeploy(teamId, id, force);
+        if (result.ok) void recordTokenAction({ teamId, tokenName: token.name, action: "Started a deployment (MCP)", resourceType: "application", resourceId: id, ip, path: request.url ? new URL(request.url).pathname : "" });
+        return result;
+      },
+      backup: async (id) => {
+        const result = await triggerBackup(teamId, id);
+        if (result.ok) void recordTokenAction({ teamId, tokenName: token.name, action: "Ran a backup (MCP)", resourceType: "database", resourceId: id, ip, path: request.url ? new URL(request.url).pathname : "" });
+        return result;
+      },
     };
     const response = await handleMcp(body as Parameters<typeof handleMcp>[0], ops, token.permission !== "full");
     if (response === null) {

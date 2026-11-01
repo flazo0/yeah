@@ -72,7 +72,10 @@ onMounted(() => load());
           <tbody>
             <tr v-for="e in events" :key="e.id">
               <td>{{ new Date(e.createdAt).toLocaleString(dateLocale()) }}</td>
-              <td>{{ e.actor ?? "—" }}</td>
+              <td>
+                {{ e.actor ?? "—" }}
+                <div v-if="e.ip" class="muted mono">{{ e.ip }}</div>
+              </td>
               <td>
                 <span v-if="e.level === 'warning'" class="badge badge-warn" style="margin-right: 6px">{{ $t("audit.attention") }}</span>
                 {{ e.action }}

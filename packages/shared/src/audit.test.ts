@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { describeAuditRequest } from "./audit";
+import { describeAuditRequest, describeAuthEvent } from "./audit";
 
 const T = "11111111-1111-4111-8111-111111111111";
 const P = "22222222-2222-4222-8222-222222222222";
@@ -32,5 +32,30 @@ describe("describeAuditRequest", () => {
   test("unknown sub-paths fall back to a readable description", () => {
     const r = describeAuditRequest("PUT", `/teams/${T}/projects/${P}/environments/${E}/applications/${A}/healthcheck`, 200);
     expect(r?.action).toBe("Changed healthcheck (application)");
+  });
+
+  test("the versioned token API is recorded like the team routes", () => {
+    const r = describeAuditRequest("POST", `/api/v1/teams/${T}/applications/${A}/deploy`, 202);
+    expect(r).toMatchObject({ teamId: T, action: "Started a deployment", resourceType: "application", resourceId: A });
+    expect(describeAuditRequest("GET", `/api/v1/teams/${T}/applications`, 200)).toBeNull();
+    expect(describeAuditRequest("POST", "/api/v1/other", 200)).toBeNull();
+  });
+
+  test("moving a resource through the token API has a readable action", () => {
+    expect(describeAuditRequest("POST", `/teams/${T}/ci/move-resource`, 200)?.action).toBe("Moved a resource to another environment");
+  });
+
+  test("the MCP endpoint is skipped (its mutating tools are recorded by the route)", () => {
+    expect(describeAuditRequest("POST", `/teams/${T}/mcp`, 200)).toBeNull();
+  });
+});
+
+describe("describeAuthEvent", () => {
+  test("successful events are info, failures are warnings", () => {
+    expect(describeAuthEvent("sign-in")).toEqual({ action: "Signed in", level: "info" });
+    expect(describeAuthEvent("sign-in-passkey").level).toBe("info");
+    expect(describeAuthEvent("sign-out").level).toBe("info");
+    expect(describeAuthEvent("sign-in-failed").level).toBe("warning");
+    expect(describeAuthEvent("second-factor-failed").level).toBe("warning");
   });
 });

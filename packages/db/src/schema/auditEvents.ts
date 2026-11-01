@@ -20,6 +20,8 @@ export const auditEvents = pgTable(
     resourceId: uuid("resource_id"),
     // Ids found in the path (project/application/service/database/server) so names can be looked up later.
     refs: varchar("refs", { length: 2000 }),
+    // Client address of the request. Nullable: rows from before this column existed have none.
+    ip: varchar("ip", { length: 64 }),
     method: varchar("method", { length: 8 }).notNull(),
     path: varchar("path", { length: 512 }).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

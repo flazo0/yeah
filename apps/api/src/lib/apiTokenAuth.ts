@@ -12,6 +12,15 @@ export function hashApiToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
+/** The display name of the token behind an Authorization header, without marking it as used — for the audit log. */
+export async function peekApiTokenName(authorizationHeader: string | undefined | null): Promise<string | null> {
+  if (!authorizationHeader?.startsWith("Bearer ")) return null;
+  const raw = authorizationHeader.slice("Bearer ".length).trim();
+  if (!raw) return null;
+  const [token] = await db.select({ name: apiTokens.name }).from(apiTokens).where(eq(apiTokens.tokenHash, hashApiToken(raw))).limit(1);
+  return token?.name ?? null;
+}
+
 /** Resolves a `Bearer <token>` Authorization header to its row — null if missing, unknown or expired. */
 export async function resolveApiToken(authorizationHeader: string | undefined | null): Promise<ApiToken | null> {
   if (!authorizationHeader?.startsWith("Bearer ")) return null;

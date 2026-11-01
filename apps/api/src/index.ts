@@ -67,8 +67,8 @@ const app = new Elysia()
     requests.set(request, { id, start: performance.now() });
     set.headers["x-request-id"] = id;
   })
-  .onAfterResponse(({ request, set, cookie }) => {
-    void recordAuditFromRequest(request, Number(set.status ?? 200), cookie);
+  .onAfterResponse(({ request, set, cookie, server }) => {
+    void recordAuditFromRequest(request, Number(set.status ?? 200), cookie, clientIp(request.headers, server?.requestIP(request)?.address));
     const info = requests.get(request);
     const path = new URL(request.url).pathname;
     if (!info || path.endsWith("/health")) return;

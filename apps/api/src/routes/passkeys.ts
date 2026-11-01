@@ -6,6 +6,8 @@ import { passkeys, users } from "@yeah/db";
 import { db } from "../lib/db";
 import { createSession, getUserFromSessionId, SESSION_COOKIE, sessionCookieOptions } from "../lib/session";
 import { challenges, relyingParty } from "../lib/webauthnChallenges";
+import { recordAuthEvent } from "../lib/audit";
+import { clientIp } from "../lib/rateLimit";
 
 // Passkeys (WebAuthn): register one or more from the profile, then sign in with it instead of password + 2FA.
 // The relying party is the hostname the panel is served from (must be one of WEB_ORIGIN), so a passkey only
@@ -133,7 +135,7 @@ export const passkeyRoutes = new Elysia({ prefix: "/auth/passkeys" })
   })
   .post(
     "/login/verify",
-    async ({ cookie, request, body, set }) => {
+    async ({ cookie, request, server, body, set }) => {
       const rp = relyingParty(request.headers.get("origin"), webOrigins());
       const key = cookie[CHALLENGE_COOKIE]?.value;
       const expectedChallenge = typeof key === "string" ? challenges.take(`auth:${key}`) : null;
@@ -168,6 +170,7 @@ export const passkeyRoutes = new Elysia({ prefix: "/auth/passkeys" })
         }
         const session = await createSession(user.id);
         cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
+        void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in-passkey", ip: clientIp(request.headers, server?.requestIP(request)?.address), path: "/auth/passkeys/login/verify" });
         return { user: { id: user.id, email: user.email } };
       } catch (err) {
         set.status = 401;

@@ -1,31 +1,90 @@
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
-import { applications, auditEvents, databases, projects, servers, services, type AuditEvent } from "@yeah/db";
-import { describeAuditRequest, type AuditEventDto, type AuditResourceType } from "@yeah/shared";
+import { applications, auditEvents, databases, projects, servers, services, teamMembers, type AuditEvent } from "@yeah/db";
+import { describeAuditRequest, describeAuthEvent, type AuditEventDto, type AuditResourceType, type AuthEventKind } from "@yeah/shared";
 import { db } from "./db";
 import { getUserFromSessionId, SESSION_COOKIE } from "./session";
+import { peekApiTokenName } from "./apiTokenAuth";
 import { createLogger, parseLogLevel } from "@yeah/shared";
 
 const log = createLogger("api", { format: process.env.LOG_FORMAT === "text" ? "text" : "json", minLevel: parseLogLevel(process.env.LOG_LEVEL) });
 
 /** Records a successful mutating request. Never throws — auditing must not break the request it describes. */
-export async function recordAuditFromRequest(request: Request, status: number, cookie: Record<string, { value?: unknown } | undefined>): Promise<void> {
+export async function recordAuditFromRequest(request: Request, status: number, cookie: Record<string, { value?: unknown } | undefined>, ip: string | null = null): Promise<void> {
   try {
     const url = new URL(request.url);
     const info = describeAuditRequest(request.method, url.pathname, status);
     if (!info) return;
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
-    const viaToken = !user && (request.headers.get("authorization") ?? "").toLowerCase().startsWith("bearer ");
+    const authorization = request.headers.get("authorization") ?? "";
+    const viaToken = !user && authorization.toLowerCase().startsWith("bearer ");
+    const tokenName = viaToken ? await peekApiTokenName(authorization) : null;
     await db.insert(auditEvents).values({
       teamId: info.teamId,
       userId: user?.id ?? null,
-      actor: user ? user.email : viaToken ? "API token" : null,
+      actor: user ? user.email : viaToken ? apiTokenActor(tokenName) : null,
       action: info.action,
       level: info.level,
       resourceType: info.resourceType,
       resourceId: info.resourceId,
       refs: JSON.stringify(info.ids),
+      ip,
       method: request.method.toUpperCase(),
       path: url.pathname.slice(0, 512),
+    });
+  } catch (err) {
+    log.warn("audit write failed", { err });
+  }
+}
+
+/** How a token call is attributed: the token's name when it still exists, a generic label otherwise. */
+export function apiTokenActor(name: string | null): string {
+  return name ? `API token: ${name}`.slice(0, 255) : "API token";
+}
+
+/**
+ * Records an authentication event (sign-in, failed attempt, sign-out) in every team the person belongs
+ * to — the audit log is per team, and a team admin should see who got into it. Never throws.
+ */
+export async function recordAuthEvent(input: { userId: string; email: string; kind: AuthEventKind; ip: string | null; path: string }): Promise<void> {
+  try {
+    const info = describeAuthEvent(input.kind);
+    const memberships = await db.select({ teamId: teamMembers.teamId }).from(teamMembers).where(eq(teamMembers.userId, input.userId));
+    if (!memberships.length) return;
+    await db.insert(auditEvents).values(
+      memberships.map((m) => ({
+        teamId: m.teamId,
+        userId: input.userId,
+        actor: input.email,
+        action: info.action,
+        level: info.level,
+        resourceType: "session",
+        resourceId: null,
+        refs: null,
+        ip: input.ip,
+        method: "POST",
+        path: input.path.slice(0, 512),
+      })),
+    );
+  } catch (err) {
+    log.warn("audit write failed", { err });
+  }
+}
+
+/** Records a mutating action done through a token-based channel that the path alone cannot describe (MCP tools). */
+export async function recordTokenAction(input: { teamId: string; tokenName: string | null; action: string; level?: "info" | "warning"; resourceType: AuditResourceType; resourceId: string | null; ip: string | null; path: string }): Promise<void> {
+  try {
+    await db.insert(auditEvents).values({
+      teamId: input.teamId,
+      userId: null,
+      actor: apiTokenActor(input.tokenName),
+      action: input.action,
+      level: input.level ?? "info",
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
+      refs: null,
+      ip: input.ip,
+      method: "POST",
+      path: input.path.slice(0, 512),
     });
   } catch (err) {
     log.warn("audit write failed", { err });
@@ -79,6 +138,7 @@ export async function listAuditEvents(query: AuditQuery): Promise<AuditEventDto[
     resourceType: e.resourceType as AuditResourceType,
     resourceId: e.resourceId,
     resourceName: e.resourceId ? (names.get(e.resourceId) ?? null) : null,
+    ip: e.ip,
     method: e.method,
     path: e.path,
     createdAt: e.createdAt.toISOString(),

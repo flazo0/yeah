@@ -21,12 +21,13 @@ export type AuditResourceType =
   | "log-drain"
   | "api-token"
   | "team"
+  | "session"
   | "other";
 
 export interface AuditEventDto {
   id: string;
   teamId: string;
-  /** Who: the person's email, "API token", or null when unknown. */
+  /** Who: the person's email, "API token: <name>", or null when unknown. */
   actor: string | null;
   action: string;
   level: AuditLevel;
@@ -34,6 +35,8 @@ export interface AuditEventDto {
   resourceId: string | null;
   /** Current name of the resource when it still exists. */
   resourceName: string | null;
+  /** Client address, when it was known (sign-ins and token calls). */
+  ip: string | null;
   method: string;
   path: string;
   createdAt: string;
@@ -92,9 +95,11 @@ const ACTIONS: Record<string, string> = {
   proxy: "Touched the proxy",
   volumes: "Changed the volumes",
   tags: "Changed the tags",
+  "move-resource": "Moved a resource to another environment",
 };
 
-const SKIPPED_SEGMENTS = new Set(["terminal", "search", "health", "audit", "ws"]);
+// "mcp" is one JSON-RPC endpoint for reads and writes alike; its mutating tools are recorded by the route itself.
+const SKIPPED_SEGMENTS = new Set(["terminal", "search", "health", "audit", "ws", "mcp"]);
 
 /**
  * Describes a mutating request for the audit log, or returns null for anything that should not be
@@ -104,7 +109,9 @@ export function describeAuditRequest(method: string, pathname: string, status: n
   const m = method.toUpperCase();
   if (m === "GET" || m === "HEAD" || m === "OPTIONS") return null;
   if (status >= 400) return null;
-  const segments = pathname.split("/").filter(Boolean);
+  let segments = pathname.split("/").filter(Boolean);
+  // The versioned token API (`/api/v1/teams/...`) mirrors the team routes.
+  if (segments[0] === "api" && segments[1] === "v1") segments = segments.slice(2);
   if (segments.some((s) => SKIPPED_SEGMENTS.has(s))) return null;
   if (segments[0] !== "teams" || !segments[1] || !UUID_RE.test(segments[1])) return null;
   const teamId = segments[1]!;
@@ -146,4 +153,27 @@ export function describeAuditRequest(method: string, pathname: string, status: n
     action = `${m === "DELETE" ? "Removed" : "Changed"} ${sub.join("/")} (${noun || "resource"})`;
   }
   return { teamId, action, level: m === "DELETE" || last === "stop" ? "warning" : "info", resourceType, resourceId, ids };
+}
+
+export type AuthEventKind = "sign-in" | "sign-in-passkey" | "sign-in-failed" | "second-factor-failed" | "sign-out";
+
+export interface AuthEventInfo {
+  action: string;
+  level: AuditLevel;
+}
+
+/** What the audit log says for an authentication event. Failures are warnings so they stand out. */
+export function describeAuthEvent(kind: AuthEventKind): AuthEventInfo {
+  switch (kind) {
+    case "sign-in":
+      return { action: "Signed in", level: "info" };
+    case "sign-in-passkey":
+      return { action: "Signed in with a passkey", level: "info" };
+    case "sign-in-failed":
+      return { action: "Failed sign-in attempt (wrong password)", level: "warning" };
+    case "second-factor-failed":
+      return { action: "Failed sign-in attempt (wrong two-factor code)", level: "warning" };
+    case "sign-out":
+      return { action: "Signed out", level: "info" };
+  }
 }

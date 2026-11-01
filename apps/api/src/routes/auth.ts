@@ -8,6 +8,8 @@ import { createSession, destroySession, getUserFromSessionId, sessionCookieOptio
 import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, otpauthUri, verifyTotp } from "../lib/totp";
 import { createDefaultProject } from "../lib/projects";
 import { createLocalhostServerIfConfigured } from "../lib/localhostServer";
+import { recordAuthEvent } from "../lib/audit";
+import { clientIp } from "../lib/rateLimit";
 
 function toSafeUser(user: User): SafeUser {
   return { id: user.id, email: user.email, name: user.name, totpEnabled: user.totpEnabled, createdAt: user.createdAt.toISOString() };
@@ -84,10 +86,13 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
   )
   .post(
     "/login",
-    async ({ body, cookie, set }) => {
+    async ({ body, cookie, set, request, server }) => {
       const rows = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
       const user = rows[0];
+      const ip = clientIp(request.headers, server?.requestIP(request)?.address);
       if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
+        // Unknown e-mail: there is no team to attach the event to, so only a known account is recorded.
+        if (user) void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in-failed", ip, path: "/auth/login" });
         set.status = 401;
         return { error: "invalid credentials" };
       }
@@ -98,6 +103,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
           return { error: "provide the two-factor verification code", code: "totp_required" };
         }
         if (!(await checkSecondFactor(user, body.code))) {
+          void recordAuthEvent({ userId: user.id, email: user.email, kind: "second-factor-failed", ip, path: "/auth/login" });
           set.status = 401;
           return { error: "invalid code", code: "totp_invalid" };
         }
@@ -105,6 +111,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
 
       const session = await createSession(user.id);
       cookie[SESSION_COOKIE]?.set({ value: session.id, ...sessionCookieOptions(session.expiresAt) });
+      void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in", ip, path: "/auth/login" });
 
       return { user: toSafeUser(user) };
     },
@@ -175,7 +182,9 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
     },
     { body: t.Object({ password: t.String(), code: t.String() }) },
   )
-  .post("/logout", async ({ cookie, set }) => {
+  .post("/logout", async ({ cookie, set, request, server }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (user) void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-out", ip: clientIp(request.headers, server?.requestIP(request)?.address), path: "/auth/logout" });
     await destroySession(cookie[SESSION_COOKIE]?.value);
     cookie[SESSION_COOKIE]?.remove();
     set.status = 204;
