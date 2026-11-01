@@ -1080,7 +1080,7 @@
     "availableIn": "Disponível em",
     "nome2": "NOME",
     "nameOfVariable": "Nome da variável {p0}",
-    "value2": "valor",
+    "value2": "Valor",
     "valueOfVariable": "Valor da variável {p0}",
     "hideValue": "Ocultar valor",
     "showValue": "Mostrar valor",
@@ -1101,7 +1101,6 @@
     "fixNamesMarkedTableBefore": "corrija os nomes marcados na tabela antes de salvar",
     "failedSaveVariables": "falha ao salvar variáveis",
     "name2": "Nome",
-    "value2": "Valor",
     "availableIn2": "Disponível em"
   },
   "applicationGeneral": {
@@ -1765,8 +1764,8 @@
     "failedReadLogs": "falha ao ler os logs"
   },
   "appSleepCard": {
-    "titulo": "Dormir quando ocioso",
-    "dica": "Sem acessos pelo tempo escolhido, o container é desligado para liberar memória e CPU. Na próxima requisição ele liga sozinho: o visitante espera um pouco mais naquela primeira resposta (normalmente 1 a 5 segundos, depende do app), sem tela de carregamento. Parar manualmente não adianta: o próximo acesso liga de novo.",
+    "title": "Dormir quando ocioso",
+    "hint": "Sem acessos pelo tempo escolhido, o container é desligado para liberar memória e CPU. Na próxima requisição ele liga sozinho: o visitante espera um pouco mais naquela primeira resposta (normalmente 1 a 5 segundos, depende do app), sem tela de carregamento. Parar manualmente não adianta: o próximo acesso liga de novo.",
     "setDomainUseOption": "Defina um domínio para usar esta opção.",
     "stopWhenNobodyVisiting": "Desligar quando ninguém estiver acessando",
     "sleepAfterBeingIdle": "Dormir depois de ficar sem acesso por",
@@ -1778,8 +1777,8 @@
     "days": "dias"
   },
   "serverPatches": {
-    "titulo": "Atualizações do sistema",
-    "dica": "Verifica sozinho algumas vezes por dia as atualizações do sistema (apt) e avisa por notificação quando há atualização de segurança nova. Pacotes marcados como arriscados (kernel, Docker, SSH…) podem reiniciar serviços ou o servidor.",
+    "title": "Atualizações do sistema",
+    "hint": "Verifica sozinho algumas vezes por dia as atualizações do sistema (apt) e avisa por notificação quando há atualização de segurança nova. Pacotes marcados como arriscados (kernel, Docker, SSH…) podem reiniciar serviços ou o servidor.",
     "pendingUpdates": "Atualizações pendentes",
     "security": "De segurança",
     "rebootRequired": "Reinício necessário",
@@ -1810,8 +1809,8 @@
     "failedChangeOption": "falha ao alterar a opção"
   },
   "serverImages": {
-    "titulo": "Imagens Docker",
-    "dica": "Imagens que existem neste servidor. Para apagar, digite a referência da imagem para confirmar. Imagens em uso por algum container não podem ser apagadas.",
+    "title": "Imagens Docker",
+    "hint": "Imagens que existem neste servidor. Para apagar, digite a referência da imagem para confirmar. Imagens em uso por algum container não podem ser apagadas.",
     "refresh": "Atualizar",
     "noImagesServer": "Nenhuma imagem neste servidor.",
     "image": "Imagem",
@@ -1828,8 +1827,8 @@
     "failedDeleteImage": "falha ao apagar a imagem"
   },
   "audit": {
-    "titulo": "Auditoria",
-    "dica": "Registro de quem mudou o quê neste time: criar, alterar, excluir, parar e implantar. Guarda o tipo de ação e o recurso, nunca os valores enviados (senhas, variáveis). Mantido por 1 ano por padrão.",
+    "title": "Auditoria",
+    "hint": "Registro de quem mudou o quê neste time: criar, alterar, excluir, parar e implantar. Guarda o tipo de ação e o recurso, nunca os valores enviados (senhas, variáveis). Mantido por 1 ano por padrão.",
     "showOnlyAttentionActionsDeletions": "Mostrar só ações de atenção (exclusões e paradas)",
     "noActionsRecordedYet": "Nenhuma ação registrada ainda.",
     "when": "Quando",
@@ -1848,8 +1847,8 @@
     "project": "projeto"
   },
   "appProtectionCard": {
-    "titulo": "Proteção e manutenção",
-    "dica": "Senha: o navegador pede usuário e senha antes de mostrar o app (útil para ambientes de teste). Modo manutenção: o domínio responde uma página de aviso (503) enquanto você mexe, sem parar o app. Os dois valem na hora, sem redeploy.",
+    "title": "Proteção e manutenção",
+    "hint": "Senha: o navegador pede usuário e senha antes de mostrar o app (útil para ambientes de teste). Modo manutenção: o domínio responde uma página de aviso (503) enquanto você mexe, sem parar o app. Os dois valem na hora, sem redeploy.",
     "setDomainUseTheseOptions": "Defina um domínio para usar estas opções.",
     "askUsernamePassword": "Pedir usuário e senha para acessar",
     "username": "Usuário",
@@ -1862,8 +1861,8 @@
     "failedToSave": "falha ao salvar"
   },
   "applicationFiles": {
-    "titulo": "Arquivos do container",
-    "dica": "Navegue pelos arquivos dentro do container em execução (somente leitura). Arquivos grandes são cortados em 256 KB.",
+    "title": "Arquivos do container",
+    "hint": "Navegue pelos arquivos dentro do container em execução (somente leitura). Arquivos grandes são cortados em 256 KB.",
     "up": "Subir",
     "refresh": "Atualizar",
     "binaryFileCannotShownHere": "Arquivo binário: não dá para mostrar aqui.",

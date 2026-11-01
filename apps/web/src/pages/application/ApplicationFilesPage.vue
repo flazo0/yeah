@@ -57,11 +57,11 @@ onMounted(() => open("/"));
   <div v-if="app" class="card" style="margin-bottom: 0">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">folder_open</span>
-      {{ $t("applicationFiles.titulo") }}
+      {{ $t("applicationFiles.title") }}
       <span class="mono" style="margin-left: 12px">{{ path }}</span>
     </div>
     <div class="card-body">
-      <p class="hint mb-16">{{ $t("applicationFiles.dica") }}</p>
+      <p class="hint mb-16">{{ $t("applicationFiles.hint") }}</p>
       <div class="btn-row mb-16">
         <button type="button" class="btn btn-secondary btn-sm" :disabled="loading || path === '/'" @click="open(parentBrowserPath(path))">
           <span class="material-symbols-outlined" style="font-size: 16px">arrow_upward</span>

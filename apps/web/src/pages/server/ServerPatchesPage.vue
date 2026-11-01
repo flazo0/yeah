@@ -82,10 +82,10 @@ onMounted(load);
   <div v-if="server" class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">system_update</span>
-      {{ $t("serverPatches.titulo") }}
+      {{ $t("serverPatches.title") }}
     </div>
     <div class="card-body">
-      <p class="hint mb-16">{{ $t("serverPatches.dica") }}</p>
+      <p class="hint mb-16">{{ $t("serverPatches.hint") }}</p>
       <div v-if="patches" class="grid grid-2 mb-16">
         <div>
           <div class="stat-label">{{ $t("serverPatches.pendingUpdates") }}</div>

@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "RabbitMQ"
-description: "Fila de mensagens com o plugin de management incluso."
+description: "Message queue with the management plugin included."
 icon: sync_alt
 category: messaging
 website: "https://www.rabbitmq.com"

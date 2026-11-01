@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "RedisInsight"
-description: "Interface oficial da Redis pra explorar chaves e rodar comandos."
+description: "Redis official UI to explore keys and run commands."
 icon: query_stats
 category: database
 website: "https://redis.io/insight/"

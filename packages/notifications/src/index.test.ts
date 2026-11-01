@@ -127,9 +127,9 @@ describe("sendNotification", () => {
       captured = { url, body: JSON.parse(init.body as string) };
       return new Response(null, { status: 200 });
     }) as unknown as typeof fetch;
-    expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/meu-topico" }), message)).toBe(true);
+    expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/my-topic" }), message)).toBe(true);
     expect(captured!.url).toBe("https://ntfy.example.com");
-    expect(captured!.body).toMatchObject({ topic: "meu-topico", title: message.title, message: message.body });
+    expect(captured!.body).toMatchObject({ topic: "my-topic", title: message.title, message: message.body });
     expect(await sendNotification(baseChannel({ type: "ntfy", url: "https://ntfy.example.com/" }), message)).toBe(false);
   });
 

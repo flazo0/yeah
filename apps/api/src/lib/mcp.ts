@@ -137,7 +137,7 @@ export async function handleMcp(req: RpcRequest, ops: McpOps, readOnly: boolean)
             role: "user",
             content: {
               type: "text",
-              text: `Investigate the recent deployments of application ${applicationId}: use list_deployments to see the history, compare the status of the latest deployments, and use list_applications to check the current state. Summarize what falhou e sugira próximos passos. Você não tem acesso aos logs de build por aqui — peça ao usuário para colar o trecho relevante se precisar.`,
+              text: `Investigate the recent deployments of application ${applicationId}: use list_deployments to see the history, compare the status of the latest deployments, and use list_applications to check the current state. Summarize what failed and suggest next steps. You have no access to build logs here — ask the user to paste the relevant excerpt if needed.`,
             },
           },
         ],

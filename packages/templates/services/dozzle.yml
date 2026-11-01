@@ -1,11 +1,11 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Dozzle"
-description: "Visualizador de logs de containers em tempo real."
+description: "Real-time container log viewer."
 icon: receipt_long
 category: devops
 website: "https://dozzle.dev"
-notes: "Monta o docker.sock (somente leitura) do servidor."
+notes: "Mounts the server's docker.sock (read-only)."
 main: dozzle
 port: 8080
 env: {}

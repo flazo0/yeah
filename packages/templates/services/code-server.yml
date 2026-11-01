@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "code-server"
-description: "VS Code no navegador, rodando no seu servidor."
+description: "VS Code in the browser, running on your server."
 icon: code
 category: dev
 website: "https://coder.com/docs/code-server"

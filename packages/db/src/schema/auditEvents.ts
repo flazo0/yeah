@@ -12,7 +12,7 @@ export const auditEvents = pgTable(
       .references(() => teams.id, { onDelete: "cascade" })
       .notNull(),
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-    // "token de API" when the call came in through a bearer token instead of a session.
+    // "API token" when the call came in through a bearer token instead of a session.
     actor: varchar("actor", { length: 255 }),
     action: varchar("action", { length: 255 }).notNull(),
     level: varchar("level", { length: 16 }).default("info").notNull(),

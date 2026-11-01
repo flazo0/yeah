@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Wiki.js"
-description: "Wiki moderna com editor Markdown (com PostgreSQL)."
+description: "Modern wiki with a Markdown editor (with PostgreSQL)."
 icon: menu_book
 category: cms
 website: "https://js.wiki"

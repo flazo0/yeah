@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Directus"
-description: "Headless CMS e painel de dados sobre PostgreSQL."
+description: "Headless CMS and data panel on top of PostgreSQL."
 icon: layers
 category: cms
 website: "https://directus.io"

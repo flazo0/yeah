@@ -1,11 +1,11 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Redis Commander"
-description: "GUI web pra inspecionar um Redis existente."
+description: "Web GUI to inspect an existing Redis."
 icon: table_rows
 category: database
 website: "https://github.com/joeferner/redis-commander"
-notes: "Troque REDIS_HOSTS pelo nome interno do seu banco Redis (aba Geral do banco) e a porta."
+notes: "Replace REDIS_HOSTS with the internal name of your Redis database (General tab of the database) and its port."
 main: commander
 port: 8081
 env:

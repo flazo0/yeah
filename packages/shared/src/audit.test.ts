@@ -23,7 +23,7 @@ describe("describeAuditRequest", () => {
 
   test("nested application routes resolve the application and its project", () => {
     const base = `/teams/${T}/projects/${P}/environments/${E}/applications/${A}`;
-    expect(describeAuditRequest("POST", `${base}/deploy`, 200)).toMatchObject({ action: "Iniciou um deploy", resourceType: "application", resourceId: A, ids: { project: P, application: A } });
+    expect(describeAuditRequest("POST", `${base}/deploy`, 200)).toMatchObject({ action: "Started a deployment", resourceType: "application", resourceId: A, ids: { project: P, application: A } });
     expect(describeAuditRequest("PUT", `${base}/domain`, 200)?.action).toBe("Changed the domains");
     expect(describeAuditRequest("POST", `${base}/stop`, 200)?.level).toBe("warning");
     expect(describeAuditRequest("DELETE", base, 200)).toMatchObject({ action: "Deleted application", level: "warning" });

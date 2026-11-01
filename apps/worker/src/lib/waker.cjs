@@ -157,7 +157,7 @@ function escapeHtml(text) {
 
 function maintenancePage(res, maintenance) {
   const message = escapeHtml((maintenance && maintenance.message) || "We are down for maintenance. Back shortly.");
-  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Under maintenance</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0;text-align:center;padding:24px}main{max-width:32rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{margin:0;line-height:1.5;color:#94a3b8}</style></head><body><main><h1>Em manutenção</h1><p>" + message + "</p></main></body></html>";
+  const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Under maintenance</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0;text-align:center;padding:24px}main{max-width:32rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{margin:0;line-height:1.5;color:#94a3b8}</style></head><body><main><h1>Under maintenance</h1><p>" + message + "</p></main></body></html>";
   res.writeHead(503, { "content-type": "text/html; charset=utf-8", "retry-after": "120", "cache-control": "no-store" });
   res.end(html);
 }

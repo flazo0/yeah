@@ -18,7 +18,7 @@ export async function recordAuditFromRequest(request: Request, status: number, c
     await db.insert(auditEvents).values({
       teamId: info.teamId,
       userId: user?.id ?? null,
-      actor: user ? user.email : viaToken ? "token de API" : null,
+      actor: user ? user.email : viaToken ? "API token" : null,
       action: info.action,
       level: info.level,
       resourceType: info.resourceType,

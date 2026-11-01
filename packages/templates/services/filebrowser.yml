@@ -5,7 +5,7 @@ description: "Web file manager with users and sharing."
 icon: folder_open
 category: storage
 website: "https://filebrowser.org"
-notes: "Login inicial: admin / admin — troque na primeira entrada."
+notes: "Initial login: admin / admin — change it on first sign-in."
 main: filebrowser
 port: 80
 env: {}

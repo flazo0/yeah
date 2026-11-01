@@ -8,9 +8,9 @@ describe("waker commands", () => {
   });
 
   test("maintenance-only entries never sleep and carry the message", () => {
-    const cfg = JSON.parse(wakeConfigJson("c", ["a.test"], 80, null, "Volto logo"));
+    const cfg = JSON.parse(wakeConfigJson("c", ["a.test"], 80, null, "Back soon"));
     expect(cfg.idleSeconds).toBe(0);
-    expect(cfg.maintenance).toEqual({ message: "Volto logo" });
+    expect(cfg.maintenance).toEqual({ message: "Back soon" });
     expect(JSON.parse(wakeConfigJson("c", ["a.test"], 80, 5)).maintenance).toBeUndefined();
   });
 

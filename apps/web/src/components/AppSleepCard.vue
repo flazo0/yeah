@@ -41,10 +41,10 @@ async function save() {
 <template>
   <div class="card-header" style="border-top: 1px solid var(--border)">
     <span class="material-symbols-outlined" style="font-size: 18px">bedtime</span>
-    {{ $t("appSleepCard.titulo") }}
+    {{ $t("appSleepCard.title") }}
   </div>
   <div class="card-body">
-    <p class="hint mb-16">{{ $t("appSleepCard.dica") }}</p>
+    <p class="hint mb-16">{{ $t("appSleepCard.hint") }}</p>
     <p v-if="!hasDomain" class="hint mb-16">{{ $t("appSleepCard.setDomainUseOption") }}</p>
     <div class="form-group">
       <label for="app-sleep-enabled" style="display: flex; gap: 8px; align-items: center">

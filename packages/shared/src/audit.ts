@@ -26,7 +26,7 @@ export type AuditResourceType =
 export interface AuditEventDto {
   id: string;
   teamId: string;
-  /** Who: the person's email, "token de API", or null when unknown. */
+  /** Who: the person's email, "API token", or null when unknown. */
   actor: string | null;
   action: string;
   level: AuditLevel;
@@ -64,19 +64,19 @@ const COLLECTIONS: Record<string, { type: AuditResourceType; noun: string }> = {
   tags: { type: "tag", noun: "tag" },
   registries: { type: "registry", noun: "registry" },
   "ssh-keys": { type: "ssh-key", noun: "SSH key" },
-  storages: { type: "storage", noun: "storage S3" },
+  storages: { type: "storage", noun: "S3 storage" },
   "git-sources": { type: "git-source", noun: "Git source" },
   "log-drains": { type: "log-drain", noun: "log destination" },
-  "api-tokens": { type: "api-token", noun: "token de API" },
+  "api-tokens": { type: "api-token", noun: "API token" },
 };
 
 /** Sub-actions that read better than "changed X": `POST .../deploy`, `PUT .../domain`… */
 const ACTIONS: Record<string, string> = {
-  deploy: "Iniciou um deploy",
-  start: "Iniciou",
+  deploy: "Started a deployment",
+  start: "Started",
   stop: "Stopped",
-  restart: "Reiniciou",
-  rollback: "Fez rollback",
+  restart: "Restarted",
+  rollback: "Rolled back",
   domain: "Changed the domains",
   domains: "Changed the domains",
   env: "Changed the environment variables",
@@ -84,14 +84,14 @@ const ACTIONS: Record<string, string> = {
   sleep: "Changed the sleep-when-idle mode",
   source: "Changed the source",
   advanced: "Changed the advanced settings",
-  backup: "Executou um backup",
-  restore: "Restaurou um backup",
+  backup: "Ran a backup",
+  restore: "Restored a backup",
   patches: "Touched the system updates",
   "docker-images": "Touched the Docker images",
   "docker-cleanup": "Touched the Docker cleanup",
-  proxy: "Mexeu no proxy",
-  volumes: "Alterou os volumes",
-  tags: "Alterou as tags",
+  proxy: "Touched the proxy",
+  volumes: "Changed the volumes",
+  tags: "Changed the tags",
 };
 
 const SKIPPED_SEGMENTS = new Set(["terminal", "search", "health", "audit", "ws"]);

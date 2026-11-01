@@ -1080,7 +1080,7 @@
     "availableIn": "Available in",
     "nome2": "NAME",
     "nameOfVariable": "Name of variable {p0}",
-    "value2": "value",
+    "value2": "Value",
     "valueOfVariable": "Value of variable {p0}",
     "hideValue": "Hide value",
     "showValue": "Show value",
@@ -1101,7 +1101,6 @@
     "fixNamesMarkedTableBefore": "fix the names marked in the table before saving",
     "failedSaveVariables": "failed to save variables",
     "name2": "Name",
-    "value2": "Value",
     "availableIn2": "Available in"
   },
   "applicationGeneral": {
@@ -1765,8 +1764,8 @@
     "failedReadLogs": "failed to read the logs"
   },
   "appSleepCard": {
-    "titulo": "Sleep when idle",
-    "dica": "With no traffic for the chosen time, the container is stopped to free memory and CPU. The next request starts it again: the visitor waits a bit longer for that first response (usually 1 to 5 seconds, depending on the app), with no loading page. Stopping it manually does not stick: the next visit starts it again.",
+    "title": "Sleep when idle",
+    "hint": "With no traffic for the chosen time, the container is stopped to free memory and CPU. The next request starts it again: the visitor waits a bit longer for that first response (usually 1 to 5 seconds, depending on the app), with no loading page. Stopping it manually does not stick: the next visit starts it again.",
     "setDomainUseOption": "Set a domain to use this option.",
     "stopWhenNobodyVisiting": "Stop when nobody is visiting",
     "sleepAfterBeingIdle": "Sleep after being idle for",
@@ -1778,8 +1777,8 @@
     "days": "days"
   },
   "serverPatches": {
-    "titulo": "System updates",
-    "dica": "Checks for operating-system updates (apt) a few times a day and sends a notification when new security updates appear. Packages marked risky (kernel, Docker, SSH…) can restart services or the server.",
+    "title": "System updates",
+    "hint": "Checks for operating-system updates (apt) a few times a day and sends a notification when new security updates appear. Packages marked risky (kernel, Docker, SSH…) can restart services or the server.",
     "pendingUpdates": "Pending updates",
     "security": "Security",
     "rebootRequired": "Reboot required",
@@ -1810,8 +1809,8 @@
     "failedChangeOption": "failed to change the option"
   },
   "serverImages": {
-    "titulo": "Docker images",
-    "dica": "Images that exist on this server. To delete one, type its reference to confirm. Images used by a container cannot be deleted.",
+    "title": "Docker images",
+    "hint": "Images that exist on this server. To delete one, type its reference to confirm. Images used by a container cannot be deleted.",
     "refresh": "Refresh",
     "noImagesServer": "No images on this server.",
     "image": "Image",
@@ -1828,8 +1827,8 @@
     "failedDeleteImage": "failed to delete the image"
   },
   "audit": {
-    "titulo": "Audit log",
-    "dica": "A record of who changed what in this team: create, change, delete, stop and deploy. It keeps the kind of action and the resource, never the submitted values (passwords, variables). Kept for 1 year by default.",
+    "title": "Audit log",
+    "hint": "A record of who changed what in this team: create, change, delete, stop and deploy. It keeps the kind of action and the resource, never the submitted values (passwords, variables). Kept for 1 year by default.",
     "showOnlyAttentionActionsDeletions": "Show only attention actions (deletions and stops)",
     "noActionsRecordedYet": "No actions recorded yet.",
     "when": "When",
@@ -1848,8 +1847,8 @@
     "project": "project"
   },
   "appProtectionCard": {
-    "titulo": "Protection and maintenance",
-    "dica": "Password: the browser asks for a username and password before showing the app (handy for test environments). Maintenance mode: the domain answers a notice page (503) while you work, without stopping the app. Both apply right away, no redeploy.",
+    "title": "Protection and maintenance",
+    "hint": "Password: the browser asks for a username and password before showing the app (handy for test environments). Maintenance mode: the domain answers a notice page (503) while you work, without stopping the app. Both apply right away, no redeploy.",
     "setDomainUseTheseOptions": "Set a domain to use these options.",
     "askUsernamePassword": "Ask for a username and password",
     "username": "Username",
@@ -1862,8 +1861,8 @@
     "failedToSave": "failed to save"
   },
   "applicationFiles": {
-    "titulo": "Container files",
-    "dica": "Browse the files inside the running container (read-only). Large files are cut at 256 KB.",
+    "title": "Container files",
+    "hint": "Browse the files inside the running container (read-only). Large files are cut at 256 KB.",
     "up": "Up",
     "refresh": "Refresh",
     "binaryFileCannotShownHere": "Binary file: it cannot be shown here.",

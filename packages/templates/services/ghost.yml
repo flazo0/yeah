@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Ghost"
-description: "Plataforma de blog e newsletter — roda com SQLite embutido, sem banco externo."
+description: "Blog and newsletter platform — runs on embedded SQLite, no external database."
 icon: article
 category: cms
 website: "https://ghost.org"

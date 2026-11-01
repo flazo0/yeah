@@ -51,10 +51,10 @@ async function save() {
 <template>
   <div class="card-header" style="border-top: 1px solid var(--border)">
     <span class="material-symbols-outlined" style="font-size: 18px">lock</span>
-    {{ $t("appProtectionCard.titulo") }}
+    {{ $t("appProtectionCard.title") }}
   </div>
   <div class="card-body">
-    <p class="hint mb-16">{{ $t("appProtectionCard.dica") }}</p>
+    <p class="hint mb-16">{{ $t("appProtectionCard.hint") }}</p>
     <p v-if="!hasDomain" class="hint mb-16">{{ $t("appProtectionCard.setDomainUseTheseOptions") }}</p>
 
     <div class="form-group">

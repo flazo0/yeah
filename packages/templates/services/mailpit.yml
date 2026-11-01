@@ -1,11 +1,11 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Mailpit"
-description: "Servidor SMTP de teste com caixa de entrada web — nada sai pra internet."
+description: "Test SMTP server with a web inbox — nothing leaves for the internet."
 icon: mail
 category: dev
 website: "https://mailpit.axllent.org"
-notes: "SMTP em mailpit:1025 pelo nome interno."
+notes: "SMTP at mailpit:1025 through the internal name."
 main: mailpit
 port: 8025
 env: {}

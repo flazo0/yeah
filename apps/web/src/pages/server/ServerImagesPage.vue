@@ -57,11 +57,11 @@ onMounted(load);
   <div v-if="server" class="card">
     <div class="card-header">
       <span class="material-symbols-outlined" style="font-size: 18px">deployed_code</span>
-      {{ $t("serverImages.titulo") }}
+      {{ $t("serverImages.title") }}
       <button type="button" class="btn btn-secondary btn-sm" style="margin-left: auto" :disabled="loading" @click="load">{{ $t("serverImages.refresh") }}</button>
     </div>
     <div class="card-body">
-      <p class="hint mb-16">{{ $t("serverImages.dica") }}</p>
+      <p class="hint mb-16">{{ $t("serverImages.hint") }}</p>
       <div v-if="!loading && !images.length" class="empty-state">{{ $t("serverImages.noImagesServer") }}</div>
       <div v-else class="table-wrap">
         <table>

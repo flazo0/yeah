@@ -54,9 +54,9 @@ onMounted(() => load());
   <PageState v-if="loading" loading />
   <div v-else>
     <div class="page-header">
-      <h1>{{ $t("audit.titulo") }}</h1>
+      <h1>{{ $t("audit.title") }}</h1>
     </div>
-    <p class="hint mb-16">{{ $t("audit.dica") }}</p>
+    <p class="hint mb-16">{{ $t("audit.hint") }}</p>
     <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
     <div class="form-group mb-16" style="display: flex; align-items: center; gap: 8px">
       <input id="audit-warnings" v-model="onlyWarnings" type="checkbox" @change="load()" />

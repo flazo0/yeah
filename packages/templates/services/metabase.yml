@@ -1,7 +1,7 @@
 # yeah service template. Fields: name, description, icon (Material Symbols), category, tags, main (the service that receives the domain),
 # port (that service's port), env (initial values; "$generate:password|hex|base64" generates a new secret per instance) and compose.
 name: "Metabase"
-description: "BI e dashboards conectando em qualquer banco de dados."
+description: "BI and dashboards connecting to any database."
 icon: bar_chart
 category: analytics
 website: "https://www.metabase.com"
