@@ -5,7 +5,7 @@ import { servers } from "./servers";
 import { environments } from "./projects";
 import { resourceLimitColumns } from "./columns";
 
-export const databaseEngineEnum = pgEnum("database_engine", ["postgresql", "mysql", "mariadb", "redis", "keydb", "dragonfly", "mongodb", "clickhouse"]);
+export const databaseEngineEnum = pgEnum("database_engine", ["postgresql", "mysql", "mariadb", "redis", "keydb", "dragonfly", "mongodb", "clickhouse", "sqlite"]);
 export const databaseStatusEnum = pgEnum("database_status", ["idle", "provisioning", "running", "error"]);
 
 export const databases = pgTable("databases", {

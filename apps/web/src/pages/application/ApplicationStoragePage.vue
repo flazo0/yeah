@@ -24,7 +24,7 @@ const deletingId = ref<string | null>(null);
 const editingId = ref<string | null>(null);
 const editContent = ref("");
 
-const kindLabels: Record<VolumeKind, string> = { volume: i18n.global.t("applicationStorage.kindVolume"), bind: i18n.global.t("applicationStorage.serverDirectory"), file: i18n.global.t("applicationStorage.kindFile") };
+const kindLabels: Record<VolumeKind, string> = { volume: i18n.global.t("applicationStorage.kindVolume"), bind: i18n.global.t("applicationStorage.serverDirectory"), file: i18n.global.t("applicationStorage.kindFile"), database: i18n.global.t("applicationStorage.kindDatabase") };
 
 async function load() {
   try {
@@ -181,7 +181,7 @@ async function saveEdit(v: ApplicationVolumeDto) {
                 <td>{{ kindLabels[v.kind] }}</td>
                 <td>{{ v.name }}</td>
                 <td class="mono">{{ v.mountPath }}</td>
-                <td class="mono">{{ v.kind === "bind" ? v.hostPath : v.kind === "file" ? $t("applicationStorage.charactersCount", { n: (v.fileContent ?? "").length }) : $t("applicationStorage.managedByDocker") }}</td>
+                <td class="mono">{{ v.kind === "bind" ? v.hostPath : v.kind === "file" ? $t("applicationStorage.charactersCount", { n: (v.fileContent ?? "").length }) : v.kind === "database" ? $t("applicationStorage.databaseVolume") : $t("applicationStorage.managedByDocker") }}</td>
                 <td>
                   <div class="btn-row">
                     <button v-if="app?.buildPack !== 'docker_compose'" type="button" class="btn btn-secondary btn-sm" :disabled="backupBusy" @click="backupVolume(v)">{{ $t("applicationStorage.backup") }}</button>

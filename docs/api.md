@@ -139,6 +139,7 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | GET | `.../databases/:id/backup-executions` | — | Last 50 executions |
 | GET | `.../databases/:id/backup-executions/:executionId/download` | — | Local: streamed over SFTP. S3: 302 redirect to a presigned URL |
 | DELETE | `.../databases/:id/backup-executions/:executionId` | — | Deletes the file (S3 or remote) and the row |
+| POST | `.../databases/:id/connect-application` | `{ applicationId, envKey?, mountPath? }` | SQLite only: mounts the database's volume in an application of the same environment and server (a `database`-kind storage row, default `/data`) and sets `envKey` (default `DATABASE_URL`) to `file:<mountPath>/<name>.db`. Applies on the application's next deploy. 400 for other engines, Compose applications or another server |
 | DELETE | `.../databases/:id` | — | Removes the remote container and volume over SSH (best effort), unregisters the BullMQ schedule, deletes the row (cascade) |
 
 ## WebSocket (`ws`, separate port — `WS_PORT`)

@@ -1,5 +1,5 @@
 import type { Database } from "@yeah/db";
-import { DATABASE_ENGINES, LOG_ROTATION_FLAGS, resourceLimitFlags, shellQuote } from "@yeah/shared";
+import { DATABASE_ENGINES, LOG_ROTATION_FLAGS, resourceLimitFlags, shellQuote, SQLITE_MOUNT_DIR, sqliteFilePath } from "@yeah/shared";
 
 // Pure command-building logic, kept separate from provisionDatabase.ts's SSH execution for the
 // same reason as deployApplication.commands.ts — see that file's comment.
@@ -31,7 +31,19 @@ export const ENGINE_RUN_USER: Record<Database["engine"], string> = {
   dragonfly: "dfly",
   mongodb: "mongodb",
   clickhouse: "clickhouse",
+  sqlite: "root",
 };
+
+/**
+ * What the SQLite holder container runs: it creates the (empty) database file, makes the volume writable
+ * for applications that run as another user, and then idles so the volume, `sqlite3` and the health probe
+ * stay available. SQLite has no server — applications open the file themselves through a shared mount.
+ * The trap makes `docker stop` exit at once instead of waiting out the grace period.
+ */
+export function sqliteHolderScript(database: Pick<Database, "databaseName">): string {
+  const file = shellQuote(sqliteFilePath(database.databaseName));
+  return `touch ${file} && chmod 777 ${shellQuote(SQLITE_MOUNT_DIR)} && chmod 666 ${file} && trap 'exit 0' TERM INT && while :; do sleep 3600 & wait $!; done`;
+}
 
 /**
  * `ssl=on` alone only *allows* TLS. This pg_hba makes it mandatory for network connections while the
@@ -66,6 +78,9 @@ export function healthProbe(database: Database): string | null {
       return `mongosh --quiet ${tls ? "--tls --tlsAllowInvalidCertificates " : ""}--eval "db.adminCommand('ping').ok" | grep -q 1`;
     case "clickhouse":
       return `clickhouse-client -u "$CLICKHOUSE_USER" --password "$CLICKHOUSE_PASSWORD" -q 'SELECT 1' | grep -q 1`;
+    case "sqlite":
+      // Opens the file and runs a query: fails when the file is corrupt or the volume is unreadable.
+      return `sqlite3 ${shellQuote(sqliteFilePath(database.databaseName))} 'SELECT 1;' | grep -q 1`;
   }
 }
 
@@ -229,6 +244,15 @@ export function buildRunCommand(database: Database, containerName: string, volum
         `-v ${shellQuote(dbBackupsDir(database.id))}:/backups ` +
         `--ulimit nofile=262144:262144 ` +
         restart
+      );
+    case "sqlite":
+      // No published port and no TLS: the data is a file. The image's entrypoint is the sqlite3 shell, so it is replaced.
+      return (
+        base +
+        `--user 0 --entrypoint sh ` +
+        `-v ${shellQuote(volumeName)}:${SQLITE_MOUNT_DIR} ` +
+        restart +
+        ` -c ${shellQuote(sqliteHolderScript(database))}`
       );
   }
 }

@@ -239,9 +239,12 @@ export interface ApplicationDto extends ResourceLimits {
   createdAt: string;
 }
 
-/** volume = named docker volume; bind = a directory of the host; file = a file whose content lives in the panel. */
-export type VolumeKind = "volume" | "bind" | "file";
-export const VOLUME_KINDS: VolumeKind[] = ["volume", "bind", "file"];
+/**
+ * volume = named docker volume; bind = a directory of the host; file = a file whose content lives in the panel;
+ * database = the existing data volume of a file-based database (SQLite) — `hostPath` holds that volume's name.
+ */
+export type VolumeKind = "volume" | "bind" | "file" | "database";
+export const VOLUME_KINDS: VolumeKind[] = ["volume", "bind", "file", "database"];
 
 export interface ApplicationVolumeDto {
   id: string;
@@ -275,6 +278,7 @@ export function volumeFlags(
   if (volumes.length === 0) return "";
   return volumes
     .map((v) => {
+      if (v.kind === "database" && v.hostPath) return `-v ${shellQuote(v.hostPath)}:${shellQuote(v.mountPath)} `;
       if (v.kind === "bind" && v.hostPath) return `-v ${shellQuote(v.hostPath)}:${shellQuote(v.mountPath)} `;
       if (v.kind === "file" && applicationId) return `-v ${shellQuote(volumeFilePath(applicationId, v.id))}:${shellQuote(v.mountPath)} `;
       return `-v ${shellQuote(volumeName(v.id))}:${shellQuote(v.mountPath)} `;
@@ -293,7 +297,7 @@ export interface DeploymentDto {
   createdAt: string;
 }
 
-export type DatabaseEngine = "postgresql" | "mysql" | "mariadb" | "redis" | "keydb" | "dragonfly" | "mongodb" | "clickhouse";
+export type DatabaseEngine = "postgresql" | "mysql" | "mariadb" | "redis" | "keydb" | "dragonfly" | "mongodb" | "clickhouse" | "sqlite";
 export type DatabaseStatus = "idle" | "provisioning" | "running" | "error";
 export type BackupExecutionStatus = "queued" | "running" | "success" | "failed";
 
@@ -315,6 +319,8 @@ export interface DatabaseEngineInfo {
   /** Redis has no concept of a login user or a named database — just a password. */
   hasUsername: boolean;
   hasDatabaseName: boolean;
+  /** The data is a file on a volume, not a server: no port, no public access, no TLS (SQLite). */
+  fileBased?: boolean;
   icon: string;
   description: string;
   website: string;
@@ -330,6 +336,7 @@ export const DATABASE_ENGINES: Record<DatabaseEngine, DatabaseEngineInfo> = {
   dragonfly: { label: "Dragonfly", defaultImage: "docker.dragonflydb.io/dragonflydb/dragonfly:latest", imageRepo: "docker.dragonflydb.io/dragonflydb/dragonfly", versions: ["latest", "v1.25.0"], internalPort: 6379, defaultPort: 6379, supportsBackup: false, supportsSsl: true, hasUsername: false, hasDatabaseName: false, icon: "bolt", description: "Modern, fast Redis replacement, protocol-compatible.", website: "https://www.dragonflydb.io", docsUrl: "https://www.dragonflydb.io/docs" },
   mongodb: { label: "MongoDB", defaultImage: "mongo:7", imageRepo: "mongo", versions: ["8", "7", "6"], internalPort: 27017, defaultPort: 27017, supportsBackup: true, supportsSsl: true, hasUsername: true, hasDatabaseName: true, icon: "eco", description: "NoSQL document database with a flexible schema.", website: "https://www.mongodb.com", docsUrl: "https://www.mongodb.com/docs/" },
   clickhouse: { label: "ClickHouse", defaultImage: "clickhouse/clickhouse-server:latest", imageRepo: "clickhouse/clickhouse-server", versions: ["latest", "24.8", "23.8"], internalPort: 8123, defaultPort: 8123, supportsBackup: true, supportsSsl: false, hasUsername: true, hasDatabaseName: true, icon: "monitoring", description: "Banco colunar pra analytics e grandes volumes de eventos (interface HTTP na 8123).", website: "https://clickhouse.com", docsUrl: "https://clickhouse.com/docs" },
+  sqlite: { label: "SQLite", defaultImage: "keinos/sqlite3:latest", imageRepo: "keinos/sqlite3", versions: ["latest"], internalPort: 0, defaultPort: 0, supportsBackup: true, supportsSsl: false, hasUsername: false, hasDatabaseName: true, fileBased: true, icon: "description", description: "A single database file on a Docker volume, shared with applications of the same server.", website: "https://www.sqlite.org", docsUrl: "https://www.sqlite.org/docs.html" },
 };
 
 export interface DatabaseDto extends ResourceLimits {

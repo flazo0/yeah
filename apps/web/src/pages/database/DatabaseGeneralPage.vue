@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import DatabaseConnectionCard from "../../components/DatabaseConnectionCard.vue";
+import DatabaseConnectApplicationCard from "../../components/DatabaseConnectApplicationCard.vue";
 import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
+import { DATABASE_ENGINES } from "@yeah/shared";
 import { api } from "../../lib/api";
 import { useDatabaseContext } from "../../composables/useDatabaseContext";
 
-const { database, basePath, error } = useDatabaseContext();
+const { database, basePath, environmentPath, error } = useDatabaseContext();
 
 function fetchHistory(hours: number) {
   return api.get<{ history: { at: string; cpu: number; mem: number }[] }>(`${basePath}/metrics-history?hours=${hours}`);
@@ -52,6 +54,14 @@ function fetchHistory(hours: number) {
     </div>
 
     <DatabaseConnectionCard :base-path="basePath" :public-access="database.publicAccess" :ssl="database.ssl" @error="(msg) => (error = msg)" />
+
+    <DatabaseConnectApplicationCard
+      v-if="DATABASE_ENGINES[database.engine].fileBased"
+      :base-path="basePath"
+      :environment-path="environmentPath"
+      :server-id="database.serverId"
+      @error="(msg) => (error = msg)"
+    />
 
     <ResourceLimitsCard
       :memory-limit-mb="database.memoryLimitMb"
