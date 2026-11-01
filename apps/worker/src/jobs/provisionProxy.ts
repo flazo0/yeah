@@ -2,45 +2,14 @@ import { eq } from "drizzle-orm";
 import { servers } from "@yeah/db";
 import { connectSsh, execStream, shellQuote, writeRemoteFile } from "@yeah/ssh";
 import { publishServerEvent, type ProxyProvisionJobData } from "@yeah/queue";
-import { buildProxyRestartCommand, PROXY_CONTAINER_NAME, PROXY_DIR, PROXY_NETWORK_NAME } from "@yeah/shared";
+import { buildProxyRestartCommand, ERROR_PAGE_DYNAMIC_FILE, ERROR_PAGE_WAKER_FILE, errorPageConfigJson, errorPageDynamicConfig, PROXY_CONTAINER_NAME, PROXY_DIR, PROXY_NETWORK_NAME, traefikStaticConfig } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { installWaker } from "../lib/appRouting";
+import { WAKE_CONFIG_DIR } from "../lib/waker.commands";
 
 export { PROXY_NETWORK_NAME, PROXY_CONTAINER_NAME, PROXY_DIR };
-
-function traefikStaticConfig(acmeEmail: string, trafficAnalyticsEnabled: boolean): string {
-  return `entryPoints:
-  web:
-    address: ":80"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-  websecure:
-    address: ":443"
-${trafficAnalyticsEnabled ? `  metrics:\n    address: ":8082"\n` : ""}
-providers:
-  docker:
-    exposedByDefault: false
-    network: ${PROXY_NETWORK_NAME}
-  # Fase 6: routing of plain apps is written here (traefikDynamicConfig in packages/shared), so a
-  # domain-only change updates routing without recreating the container. Empty until a deploy or a
-  # domain edit writes into it. Without addRoutersLabels (metrics below) Traefik exports no per-router counters.
-  file:
-    directory: /etc/traefik/dynamic
-    watch: true
-
-certificatesResolvers:
-  letsencrypt:
-    acme:
-      email: ${acmeEmail}
-      storage: /etc/traefik/acme.json
-      httpChallenge:
-        entryPoint: web
-${trafficAnalyticsEnabled ? `\nmetrics:\n  prometheus:\n    entryPoint: metrics\n    addRoutersLabels: true\n` : ""}`;
-}
 
 export function makeProvisionProxyProcessor(publishConnection: Redis) {
   return async function provisionProxy(job: Job<ProxyProvisionJobData>) {
@@ -89,7 +58,13 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
         const mkdirResult = await execStream(conn, `mkdir -p ${shellQuote(`${PROXY_DIR}/dynamic`)}`, () => {});
         if (mkdirResult.exitCode !== 0) throw new Error(`mkdir -p ${PROXY_DIR}/dynamic exited with code ${mkdirResult.exitCode}`);
 
-        await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail, server.trafficAnalyticsEnabled));
+        await writeRemoteFile(conn, `${PROXY_DIR}/traefik.yml`, traefikStaticConfig(server.acmeEmail, server.trafficAnalyticsEnabled, server.errorPageEnabled));
+
+        // The optional error page: its router and errors middleware must exist before Traefik starts with the
+        // entry-point middleware, and are removed when it is off so an old file never lingers.
+        const errorPageFile = `${PROXY_DIR}/dynamic/${ERROR_PAGE_DYNAMIC_FILE}`;
+        if (server.errorPageEnabled) await writeRemoteFile(conn, errorPageFile, errorPageDynamicConfig());
+        else await execStream(conn, `rm -f ${shellQuote(errorPageFile)}`, () => {});
 
         // The issued certificates live in acme.json: keep the last three snapshots before touching the proxy, so a
         // bad provision never costs a Let's Encrypt rate-limit window.
@@ -123,6 +98,15 @@ export function makeProvisionProxyProcessor(publishConnection: Redis) {
         });
         if (result.exitCode !== 0) {
           throw new Error(`docker run exited with code ${result.exitCode}: ${output.trim()}`);
+        }
+
+        // The waker renders the page; it needs the proxy network, which exists once the proxy ran.
+        const wakerErrorConf = `${WAKE_CONFIG_DIR}/${ERROR_PAGE_WAKER_FILE}`;
+        if (server.errorPageEnabled) {
+          await installWaker(conn);
+          await writeRemoteFile(conn, wakerErrorConf, errorPageConfigJson({ title: server.errorPageTitle, message: server.errorPageMessage }));
+        } else {
+          await execStream(conn, `rm -f ${shellQuote(wakerErrorConf)}`, () => {});
         }
 
         await db.update(servers).set({ proxyStatus: "active" }).where(eq(servers.id, serverId));

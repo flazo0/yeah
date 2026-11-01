@@ -22,3 +22,6 @@ export * from "./containerWatch";
 export * from "./stackFiles";
 export * from "./proxyVersion";
 export * from "./wsAuth";
+export * from "./errorPage";
+export * from "./serviceMaintenance";
+export * from "./traefikStatic";

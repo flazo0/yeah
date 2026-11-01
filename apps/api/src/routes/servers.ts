@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { and, count, eq, gte } from "drizzle-orm";
 import { applications, databases, serverMetricSamples, servers, services, sshKeys, type Server } from "@yeah/db";
 import { connectSsh, execStream, generateSshKeyPair } from "@yeah/ssh";
-import { buildProxyIsRunningCommand, buildProxyLogsCommand, type ServerDto } from "@yeah/shared";
+import { buildProxyIsRunningCommand, buildProxyLogsCommand, ERROR_PAGE_MESSAGE_MAX, ERROR_PAGE_TITLE_MAX, normalizeErrorPageText, type ServerDto } from "@yeah/shared";
 import { db } from "../lib/db";
 import { createVps } from "../lib/vpsProviders";
 import { getUserFromSessionId, SESSION_COOKIE } from "../lib/session";
@@ -35,6 +35,9 @@ function toServerDto(server: Server): ServerDto {
     cloudflareTunnelStatus: server.cloudflareTunnelStatus,
     cloudflareTunnelError: server.cloudflareTunnelError,
     trafficAnalyticsEnabled: server.trafficAnalyticsEnabled,
+    errorPageEnabled: server.errorPageEnabled,
+    errorPageTitle: server.errorPageTitle,
+    errorPageMessage: server.errorPageMessage,
     patchUpdates: server.patchUpdates,
     patchSecurity: server.patchSecurity,
     patchRebootRequired: server.patchRebootRequired,
@@ -411,6 +414,40 @@ export const serverRoutes = new Elysia({ prefix: "/teams/:teamId/servers" })
       return { server: toServerDto(server) };
     },
     { body: t.Object({ enabled: t.Boolean() }) },
+  )
+  .put(
+    "/:serverId/error-page",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const [server] = await db
+        .update(servers)
+        .set({
+          errorPageEnabled: body.enabled,
+          errorPageTitle: normalizeErrorPageText(body.title, ERROR_PAGE_TITLE_MAX),
+          errorPageMessage: normalizeErrorPageText(body.message, ERROR_PAGE_MESSAGE_MAX),
+        })
+        .where(and(eq(servers.id, params.serverId), eq(servers.teamId, params.teamId)))
+        .returning();
+      if (!server) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      // The entry-point middleware lives in the static Traefik config, so an active proxy is re-provisioned
+      // (a brief restart); otherwise the next activation already reads the new settings.
+      if (server.proxyStatus === "active") {
+        await proxyProvisionQueue.add("provision", { serverId: server.id, action: "provision" });
+      }
+      return { server: toServerDto(server) };
+    },
+    { body: t.Object({ enabled: t.Boolean(), title: t.Optional(t.Nullable(t.String({ maxLength: 400 }))), message: t.Optional(t.Nullable(t.String({ maxLength: 2000 }))) }) },
   )
   .post("/:serverId/proxy", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);

@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- A proxy-wide custom error page (opt-in per server, *Proxy* tab): unknown domains (404) and unreachable backends (502/503/504) get a neutral page with an optional operator title and message (HTML-escaped) instead of Traefik's plain responses. Off by default; turning it on restarts the proxy briefly. Only unit tested so far (migration `0063_proxy_error_page_service_maintenance`).
+- Maintenance mode for services and Compose stacks (per service, optionally limited to some containers): the domains answer the 503 notice page through the waker while the stack keeps running, applied without a redeploy. Only unit tested so far.
 - Container status-change notifications (`container.status`): opt-in per channel, reports when a container of an application, database or service goes running to exited/restarting/unhealthy and back, debounced over two polls and limited to one message per container every 5 minutes.
 - The `ws` service is now authenticated and scoped: it requires the session cookie, checks the upgrade `Origin` against `WEB_ORIGIN`, and relays each event only to members of the owning team. It now needs `DATABASE_URL` (already wired in `docker-compose.prod.yml`). The web client reconnects with backoff.
 - SQLite as a standalone database: a file on a Docker volume held by a small container, with a health check, scheduled `.dump` backups, restore, and one-click connection to an application on the same server (volume mount plus `DATABASE_URL`). Only unit tested so far (migration `0062_sqlite_database`).

@@ -45,6 +45,11 @@ export const servers = pgTable("servers", {
   // model as every other metric this app collects. Requires re-provisioning the proxy to take effect
   // (the port mapping can't change on a running container).
   trafficAnalyticsEnabled: boolean("traffic_analytics_enabled").default(false).notNull(),
+  // Optional proxy-wide error page (404 for unknown hosts, 502-504 for unreachable backends), see shared/errorPage.ts.
+  // Off by default: Traefik keeps its plain responses. Changing it re-provisions the proxy (static config).
+  errorPageEnabled: boolean("error_page_enabled").default(false).notNull(),
+  errorPageTitle: varchar("error_page_title", { length: 120 }),
+  errorPageMessage: varchar("error_page_message", { length: 500 }),
   // Latest snapshot from the periodic `server-metrics` job — null until the first check runs.
   cpuPercent: real("cpu_percent"),
   memPercent: real("mem_percent"),

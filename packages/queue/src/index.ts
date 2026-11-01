@@ -72,7 +72,8 @@ export interface ProxyProvisionJobData {
 export interface ServiceProvisionJobData {
   serviceId: string;
   /** Default "deploy" (create/recreate). The others act on the running stack without recreating it. */
-  action?: "deploy" | "start" | "stop" | "restart";
+  action?: "deploy" | "start" | "stop" | "restart" | "routing";
+  /** "routing" only rewrites the maintenance-mode proxy files; the containers are not touched. */
 }
 
 export interface PlatformOperationJobData {

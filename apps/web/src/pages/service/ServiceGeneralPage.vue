@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { missingRequiredVars, type ServiceContainerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import DomainCard from "../../components/DomainCard.vue";
+import ServiceMaintenanceCard from "../../components/ServiceMaintenanceCard.vue";
 import ResourceLimitsCard from "../../components/ResourceLimitsCard.vue";
 import MetricsHistoryChart from "../../components/MetricsHistoryChart.vue";
 import { useServiceContext } from "../../composables/useServiceContext";
@@ -122,6 +123,16 @@ async function lifecycle(action: "start" | "stop" | "restart") {
       :put-url="`${basePath}/domain`"
       :saved-message="$t('serviceGeneral.savedRedeployApply')"
       @saved="(domain) => (service!.domain = domain)"
+      @error="(msg) => (error = msg)"
+    />
+
+    <ServiceMaintenanceCard
+      :maintenance-mode="service.maintenanceMode"
+      :maintenance-message="service.maintenanceMessage"
+      :maintenance-containers="service.maintenanceContainers"
+      :stack-services="isStack ? service.stackServices : []"
+      :put-url="`${basePath}/maintenance`"
+      @saved="(m) => { service!.maintenanceMode = m.maintenanceMode; service!.maintenanceMessage = m.maintenanceMessage; service!.maintenanceContainers = m.maintenanceContainers; }"
       @error="(msg) => (error = msg)"
     />
 
