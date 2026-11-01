@@ -114,7 +114,7 @@ export function makeBackupDatabaseProcessor(publishConnection: Redis) {
       await notifyTeam(database.teamId, "backup.success", `Backup of ${database.name} completed`, sizeBytes ? `File of ${(sizeBytes / 1024 ** 2).toFixed(1)} MB.` : "Backup completed.", "info");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      append(`\nfalhou: ${message}\n`);
+      append(`\nfailed: ${message}\n`);
       await db
         .update(backupExecutions)
         .set({ status: "failed", finishedAt: new Date(), log })
