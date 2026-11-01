@@ -41,7 +41,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 - **List the Docker images of recent deployments for rollback** (rollback currently uses the deployment history).
 - **A proxy-wide custom error page** (generic 404/502 for any domain) and maintenance mode for services and stacks.
 - **Container name prefix**: readable names instead of `yeah-app-<id>`. Deferred on purpose: the current name is the key for routing, the waker, metrics and backups, so changing it is a migration.
-- **Audit log coverage** for token-API calls and sign-in events.
 - **A private per-user WebSocket channel** (the socket currently carries state and log events only, filtered client-side).
 - **Generic container status-change notifications**, and a file browser for services and databases, with upload and edit.
 - **Evaluate a single-node Swarm mode** to get rolling updates and multi-host networks.

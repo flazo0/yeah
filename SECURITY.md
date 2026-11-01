@@ -64,7 +64,7 @@ Out of scope:
 - **Agentless.** The control plane connects to your servers over SSH; nothing is installed on them beyond Docker.
 - **Secrets at rest.** SSH keys, database and S3 passwords, notification credentials and resource `.env` files are encrypted with AES-256-GCM using `ENCRYPTION_KEY`. Losing that key means losing the stored secrets.
 - **Authentication.** Argon2id password hashes, httpOnly session cookies, optional TOTP 2FA, optional passkeys, optional per-team 2FA enforcement, rate limiting on login and mutations.
-- **Auditability.** Mutating requests are recorded in an audit log (request path only — never request bodies).
+- **Auditability.** Mutating requests, API-token calls and sign-in events are recorded in an audit log (request path only — never request bodies).
 
 The full description is in [docs/security.md](docs/security.md).
 

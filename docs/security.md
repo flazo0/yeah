@@ -56,7 +56,7 @@ Scheme: AES-256-GCM, a random IV per value, stored as `enc:v1:<base64url(iv|tag|
 
 ## Auditability
 
-Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) are recorded in the audit log: who, when, what kind of change and on which resource. The description is built from the **request path only — never the request body**, so no secret can end up in it. Retention is `AUDIT_RETENTION_DAYS` (365 by default). Calls made through the token API and sign-in events are not recorded yet (see [roadmap.md](roadmap.md)).
+Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) are recorded in the audit log: who, when, what kind of change and on which resource. The description is built from the **request path only — never the request body**, so no secret can end up in it. Retention is `AUDIT_RETENTION_DAYS` (365 by default). Calls made through the token API (including its `/api/v1` form) are recorded with the token's name, and the MCP tools that change something (deploy, backup) are recorded too. Sign-ins, failed sign-in attempts (wrong password or two-factor code), passkey sign-ins and sign-outs are recorded in every team the person belongs to; failures show up as warnings. Rows carry the client IP when known. Failed attempts for an e-mail that has no account cannot be tied to a team and are not recorded.
 
 Deployment logs can redact environment variable values (a per-application option), so secrets that tools echo during a build do not persist in the log.
 
@@ -71,5 +71,5 @@ Deployment logs can redact environment variable values (a per-application option
 
 - The WebSocket server has no authentication of its own; the stream carries state and log events only, and clients filter by IDs they already know. A private per-user channel is on the roadmap.
 - The installer serves the dashboard over plain HTTP by default; HTTPS in front of it is the operator's responsibility.
-- The audit log does not cover token-API calls or sign-in events yet.
+- Read-only token calls (`GET`) are not audited; only changes and authentication events are.
 - Several security-relevant flows were tested with unit tests only; see the verification status in [roadmap.md](roadmap.md#verification-status).
