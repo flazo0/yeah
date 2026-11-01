@@ -86,6 +86,30 @@ export function isValidVariableKey(key: string): boolean {
   return /^[A-Za-z_][A-Za-z0-9_]*$/.test(key) && key.length <= 255;
 }
 
+/**
+ * Sets `KEY=value` (runtime) in raw ".env" text: an existing line for the key is replaced in place (whatever its
+ * `build:`/`both:` prefix), otherwise the line is appended. Comments and other lines are left untouched.
+ * `key` must already be a valid variable name (see isValidVariableKey).
+ */
+export function setEnvVariable(content: string, key: string, value: string): string {
+  const lines = content === "" ? [] : content.split(/\r?\n/);
+  const own = new RegExp(`^\\s*(?:(?:build|both):)?${key}=`);
+  let replaced = false;
+  const next: string[] = [];
+  for (const line of lines) {
+    if (own.test(line)) {
+      if (!replaced) next.push(`${key}=${value}`);
+      replaced = true;
+      continue;
+    }
+    next.push(line);
+  }
+  while (!replaced && next.length > 0 && next[next.length - 1] === "") next.pop();
+  if (!replaced) next.push(`${key}=${value}`);
+  while (next.length > 0 && next[next.length - 1] === "") next.pop();
+  return next.join("\n") + "\n";
+}
+
 /** Inverse of parseEnvContent for the table editor: `build:`/`both:` prefixes, runtime has none. */
 export function serializeEnvEntries(entries: EnvEntry[]): string {
   const lines = entries.map((e) => `${e.availability === "runtime" ? "" : `${e.availability}:`}${e.key}=${e.value}`);

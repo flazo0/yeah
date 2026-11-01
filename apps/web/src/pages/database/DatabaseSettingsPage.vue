@@ -64,7 +64,14 @@ async function save() {
       </div>
     </div>
 
-    <div class="card mb-16">
+    <div v-if="info.fileBased" class="card mb-16">
+      <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">public</span> {{ $t("databaseSettings.access") }}</div>
+      <div class="card-body">
+        <p class="hint" style="margin: 0">{{ $t("databaseSettings.fileBasedAccess", { p0: info.label }) }}</p>
+      </div>
+    </div>
+
+    <div v-else class="card mb-16">
       <div class="card-header"><span class="material-symbols-outlined" style="font-size: 18px">public</span> {{ $t("databaseSettings.access") }}</div>
       <div class="card-body">
         <label class="check-row">

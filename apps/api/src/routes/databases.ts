@@ -3,6 +3,8 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   backupExecutions,
   backupSchedules,
+  applications,
+  applicationVolumes,
   databases,
   s3Storages,
   servers,
@@ -11,7 +13,7 @@ import {
   type Database,
   resourceTags,
 } from "@yeah/db";
-import { DATABASE_ENGINES, databaseConnectionUrl, internalHostName, isValidDockerImage, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
+import { DATABASE_ENGINES, databaseConnectionUrl, databaseDataVolumeName, internalHostName, isValidDockerImage, isValidSqliteName, isSafeMountPath, isValidVariableKey, setEnvVariable, SQLITE_MOUNT_DIR, sqliteConnectionUrl, type BackupExecutionDto, type BackupScheduleDto, type DatabaseDto } from "@yeah/shared";
 import { addBackupSchedule, removeBackupSchedule } from "@yeah/queue";
 import { connectSsh, execStream, readRemoteFile, shellQuote } from "@yeah/ssh";
 import { s3ClientFor } from "@yeah/storage";
@@ -182,7 +184,17 @@ export const databaseRoutes = new Elysia({
         set.status = 400;
         return { error: "invalid version/image (e.g. 16-alpine or postgres:16-alpine)" };
       }
-      if (body.port !== undefined && (!Number.isInteger(body.port) || body.port < 1 || body.port > 65535)) {
+      if (engineInfo.fileBased) {
+        // The data is a file on a volume: nothing to publish, and the name becomes the file name.
+        if (body.publicAccess) {
+          set.status = 400;
+          return { error: `${engineInfo.label} is a file, not a server: it has no external access` };
+        }
+        if (body.databaseName !== undefined && !isValidSqliteName(body.databaseName)) {
+          set.status = 400;
+          return { error: "the database name becomes the file name: use letters, digits, '_' or '-' (up to 63 characters)" };
+        }
+      } else if (body.port !== undefined && (!Number.isInteger(body.port) || body.port < 1 || body.port > 65535)) {
         set.status = 400;
         return { error: "invalid port" };
       }
@@ -196,7 +208,7 @@ export const databaseRoutes = new Elysia({
           name: body.name,
           engine,
           image,
-          port: body.port ?? engineInfo.defaultPort,
+          port: engineInfo.fileBased ? 0 : (body.port ?? engineInfo.defaultPort),
           publicAccess: body.publicAccess ?? false,
           username: engineInfo.hasUsername ? (body.username ?? "app") : null,
           password: generatePassword(),
@@ -228,6 +240,7 @@ export const databaseRoutes = new Elysia({
             t.Literal("dragonfly"),
             t.Literal("mongodb"),
             t.Literal("clickhouse"),
+            t.Literal("sqlite"),
           ]),
         ),
         image: t.Optional(t.String()),
@@ -310,7 +323,13 @@ export const databaseRoutes = new Elysia({
         set.status = 400;
         return { error: "invalid image" };
       }
-      if (!Number.isInteger(next.port) || next.port < 1 || next.port > 65535) {
+      if (info.fileBased) {
+        if (next.publicAccess) {
+          set.status = 400;
+          return { error: `${info.label} is a file, not a server: it has no external access` };
+        }
+        next.port = 0;
+      } else if (!Number.isInteger(next.port) || next.port < 1 || next.port > 65535) {
         set.status = 400;
         return { error: "invalid port" };
       }
@@ -380,6 +399,17 @@ export const databaseRoutes = new Elysia({
     const [server] = await db.select().from(servers).where(eq(servers.id, d.serverId)).limit(1);
     const info = DATABASE_ENGINES[d.engine];
     const common = { engine: d.engine, username: d.username, password: d.password, databaseName: d.databaseName, ssl: d.ssl };
+    if (info.fileBased) {
+      // No host, port, login or external endpoint: applications mount the volume and open the file.
+      return {
+        fileBased: true,
+        username: null,
+        password: "",
+        internal: { host: internalHostName(d.name), port: 0, url: sqliteConnectionUrl(d.databaseName) },
+        external: null,
+        mountPath: SQLITE_MOUNT_DIR,
+      };
+    }
     return {
       username: d.username,
       password: d.password,
@@ -387,6 +417,83 @@ export const databaseRoutes = new Elysia({
       external: d.publicAccess && server ? { host: server.host, port: d.port, url: databaseConnectionUrl({ ...common, host: server.host, port: d.port }) } : null,
     };
   })
+  // One-click connection of a file-based database (SQLite) to an application of the same environment and server:
+  // mounts the database's volume in the application and sets a variable (DATABASE_URL by default) to the file's URL.
+  // It takes effect on the application's next deploy, like any other storage or variable change.
+  .post(
+    "/:databaseId/connect-application",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadDatabase(params.environmentId, params.databaseId);
+      if (!row) {
+        set.status = 404;
+        return { error: "database not found" };
+      }
+      const d = row.database;
+      if (!DATABASE_ENGINES[d.engine].fileBased) {
+        set.status = 400;
+        return { error: "only file-based databases (SQLite) are mounted into applications — the others are reached over the network" };
+      }
+      const [application] = await db
+        .select()
+        .from(applications)
+        .where(and(eq(applications.id, body.applicationId), eq(applications.environmentId, params.environmentId)))
+        .limit(1);
+      if (!application) {
+        set.status = 404;
+        return { error: "application not found in this environment" };
+      }
+      if (application.serverId !== d.serverId) {
+        set.status = 400;
+        return { error: "the application runs on another server: a file can only be shared on the same server" };
+      }
+      if (application.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "Docker Compose applications manage their own volumes — mount the volume in the compose file instead" };
+      }
+      const envKey = body.envKey ?? "DATABASE_URL";
+      if (!isValidVariableKey(envKey)) {
+        set.status = 400;
+        return { error: "invalid variable name" };
+      }
+      const mountPath = body.mountPath ?? SQLITE_MOUNT_DIR;
+      if (!isSafeMountPath(mountPath) || mountPath === "/") {
+        set.status = 400;
+        return { error: "mountPath must be an absolute path inside the container, without quotes or shell characters" };
+      }
+
+      const volumeName = databaseDataVolumeName(d.id);
+      const url = sqliteConnectionUrl(d.databaseName, mountPath);
+      const [existing] = await db
+        .select()
+        .from(applicationVolumes)
+        .where(and(eq(applicationVolumes.applicationId, application.id), eq(applicationVolumes.kind, "database"), eq(applicationVolumes.hostPath, volumeName)))
+        .limit(1);
+      if (existing) {
+        await db.update(applicationVolumes).set({ mountPath, name: d.name }).where(eq(applicationVolumes.id, existing.id));
+      } else {
+        await db.insert(applicationVolumes).values({ applicationId: application.id, name: d.name, mountPath, kind: "database", hostPath: volumeName });
+      }
+      await db.update(applications).set({ envContent: setEnvVariable(application.envContent, envKey, url) }).where(eq(applications.id, application.id));
+
+      return { ok: true, envKey, url, mountPath };
+    },
+    {
+      body: t.Object({
+        applicationId: t.String({ minLength: 1 }),
+        envKey: t.Optional(t.String({ maxLength: 255 })),
+        mountPath: t.Optional(t.String({ maxLength: 512 })),
+      }),
+    },
+  )
   .put(
     "/:databaseId/limits",
     async ({ cookie, params, body, set }) => {
@@ -485,6 +592,9 @@ export const databaseRoutes = new Elysia({
       }
     }
 
+    // Applications connected to a SQLite database mount its volume: drop those mounts, or the next deploy would
+    // silently create a new, empty volume under the same name.
+    await db.delete(applicationVolumes).where(and(eq(applicationVolumes.kind, "database"), eq(applicationVolumes.hostPath, databaseDataVolumeName(params.databaseId))));
     await db.delete(resourceTags).where(and(eq(resourceTags.resourceType, "database"), eq(resourceTags.resourceId, params.databaseId)));
     await db.delete(databases).where(eq(databases.id, params.databaseId));
 

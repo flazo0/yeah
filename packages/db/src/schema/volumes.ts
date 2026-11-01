@@ -7,7 +7,7 @@ import { applications } from "./applications";
 // for Dockerfile apps that need to persist something (uploads dir, SQLite file, etc.) across
 // redeploys. The actual docker volume name is derived from this row's id — see volumeFlags() in
 // @yeah/shared — never stored here, so there's one source of truth.
-export const volumeKindEnum = pgEnum("volume_kind", ["volume", "bind", "file"]);
+export const volumeKindEnum = pgEnum("volume_kind", ["volume", "bind", "file", "database"]);
 
 export const applicationVolumes = pgTable("application_volumes", {
   id: uuid("id").defaultRandom().primaryKey(),

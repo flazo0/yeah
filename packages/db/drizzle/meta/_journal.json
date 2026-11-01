@@ -435,6 +435,13 @@
       "when": 1793493564448,
       "tag": "0061_audit_ip",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793494525635,
+      "tag": "0062_sqlite_database",
+      "breakpoints": true
     }
   ]
 }

@@ -281,8 +281,8 @@ async function createDatabase() {
       ...(dbForm.value.customImage.trim() ? { image: dbForm.value.customImage.trim() } : { version: dbForm.value.version }),
       username: info.hasUsername ? "app" : undefined,
       databaseName: info.hasDatabaseName ? "app" : undefined,
-      port: info.defaultPort,
-      publicAccess: dbForm.value.publicAccess,
+      ...(info.fileBased ? {} : { port: info.defaultPort }),
+      publicAccess: info.fileBased ? false : dbForm.value.publicAccess,
     });
     router.push(`${basePath}/databases/${res.database.id}`);
   } catch (err) {
@@ -603,11 +603,16 @@ onMounted(() => {
           <label for="db-custom">{{ $t("resourceNew.orAnotherImage") }}</label>
           <input id="db-custom" v-model="dbForm.customImage" class="form-control mono" placeholder="postgis/postgis:16-3.4" />
         </div>
-        <label class="check-row" style="margin-bottom: 12px">
-          <input v-model="dbForm.publicAccess" type="checkbox" />
-          <span>{{ $t("resourceNew.externalAccessOpenPortServer", { p0: DATABASE_ENGINES[dbModal].defaultPort }) }}</span>
-        </label>
-        <p class="hint mb-16">{{ $t("resourceNew.withoutExternalAccessDatabaseOnly") }}</p>
+        <template v-if="DATABASE_ENGINES[dbModal].fileBased">
+          <p class="hint mb-16">{{ $t("resourceNew.fileBasedDatabaseHint") }}</p>
+        </template>
+        <template v-else>
+          <label class="check-row" style="margin-bottom: 12px">
+            <input v-model="dbForm.publicAccess" type="checkbox" />
+            <span>{{ $t("resourceNew.externalAccessOpenPortServer", { p0: DATABASE_ENGINES[dbModal].defaultPort }) }}</span>
+          </label>
+          <p class="hint mb-16">{{ $t("resourceNew.withoutExternalAccessDatabaseOnly") }}</p>
+        </template>
         <div v-if="error" class="alert alert-error mb-16">{{ error }}</div>
         <div class="btn-row">
           <button type="submit" class="btn" :disabled="submittingDb">{{ submittingDb ? $t("resourceNew.creating") : $t("resourceNew.createDatabase") }}</button>

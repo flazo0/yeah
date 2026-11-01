@@ -1,5 +1,5 @@
 import type { Database } from "@yeah/db";
-import { shellQuote } from "@yeah/shared";
+import { shellQuote, sqliteFilePath } from "@yeah/shared";
 
 // Dump and restore commands per engine — pure strings, run over SSH by the backup and restore jobs.
 
@@ -82,6 +82,8 @@ export function dumpFileName(database: Database, names: string[], timestamp = Da
       return `clickhouse-backup-${label}-${timestamp}.zip`;
     case "mongodb":
       return `mongo-dump-${label}-${timestamp}.archive.gz`;
+    case "sqlite":
+      return `sqlite-dump-${label}-${timestamp}.sql.gz`;
   }
 }
 
@@ -112,6 +114,13 @@ export function buildDumpCommand(database: Database, containerName: string, file
         `docker exec ${c} cat /tmp/dump.rdb | $GZ > ${out}`
       );
     }
+    case "sqlite":
+      // `.dump` reads inside one transaction, so it is a consistent snapshot even while an application writes.
+      // Written to a temporary file first (not piped) so a failing sqlite3 fails the backup instead of producing an empty archive.
+      return (
+        `${COMPRESSOR_SETUP}tmp=${shellQuote(filePath + ".tmp")}; ` +
+        `docker exec ${c} sqlite3 ${shellQuote(sqliteFilePath(database.databaseName))} .dump > "$tmp" && $GZ < "$tmp" > ${out}; rc=$?; rm -f "$tmp"; exit $rc`
+      );
     case "dragonfly":
       throw new Error("Dragonfly has no client in its image — backup is not supported for this engine yet");
     case "clickhouse": {
@@ -231,6 +240,18 @@ export function buildRestoreSteps(database: Database, containerName: string, fil
         { label: "preparing the dump", command: plainCopyCommand(filePath, plain) },
         ...resetDatabase(database, containerName, name),
         { label: `loading the dump into ${name}`, command: loadOne(database, containerName, name, plain) },
+        cleanup,
+      ];
+    }
+    case "sqlite": {
+      // The dump is SQL text: load it into a fresh file. The old file and its WAL/shared-memory side files are
+      // removed first, and the file is made writable again for applications running as another user.
+      const dbFile = sqliteFilePath(database.databaseName);
+      // The path is sanitised by sqliteFilePath (letters, digits, "_", "-", "." and "/" only), so it needs no inner quoting.
+      const script = `rm -f ${dbFile} ${dbFile}-wal ${dbFile}-shm ${dbFile}-journal && sqlite3 ${dbFile} && chmod 666 ${dbFile}`;
+      return [
+        { label: "preparing the dump", command: plainCopyCommand(filePath, plain) },
+        { label: `replacing ${dbFile} with the dump`, command: `docker exec -i ${c} sh -c ${shellQuote(script)} < ${shellQuote(plain)}` },
         cleanup,
       ];
     }

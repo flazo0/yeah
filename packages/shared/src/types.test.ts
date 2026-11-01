@@ -38,10 +38,11 @@ describe("DATABASE_ENGINES", () => {
     }
   });
 
-  test("every engine has a non-empty default image and a valid port", () => {
+  test("every engine has a non-empty default image and a valid port (file-based ones have none)", () => {
     for (const info of Object.values(DATABASE_ENGINES)) {
       expect(info.defaultImage.length).toBeGreaterThan(0);
-      expect(info.defaultPort).toBeGreaterThan(0);
+      if (info.fileBased) expect(info.defaultPort).toBe(0);
+      else expect(info.defaultPort).toBeGreaterThan(0);
     }
   });
 });

@@ -211,7 +211,24 @@
     "isOpenInternetProtectedOnly": "está aberta na internet, protegida só pela senha{p0}.",
     "failedReadConnection": "falha ao ler a conexão",
     "sslNote": "(conexão criptografada com certificado autoassinado)",
-    "sslAdvice": "Considere ligar o TLS e restringir por firewall"
+    "sslAdvice": "Considere ligar o TLS e restringir por firewall",
+    "fileConnection": "Conexão por arquivo",
+    "fileUrl": "URL do arquivo — para aplicações que montam o volume deste banco",
+    "fileHint": "SQLite é um arquivo, não um servidor: não há host, porta nem senha. A aplicação o abre a partir do volume montado em {p0}."
+  },
+  "databaseConnectApplication": {
+    "title": "Conectar a uma aplicação",
+    "hint": "Monta o volume deste banco numa aplicação do mesmo servidor e define uma variável com a URL do arquivo. Vale a partir do próximo deploy da aplicação.",
+    "noApplications": "Nenhuma aplicação deste ambiente roda no servidor deste banco (aplicações Docker Compose gerenciam os próprios volumes).",
+    "application": "Aplicação",
+    "choose": "Escolha uma aplicação",
+    "variable": "Variável",
+    "mountPath": "Caminho de montagem no contêiner",
+    "connect": "Conectar",
+    "connecting": "Conectando...",
+    "done": "Pronto: {key}={url}, com o volume montado em {path}. Faça um novo deploy da aplicação para aplicar.",
+    "failedLoadApplications": "falha ao carregar as aplicações",
+    "failedConnect": "falha ao conectar a aplicação"
   },
   "domainCard": {
     "domain": "Domínio",
@@ -646,6 +663,7 @@
     "version": "Versão",
     "orAnotherImage": "Ou outra imagem",
     "externalAccessOpenPortServer": "Acesso externo (abrir a porta {p0} no servidor)",
+    "fileBasedDatabaseHint": "O banco é um único arquivo num volume Docker. Não tem porta nem acesso externo: depois, conecte uma aplicação a ele pela página do banco. O nome vira o nome do arquivo (app.db).",
     "withoutExternalAccessDatabaseOnly": "Sem acesso externo o banco só é alcançável por outros recursos deste ambiente, pelo nome interno. Dá pra mudar depois.",
     "createDatabase": "Criar banco",
     "myApi": "minha-api",
@@ -1326,6 +1344,8 @@
     "failedSaveFile": "falha ao salvar o arquivo",
     "kindVolume": "Volume Docker",
     "kindFile": "Arquivo",
+    "kindDatabase": "Volume de banco",
+    "databaseVolume": "volume de um banco SQLite",
     "charactersCount": "{n} caracteres"
   },
   "applicationTasks": {
@@ -1515,6 +1535,7 @@
     "portServer": "Porta no servidor",
     "requireTlsSelfSignedCertificate": "Exigir TLS (certificado autoassinado gerado pelo painel)",
     "theConnectionBecomesEncryptedConnecting": "A conexão passa a ser criptografada e sem TLS é recusada. O certificado não é validado por uma autoridade: use o modo \"require\" do cliente (a URL de conexão já vem assim).",
+    "fileBasedAccess": "{p0} é um arquivo num volume, não um servidor: não há porta para publicar nem TLS. As aplicações o acessam montando o volume (veja a página Geral do banco).",
     "doesnTHaveTlsThrough": "{p0} ainda não tem TLS pelo painel.",
     "healthcheck": "Healthcheck",
     "checkDatabaseSHealth": "Verificar a saúde do banco",

@@ -16,6 +16,9 @@ interface Connection {
   password: string;
   internal: Endpoint;
   external: Endpoint | null;
+  /** SQLite: no host, port or password — `internal.url` is the file's URL and `mountPath` where the volume is mounted. */
+  fileBased?: boolean;
+  mountPath?: string;
 }
 
 const data = ref<Connection | null>(null);
@@ -47,7 +50,16 @@ async function copy(key: string, text: string) {
 </script>
 
 <template>
-  <div v-if="data" class="card-body" style="border-top: 1px solid var(--border)">
+  <div v-if="data && data.fileBased" class="card-body" style="border-top: 1px solid var(--border)">
+    <strong>{{ $t("databaseConnectionCard.fileConnection") }}</strong>
+    <div class="stat-label" style="margin-top: 8px">{{ $t("databaseConnectionCard.fileUrl") }}</div>
+    <div class="conn-row">
+      <code class="callout-code" style="margin: 0; flex: 1">{{ data.internal.url }}</code>
+      <button type="button" class="btn btn-secondary btn-sm" @click="copy('internal', data.internal.url)">{{ copied === "internal" ? $t('common.copied') : $t('common.copy') }}</button>
+    </div>
+    <p class="hint" style="margin: 6px 0 0">{{ $t("databaseConnectionCard.fileHint", { p0: data.mountPath }) }}</p>
+  </div>
+  <div v-else-if="data" class="card-body" style="border-top: 1px solid var(--border)">
     <div class="btn-row" style="justify-content: space-between; margin-bottom: 8px">
       <strong>{{ $t("databaseConnectionCard.connection") }}</strong>
       <button type="button" class="btn btn-secondary btn-sm" @click="reveal = !reveal">

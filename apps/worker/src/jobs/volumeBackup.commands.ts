@@ -9,10 +9,19 @@ export const KEEP_VOLUME_BACKUPS = 5;
 export const volumeBackupsDir = (ownerId: string) => `/opt/yeah-backups/volumes/${ownerId}`;
 
 export interface VolumeSource {
-  kind: "volume" | "bind" | "file";
+  kind: "volume" | "bind" | "file" | "database";
   id: string;
   hostPath: string | null;
   applicationId: string;
+}
+
+/** The docker volume behind a row: its own id-derived one, or (database kind) the database's volume named in `hostPath`. */
+function sourceVolumeName(source: VolumeSource): string {
+  if (source.kind === "database") {
+    if (!source.hostPath) throw new Error("volume has no database volume");
+    return source.hostPath;
+  }
+  return volumeName(source.id);
 }
 
 export function volumeArchiveName(volumeId: string, timestamp = Date.now()): string {
@@ -32,7 +41,7 @@ export function buildVolumeBackupCommand(source: VolumeSource, archivePath: stri
   }
   // A named volume: mounted read-only into a throw-away container that streams a tar to the archive file.
   return (
-    `docker run --rm -v ${shellQuote(volumeName(source.id))}:/data:ro ${VOLUME_HELPER_IMAGE} tar -czf - -C /data . > ${out}`
+    `docker run --rm -v ${shellQuote(sourceVolumeName(source))}:/data:ro ${VOLUME_HELPER_IMAGE} tar -czf - -C /data . > ${out}`
   );
 }
 
@@ -60,7 +69,7 @@ export function buildVolumeRestoreCommands(source: VolumeSource, archivePath: st
   return {
     stop,
     replace:
-      `docker run --rm -v ${shellQuote(volumeName(source.id))}:/data -v ${archive}:/backup.tar.gz:ro ${VOLUME_HELPER_IMAGE} ` +
+      `docker run --rm -v ${shellQuote(sourceVolumeName(source))}:/data -v ${archive}:/backup.tar.gz:ro ${VOLUME_HELPER_IMAGE} ` +
       `sh -c 'find /data -mindepth 1 -delete && tar -xzf /backup.tar.gz -C /data'`,
     start,
   };
