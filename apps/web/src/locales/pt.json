@@ -1679,7 +1679,15 @@
     "failedSaveDomain": "falha ao salvar domínio",
     "failedEnableProxy": "falha ao ativar proxy",
     "failedRestartProxy": "falha ao reiniciar o proxy",
-    "failedLoadLogs": "falha ao carregar os logs"
+    "failedLoadLogs": "falha ao carregar os logs",
+    "errorPage": "Página de erro personalizada",
+    "errorPageHint": "Opcional. Troca o \"404 page not found\" simples do Traefik (domínio desconhecido) e as respostas 502/503/504 (aplicação fora do ar ou sem responder) por uma página de erro neutra. Deixe desligado para manter o padrão do Traefik. Aplicar reinicia o proxy rapidamente.",
+    "errorPageEnable": "Mostrar uma página de erro personalizada",
+    "errorPageTitleLabel": "Título (opcional)",
+    "errorPageTitlePlaceholder": "Deixe vazio para o título padrão de cada erro",
+    "errorPageMessageLabel": "Mensagem (opcional)",
+    "errorPageMessagePlaceholder": "Deixe vazio para a mensagem padrão de cada erro",
+    "errorPageSaved": "salvo, o proxy está sendo atualizado"
   },
   "serverTerminal": {
     "loginShellOn": "Shell de login em",
@@ -1933,5 +1941,16 @@
     "failedUpload": "falha ao enviar o arquivo",
     "failedCreateFolder": "falha ao criar a pasta",
     "failedDelete": "falha ao excluir"
+  },
+  "serviceMaintenance": {
+    "title": "Modo manutenção",
+    "hint": "Enquanto ligado, os domínios deste serviço respondem uma página de aviso (503) e os contêineres continuam rodando. Vale na hora, sem redeploy. Mudanças de domínio feitas com ele ligado também são aplicadas.",
+    "enable": "Modo manutenção (mostrar página de aviso)",
+    "messageForVisitors": "Mensagem para os visitantes",
+    "placeholder": "Estamos em manutenção. Voltamos em instantes.",
+    "containers": "Contêineres em manutenção",
+    "containersHint": "Nenhum marcado significa todo contêiner que tem domínio.",
+    "savedApplied": "salvo, aplica na hora",
+    "failedToSave": "falha ao salvar"
   }
 }

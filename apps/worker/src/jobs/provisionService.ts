@@ -6,6 +6,7 @@ import { composeLifecycleCommand, composeStackOverride, ensureNetworkCommand, en
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
 import { db } from "../lib/db";
+import { applyServiceMaintenance } from "../lib/serviceMaintenance";
 import { buildRunCommand, buildStackPullCommand, buildStackStateCommand, buildStackUpCommand, containerNameForService, everyContainerUp, resolveDomain, stackDir, stackProject, STACK_OVERRIDE_FILE } from "./provisionService.commands";
 
 export { buildRunCommand, containerNameForService, resolveDomain } from "./provisionService.commands";
@@ -25,6 +26,21 @@ export function makeProvisionServiceProcessor(publishConnection: Redis) {
     const server = serverRows[0];
     if (!server) {
       await db.update(services).set({ status: "error" }).where(eq(services.id, serviceId));
+      return;
+    }
+
+    if (action === "routing") {
+      try {
+        const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+        try {
+          await applyServiceMaintenance(conn, service, server);
+        } finally {
+          conn.end();
+        }
+      } catch (err) {
+        console.error(`[worker] service-provision: maintenance routing failed for ${serviceId}:`, err);
+        throw err;
+      }
       return;
     }
 

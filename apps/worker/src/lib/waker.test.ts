@@ -45,10 +45,10 @@ let wakerServer: Server;
 let sweep: () => Promise<void>;
 let wakerPort = 0;
 
-function get(host: string): Promise<{ status: number; body: string; ms: number }> {
+function get(host: string, path = "/"): Promise<{ status: number; body: string; ms: number }> {
   const t0 = Date.now();
   return new Promise((resolve, reject) => {
-    const req = request({ host: "127.0.0.1", port: wakerPort, path: "/", headers: { host }, agent: false }, (res) => {
+    const req = request({ host: "127.0.0.1", port: wakerPort, path, headers: { host }, agent: false }, (res) => {
       let body = "";
       res.on("data", (c) => (body += c));
       res.on("end", () => resolve({ status: res.statusCode ?? 0, body, ms: Date.now() - t0 }));
@@ -70,6 +70,7 @@ beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), "waker-"));
   writeFileSync(join(dir, "maint.json"), JSON.stringify({ container: "maint", hosts: ["m.test"], port: 1, idleSeconds: 0, maintenance: { message: "Back <b>soon</b>" } }));
   writeFileSync(join(dir, "app1.json"), JSON.stringify({ container: "app1", hosts: ["a.test"], port: appPort, idleSeconds: 1, target: `127.0.0.1:${appPort}` }));
+  writeFileSync(join(dir, "errorpage.conf"), JSON.stringify({ title: "Oops <i>here</i>", message: "Try \"later\" & retry" }));
   process.env.WAKER_CONFIG_DIR = dir;
   process.env.DOCKER_URL = `http://127.0.0.1:${dockerPort}`;
   process.env.CHECK_MS = "60000";
@@ -90,6 +91,34 @@ afterAll(() => {
 describe("waker", () => {
   test("unknown host is a 404", async () => {
     expect((await get("nope.test")).status).toBe(404);
+  });
+
+  test("with an error page configured the unknown-host 404 is the branded page, escaped", async () => {
+    const r = await get("nope.test");
+    expect(r.status).toBe(404);
+    expect(r.body).toContain("<title>Oops &lt;i&gt;here&lt;/i&gt;</title>");
+    expect(r.body).toContain("Try &quot;later&quot; &amp; retry");
+    expect(r.body).not.toContain("<i>here</i>");
+  });
+
+  test("/__error/<status> renders that status; a maintenance host keeps its own page", async () => {
+    const generic = await get("nope.test", "/__error/502");
+    expect(generic.status).toBe(502);
+    expect(generic.body).toContain("<small>502</small>");
+    const maint = await get("m.test", "/__error/503");
+    expect(maint.status).toBe(503);
+    expect(maint.body).toContain("Under maintenance");
+  });
+
+  test("renderErrorPage falls back to per-status defaults and escapes operator text", async () => {
+    const mod = (await import("./waker" + ".cjs")) as unknown as { renderErrorPage: (status: number, s: { title: string; message: string } | null) => string };
+    const page = mod.renderErrorPage(504, null);
+    expect(page).toContain("Gateway timeout");
+    expect(page).toContain("<small>504</small>");
+    const custom = mod.renderErrorPage(404, { title: "<script>x</script>", message: "  " });
+    expect(custom).toContain("&lt;script&gt;x&lt;/script&gt;");
+    expect(custom).not.toContain("<script>");
+    expect(custom).toContain("There is nothing here for this address.");
   });
 
   test("maintenance mode answers 503 with the escaped message and never starts the app", async () => {

@@ -24,3 +24,6 @@ export * from "./stackFiles";
 export * from "./proxyVersion";
 export * from "./wsAuth";
 export * from "./rollbackImages";
+export * from "./errorPage";
+export * from "./serviceMaintenance";
+export * from "./traefikStatic";

@@ -77,6 +77,10 @@ export interface ServerDto {
   cloudflareTunnelError: string | null;
   /** Off by default — turns on Traefik's loopback-only Prometheus metrics entrypoint for the traffic-analytics job. */
   trafficAnalyticsEnabled: boolean;
+  /** Optional proxy-wide error page; off by default. title/message null = the generic text. */
+  errorPageEnabled: boolean;
+  errorPageTitle: string | null;
+  errorPageMessage: string | null;
   /** OS updates (apt) from the last patch check — null until one ran. */
   patchUpdates: number | null;
   patchSecurity: number | null;
@@ -499,6 +503,10 @@ export interface ServiceDto extends ResourceLimits {
   mainService: string | null;
   domains: StackDomain[];
   stackServices: string[];
+  /** Maintenance mode: domains answer 503 with the message; `maintenanceContainers` empty = all containers with a domain. */
+  maintenanceMode: boolean;
+  maintenanceMessage: string | null;
+  maintenanceContainers: string[];
   lastLog: string;
   status: ServiceStatus;
   createdAt: string;

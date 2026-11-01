@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { and, eq } from "drizzle-orm";
 import { resourceTags, services, servers, volumeBackups, type Service } from "@yeah/db";
-import { missingRequiredVars, composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, isValidHostname, normalizeHost, parseComposeStack, resourceSlug, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
+import { MAINTENANCE_MESSAGE_MAX, removeServiceMaintenanceCommand, sanitizeMaintenanceContainers, missingRequiredVars, composeLogsCommand, composeProjectName, composeTeardownCommand, findServiceCatalogEntry, isValidHostname, normalizeHost, parseComposeStack, resourceSlug, validateStackDomains, type ServiceContainerDto, type ServiceDto, type StackDomain } from "@yeah/shared";
 import { connectSsh, execStream, shellQuote } from "@yeah/ssh";
 import { requireEnvironmentScope } from "../lib/scope";
 import { loadResourceMetricHistory } from "../lib/metricsHistory";
@@ -37,6 +37,9 @@ function toServiceDto(service: Service, serverName: string): ServiceDto {
       const parsed = parseComposeStack(service.composeContent);
       return parsed.ok ? Object.keys(parsed.services) : [];
     })(),
+    maintenanceMode: service.maintenanceMode,
+    maintenanceMessage: service.maintenanceMessage,
+    maintenanceContainers: service.maintenanceContainers,
     lastLog: service.lastLog,
     memoryLimitMb: service.memoryLimitMb,
     cpuLimit: service.cpuLimit,
@@ -338,6 +341,7 @@ export const serviceRoutes = new Elysia({
         return { error: "failed to update domain" };
       }
 
+      if (updated.maintenanceMode) await serviceProvisionQueue.add("routing", { serviceId: updated.id, action: "routing" });
       return { service: toServiceDto(updated, row.serverName) };
     },
     { body: t.Object({ domain: t.Optional(t.String()) }) },
@@ -415,6 +419,40 @@ export const serviceRoutes = new Elysia({
     { body: t.Object({ composeContent: t.String({ maxLength: 200000 }), envContent: t.Optional(t.String({ maxLength: 100000 })) }) },
   )
   .put(
+    "/:serviceId/maintenance",
+    async ({ cookie, params, body, set }) => {
+      const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+      if (!user) {
+        set.status = 401;
+        return { error: "unauthorized" };
+      }
+      if (!(await assertMember(params.teamId, user.id))) {
+        set.status = 403;
+        return { error: "forbidden" };
+      }
+      const row = await loadService(params.environmentId, params.serviceId);
+      if (!row) {
+        set.status = 404;
+        return { error: "service not found" };
+      }
+      const parsed = row.service.composeContent ? parseComposeStack(row.service.composeContent) : null;
+      const stackServices = parsed?.ok ? Object.keys(parsed.services) : [];
+      const [updated] = await db
+        .update(services)
+        .set({
+          maintenanceMode: body.enabled,
+          maintenanceMessage: body.message?.trim() ? body.message.trim() : null,
+          maintenanceContainers: sanitizeMaintenanceContainers(body.containers ?? [], stackServices),
+        })
+        .where(eq(services.id, row.service.id))
+        .returning();
+      // Rewrites only the proxy files (router + waker entry); the stack keeps running untouched.
+      await serviceProvisionQueue.add("routing", { serviceId: row.service.id, action: "routing" });
+      return { service: toServiceDto(updated ?? row.service, row.serverName) };
+    },
+    { body: t.Object({ enabled: t.Boolean(), message: t.Optional(t.Nullable(t.String({ maxLength: MAINTENANCE_MESSAGE_MAX }))), containers: t.Optional(t.Array(t.String({ maxLength: 64 }), { maxItems: 50 })) }) },
+  )
+  .put(
     "/:serviceId/domains",
     async ({ cookie, params, body, set }) => {
       const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
@@ -456,6 +494,8 @@ export const serviceRoutes = new Elysia({
         .set({ domains, envContent: syncDomainEnv(row.service.envContent, domains) })
         .where(eq(services.id, row.service.id))
         .returning();
+      // Keep the maintenance routing in step with the new hostnames.
+      if (row.service.maintenanceMode) await serviceProvisionQueue.add("routing", { serviceId: row.service.id, action: "routing" });
       return { service: toServiceDto(updated ?? row.service, row.serverName) };
     },
     { body: t.Object({ domains: t.Array(t.Object({ service: t.String(), domain: t.String(), port: t.Number() })) }) },
@@ -641,8 +681,8 @@ export const serviceRoutes = new Elysia({
           await execStream(
             conn,
             isStack
-              ? `${composeTeardownCommand(containerName)}; rm -rf ${shellQuote(`/opt/yeah-services/${row.service.id}`)} ${shellQuote(`/opt/yeah-backups/volumes/${row.service.id}`)} >/dev/null 2>&1 || true`
-              : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && ` + `docker volume rm ${shellQuote(volumeName)} >/dev/null 2>&1 || true`,
+              ? `${composeTeardownCommand(containerName)}; ${removeServiceMaintenanceCommand(row.service.id)}; rm -rf ${shellQuote(`/opt/yeah-services/${row.service.id}`)} ${shellQuote(`/opt/yeah-backups/volumes/${row.service.id}`)} >/dev/null 2>&1 || true`
+              : `docker rm -f ${shellQuote(containerName)} >/dev/null 2>&1 || true && ${removeServiceMaintenanceCommand(row.service.id)} && ` + `docker volume rm ${shellQuote(volumeName)} >/dev/null 2>&1 || true`,
             () => {},
           );
         } finally {

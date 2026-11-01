@@ -145,7 +145,11 @@ Rollback images: when an application sets `rollbackImages` above 0, each deploy 
 
 ### Scale to zero (the waker)
 
-For applications that opt in, routing points at a small proxy (`yeah-waker`, a Node container on the proxy network) instead of the application. The waker holds an incoming request, runs `docker start` on the application's container, waits for its TCP port and then forwards the request, so the visitor sees a slightly slower first response and no loading page. WebSocket upgrades work as well. A sweep every 15 seconds stops containers that were idle longer than their configured time. The same proxy serves the 503 page for maintenance mode. Applications without a domain, or with sleeping disabled, are routed directly and never go through it.
+For applications that opt in, routing points at a small proxy (`yeah-waker`, a Node container on the proxy network) instead of the application. The waker holds an incoming request, runs `docker start` on the application's container, waits for its TCP port and then forwards the request, so the visitor sees a slightly slower first response and no loading page. WebSocket upgrades work as well. A sweep every 15 seconds stops containers that were idle longer than their configured time. The same proxy serves the 503 page for maintenance mode. For services and Compose stacks, whose routers come from Docker labels, maintenance mode writes a higher-priority file-provider router (`yeah-svc-<id>-maint.yml`) plus a waker entry that claim the same hostnames, so the stack is never touched and turning it off just deletes the two files (the `routing` action of the `service-provision` job).
+
+### Proxy-wide error page
+
+Optional per server (columns `error_page_*` on `servers`). When enabled, provisioning the proxy adds an `errors` middleware (statuses 502-504, served by the waker at `/__error/<status>`) to the HTTPS entry point of the static config, writes a lowest-priority catch-all router for unknown hosts (404) and installs the waker with an `errorpage.conf` holding the operator title and message. The waker renders the page and escapes the operator text. When disabled the static config is byte-identical to before and the extra files are removed. Config generation lives in `packages/shared/src/errorPage.ts` and `traefikStatic.ts`. Applications without a domain, or with sleeping disabled, are routed directly and never go through it.
 
 ### `PANEL_PATH`: an optional secret path
 

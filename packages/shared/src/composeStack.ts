@@ -42,7 +42,7 @@ export function parseComposeStack(content: string): Parsed {
   }
   for (const [name, def] of Object.entries(services as Record<string, unknown>)) {
     if (!SERVICE_NAME.test(name)) return { ok: false, error: `invalid service name: ${name}` };
-    if (!def || typeof def !== "object" || Array.isArray(def)) return { ok: false, error: `service ${name} must be um objeto` };
+    if (!def || typeof def !== "object" || Array.isArray(def)) return { ok: false, error: `service ${name} must be an object` };
     const d = def as Record<string, unknown>;
     if (d.build !== undefined) return { ok: false, error: `service ${name} uses "build": only "image" is supported here (there is no source code to build)` };
     if (typeof d.image !== "string" || d.image.trim() === "") return { ok: false, error: `service ${name} needs an "image"` };

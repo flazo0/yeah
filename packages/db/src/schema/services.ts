@@ -1,4 +1,4 @@
-import { integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { encryptedText } from "../encryption";
 import { teams } from "./teams";
 import { servers } from "./servers";
@@ -39,6 +39,11 @@ export const services = pgTable("services", {
   mainService: varchar("main_service", { length: 64 }),
   // Domains per container: [{ service, domain, port }].
   domains: jsonb("domains").$type<Array<{ service: string; domain: string; port: number }>>().default([]).notNull(),
+  // Maintenance mode: the service's domains answer 503 with this message while the stack is left alone.
+  // maintenance_containers limits it to some compose services (empty = every container with a domain).
+  maintenanceMode: boolean("maintenance_mode").default(false).notNull(),
+  maintenanceMessage: varchar("maintenance_message", { length: 500 }),
+  maintenanceContainers: jsonb("maintenance_containers").$type<string[]>().default([]).notNull(),
   // Output of the last deploy of the stack, so a failure is readable in the panel.
   lastLog: text("last_log").default("").notNull(),
   ...resourceLimitColumns(),

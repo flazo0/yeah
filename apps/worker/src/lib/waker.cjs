@@ -6,7 +6,9 @@
 //      the HTTP request is simply held meanwhile, so the visitor sees a slower first response, no loading page,
 //   3. forwards the request (and WebSocket upgrades) and remembers when it last saw traffic,
 //   4. stops containers that were idle longer than their idleSeconds (0 = never sleeps).
-//   5. in maintenance mode (config.maintenance = {message}) answers 503 with a plain page and leaves the app alone.
+//   5. serves the optional proxy-wide error page (errorpage.conf = {title,message}) for unknown hosts (404) and, via Traefik's
+//      errors middleware, for unreachable backends (/__error/<502|503|504>). Without that file nothing changes.
+//   6. in maintenance mode (config.maintenance = {message}) answers 503 with a plain page and leaves the app alone.
 // Config file: { "container": "yeah-app-<id>", "hosts": ["a.example.com"], "port": 3000, "idleSeconds": 600, "target": "optional host:port", "maintenance": { "message": "..." } }
 // The waker only needs the Docker API (unix socket, or DOCKER_URL=http://host:port for tests).
 const http = require("http");
@@ -26,6 +28,8 @@ const CHECK_MS = Number(process.env.CHECK_MS || 5000);
 const apps = new Map();
 let hostIndex = new Map();
 let lastLoad = 0;
+/** Operator-set error page ({ title, message }) or null when the feature is off (no errorpage.conf). */
+let errorPage = null;
 
 function log(msg) {
   console.log(JSON.stringify({ time: new Date().toISOString(), service: "waker", msg }));
@@ -62,6 +66,12 @@ function loadConfig() {
   }
   for (const name of [...apps.keys()]) if (!seen.has(name)) apps.delete(name);
   hostIndex = index;
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(CONFIG_DIR, "errorpage.conf"), "utf8"));
+    errorPage = { title: raw && typeof raw.title === "string" ? raw.title : "", message: raw && typeof raw.message === "string" ? raw.message : "" };
+  } catch {
+    errorPage = null;
+  }
 }
 
 function docker(method, apiPath) {
@@ -155,6 +165,26 @@ function escapeHtml(text) {
   return String(text).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split("\"").join("&quot;");
 }
 
+const ERROR_DEFAULTS = {
+  404: ["Page not found", "There is nothing here for this address."],
+  502: ["Bad gateway", "The service did not answer. Please try again in a moment."],
+  503: ["Service unavailable", "The service is temporarily unavailable. Please try again in a moment."],
+  504: ["Gateway timeout", "The service took too long to answer. Please try again in a moment."],
+};
+
+/** Generic, brand-neutral HTML for an error status. Operator text is escaped; empty fields fall back to the defaults. */
+function renderErrorPage(status, settings) {
+  const defaults = ERROR_DEFAULTS[status] || ERROR_DEFAULTS[502];
+  const title = escapeHtml((settings && settings.title && settings.title.trim()) || defaults[0]);
+  const message = escapeHtml((settings && settings.message && settings.message.trim()) || defaults[1]);
+  return "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>" + title + "</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0;text-align:center;padding:24px}main{max-width:32rem}small{display:block;font-size:.9rem;color:#64748b;margin-bottom:.5rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{margin:0;line-height:1.5;color:#94a3b8}</style></head><body><main><small>" + status + "</small><h1>" + title + "</h1><p>" + message + "</p></main></body></html>";
+}
+
+function errorPageResponse(res, status) {
+  res.writeHead(status, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+  res.end(renderErrorPage(status, errorPage));
+}
+
 function maintenancePage(res, maintenance) {
   const message = escapeHtml((maintenance && maintenance.message) || "We are down for maintenance. Back shortly.");
   const html = "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Under maintenance</title><style>body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;background:#0f172a;color:#e2e8f0;text-align:center;padding:24px}main{max-width:32rem}h1{font-size:1.6rem;margin:0 0 .75rem}p{margin:0;line-height:1.5;color:#94a3b8}</style></head><body><main><h1>Under maintenance</h1><p>" + message + "</p></main></body></html>";
@@ -171,7 +201,14 @@ const server = http.createServer(async (req, res) => {
   loadConfig();
   const host = String(req.headers.host || "").split(":")[0].toLowerCase();
   const state = hostIndex.get(host);
-  if (!state) return fail(res, 404, "no app configured for this host");
+  // Traefik's errors middleware asks for /__error/<status> when a backend answers 502-504. A host in maintenance
+  // mode keeps its own page (the middleware may forward the original Host header; if it does not, the generic page shows).
+  const errorMatch = errorPage && /^\/__error\/(50[0-9])/.exec(req.url || "");
+  if (errorMatch) {
+    if (state && state.cfg.maintenance) return maintenancePage(res, state.cfg.maintenance);
+    return errorPageResponse(res, Number(errorMatch[1]));
+  }
+  if (!state) return errorPage ? errorPageResponse(res, 404) : fail(res, 404, "no app configured for this host");
   if (state.cfg.maintenance) return maintenancePage(res, state.cfg.maintenance);
   state.last = Date.now();
   state.inflight++;
@@ -271,4 +308,4 @@ if (require.main === module) {
   process.on("SIGTERM", () => process.exit(0));
 }
 
-module.exports = { server, sweep, loadConfig };
+module.exports = { server, sweep, loadConfig, renderErrorPage };

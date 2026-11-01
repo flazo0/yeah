@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { onBeforeUnmount, onMounted, ref, watch, watchEffect } from "vue";
 import type { ServerDto } from "@yeah/shared";
 import { api, ApiError } from "../../lib/api";
 import { useServerContext } from "../../composables/useServerContext";
@@ -65,6 +65,35 @@ async function toggleTrafficAnalytics(enabled: boolean) {
     if (server.value) server.value.trafficAnalyticsEnabled = !enabled;
   } finally {
     savingTrafficAnalytics.value = false;
+  }
+}
+
+const errorPageEnabled = ref(false);
+const errorPageTitle = ref("");
+const errorPageMessage = ref("");
+const savingErrorPage = ref(false);
+const errorPageSaved = ref(false);
+
+watchEffect(() => {
+  errorPageEnabled.value = server.value?.errorPageEnabled ?? false;
+  errorPageTitle.value = server.value?.errorPageTitle ?? "";
+  errorPageMessage.value = server.value?.errorPageMessage ?? "";
+});
+
+async function saveErrorPage() {
+  if (!server.value) return;
+  savingErrorPage.value = true;
+  errorPageSaved.value = false;
+  error.value = "";
+  try {
+    const res = await api.put<{ server: ServerDto }>(`/teams/${teamId}/servers/${server.value.id}/error-page`, { enabled: errorPageEnabled.value, title: errorPageTitle.value, message: errorPageMessage.value });
+    replaceServer(res.server);
+    errorPageSaved.value = true;
+    setTimeout(() => (errorPageSaved.value = false), 3000);
+  } catch (err) {
+    error.value = err instanceof ApiError ? err.message : i18n.global.t("serverProxy.failedToSave");
+  } finally {
+    savingErrorPage.value = false;
   }
 }
 
@@ -237,6 +266,37 @@ watch(() => server.value?.proxyStatus, (status, prev) => {
       <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-bottom: 0">
         <input id="traffic-analytics" type="checkbox" :checked="server.trafficAnalyticsEnabled" :disabled="savingTrafficAnalytics" @change="toggleTrafficAnalytics(($event.target as HTMLInputElement).checked)" />
         <label for="traffic-analytics" style="margin: 0">{{ $t("serverProxy.collectTrafficAnalytics") }}</label>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="server" class="card" style="margin-top: 16px">
+    <div class="card-header">
+      <span class="material-symbols-outlined" style="font-size: 18px">error</span>
+      {{ $t("serverProxy.errorPage") }}
+    </div>
+    <div class="card-body">
+      <p class="hint mb-16">{{ $t("serverProxy.errorPageHint") }}</p>
+      <div class="form-group" style="display: flex; align-items: center; gap: 8px">
+        <input id="error-page-enabled" v-model="errorPageEnabled" type="checkbox" />
+        <label for="error-page-enabled" style="margin: 0">{{ $t("serverProxy.errorPageEnable") }}</label>
+      </div>
+      <template v-if="errorPageEnabled">
+        <div class="form-group">
+          <label for="error-page-title">{{ $t("serverProxy.errorPageTitleLabel") }}</label>
+          <input id="error-page-title" v-model="errorPageTitle" class="form-control" maxlength="120" :placeholder="$t('serverProxy.errorPageTitlePlaceholder')" />
+        </div>
+        <div class="form-group">
+          <label for="error-page-message">{{ $t("serverProxy.errorPageMessageLabel") }}</label>
+          <input id="error-page-message" v-model="errorPageMessage" class="form-control" maxlength="500" :placeholder="$t('serverProxy.errorPageMessagePlaceholder')" />
+        </div>
+      </template>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary" :disabled="savingErrorPage" @click="saveErrorPage">
+          <span class="material-symbols-outlined" style="font-size: 18px">save</span>
+          {{ savingErrorPage ? $t("serverProxy.saving") : $t("common.save") }}
+        </button>
+        <span v-if="errorPageSaved" class="muted" style="align-self: center; font-size: 13px">{{ $t("serverProxy.errorPageSaved") }}</span>
       </div>
     </div>
   </div>

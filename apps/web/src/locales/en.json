@@ -1679,7 +1679,15 @@
     "failedSaveDomain": "failed to save domain",
     "failedEnableProxy": "failed to enable proxy",
     "failedRestartProxy": "failed to restart the proxy",
-    "failedLoadLogs": "failed to load the logs"
+    "failedLoadLogs": "failed to load the logs",
+    "errorPage": "Custom error page",
+    "errorPageHint": "Optional. Replaces Traefik's plain \"404 page not found\" (unknown domain) and its 502/503/504 responses (an application that is down or not answering) with a neutral error page. Leave it off to keep Traefik's defaults. Applying it restarts the proxy briefly.",
+    "errorPageEnable": "Show a custom error page",
+    "errorPageTitleLabel": "Title (optional)",
+    "errorPageTitlePlaceholder": "Leave empty for the default title of each error",
+    "errorPageMessageLabel": "Message (optional)",
+    "errorPageMessagePlaceholder": "Leave empty for the default message of each error",
+    "errorPageSaved": "saved, the proxy is being updated"
   },
   "serverTerminal": {
     "loginShellOn": "Login shell on",
@@ -1933,5 +1941,16 @@
     "failedUpload": "failed to upload the file",
     "failedCreateFolder": "failed to create the folder",
     "failedDelete": "failed to delete"
+  },
+  "serviceMaintenance": {
+    "title": "Maintenance mode",
+    "hint": "While on, the domains of this service answer a notice page (503) and the containers keep running. It applies right away, no redeploy. Domain changes made while it is on are applied too.",
+    "enable": "Maintenance mode (show a notice page)",
+    "messageForVisitors": "Message for visitors",
+    "placeholder": "We are down for maintenance. Back shortly.",
+    "containers": "Containers in maintenance",
+    "containersHint": "None selected means every container that has a domain.",
+    "savedApplied": "saved, applied right away",
+    "failedToSave": "failed to save"
   }
 }

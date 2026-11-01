@@ -63,6 +63,7 @@ Levers to squeeze further:
 
 - Raise `METRICS_INTERVAL_SECONDS` and `PATCH_CHECK_INTERVAL_SECONDS`.
 - Turn monitoring off per server: server *General* tab → "Monitoring".
+- The custom error page is opt-in per server (the *Proxy* tab): optional title and message, shown for unknown domains and for 502/503/504. Saving restarts the proxy briefly. Maintenance mode for services and stacks is on the service's *General* tab.
 - Traffic analytics is opt-in per server (the *Proxy* tab) and costs one local read of Traefik every 5 minutes.
 - Use `LOG_LEVEL=warn` for less log output.
 - Install the panel on another machine (`--control-plane-only`): Postgres, Redis, the API and the worker then leave the apps' VPS.
