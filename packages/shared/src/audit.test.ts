@@ -1,5 +1,20 @@
 import { describe, expect, test } from "bun:test";
-import { describeAuditRequest, describeAuthEvent } from "./audit";
+import { AuditThrottle, describeAuditRequest, describeAuthEvent } from "./audit";
+
+describe("AuditThrottle", () => {
+  test("lets one event per key through per window", () => {
+    const t = new AuditThrottle(1000, 100);
+    expect(t.allow("a", 0)).toBe(true);
+    expect(t.allow("a", 999)).toBe(false);
+    expect(t.allow("b", 999)).toBe(true);
+    expect(t.allow("a", 1000)).toBe(true);
+  });
+  test("stays bounded", () => {
+    const t = new AuditThrottle(1000, 3);
+    for (let i = 0; i < 50; i++) expect(t.allow(`k${i}`, 0)).toBe(true);
+    expect((t as unknown as { seen: Map<string, number> }).seen.size).toBeLessThanOrEqual(3);
+  });
+});
 
 const T = "11111111-1111-4111-8111-111111111111";
 const P = "22222222-2222-4222-8222-222222222222";

@@ -37,10 +37,11 @@ export function sessionIdFromCookieHeader(header: string | null | undefined): st
 export function isOriginAllowed(origin: string | null | undefined, allowed: string | undefined): boolean {
   const list = (allowed ?? "")
     .split(",")
-    .map((o) => o.trim().replace(/\/+$/, ""))
+    .map((o) => o.trim().replace(/\/+$/, "").toLowerCase())
     .filter(Boolean);
   if (list.length === 0 || !origin) return true;
-  return list.includes(origin.replace(/\/+$/, ""));
+  // Browsers send scheme and host lower-cased; an operator may have typed WEB_ORIGIN with capitals.
+  return list.includes(origin.replace(/\/+$/, "").toLowerCase());
 }
 
 export type WsResourceKind = "server" | "service" | "application" | "database" | "deployment" | "backup-schedule";

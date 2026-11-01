@@ -181,3 +181,29 @@ export function describeAuthEvent(kind: AuthEventKind): AuthEventInfo {
       return { action: "Signed out", level: "info" };
   }
 }
+
+/**
+ * Lets one event per key through per window. Failed sign-ins are recorded in the audit log, and the
+ * endpoint is reachable without credentials, so a flood of wrong passwords must not become a flood of
+ * rows (it would also bury the real entries). Memory is bounded by sweeping expired keys.
+ */
+export class AuditThrottle {
+  private seen = new Map<string, number>();
+
+  constructor(
+    private readonly windowMs = 5 * 60_000,
+    private readonly maxKeys = 10_000,
+  ) {}
+
+  /** True when an event for `key` should be recorded now. */
+  allow(key: string, now = Date.now()): boolean {
+    const last = this.seen.get(key);
+    if (last !== undefined && now - last < this.windowMs) return false;
+    if (this.seen.size >= this.maxKeys) {
+      for (const [k, t] of this.seen) if (now - t >= this.windowMs) this.seen.delete(k);
+      if (this.seen.size >= this.maxKeys) this.seen.clear();
+    }
+    this.seen.set(key, now);
+    return true;
+  }
+}

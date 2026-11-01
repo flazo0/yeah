@@ -118,7 +118,8 @@ const server = Bun.serve<ConnData>({
     const sessionId = sessionIdFromCookieHeader(req.headers.get("cookie"));
     const userId = sessionId ? await findSessionUserId(db, sessionId).catch(() => null) : null;
     if (!sessionId || !userId) return new Response("unauthorized", { status: 401 });
-    const teams = await loadTeams(userId);
+    const teams = await loadTeams(userId).catch(() => null);
+    if (!teams) return new Response("unavailable", { status: 503 });
     if (srv.upgrade(req, { data: { sessionId, userId, teams } })) return;
     return new Response("upgrade failed", { status: 400 });
   },
@@ -146,7 +147,18 @@ async function dispatch(event: WsServerEvent) {
 }
 
 /** Drops sockets whose session expired or was revoked, and refreshes everyone's team list. */
+let refreshing = false;
 async function refreshClients() {
+  if (refreshing) return; // a slow database must not stack up overlapping sweeps
+  refreshing = true;
+  try {
+    await refreshAll();
+  } finally {
+    refreshing = false;
+  }
+}
+
+async function refreshAll() {
   for (const client of [...clients]) {
     try {
       const userId = await findSessionUserId(db, client.data.sessionId);

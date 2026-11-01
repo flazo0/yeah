@@ -27,6 +27,10 @@ describe("isOriginAllowed", () => {
     expect(isOriginAllowed("http://localhost:8080", allowed)).toBe(true);
     expect(isOriginAllowed("https://evil.test", allowed)).toBe(false);
   });
+  test("is case-insensitive, so a capitalised WEB_ORIGIN does not lock everyone out", () => {
+    expect(isOriginAllowed("https://panel.test", "https://Panel.Test")).toBe(true);
+    expect(isOriginAllowed("https://evil.test", "https://Panel.Test")).toBe(false);
+  });
 });
 
 describe("routeEvent", () => {

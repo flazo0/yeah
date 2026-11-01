@@ -1,12 +1,14 @@
 import { and, desc, eq, inArray, lt } from "drizzle-orm";
 import { applications, auditEvents, databases, projects, servers, services, teamMembers, type AuditEvent } from "@yeah/db";
-import { describeAuditRequest, describeAuthEvent, type AuditEventDto, type AuditResourceType, type AuthEventKind } from "@yeah/shared";
+import { AuditThrottle, describeAuditRequest, describeAuthEvent, type AuditEventDto, type AuditResourceType, type AuthEventKind } from "@yeah/shared";
 import { db } from "./db";
 import { getUserFromSessionId, SESSION_COOKIE } from "./session";
 import { peekApiTokenName } from "./apiTokenAuth";
 import { createLogger, parseLogLevel } from "@yeah/shared";
 
 const log = createLogger("api", { format: process.env.LOG_FORMAT === "text" ? "text" : "json", minLevel: parseLogLevel(process.env.LOG_LEVEL) });
+
+const failureThrottle = new AuditThrottle();
 
 /** Records a successful mutating request. Never throws — auditing must not break the request it describes. */
 export async function recordAuditFromRequest(request: Request, status: number, cookie: Record<string, { value?: unknown } | undefined>, ip: string | null = null): Promise<void> {
@@ -47,6 +49,8 @@ export function apiTokenActor(name: string | null): string {
  */
 export async function recordAuthEvent(input: { userId: string; email: string; kind: AuthEventKind; ip: string | null; path: string }): Promise<void> {
   try {
+    // Failures are reachable without credentials: record at most one per account, kind and address per window.
+    if ((input.kind === "sign-in-failed" || input.kind === "second-factor-failed") && !failureThrottle.allow(`${input.kind}:${input.userId}:${input.ip ?? ""}`)) return;
     const info = describeAuthEvent(input.kind);
     const memberships = await db.select({ teamId: teamMembers.teamId }).from(teamMembers).where(eq(teamMembers.userId, input.userId));
     if (!memberships.length) return;

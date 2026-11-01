@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { users, teams, teamMembers, type User } from "@yeah/db";
 import type { SafeUser } from "@yeah/shared";
 import { db } from "../lib/db";
-import { hashPassword, verifyPassword } from "../lib/password";
+import { hashPassword, verifyPassword, verifyPasswordOrDummy } from "../lib/password";
 import { createSession, destroySession, getUserFromSessionId, sessionCookieOptions, SESSION_COOKIE } from "../lib/session";
 import { generateRecoveryCodes, generateTotpSecret, hashRecoveryCode, otpauthUri, verifyTotp } from "../lib/totp";
 import { createDefaultProject } from "../lib/projects";
@@ -90,7 +90,7 @@ export const authRoutes = new Elysia({ prefix: "/auth" })
       const rows = await db.select().from(users).where(eq(users.email, body.email)).limit(1);
       const user = rows[0];
       const ip = clientIp(request.headers, server?.requestIP(request)?.address);
-      if (!user || !(await verifyPassword(body.password, user.passwordHash))) {
+      if (!(await verifyPasswordOrDummy(body.password, user?.passwordHash)) || !user) {
         // Unknown e-mail: there is no team to attach the event to, so only a known account is recorded.
         if (user) void recordAuthEvent({ userId: user.id, email: user.email, kind: "sign-in-failed", ip, path: "/auth/login" });
         set.status = 401;

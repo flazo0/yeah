@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { hashPassword, verifyPassword } from "./password";
+import { hashPassword, verifyPassword, verifyPasswordOrDummy } from "./password";
 
 describe("hashPassword / verifyPassword", () => {
   test("a hashed password verifies against the original", async () => {
@@ -28,5 +28,14 @@ describe("hashPassword / verifyPassword", () => {
     expect(a).not.toBe(b);
     expect(await verifyPassword("same password", a)).toBe(true);
     expect(await verifyPassword("same password", b)).toBe(true);
+  });
+});
+
+describe("verifyPasswordOrDummy", () => {
+  test("is always false without an account, and behaves like verifyPassword with one", async () => {
+    const hash = await hashPassword("secret-123");
+    expect(await verifyPasswordOrDummy("secret-123", undefined)).toBe(false);
+    expect(await verifyPasswordOrDummy("secret-123", hash)).toBe(true);
+    expect(await verifyPasswordOrDummy("nope", hash)).toBe(false);
   });
 });
