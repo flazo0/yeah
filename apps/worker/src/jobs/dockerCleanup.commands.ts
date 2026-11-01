@@ -27,7 +27,9 @@ export function buildImageRemovalCommand(opts: DockerCleanupOptions): string | n
   if (!opts.pruneImages || opts.removeImageIds === undefined || opts.removeImageIds.length === 0) return null;
   const ids = opts.removeImageIds.filter((id) => /^[0-9a-f]{12,64}$/.test(id));
   if (ids.length === 0) return null;
-  return `(docker image rm ${ids.join(" ")} >/dev/null 2>&1 || true)`;
+  // -f: an image carrying several tags (`latest` plus a retention tag, `nginx:alpine` plus `nginx:latest`) is refused by id
+  // without it. It still cannot remove an image a container (running or stopped) uses, and protected images are not in the list.
+  return `(docker image rm -f ${ids.join(" ")} >/dev/null 2>&1 || true)`;
 }
 
 /**
