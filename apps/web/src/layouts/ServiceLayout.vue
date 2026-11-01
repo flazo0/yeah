@@ -26,6 +26,7 @@ const subnav = computed(() =>
         { to: `${routeBase}/domains`, label: i18n.global.t("serviceLayout.domains"), active: route.name === "service-domains" },
         { to: `${routeBase}/logs`, label: "Logs", active: route.name === "service-logs" },
         { to: `${routeBase}/backups`, label: "Backups", active: route.name === "service-backups" },
+        { to: `${routeBase}/files`, label: i18n.global.t("serviceLayout.files"), active: route.name === "service-files" },
       ]
     : [
         { to: `${routeBase}/general`, label: i18n.global.t("common.general"), active: route.name === "service-general" },

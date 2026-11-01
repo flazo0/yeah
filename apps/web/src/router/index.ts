@@ -56,6 +56,8 @@ import ServiceComposePage from "../pages/service/ServiceComposePage.vue";
 import ServiceDomainsPage from "../pages/service/ServiceDomainsPage.vue";
 import ServiceLogsPage from "../pages/service/ServiceLogsPage.vue";
 import ServiceBackupsPage from "../pages/service/ServiceBackupsPage.vue";
+import ServiceFilesPage from "../pages/service/ServiceFilesPage.vue";
+import DatabaseFilesPage from "../pages/database/DatabaseFilesPage.vue";
 import ServiceEnvPage from "../pages/service/ServiceEnvPage.vue";
 
 // import.meta.env.BASE_URL comes from Vite's own `base` config (set at build time — see
@@ -149,6 +151,7 @@ export const router = createRouter({
       redirect: (to) => `${to.path}/backups`,
       children: [
         { path: "backups", name: "database-backups", component: DatabaseBackupsPage },
+        { path: "files", name: "database-files", component: DatabaseFilesPage },
         { path: "general", name: "database-general", component: DatabaseGeneralPage },
         { path: "settings", name: "database-settings", component: DatabaseSettingsPage },
       ],
@@ -165,6 +168,7 @@ export const router = createRouter({
         { path: "domains", name: "service-domains", component: ServiceDomainsPage },
         { path: "logs", name: "service-logs", component: ServiceLogsPage },
         { path: "backups", name: "service-backups", component: ServiceBackupsPage },
+        { path: "files", name: "service-files", component: ServiceFilesPage },
       ],
     },
   ],

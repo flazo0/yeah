@@ -142,6 +142,21 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | POST | `.../databases/:id/connect-application` | `{ applicationId, envKey?, mountPath? }` | SQLite only: mounts the database's volume in an application of the same environment and server (a `database`-kind storage row, default `/data`) and sets `envKey` (default `DATABASE_URL`) to `file:<mountPath>/<name>.db`. Applies on the application's next deploy. 400 for other engines, Compose applications or another server |
 | DELETE | `.../databases/:id` | — | Removes the remote container and volume over SSH (best effort), unregisters the BullMQ schedule, deletes the row (cascade) |
 
+## Container file browser
+
+The same routes exist under `.../applications/:id`, `.../services/:id` and `.../databases/:id`. For a service (a stack) every call also takes `?container=<compose service>`; `GET .../services/:id/files/containers` lists the choices. Browser-session only (not available to API tokens). Paths are absolute and canonical (no `..`, `.` or control characters). The write routes answer `403` unless the instance sets `FILE_BROWSER_WRITES=true`; see [security.md](security.md#container-file-browser-writes).
+
+| Method | Route | Body | Description |
+|---|---|---|---|
+| GET | `.../:id/files?path=` | — | Lists a folder: `{ path, entries, writable, maxEditBytes, maxUploadBytes }` |
+| GET | `.../:id/files/content?path=&edit=1` | — | Reads a file: `{ binary, content, truncated, editable }`. Reads are cut at 256 KB (2 MB with `edit=1`); binary files return no content |
+| PUT | `.../:id/file-save` | `{ path, content, create? }` | Saves a UTF-8 text file (up to 2 MB, no NUL bytes). `create: true` refuses to replace an existing file. Keeps the owner and mode of an existing file |
+| POST | `.../:id/file-upload` | `{ dir, name, contentBase64, overwrite? }` | Uploads a file (cap `FILE_BROWSER_UPLOAD_MAX_MB`, 10 by default). `409` if it exists and `overwrite` is not `true` |
+| POST | `.../:id/file-mkdir` | `{ path }` | Creates one folder (`409`-style failure if it exists or the parent is missing) |
+| POST | `.../:id/file-delete` | `{ path, confirm }` | Deletes a file or a folder recursively. `confirm` must repeat `path` exactly. Top-level folders cannot be deleted |
+
+Writes to `/`, `/proc`, `/sys`, `/dev` and `*.sock` files are always refused. Each write is recorded in the audit log by action only, never with the path or content.
+
 ## WebSocket (`ws`, separate port — `WS_PORT`)
 
 Connect to `ws://<host>:<WS_PORT>`. The socket has no authentication of its own: it only carries events the signed-in user's frontend already filters by IDs it has loaded on screen (there is no private per-user channel yet; see [roadmap.md](roadmap.md)). Messages are the JSON of `WsServerEvent` (see [architecture.md](architecture.md#real-time-events)): `server.status`, `server.proxy`, `server.metrics`, `deployment.log`, `deployment.status`, `database.status`, `service.status` and `backup.status`.
