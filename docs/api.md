@@ -72,7 +72,7 @@ CPU, RAM and disk (`cpuPercent`, `memPercent`, `diskPercent`, `metricsCheckedAt`
 
 Secrets (`telegramBotToken`, `smtpPassword`, webhook URLs) never come back in a response.
 
-Valid event types in `events`: `deploy.success`, `deploy.failed`, `backup.success`, `backup.failed`, `task.success`, `task.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disk crossed a threshold), `tls.expiring` (a certificate in use expires in 14 days or less), `docker-cleanup.success`, `docker-cleanup.failed`, `api-token.expiring`, `server.patches` (pending security updates), `container.unhealthy` (restart loop or out of memory) and `traefik.outdated`.
+Valid event types in `events`: `deploy.success`, `deploy.failed`, `backup.success`, `backup.failed`, `task.success`, `task.failed`, `server.down`, `server.reconnected`, `server.metrics` (CPU/RAM/disk crossed a threshold), `tls.expiring` (a certificate in use expires in 14 days or less), `docker-cleanup.success`, `docker-cleanup.failed`, `api-token.expiring`, `server.patches` (pending security updates), `container.unhealthy` (restart loop or out of memory), `container.status` (a container of an application, database or service changed status, for example running to exited or unhealthy and back; opt-in like the `*.success` events, debounced over two polls and at most one message per container every 5 minutes) and `traefik.outdated`.
 
 ## Updates
 

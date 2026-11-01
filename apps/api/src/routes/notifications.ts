@@ -21,6 +21,10 @@ const EVENT_TYPE_SCHEMA = t.Union([
   t.Literal("backup.success"),
   t.Literal("task.success"),
   t.Literal("docker-cleanup.success"),
+  t.Literal("server.patches"),
+  t.Literal("container.unhealthy"),
+  t.Literal("container.status"),
+  t.Literal("traefik.outdated"),
 ]);
 
 function toChannelDto(channel: NotificationChannel): NotificationChannelDto {

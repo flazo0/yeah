@@ -528,7 +528,7 @@
     "sending": "sending...",
     "sent": "sent",
     "failed": "failed",
-    "noneSelectedReceivesAllEvents": "None selected = receives all events.",
+    "noneSelectedReceivesAllEvents": "None selected = receives all events except the success and container status-change ones, which must be ticked explicitly.",
     "saving": "saving...",
     "cancel": "Cancel",
     "addChannel": "Add channel",

@@ -521,6 +521,7 @@ export type NotificationEventType =
   | "docker-cleanup.success"
   | "server.patches"
   | "container.unhealthy"
+  | "container.status"
   | "traefik.outdated";
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {
@@ -539,6 +540,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   "docker-cleanup.success": "Docker cleanup completed",
   "server.patches": "Pending security updates on the server",
   "container.unhealthy": "Container restarting in a loop or out of memory",
+  "container.status": "Container status changed (exited, unhealthy, back to running...)",
   "traefik.outdated": "Proxy (Traefik) update available",
 };
 
@@ -546,7 +548,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
  * Success events are chatty (every nightly backup, every daily cleanup): a channel with no explicit event
  * list (events = null, "everything") does NOT receive them — it has to opt in by listing them.
  */
-export const OPT_IN_NOTIFICATION_EVENTS: readonly NotificationEventType[] = ["backup.success", "task.success", "docker-cleanup.success"];
+export const OPT_IN_NOTIFICATION_EVENTS: readonly NotificationEventType[] = ["backup.success", "task.success", "docker-cleanup.success", "container.status"];
 
 export interface NotificationChannelDto {
   id: string;

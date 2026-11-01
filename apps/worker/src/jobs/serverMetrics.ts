@@ -1,7 +1,7 @@
 import { and, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { applications, containerMetricSamples, databases, serverMetricSamples, servers, services, type Server } from "@yeah/db";
 import { connectSsh, execStream } from "@yeah/ssh";
-import { allContainerStatsCommand, containerWatchCommand, detectContainerProblems, parseContainerWatch, parseDockerStats } from "@yeah/shared";
+import { allContainerStatsCommand, ContainerStatusTracker, containerWatchCommand, detectContainerProblems, parseContainerWatch, parseDockerStats } from "@yeah/shared";
 import { createDockerCleanupQueue, publishServerEvent, type ServerMetricsJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import type { Queue } from "bullmq";
@@ -30,6 +30,8 @@ const breaker = new CircuitBreaker({ threshold: 5, baseCooldownMs: 5 * 60_000, m
 const alertThrottle = new Throttle(60 * 60 * 1000);
 // Last restart count seen per container, per server — a crash loop is a *change* in the count.
 const restartCounts = new Map<string, Map<string, number>>();
+// Status-change tracking (container.status, opt-in per channel): debounced and rate-limited per container.
+const statusTrackers = new Map<string, ContainerStatusTracker>();
 
 // Set by makeServerMetricsProcessor: lets a disk that just filled up trigger the cleanup right away
 // (the daily schedule would otherwise leave it full until 04:00).
@@ -142,7 +144,15 @@ async function watchContainers(server: Server, watchOutput: string): Promise<voi
     const ignore = new Set(sleeping.map((a) => `yeah-app-${a.id}`));
     for (const problem of detectContainerProblems(previous, rows, ignore)) {
       if (!alertThrottle.allow(`${server.id}:container:${problem.name}`)) continue;
-      await notifyTeam(server.teamId, "container.unhealthy", `Container com problema em ${server.name}`, `${problem.name}: ${problem.detail}.`, "error");
+      await notifyTeam(server.teamId, "container.unhealthy", `Container problem on ${server.name}`, `${problem.name}: ${problem.detail}.`, "error");
+    }
+    let tracker = statusTrackers.get(server.id);
+    if (!tracker) {
+      tracker = new ContainerStatusTracker();
+      statusTrackers.set(server.id, tracker);
+    }
+    for (const change of tracker.observe(rows, ignore)) {
+      await notifyTeam(server.teamId, "container.status", `Container ${change.to} on ${server.name}`, `${change.name}: ${change.from} -> ${change.to}.`, change.to === "running" ? "info" : "warning");
     }
   } catch (err) {
     console.warn(`[worker] server-metrics: container watch failed for ${server.id}:`, err instanceof Error ? err.message : err);

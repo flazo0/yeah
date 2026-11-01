@@ -528,7 +528,7 @@
     "sending": "enviando...",
     "sent": "enviado",
     "failed": "falhou",
-    "noneSelectedReceivesAllEvents": "Nenhum marcado = recebe todos os eventos.",
+    "noneSelectedReceivesAllEvents": "Nenhum marcado = recebe todos os eventos, exceto os de sucesso e de mudança de status de container, que precisam ser marcados.",
     "saving": "salvando...",
     "cancel": "Cancelar",
     "addChannel": "Adicionar canal",

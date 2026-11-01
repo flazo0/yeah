@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Container status-change notifications (`container.status`): opt-in per channel, reports when a container of an application, database or service goes running to exited/restarting/unhealthy and back, debounced over two polls and limited to one message per container every 5 minutes.
 - Audit log: API-token calls (including `/api/v1`) are attributed to the token by name, MCP deploy/backup tools are recorded, and sign-ins, failed attempts, passkey sign-ins and sign-outs are logged with the client IP (migration `0061_audit_ip`).
 - Initial public release of the control plane: `api`, `worker`, `ws` and `web` processes, the `yeah` CLI, and the shared packages.
 - Deployments from Git (public URL, GitHub App, Git sources, deploy keys), Docker images, pasted Dockerfiles, Docker Compose, Nixpacks, Railpack and static sites, with live logs, rollbacks, preview deployments and remote build servers.
