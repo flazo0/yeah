@@ -1,11 +1,12 @@
-import { desc, eq } from "drizzle-orm";
-import { dockerCleanupExecutions, dockerCleanups, servers } from "@yeah/db";
+import { and, desc, eq, gt } from "drizzle-orm";
+import { applications, deployments, dockerCleanupExecutions, dockerCleanups, servers } from "@yeah/db";
+import { deploymentImageRef, deploymentsToRetain, dockerImagesCommand, parseDockerImages, selectImagesToRemove } from "@yeah/shared";
 import { connectSsh, execStream } from "@yeah/ssh";
 import type { DockerCleanupJobData } from "@yeah/queue";
 import type { Job } from "bullmq";
 import { db } from "../lib/db";
 import { notifyTeam } from "../lib/notify";
-import { buildHostCleanupCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
+import { buildHostCleanupCommand, parseReclaimedBytes, type DockerCleanupOptions } from "./dockerCleanup.commands";
 
 export { buildDockerPruneCommand, buildHostCleanupCommand, parseReclaimedBytes } from "./dockerCleanup.commands";
 
@@ -28,8 +29,19 @@ export function makeDockerCleanupProcessor() {
     try {
       const conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
       try {
-        const opts = { pruneImages: schedule?.pruneImages ?? false, pruneVolumes: schedule?.pruneVolumes ?? false };
+        const opts: DockerCleanupOptions = { pruneImages: schedule?.pruneImages ?? false, pruneVolumes: schedule?.pruneVolumes ?? false };
         let output = "";
+        if (opts.pruneImages) {
+          // Applications that keep rollback images: their last N images must survive `prune -a`.
+          const protectedRefs = await rollbackImageRefs(serverId);
+          if (protectedRefs.size > 0) {
+            let listing = "";
+            await execStream(conn, dockerImagesCommand(), (chunk, stream) => {
+              if (stream === "stdout") listing += chunk;
+            });
+            opts.removeImageIds = selectImagesToRemove(parseDockerImages(listing), protectedRefs);
+          }
+        }
         const result = await execStream(conn, buildHostCleanupCommand(opts), (chunk) => {
           output += chunk;
         });
@@ -50,6 +62,18 @@ export function makeDockerCleanupProcessor() {
     }
     await applyRetention(serverId);
   };
+}
+
+/** The image refs of the last N successful deployments of every application on the server that keeps rollback images. */
+async function rollbackImageRefs(serverId: string): Promise<Set<string>> {
+  const apps = await db.select({ id: applications.id, keep: applications.rollbackImages }).from(applications).where(and(eq(applications.serverId, serverId), gt(applications.rollbackImages, 0)));
+  const refs = new Set<string>();
+  for (const app of apps) {
+    const rows = await db.select().from(deployments).where(eq(deployments.applicationId, app.id)).orderBy(desc(deployments.createdAt)).limit(200);
+    const retained = deploymentsToRetain(rows.map((d) => ({ id: d.id, status: d.status, commitSha: d.commitSha, createdAt: d.createdAt.toISOString() })), app.keep);
+    for (const d of retained) refs.add(deploymentImageRef(app.id, d.id));
+  }
+  return refs;
 }
 
 /** Keeps only the newest few executions per server — this is just a maintenance log, not a backup. */

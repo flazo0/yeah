@@ -19,6 +19,7 @@ import {
   volumeBackups,
 } from "@yeah/db";
 import type { ApplicationDto, ApplicationLifecycleAction, ApplicationVolumeDto, DeploymentDto, ScheduledTaskDto, ScheduledTaskExecutionDto } from "@yeah/shared";
+import { appImagesCommand, deploymentImageRef, imageExistsCommand, matchImagesToDeployments, parseAppImages, validateRollbackImages } from "@yeah/shared";
 import { gitRepoUrl, isValidGitRepoPath, MAX_SLEEP_MINUTES, MIN_SLEEP_MINUTES } from "@yeah/shared";
 import { containerStatsCommand, isSafeHostPath, isSafeMountPath, parseDockerStats, type VolumeKind } from "@yeah/shared";
 import { computeRouting, configSnapshot, DEPLOY_AFFECTING_FIELDS, isValidHostname, normalizeHost, pendingChanges, WWW_REDIRECTS, type ConfigSnapshot, type WwwRedirect } from "@yeah/shared";
@@ -104,6 +105,7 @@ function toApplicationDto(app: Application, serverName: string, buildServerName:
     healthStartPeriodSeconds: app.healthStartPeriodSeconds,
     dockerOptions: app.dockerOptions,
     stopGraceSeconds: app.stopGraceSeconds,
+    rollbackImages: app.rollbackImages,
     hasDeployToken: Boolean(app.deployTokenHash),
     memoryLimitMb: app.memoryLimitMb,
     cpuLimit: app.cpuLimit,
@@ -700,7 +702,7 @@ export const applicationRoutes = new Elysia({
         return { error: "application not found" };
       }
 
-      const error = validateAdvancedSettings(body);
+      const error = validateAdvancedSettings(body) ?? (body.rollbackImages !== undefined ? validateRollbackImages(body.rollbackImages) : null);
       if (error) {
         set.status = 400;
         return { error };
@@ -716,6 +718,7 @@ export const applicationRoutes = new Elysia({
           healthStartPeriodSeconds: body.healthStartPeriodSeconds,
           dockerOptions: body.dockerOptions,
           stopGraceSeconds: body.stopGraceSeconds,
+          ...(body.rollbackImages !== undefined ? { rollbackImages: body.rollbackImages } : {}),
           ...(body.redactEnvInLogs !== undefined ? { redactEnvInLogs: body.redactEnvInLogs } : {}),
         })
         .where(eq(applications.id, params.applicationId))
@@ -735,6 +738,7 @@ export const applicationRoutes = new Elysia({
         healthStartPeriodSeconds: t.Number(),
         dockerOptions: t.String({ maxLength: 4000 }),
         stopGraceSeconds: t.Number(),
+        rollbackImages: t.Optional(t.Number()),
         redactEnvInLogs: t.Optional(t.Boolean()),
       }),
     },
@@ -1442,7 +1446,56 @@ export const applicationRoutes = new Elysia({
 
     return { deployment: toDeploymentDto(deployment) };
   })
-  .post("/:applicationId/deployments/:deploymentId/rollback", async ({ cookie, params, query, set }) => {
+  .get("/:applicationId/rollback-images", async ({ cookie, params, set }) => {
+    const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
+    if (!user) {
+      set.status = 401;
+      return { error: "unauthorized" };
+    }
+    if (!(await assertMember(params.teamId, user.id))) {
+      set.status = 403;
+      return { error: "forbidden" };
+    }
+    const found = await loadApplication(params.environmentId, params.applicationId);
+    if (!found) {
+      set.status = 404;
+      return { error: "application not found" };
+    }
+    const application = found.application;
+    const supported = application.buildPack !== "image" && application.buildPack !== "docker_compose";
+    const enabled = supported && application.rollbackImages > 0;
+    if (!supported) return { enabled: false, supported: false, images: [] };
+    const [server] = await db.select().from(servers).where(eq(servers.id, application.serverId)).limit(1);
+    if (!server) {
+      set.status = 404;
+      return { error: "server not found" };
+    }
+    let output = "";
+    let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
+    try {
+      conn = await connectSsh({ host: server.host, port: server.port, username: server.sshUser, privateKey: server.privateKey, timeoutMs: server.sshTimeoutSeconds * 1000 });
+      await execStream(conn, appImagesCommand(application.id), (chunk, stream) => {
+        if (stream === "stdout") output += chunk;
+      });
+    } catch (err) {
+      set.status = 502;
+      return { error: `failed to talk to the server: ${err instanceof Error ? err.message : String(err)}` };
+    } finally {
+      conn?.end();
+    }
+    const rows = await db
+      .select()
+      .from(deployments)
+      .where(eq(deployments.applicationId, application.id))
+      .orderBy(desc(deployments.createdAt))
+      .limit(100);
+    const images = matchImagesToDeployments(
+      parseAppImages(output, application.id),
+      rows.map((d) => ({ id: d.id, status: d.status, commitSha: d.commitSha, createdAt: d.createdAt.toISOString() })),
+    );
+    return { enabled, supported: true, images };
+  })
+  .post("/:applicationId/deployments/:deploymentId/rollback", async ({ cookie, params, query, body, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {
       set.status = 401;
@@ -1474,16 +1527,47 @@ export const applicationRoutes = new Elysia({
       set.status = 404;
       return { error: "deployment not found" };
     }
-    if (target.status !== "success" || !target.commitSha) {
+    if (target.status !== "success" || (!target.commitSha && !body?.image)) {
       set.status = 400;
       return { error: "you can only roll back to a deployment that finished successfully" };
+    }
+
+    // Rolling back to a retained Docker image skips the clone and the build entirely: the worker
+    // retags the image and starts it. Checked here (over SSH) so the user gets an immediate answer
+    // instead of a failed deployment when the image was pruned.
+    let rollbackImage: string | null = null;
+    if (body?.image) {
+      if (found.application.buildPack === "image" || found.application.buildPack === "docker_compose") {
+        set.status = 400;
+        return { error: "this application type has no retained images to roll back to" };
+      }
+      if (!targetServer) {
+        set.status = 404;
+        return { error: "server not found" };
+      }
+      const ref = deploymentImageRef(params.applicationId, target.id);
+      let conn: Awaited<ReturnType<typeof connectSsh>> | null = null;
+      try {
+        conn = await connectSsh({ host: targetServer.host, port: targetServer.port, username: targetServer.sshUser, privateKey: targetServer.privateKey, timeoutMs: targetServer.sshTimeoutSeconds * 1000 });
+        const result = await execStream(conn, imageExistsCommand(ref), () => undefined);
+        if (result.exitCode !== 0) {
+          set.status = 409;
+          return { error: "the Docker image of this deployment is no longer on the server — roll back from the commit instead", code: "image_missing" };
+        }
+      } catch (err) {
+        set.status = 502;
+        return { error: `failed to talk to the server: ${err instanceof Error ? err.message : String(err)}` };
+      } finally {
+        conn?.end();
+      }
+      rollbackImage = ref;
     }
 
     // Pre-filling commitSha is the entire rollback mechanism — the worker checks this field before
     // pulling the branch and, if set, checks out that exact commit instead. See deployApplication.ts.
     const [deployment] = await db
       .insert(deployments)
-      .values({ applicationId: params.applicationId, status: "queued", commitSha: target.commitSha })
+      .values({ applicationId: params.applicationId, status: "queued", commitSha: target.commitSha, rollbackImage })
       .returning();
     if (!deployment) {
       set.status = 500;
@@ -1493,7 +1577,7 @@ export const applicationRoutes = new Elysia({
     await applicationDeployQueue.add("deploy", { deploymentId: deployment.id });
 
     return { deployment: toDeploymentDto(deployment) };
-  })
+  }, { body: t.Optional(t.Object({ image: t.Optional(t.Boolean()) })) })
   .delete("/:applicationId", async ({ cookie, params, set }) => {
     const user = await getUserFromSessionId(cookie[SESSION_COOKIE]?.value);
     if (!user) {

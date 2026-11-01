@@ -15,6 +15,7 @@ const form = ref({
   healthStartPeriodSeconds: 30,
   dockerOptions: "",
   stopGraceSeconds: 10,
+  rollbackImages: 0,
   redactEnvInLogs: false,
 });
 const saving = ref(false);
@@ -30,6 +31,7 @@ watchEffect(() => {
     healthStartPeriodSeconds: app.value.healthStartPeriodSeconds,
     dockerOptions: app.value.dockerOptions,
     stopGraceSeconds: app.value.stopGraceSeconds,
+    rollbackImages: app.value.rollbackImages,
     redactEnvInLogs: app.value.redactEnvInLogs,
   };
 });
@@ -97,6 +99,12 @@ async function save() {
           <p class="hint" style="margin-top: 6px">
             {{ $t("applicationAdvanced.howLongOldContainerHas") }}
           </p>
+        </div>
+
+        <div class="form-group">
+          <label for="rollback-images">{{ $t("applicationAdvanced.rollbackImagesToKeep") }}</label>
+          <input id="rollback-images" v-model.number="form.rollbackImages" type="number" min="0" max="20" class="form-control" style="max-width: 200px" />
+          <p class="hint" style="margin-top: 6px">{{ $t("applicationAdvanced.rollbackImagesHint") }}</p>
         </div>
 
         <h3 class="section-title">{{ $t("applicationAdvanced.logsTitulo") }}</h3>

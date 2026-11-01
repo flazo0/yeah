@@ -442,6 +442,13 @@
       "when": 1793494525635,
       "tag": "0062_sqlite_database",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1793498128794,
+      "tag": "0063_rollback_images",
+      "breakpoints": true
     }
   ]
 }

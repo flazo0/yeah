@@ -97,6 +97,8 @@ export const applications = pgTable("applications", {
   dockerOptions: text("docker_options").default("").notNull(),
   // `docker stop -t` grace before the old container is removed on redeploy.
   stopGraceSeconds: integer("stop_grace_seconds").default(10).notNull(),
+  // How many recent successful deployments keep their Docker image on the server for a direct rollback (0 = off).
+  rollbackImages: integer("rollback_images").default(0).notNull(),
   // sha256 of the manual-deploy webhook token — the token itself is only shown once, when generated.
   deployTokenHash: varchar("deploy_token_hash", { length: 64 }).unique(),
   ...resourceLimitColumns(),

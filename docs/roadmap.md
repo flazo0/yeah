@@ -32,6 +32,7 @@ The following were verified **only** with unit tests and local fakes, and still 
 - the container file browser against real containers,
 - the authenticated WebSocket channel: cookie validation, per-team routing and the browser reconnect logic are unit tested (cookie parsing, origin check, event routing); the `ws` service was not run against a real browser, Postgres, Redis or the Traefik/Cloudflare path.
 - SQLite databases: the holder container (the `keinos/sqlite3` image with its entrypoint replaced, run as root), the `sqlite3 .dump` backup and restore, and connecting an application (volume mount plus `DATABASE_URL`) are only unit tested on the generated commands. Nothing has run on a real Docker host, and the image's tags and shell have not been checked.
+- Rollback to retained Docker images: the per-deployment tagging (`yeah-app-<id>:dep-<12 hex>`), the image listing parser, the match to deployments, the retention selection and the cleanup that spares protected images instead of `prune -a` are only unit tested on the generated commands and parsers (migration `0063_rollback_images`). Nothing has run against a real Docker host, so `docker image ls --filter reference=` output, the retag and the cleanup behaviour are unverified.
 
 If you run any of these, a report of what worked and what did not is a valuable contribution.
 
@@ -39,7 +40,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 
 - **Secret-manager integrations**: remote references resolved at deployment time (Vault, Infisical, AWS Secrets Manager). Needs a provider decision and testing against a real one.
 - **Skip the Compose build when images did not change**, and **drain seconds** for rolling updates. Optimisations that need to be measured on real builds.
-- **List the Docker images of recent deployments for rollback** (rollback currently uses the deployment history).
 - **A proxy-wide custom error page** (generic 404/502 for any domain) and maintenance mode for services and stacks.
 - **Container name prefix**: readable names instead of `yeah-app-<id>`. Deferred on purpose: the current name is the key for routing, the waker, metrics and backups, so changing it is a migration.
 - **A file browser for services and databases**, with upload and edit.

@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { and, eq as eqOp, isNull, or } from "drizzle-orm";
 import { applications, applicationVolumes, deployments, environments, gitSources, registries, servers, sharedVariables, type Application, type Registry } from "@yeah/db";
 import { connectSsh, execStream, writeRemoteFile, type Client } from "@yeah/ssh";
@@ -7,6 +7,7 @@ import { publishServerEvent, type ApplicationDeployJobData } from "@yeah/queue";
 import { cloneUrlForRepo, getGithubConfig, getInstallationToken, upsertPullRequestComment } from "@yeah/github";
 import { composeProjectName, ensureNetworkCommand, environmentNetworkName, internalHostName, stackNetworkJoinCommand, gitCloneUrlWithToken, previewCommentBody, previewCommentMarker, registryExistsCommand, registryLoginCommand, registryLogoutCommand, registryTagLocalCommand, registryPushCommand, registryRef, registryTag, volumeFilePath, PROXY_DIR } from "@yeah/shared";
 import { redactSecrets, secretValues } from "@yeah/shared";
+import { appImagesCommand, deploymentsToRetain, imageExistsCommand, parseAppImages, removeRefsCommand, staleDeploymentRefs, tagDeploymentImageCommand } from "@yeah/shared";
 import { buildPackUsesGit, composeProxyOverride, computeRouting, configSnapshot, traefikDynamicConfig, traefikLabels, buildTimeEntries, expandReferences, parseEnvContent, renderRuntimeEnv, shellQuote, type SharedVariableValue } from "@yeah/shared";
 import type { Job } from "bullmq";
 import type Redis from "ioredis";
@@ -99,6 +100,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     // POST .../rollback route) — the row was pre-filled with a past deployment's resolved commit,
     // and checking that out instead of the branch HEAD is the entire rollback mechanism.
     const rollbackTarget = deployment.commitSha;
+    // A rollback created from a retained Docker image: no clone, no build, just retag and start it.
+    const fromImage = deployment.rollbackImage;
     // Built inside the try below: minting the GitHub token can throw (App uninstalled, GITHUB_APP_* missing),
     // and a throw out here would leave this deployment "running" forever instead of failing it.
     const makeCloneOrPullStep = async (): Promise<Step> => {
@@ -151,7 +154,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
     let builtRef: string | null = null;
     try {
       if (application.buildServerId && !buildServer) throw new Error("this application's build server no longer exists");
-      if (buildServer) {
+      if (fromImage && (application.buildPack === "docker_compose" || application.buildPack === "image")) throw new Error("this application type cannot roll back to a retained image");
+      if (buildServer && !fromImage) {
         if (!registry || !application.registryImage) throw new Error("a build server requires a registry and an image repository to be configured (Source tab)");
 
         buildConn = await connectSsh({ host: buildServer.host, port: buildServer.port, username: buildServer.sshUser, privateKey: buildServer.privateKey, timeoutMs: buildServer.sshTimeoutSeconds * 1000 });
@@ -229,8 +233,8 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       }
       await writeRemoteFile(conn, `${appDir}/.env`, renderRuntimeEnv(envEntries));
 
-      if (builtRef) {
-        // Already cloned/built on the build server above — nothing to do here.
+      if (builtRef || fromImage) {
+        // Already cloned/built on the build server above, or reusing a retained image — nothing to do here.
       } else if (usesGit) {
         if (application.deployKey) {
           await appendAndPublish(`\x1b[36m$ writing the deploy key\x1b[0m\n`);
@@ -301,7 +305,13 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
           appendAndPublish,
         );
       } else {
-      if (builtRef) {
+      if (fromImage) {
+        await runStep(
+          conn,
+          { label: `reusing the retained image (${fromImage}) — no build`, command: `${imageExistsCommand(fromImage)} && ${registryTagLocalCommand(fromImage, containerName)}` },
+          appendAndPublish,
+        );
+      } else if (builtRef) {
         // Built and pushed on the build server above — pull it here and tag it as the run name.
         if (registry) {
           await appendAndPublish(`\x1b[36m$ logging in to registry ${registry.host}\x1b[0m\n`);
@@ -337,6 +347,10 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         for (const step of buildSteps) await runStep(conn, step, appendAndPublish);
       }
       }
+      if (application.rollbackImages > 0 && application.buildPack !== "image") {
+        // Keep this deployment's image under its own tag so it can be rolled back to later without a rebuild.
+        await runStep(conn, { label: "keeping the image for rollback", command: tagDeploymentImageCommand(application.id, deploymentId) }, appendAndPublish);
+      }
       await runStep(conn, removeOldStep, appendAndPublish);
       await runStep(conn, runStepDef, appendAndPublish);
       await runStep(
@@ -367,6 +381,10 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
         );
       }
 
+      if (application.rollbackImages > 0 && application.buildPack !== "image" && application.buildPack !== "docker_compose") {
+        await trimRollbackImages(conn, application.id, deploymentId, application.rollbackImages, appendAndPublish).catch(() => undefined);
+      }
+
       await finish(deploymentId, "success", "\n\x1b[32mDeployment completed.\x1b[0m\n", log);
       await db.update(applications).set({ status: "running" }).where(eq(applications.id, application.id));
       await publishServerEvent(publishConnection, { type: "application.status", applicationId: application.id, status: "running" });
@@ -393,6 +411,32 @@ export function makeDeployApplicationProcessor(publishConnection: Redis) {
       buildConn?.end();
     }
   };
+}
+
+/**
+ * Untags the images of deployments beyond the retention count (the current deployment counts as a success
+ * here — it only gets its final status right after). Best-effort: a failure never fails the deploy.
+ */
+async function trimRollbackImages(
+  conn: Client,
+  applicationId: string,
+  currentDeploymentId: string,
+  keep: number,
+  appendAndPublish: (line: string) => Promise<void>,
+): Promise<void> {
+  const rows = await db.select().from(deployments).where(eq(deployments.applicationId, applicationId)).orderBy(desc(deployments.createdAt)).limit(200);
+  const retained = deploymentsToRetain(
+    rows.map((d) => ({ id: d.id, status: d.id === currentDeploymentId ? "success" : d.status, commitSha: d.commitSha, createdAt: d.createdAt.toISOString() })),
+    keep,
+  );
+  let output = "";
+  await execStream(conn, appImagesCommand(applicationId), (chunk, stream) => {
+    if (stream === "stdout") output += chunk;
+  });
+  const command = removeRefsCommand(staleDeploymentRefs(parseAppImages(output, applicationId), retained));
+  if (!command) return;
+  await appendAndPublish(`\x1b[90m# removing the images of older deployments (keeping the last ${keep})\x1b[0m\n`);
+  await execStream(conn, command, () => undefined);
 }
 
 async function runStep(

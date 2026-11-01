@@ -33,6 +33,17 @@ describe("daily host cleanup", () => {
     expect(cmd).toContain("|| true");
     expect(cmd).not.toContain("--volumes");
   });
+  test("with protected images, -a is replaced by removing the listed unused images", () => {
+    const cmd = buildHostCleanupCommand({ pruneImages: true, pruneVolumes: false, removeImageIds: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "x; reboot"] });
+    expect(cmd.startsWith("docker system prune -f ; (docker image rm aaaaaaaaaaaa bbbbbbbbbbbb >/dev/null 2>&1 || true) ; docker builder prune")).toBe(true);
+    expect(cmd).not.toContain(" -a");
+  });
+  test("protected images with nothing else to remove just skips -a", () => {
+    expect(buildHostCleanupCommand({ pruneImages: true, pruneVolumes: false, removeImageIds: [] }).startsWith("docker system prune -f ; docker builder prune")).toBe(true);
+  });
+  test("image pruning off ignores the removal list", () => {
+    expect(buildHostCleanupCommand({ pruneImages: false, pruneVolumes: false, removeImageIds: ["aaaaaaaaaaaa"] })).not.toContain("image rm");
+  });
   test("reclaimed space adds up across the prune outputs", () => {
     const out = ["Total reclaimed space: 1.5GB", "Total reclaimed space: 512MB", ""].join(String.fromCharCode(10));
     expect(parseReclaimedBytes(out)).toBe(Math.round(1.5 * 1024 ** 3 + 512 * 1024 ** 2));

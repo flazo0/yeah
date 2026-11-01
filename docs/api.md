@@ -120,6 +120,8 @@ One-click catalog templates (`packages/templates`) and custom Compose stacks, be
 | PUT | `.../applications/:id/protection` | `{ basicAuthUser?, basicAuthPassword?, maintenanceMode?, maintenanceMessage? }` | Password protection and maintenance mode |
 | GET | `.../applications/:id/deployments` | — | History (last 20) |
 | GET | `.../applications/:id/deployments/:deploymentId` | — | One deployment, with its full log |
+| GET | `.../applications/:id/rollback-images` | — | Docker images of recent deployments still on the server (`{ enabled, supported, images[] }`: tag, size, created, deploymentId, commitSha, running), read over SSH |
+| POST | `.../applications/:id/deployments/:deploymentId/rollback` | `{ image?: true }` | Roll back to a past deployment; with `image: true` the retained Docker image is reused with no clone or build (409 `image_missing` if it was removed). Retention is the `rollbackImages` field of `PUT .../advanced` (0-20, default 0) |
 | POST | `.../applications/:id/deploy` | — | Enqueues a deployment (`application-deploy`) |
 | DELETE | `.../applications/:id` | — | Removes the remote container over SSH (best effort) and deletes the row (cascades to `deployments`) |
 

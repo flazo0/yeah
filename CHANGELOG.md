@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Rollback to a Docker image still on the server: an application can keep the image of its last N successful deployments (Advanced tab, off by default), the Deployments tab lists them (tag, size, age, deployment, running one) and rolls back to one without cloning or building, and the daily Docker cleanup with image pruning no longer deletes those images. Only unit tested so far (migration `0063_rollback_images`).
 - Container status-change notifications (`container.status`): opt-in per channel, reports when a container of an application, database or service goes running to exited/restarting/unhealthy and back, debounced over two polls and limited to one message per container every 5 minutes.
 - The `ws` service is now authenticated and scoped: it requires the session cookie, checks the upgrade `Origin` against `WEB_ORIGIN`, and relays each event only to members of the owning team. It now needs `DATABASE_URL` (already wired in `docker-compose.prod.yml`). The web client reconnects with backoff.
 - SQLite as a standalone database: a file on a Docker volume held by a small container, with a health check, scheduled `.dump` backups, restore, and one-click connection to an application on the same server (volume mount plus `DATABASE_URL`). Only unit tested so far (migration `0062_sqlite_database`).

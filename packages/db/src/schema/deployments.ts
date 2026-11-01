@@ -16,6 +16,8 @@ export const deployments = pgTable("deployments", {
   // (see resolveCheckoutRef in deployApplication.commands.ts) — one column, two directions, no
   // separate job-data plumbing needed for rollback.
   commitSha: varchar("commit_sha", { length: 40 }),
+  // Set on a rollback created from a retained Docker image: the worker reuses that image (no clone, no build).
+  rollbackImage: text("rollback_image"),
   startedAt: timestamp("started_at", { withTimezone: true }),
   finishedAt: timestamp("finished_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),

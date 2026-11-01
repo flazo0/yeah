@@ -61,6 +61,7 @@ function makeApplication(overrides: Partial<Application> = {}): Application {
     healthStartPeriodSeconds: 30,
     dockerOptions: "",
     stopGraceSeconds: 10,
+    rollbackImages: 0,
     deployTokenHash: null,
     memoryLimitMb: null,
     cpuLimit: null,

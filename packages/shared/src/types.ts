@@ -233,6 +233,8 @@ export interface ApplicationDto extends ResourceLimits {
   healthStartPeriodSeconds: number;
   dockerOptions: string;
   stopGraceSeconds: number;
+  /** Recent successful deployments whose Docker image is kept on the server for a direct rollback (0 = off). */
+  rollbackImages: number;
   /** Whether a manual-deploy webhook token exists (the token itself is never returned after generation). */
   hasDeployToken: boolean;
   status: ApplicationStatus;
