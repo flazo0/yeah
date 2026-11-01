@@ -34,7 +34,7 @@ The connection always goes from the panel to the server (outbound from the panel
 
 - **`api`** (Elysia) — HTTP only. It does not run long SSH jobs. It makes a few short, synchronous SSH calls where the browser is already waiting (backup download, container file listing, Docker image listing, teardown on delete); anything long or periodic goes through the worker.
 - **`worker`** (BullMQ) — runs deployments, provisioning, backups, restores and every periodic check. If it goes down, jobs queue up and wait; the API keeps answering.
-- **`ws`** — a dedicated WebSocket process. It subscribes to a Redis channel (`SERVER_EVENTS_CHANNEL`) where `api` and `worker` publish events, and relays them to browsers. It is separate from the API so it does not compete with regular HTTP requests for connections or threads.
+- **`ws`** — a dedicated WebSocket process. It subscribes to a Redis channel (`SERVER_EVENTS_CHANNEL`) where `api` and `worker` publish events, and relays them to browsers, each event only to members of the owning team (the socket is authenticated by the session cookie; see [security.md](security.md)). It is separate from the API so it does not compete with regular HTTP requests for connections or threads.
 - **`web`** — a Vue 3 single-page app that talks to `api` through `fetch` and to `ws` through a native WebSocket.
 
 The split exists for robustness, not premature performance: a stuck deployment in the worker does not take down the API or block anyone looking at the dashboard.
@@ -116,7 +116,7 @@ type WsServerEvent =
   | { type: "backup.status"; executionId; scheduleId; status };
 ```
 
-`api` and `worker` publish, `ws` subscribes and relays over plain WebSocket (no Socket.IO) to every connected client. The frontend (`apps/web/src/lib/ws.ts`) keeps a single shared connection and fans events out to listeners.
+`api` and `worker` publish, `ws` subscribes and relays over plain WebSocket (no Socket.IO) to the connected clients whose user belongs to the team that owns the event's resource. The frontend (`apps/web/src/lib/ws.ts`) keeps a single shared connection and fans events out to listeners.
 
 ## Queues (BullMQ)
 

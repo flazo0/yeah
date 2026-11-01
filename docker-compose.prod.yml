@@ -142,13 +142,19 @@ services:
       target: ws
     restart: unless-stopped
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
     environment:
       # Optional (see .env.example): log format/level and Postgres pool size.
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_POOL_MAX: ${DB_POOL_MAX:-}
+      # The socket is authenticated: sessions and team memberships are read from Postgres.
+      DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:8080}
       WS_PORT: 3001
     ports:
       - "127.0.0.1:${WS_PORT:-3001}:3001"

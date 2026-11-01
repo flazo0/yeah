@@ -1,8 +1,9 @@
 import { eq } from "drizzle-orm";
-import { sessions, users, type User } from "@yeah/db";
+import { findSessionUser, sessions, type User } from "@yeah/db";
 import { db } from "./db";
 
-export const SESSION_COOKIE = "yeah_session";
+// The cookie name lives in @yeah/shared so the ws service reads the very same one.
+export { SESSION_COOKIE } from "@yeah/shared";
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
 
 export async function createSession(userId: string) {
@@ -12,18 +13,9 @@ export async function createSession(userId: string) {
   return { id, expiresAt };
 }
 
-export async function getUserFromSessionId(sessionId: unknown): Promise<User | null> {
-  if (typeof sessionId !== "string" || sessionId.length === 0) return null;
-  const rows = await db
-    .select({ user: users, expiresAt: sessions.expiresAt })
-    .from(sessions)
-    .innerJoin(users, eq(sessions.userId, users.id))
-    .where(eq(sessions.id, sessionId))
-    .limit(1);
-  const row = rows[0];
-  if (!row) return null;
-  if (row.expiresAt.getTime() < Date.now()) return null;
-  return row.user;
+/** Session lookup shared with the ws service (see findSessionUser in @yeah/db). */
+export function getUserFromSessionId(sessionId: unknown): Promise<User | null> {
+  return findSessionUser(db, sessionId);
 }
 
 export async function destroySession(sessionId: unknown) {

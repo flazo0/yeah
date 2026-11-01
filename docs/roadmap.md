@@ -29,7 +29,8 @@ The following were verified **only** with unit tests and local fakes, and still 
 - `db:rekey` on a database with real data, and team-wide 2FA enforcement end to end,
 - the AWS CloudWatch log drain (the SigV4 signer is checked against AWS's published test vector, not against the service),
 - passkey registration and sign-in with a real authenticator,
-- the container file browser against real containers.
+- the container file browser against real containers,
+- the authenticated WebSocket channel: cookie validation, per-team routing and the browser reconnect logic are unit tested (cookie parsing, origin check, event routing); the `ws` service was not run against a real browser, Postgres, Redis or the Traefik/Cloudflare path.
 
 If you run any of these, a report of what worked and what did not is a valuable contribution.
 
@@ -41,7 +42,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 - **List the Docker images of recent deployments for rollback** (rollback currently uses the deployment history).
 - **A proxy-wide custom error page** (generic 404/502 for any domain) and maintenance mode for services and stacks.
 - **Container name prefix**: readable names instead of `yeah-app-<id>`. Deferred on purpose: the current name is the key for routing, the waker, metrics and backups, so changing it is a migration.
-- **A private per-user WebSocket channel** (the socket currently carries state and log events only, filtered client-side).
 - **A file browser for services and databases**, with upload and edit.
 - **Evaluate a single-node Swarm mode** to get rolling updates and multi-host networks.
 
