@@ -95,6 +95,10 @@ const ACTIONS: Record<string, string> = {
   proxy: "Touched the proxy",
   volumes: "Changed the volumes",
   tags: "Changed the tags",
+  "file-save": "Edited a file in the container",
+  "file-upload": "Uploaded a file to the container",
+  "file-mkdir": "Created a folder in the container",
+  "file-delete": "Deleted a file or folder in the container",
   "move-resource": "Moved a resource to another environment",
 };
 
@@ -152,7 +156,7 @@ export function describeAuditRequest(method: string, pathname: string, status: n
   } else {
     action = `${m === "DELETE" ? "Removed" : "Changed"} ${sub.join("/")} (${noun || "resource"})`;
   }
-  return { teamId, action, level: m === "DELETE" || last === "stop" ? "warning" : "info", resourceType, resourceId, ids };
+  return { teamId, action, level: m === "DELETE" || last === "stop" || last === "file-delete" ? "warning" : "info", resourceType, resourceId, ids };
 }
 
 export type AuthEventKind = "sign-in" | "sign-in-passkey" | "sign-in-failed" | "second-factor-failed" | "sign-out";

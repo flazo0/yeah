@@ -36,6 +36,8 @@ All optional; empty means the default.
 | `LOG_RETENTION_DAYS` | 90 | Days until the text log of finished deployments, backups, tasks, cleanups and updates is cleared (history stays). `0` disables |
 | `AUDIT_RETENTION_DAYS` | 365 | How long the audit log is kept. `0` keeps it forever |
 | `DB_POOL_MAX` | Bun default | Maximum Postgres pool size per process (`api`, `worker`). No recommended value yet; it needs measuring under load |
+| `FILE_BROWSER_WRITES` | `false` | Allows changing files from the container file browser (save, upload, create folder, delete). Reading is always allowed. See [security.md](security.md#container-file-browser-writes) |
+| `FILE_BROWSER_UPLOAD_MAX_MB` | 10 (1 to 100) | Largest file the file browser accepts as an upload |
 | `LOG_FORMAT` | `json` | `json` (one JSON line per event) or `text` |
 | `LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 

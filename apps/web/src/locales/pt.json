@@ -357,6 +357,7 @@
     "databaseNotFound": "Banco de dados não encontrado.",
     "failedLoadDatabase": "falha ao carregar banco de dados",
     "failedDeleteDatabase": "falha ao excluir banco de dados",
+    "files": "Arquivos",
     "versionAccessHealth": "Versão, acesso e saúde"
   },
   "serverLayout": {
@@ -368,6 +369,7 @@
     "images": "Imagens"
   },
   "serviceLayout": {
+    "files": "Arquivos",
     "serviceNotFound": "Serviço não encontrado.",
     "redeploying": "reimplantando...",
     "p0ContainerP1P2P3": "{p0} container{p1} ({p2}) · {p3}",
@@ -1908,6 +1910,28 @@
     "name": "Nome",
     "size": "Tamanho",
     "failedListFolder": "falha ao listar a pasta",
-    "failedReadFile": "falha ao ler o arquivo"
+    "failedReadFile": "falha ao ler o arquivo",
+    "hintWritable": "Navegue e altere os arquivos dentro do container em execução. Arquivos grandes são cortados em 256 KB na visualização; o editor abre arquivos de texto de até 2 MB. As alterações ficam registradas no log de auditoria.",
+    "writesDisabled": "A alteração de arquivos está desligada nesta instância. Um operador pode ativá-la com FILE_BROWSER_WRITES=true.",
+    "edit": "Editar",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "newFile": "Novo arquivo",
+    "newFolder": "Nova pasta",
+    "upload": "Enviar",
+    "fileName": "Nome do arquivo",
+    "folderName": "Nome da pasta",
+    "saved": "Salvo.",
+    "uploaded": "{name} enviado.",
+    "uploadTooLarge": "O arquivo é maior que o limite de envio ({max}).",
+    "confirmDelete": "Excluir {path}? Pastas são excluídas com tudo o que há dentro, e isso não pode ser desfeito.",
+    "confirmOverwrite": "{name} já existe nesta pasta. Substituir?",
+    "container": "Container",
+    "noContainers": "Esta stack não tem containers para navegar.",
+    "failedSave": "falha ao salvar o arquivo",
+    "failedUpload": "falha ao enviar o arquivo",
+    "failedCreateFolder": "falha ao criar a pasta",
+    "failedDelete": "falha ao excluir"
   }
 }

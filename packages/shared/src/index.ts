@@ -18,6 +18,7 @@ export * from "./serverOps";
 export * from "./audit";
 export * from "./redact";
 export * from "./fileBrowser";
+export * from "./fileWrite";
 export * from "./containerWatch";
 export * from "./stackFiles";
 export * from "./proxyVersion";

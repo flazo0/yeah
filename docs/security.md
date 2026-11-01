@@ -54,6 +54,18 @@ Scheme: AES-256-GCM, a random IV per value, stored as `enc:v1:<base64url(iv|tag|
 - **Circuit breaker** in the worker for metrics polling: five consecutive failures open the circuit, with a five-minute wait that doubles up to 30 minutes.
 - **Safe shell construction.** Every value interpolated into a remote command goes through `shellQuote`; paths for the file browser are validated (absolute, no control characters, no `..`) and passed as arguments, never spliced into a shell string.
 
+## Container file browser writes
+
+The file browser of applications, services (per container) and databases can also edit text files, upload files, create folders and delete. Anyone who can use it can change what runs inside a container (configuration, scripts, a database's data directory), so it is **off by default**: reading works as before, writing needs the operator to set `FILE_BROWSER_WRITES=true` for the whole instance (there is no per-team switch). Rails:
+
+- **Strict paths.** Absolute, canonical, no `..` or `.` segments, no control characters, at most 1024 characters (`normalizeBrowserPath`). `/`, `/proc`, `/sys`, `/dev` and `*.sock` files are never writable, and top-level folders cannot be deleted.
+- **Only through `docker exec`.** Every action runs inside the target container with the path as a quoted positional argument (`shellQuote`), never spliced into a script. Symlinks therefore resolve inside the container's own filesystem and cannot reach the host. A bind mount is part of the container's view, though: writing through one writes to the host path behind it.
+- **Staging.** Content is first written to a private (0600) temp file on the server and streamed in with `docker exec -i ... cat`, which keeps the owner and mode of an existing file; the temp file is removed afterwards.
+- **Limits and binary detection.** The editor handles UTF-8 text up to 2 MB and refuses binary content (NUL bytes or invalid UTF-8). Uploads are capped by `FILE_BROWSER_UPLOAD_MAX_MB` (10 by default, at most 100) and refuse to replace a file unless asked.
+- **Explicit confirmation.** Deleting needs the request to repeat the exact path as `confirm` (the UI asks first), and uploads over an existing file ask before replacing it.
+- **Audit.** Writes appear as "Edited a file", "Uploaded a file", "Created a folder" and "Deleted a file or folder in the container" (deletes as warnings), with who, when and which resource. The path and content travel in the request body, which is never logged, so the audit log does not say *which* file changed.
+- Writes are available to signed-in team members through the panel only; API tokens cannot use these routes.
+
 ## Auditability
 
 Mutating requests (`POST`, `PUT`, `PATCH`, `DELETE`) are recorded in the audit log: who, when, what kind of change and on which resource. The description is built from the **request path only — never the request body**, so no secret can end up in it. Retention is `AUDIT_RETENTION_DAYS` (365 by default). Calls made through the token API (including its `/api/v1` form) are recorded with the token's name, and the MCP tools that change something (deploy, backup) are recorded too. Sign-ins, failed sign-in attempts (wrong password or two-factor code), passkey sign-ins and sign-outs are recorded in every team the person belongs to; failures show up as warnings. Rows carry the client IP when known. Failed attempts for an e-mail that has no account cannot be tied to a team and are not recorded.

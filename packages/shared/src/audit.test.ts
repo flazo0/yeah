@@ -50,6 +50,17 @@ describe("describeAuditRequest", () => {
   });
 });
 
+describe("file browser writes", () => {
+  const E = "22222222-2222-4222-8222-222222222222";
+  const base = `/teams/${T}/projects/${E}/environments/${E}`;
+  test("each write has a readable action and never mentions a path", () => {
+    expect(describeAuditRequest("PUT", `${base}/databases/${E}/file-save`, 200)).toMatchObject({ action: "Edited a file in the container", resourceType: "database", level: "info" });
+    expect(describeAuditRequest("POST", `${base}/services/${E}/file-upload`, 200)).toMatchObject({ action: "Uploaded a file to the container", resourceType: "service" });
+    expect(describeAuditRequest("POST", `${base}/applications/${E}/file-mkdir`, 200)).toMatchObject({ action: "Created a folder in the container" });
+    expect(describeAuditRequest("POST", `${base}/applications/${E}/file-delete`, 200)).toMatchObject({ action: "Deleted a file or folder in the container", level: "warning" });
+  });
+});
+
 describe("describeAuthEvent", () => {
   test("successful events are info, failures are warnings", () => {
     expect(describeAuthEvent("sign-in")).toEqual({ action: "Signed in", level: "info" });

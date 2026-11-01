@@ -71,6 +71,7 @@ const isConfigGroup = computed(() => configRouteNames.includes(route.name as str
 
 const tabs = computed(() => [
   { to: `${routeBase}/backups`, label: "Backups", icon: "backup", active: route.name === "database-backups" },
+  { to: `${routeBase}/files`, label: i18n.global.t("databaseLayout.files"), icon: "folder_open", active: route.name === "database-files" },
   { to: `${routeBase}/general`, label: i18n.global.t("common.configuration"), icon: "tune", active: isConfigGroup.value },
 ]);
 const subnav = computed(() => [

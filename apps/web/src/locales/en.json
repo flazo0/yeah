@@ -357,6 +357,7 @@
     "databaseNotFound": "Database not found.",
     "failedLoadDatabase": "failed to load database",
     "failedDeleteDatabase": "failed to delete database",
+    "files": "Files",
     "versionAccessHealth": "Version, access and health"
   },
   "serverLayout": {
@@ -368,6 +369,7 @@
     "images": "Images"
   },
   "serviceLayout": {
+    "files": "Files",
     "serviceNotFound": "Service not found.",
     "redeploying": "redeploying...",
     "p0ContainerP1P2P3": "{p0} container{p1} ({p2}) · {p3}",
@@ -1908,6 +1910,28 @@
     "name": "Name",
     "size": "Size",
     "failedListFolder": "failed to list the folder",
-    "failedReadFile": "failed to read the file"
+    "failedReadFile": "failed to read the file",
+    "hintWritable": "Browse and change the files inside the running container. Large files are cut at 256 KB when viewed; the editor opens text files up to 2 MB. Changes are recorded in the audit log.",
+    "writesDisabled": "Changing files is turned off on this instance. An operator can enable it with FILE_BROWSER_WRITES=true.",
+    "edit": "Edit",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "newFile": "New file",
+    "newFolder": "New folder",
+    "upload": "Upload",
+    "fileName": "File name",
+    "folderName": "Folder name",
+    "saved": "Saved.",
+    "uploaded": "Uploaded {name}.",
+    "uploadTooLarge": "The file is larger than the upload limit ({max}).",
+    "confirmDelete": "Delete {path}? Folders are deleted with everything inside, and this cannot be undone.",
+    "confirmOverwrite": "{name} already exists in this folder. Replace it?",
+    "container": "Container",
+    "noContainers": "This stack has no containers to browse.",
+    "failedSave": "failed to save the file",
+    "failedUpload": "failed to upload the file",
+    "failedCreateFolder": "failed to create the folder",
+    "failedDelete": "failed to delete"
   }
 }

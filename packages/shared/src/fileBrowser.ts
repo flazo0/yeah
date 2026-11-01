@@ -22,8 +22,23 @@ export function isSafeBrowserPath(path: string): boolean {
   return !path.split("/").includes("..");
 }
 
+type BrowserApp = { id: string; buildPack: string; composeService: string | null };
+
+/**
+ * What the browser looks into: an application (the original shape, without `kind`), one container of
+ * a service stack (the compose service name), or a database's container.
+ */
+export type BrowserTarget = BrowserApp | { kind: "service"; id: string; container: string } | { kind: "database"; id: string };
+
 /** Shell fragment that sets `$c` to the container to look into (the first container of a compose project/service). */
-function resolveContainer(app: { id: string; buildPack: string; composeService: string | null }): string {
+export function resolveContainerFragment(app: BrowserTarget): string {
+  if ("kind" in app) {
+    if (app.kind === "database") return `c=${shellQuote(`yeah-db-${app.id}`)}; `;
+    const filters =
+      `--filter ${shellQuote(`label=com.docker.compose.project=yeah-svc-${app.id}`)}` +
+      ` --filter ${shellQuote(`label=com.docker.compose.service=${isValidComposeService(app.container) ? app.container : "invalid"}`)}`;
+    return `c=$(docker ps -q ${filters} | head -n 1); [ -n "$c" ] || { echo "no running container"; exit 3; }; `;
+  }
   if (app.buildPack === "docker_compose") {
     const service = app.composeService && isValidComposeService(app.composeService) ? app.composeService : null;
     const filters =
@@ -34,15 +49,14 @@ function resolveContainer(app: { id: string; buildPack: string; composeService: 
   return `c=${shellQuote(`yeah-app-${app.id}`)}; `;
 }
 
-type BrowserApp = { id: string; buildPack: string; composeService: string | null };
-
 /** `ls -lAp` works the same on GNU and BusyBox (alpine); the date is always three words. */
-export function listDirCommand(app: BrowserApp, path: string): string {
-  return `${resolveContainer(app)}docker exec "$c" ls -lAp -- ${shellQuote(path)} 2>&1`;
+export function listDirCommand(app: BrowserTarget, path: string): string {
+  return `${resolveContainerFragment(app)}docker exec "$c" ls -lAp -- ${shellQuote(path)} 2>&1`;
 }
 
-export function readFileCommand(app: BrowserApp, path: string): string {
-  return `${resolveContainer(app)}docker exec "$c" head -c ${MAX_BROWSER_FILE_BYTES + 1} -- ${shellQuote(path)} 2>&1`;
+/** Reads up to `maxBytes` (+1, so a caller can tell the file was cut). */
+export function readFileCommand(app: BrowserTarget, path: string, maxBytes: number = MAX_BROWSER_FILE_BYTES): string {
+  return `${resolveContainerFragment(app)}docker exec "$c" head -c ${Math.floor(maxBytes) + 1} -- ${shellQuote(path)} 2>&1`;
 }
 
 /** Parses `ls -lAp` output; lines that are not entries (the "total" line, errors) are ignored. */

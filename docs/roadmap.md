@@ -6,7 +6,7 @@ What `yeah` does today, what has and has not been verified on real infrastructur
 
 | Area | Capabilities |
 |---|---|
-| **Applications** | Git (public URL, GitHub App, Git sources, deploy keys), Docker image, pasted Dockerfile, Docker Compose, Nixpacks, Railpack, static sites; live logs; rollbacks; preview deployments per pull request; deploy webhooks; `[skip ci]` handling; remote build servers with a registry; stop grace period; configurable healthchecks; build vs runtime variables; scheduled tasks; web terminal; read-only container file browser; clone, move between environments, move between servers |
+| **Applications** | Git (public URL, GitHub App, Git sources, deploy keys), Docker image, pasted Dockerfile, Docker Compose, Nixpacks, Railpack, static sites; live logs; rollbacks; preview deployments per pull request; deploy webhooks; `[skip ci]` handling; remote build servers with a registry; stop grace period; configurable healthchecks; build vs runtime variables; scheduled tasks; web terminal; container file browser for applications, services and databases (editing, upload and delete are opt-in); clone, move between environments, move between servers |
 | **Databases** | PostgreSQL, MySQL, MariaDB, Redis, KeyDB, Dragonfly, MongoDB, ClickHouse, SQLite (a file on a volume, mounted into applications); scheduled backups with count/age/size retention; local or S3 storage; restore and upload; optional external access with TLS |
 | **Services** | 380 one-click templates imported from the Coolify catalog, custom Compose stacks, per-container domains, stack config files, volume backups |
 | **Networking** | Per-server Traefik (File Provider), wildcard domains, Let's Encrypt, extra domains, www redirects, per-application password protection and maintenance mode, scale to zero, Cloudflare Tunnel for the panel, private environment network |
@@ -29,7 +29,7 @@ The following were verified **only** with unit tests and local fakes, and still 
 - `db:rekey` on a database with real data, and team-wide 2FA enforcement end to end,
 - the AWS CloudWatch log drain (the SigV4 signer is checked against AWS's published test vector, not against the service),
 - passkey registration and sign-in with a real authenticator,
-- the container file browser against real containers,
+- the container file browser against real containers, including the write side (save, upload, create folder, delete) for applications, services and databases: only the command builders, path validators and audit descriptions are unit tested, the `docker exec -i` staging flow and the per-container resolution were never run against Docker,
 - the authenticated WebSocket channel: cookie validation, per-team routing and the browser reconnect logic are unit tested (cookie parsing, origin check, event routing); the `ws` service was not run against a real browser, Postgres, Redis or the Traefik/Cloudflare path.
 - SQLite databases: the holder container (the `keinos/sqlite3` image with its entrypoint replaced, run as root), the `sqlite3 .dump` backup and restore, and connecting an application (volume mount plus `DATABASE_URL`) are only unit tested on the generated commands. Nothing has run on a real Docker host, and the image's tags and shell have not been checked.
 - Rollback to retained Docker images: the per-deployment tagging (`yeah-app-<id>:dep-<12 hex>`), the image listing parser, the match to deployments, the retention selection and the cleanup that spares protected images instead of `prune -a` are only unit tested on the generated commands and parsers (migration `0063_rollback_images`). Nothing has run against a real Docker host, so `docker image ls --filter reference=` output, the retag and the cleanup behaviour are unverified.
@@ -42,7 +42,6 @@ If you run any of these, a report of what worked and what did not is a valuable 
 - **Skip the Compose build when images did not change**, and **drain seconds** for rolling updates. Optimisations that need to be measured on real builds.
 - **A proxy-wide custom error page** (generic 404/502 for any domain) and maintenance mode for services and stacks.
 - **Container name prefix**: readable names instead of `yeah-app-<id>`. Deferred on purpose: the current name is the key for routing, the waker, metrics and backups, so changing it is a migration.
-- **A file browser for services and databases**, with upload and edit.
 - **Evaluate a single-node Swarm mode** to get rolling updates and multi-host networks.
 
 ## Not planned (product decisions)

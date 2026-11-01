@@ -61,6 +61,9 @@ services:
       LOG_FORMAT: ${LOG_FORMAT:-json}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       DB_POOL_MAX: ${DB_POOL_MAX:-}
+      # Container file browser writes (edit, upload, create folder, delete): off unless set to true.
+      FILE_BROWSER_WRITES: ${FILE_BROWSER_WRITES:-false}
+      FILE_BROWSER_UPLOAD_MAX_MB: ${FILE_BROWSER_UPLOAD_MAX_MB:-10}
       DATABASE_URL: postgres://${POSTGRES_USER:-yeah}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-yeah}
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
