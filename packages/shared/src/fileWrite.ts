@@ -72,7 +72,7 @@ export function confirmsDelete(path: string, confirm: unknown): boolean {
 export function decodeEditableText(bytes: Uint8Array): string | null {
   if (bytes.includes(0)) return null;
   try {
-    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+    return new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
   } catch {
     return null;
   }
@@ -101,7 +101,9 @@ export function writeFileCommand(target: BrowserTarget, path: string, staging: s
     (opts.onlyNew ? `if [ -e "$1" ]; then echo "already exists" >&2; exit 5; fi; ` : "") +
     `cat > "$1"`;
   return (
-    `${resolveContainerFragment(target)}` +
+    // The trap also covers the early `exit 3` of the container lookup (no running container), which would
+    // otherwise leave the staged content behind in /tmp.
+    `trap 'rm -f ${staging}' EXIT; ${resolveContainerFragment(target)}` +
     `docker exec -i "$c" sh -c ${shellQuote(guard)} sh ${shellQuote(path)} < ${shellQuote(staging)} 2>&1; rc=$?; ` +
     `rm -f ${shellQuote(staging)}; exit $rc`
   );

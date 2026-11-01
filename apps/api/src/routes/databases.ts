@@ -477,6 +477,12 @@ export const databaseRoutes = new Elysia({
         .from(applicationVolumes)
         .where(and(eq(applicationVolumes.applicationId, application.id), eq(applicationVolumes.kind, "database"), eq(applicationVolumes.hostPath, volumeName)))
         .limit(1);
+      // Two mounts on one path make `docker run` fail ("Duplicate mount point") on the next deploy.
+      const clash = await db.select({ id: applicationVolumes.id }).from(applicationVolumes).where(and(eq(applicationVolumes.applicationId, application.id), eq(applicationVolumes.mountPath, mountPath)));
+      if (clash.some((v) => v.id !== existing?.id)) {
+        set.status = 409;
+        return { error: `the application already has a volume mounted at ${mountPath}: pick another mount path` };
+      }
       if (existing) {
         await db.update(applicationVolumes).set({ mountPath, name: d.name }).where(eq(applicationVolumes.id, existing.id));
       } else {

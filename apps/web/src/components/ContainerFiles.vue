@@ -89,8 +89,10 @@ async function save() {
   busy.value = true;
   emit("error", "");
   try {
-    await api.put(withQuery(`${props.basePath}/file-save`, q()), { path: file.value.path, content: draft.value });
-    file.value.content = draft.value;
+    // A <textarea> turns CRLF into LF; give a Windows-style file its line endings back instead of rewriting every line.
+    const content = file.value.content.includes("\r\n") && !draft.value.includes("\r") ? draft.value.replace(/\n/g, "\r\n") : draft.value;
+    await api.put(withQuery(`${props.basePath}/file-save`, q()), { path: file.value.path, content });
+    file.value.content = content;
     editing.value = false;
     notice.value = t("applicationFiles.saved");
   } catch (err) {
