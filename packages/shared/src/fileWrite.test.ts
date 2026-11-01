@@ -95,6 +95,8 @@ describe("binary detection", () => {
     expect(decodeEditableText(new Uint8Array([0x61, 0, 0x62]))).toBeNull();
     expect(decodeEditableText(new Uint8Array([0xff, 0xfe, 0x41]))).toBeNull();
     expect(decodeEditableText(new Uint8Array())).toBe("");
+    // a UTF-8 BOM is kept, so saving does not silently strip it
+    expect(decodeEditableText(new Uint8Array([0xef, 0xbb, 0xbf, 0x41]))).toBe("﻿A");
   });
 });
 
@@ -114,6 +116,8 @@ describe("command builders", () => {
     expect(cmd).toContain(`cat > "$1"`);
     expect(cmd).toContain('docker exec -i "$c" sh -c');
     expect(cmd).toContain(`rm -f '${staging}'; exit $rc`);
+    // removed even when the container lookup exits early
+    expect(cmd.startsWith(`trap 'rm -f ${staging}' EXIT; `)).toBe(true);
     expect(cmd).toContain("c='yeah-app-abc'");
     expect(cmd).not.toContain('-e "$1"');
   });
