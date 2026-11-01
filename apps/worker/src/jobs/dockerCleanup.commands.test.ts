@@ -35,7 +35,7 @@ describe("daily host cleanup", () => {
   });
   test("with protected images, -a is replaced by removing the listed unused images", () => {
     const cmd = buildHostCleanupCommand({ pruneImages: true, pruneVolumes: false, removeImageIds: ["aaaaaaaaaaaa", "bbbbbbbbbbbb", "x; reboot"] });
-    expect(cmd.startsWith("docker system prune -f ; (docker image rm aaaaaaaaaaaa bbbbbbbbbbbb >/dev/null 2>&1 || true) ; docker builder prune")).toBe(true);
+    expect(cmd.startsWith("docker system prune -f ; (docker image rm -f aaaaaaaaaaaa bbbbbbbbbbbb >/dev/null 2>&1 || true) ; docker builder prune")).toBe(true);
     expect(cmd).not.toContain(" -a");
   });
   test("protected images with nothing else to remove just skips -a", () => {
