@@ -69,9 +69,8 @@ function header(text: string, name: string): string | null {
 
 /** Rejected by `docker compose config` on a real Docker host — they lean on Coolify-only behavior or are malformed upstream. */
 const KNOWN_BROKEN: Record<string, string> = {
-  denoKV: "uses COOLIFY_VOLUME_APP (an implicit Coolify volume)",
-  executor: "healthcheck com YAML quebrado no original",
-  "forgejo-with-runner": "environment mal formado no original",
+  executor: "broken healthcheck YAML upstream",
+  "forgejo-with-runner": "malformed environment upstream",
   "gramps-web": "uses YAML anchors (<<:) that compose rejects after conversion",
   langfuse: "uses YAML anchors (<<:) that compose rejects after conversion",
   mautic5: "volumes with a subfolder (mautic_data/config) — a Coolify feature",
@@ -152,7 +151,8 @@ function extractFileMounts(text: string): FileMounts {
 }
 
 function convert(key: string, raw: string): Result {
-  const original = raw.replace(/\r\n/g, "\n");
+  // `${COOLIFY_VOLUME_APP}` is an implicit Coolify volume; plain compose needs a named one (declared below).
+  const original = raw.replace(/\r\n/g, "\n").replace(/\$\{COOLIFY_VOLUME_APP\}/g, `${key}-data`);
   if (KNOWN_BROKEN[key]) return { key, skip: KNOWN_BROKEN[key] };
   const mounts = extractFileMounts(original);
   if (mounts.skip) return { key, skip: mounts.skip };
@@ -209,6 +209,14 @@ function convert(key: string, raw: string): Result {
   // strip the leading comment header (metadata lives in the yeah fields)
   while (kept.length && (kept[0]!.startsWith("#") || kept[0]!.trim() === "")) kept.shift();
   let compose = kept.join("\n").trimEnd() + "\n";
+
+  // In Coolify, `${VAR:?value}` pre-fills VAR with `value`; in Compose it makes VAR mandatory and prints `value` as
+  // the error. Turn it into a default (`${VAR:-value}`, nested references included) unless the text reads like a
+  // message to the user ("Set the URL of ...") — that one really is a required variable.
+  const REQUIREMENT = /\b(set|required|must|your|please|provide|enter)\b/i;
+  compose = compose.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*):\?((?:[^}$]|\$\{[^}]*\})+)\}/g, (whole, name: string, value: string) =>
+    REQUIREMENT.test(value) ? whole : `\${${name}:-${value}}`,
+  );
 
   // Coolify declares named volumes implicitly; plain compose needs a top-level `volumes:` entry for each.
   const declared = new Set(Object.keys((doc as { volumes?: Record<string, unknown> }).volumes ?? {}));
@@ -289,7 +297,7 @@ function convert(key: string, raw: string): Result {
 
   const rawCategory = (header(text, "category") ?? "other").split(",")[0]!.trim().toLowerCase();
   const category = CATEGORY_MAP[rawCategory] ?? "other";
-  const slogan = header(text, "slogan") ?? `${key2name(key)} — template do Coolify.`;
+  const slogan = header(text, "slogan") ?? `${key2name(key)} — one-click service template.`;
   const docsRaw = header(text, "documentation");
   const docs = docsRaw ? docsRaw.replace(/[?&]utm_source=coolify\.io/, "") : null;
   const tags = (header(text, "tags") ?? "").split(",").map((t) => t.trim()).filter(Boolean).slice(0, 8);
@@ -338,7 +346,7 @@ for (const file of readdirSync(SRC).filter((f) => f.endsWith(".yaml")).sort()) {
 
 const ok = results.filter((r) => r.yaml);
 const skipped = results.filter((r) => r.skip);
-console.log(`convertidos: ${ok.length} | pulados: ${skipped.length}`);
+console.log(`converted: ${ok.length} | skipped: ${skipped.length}`);
 for (const s of skipped) console.log(`  - ${s.key}: ${s.skip}`);
 if (!DRY) {
   mkdirSync(LOGOS_OUT, { recursive: true });

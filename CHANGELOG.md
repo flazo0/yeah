@@ -29,6 +29,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - English as the default interface language, with an optional Portuguese translation.
 - Project documentation: README, contributing guide, security policy, code of conduct and the `docs/` folder.
 
+### Fixed
+
+- Service templates converted from Coolify: `${VAR:?value}` is now a default (`${VAR:-value}`) instead of a mandatory variable (Palworld, Satisfactory, Convex, Healthchecks), Deno KV uses a named volume instead of `COOLIFY_VOLUME_APP`, and every template now passes `docker compose config` (the remaining 18 failures are variables that are required on purpose).
+
 ### Known limitations
 
 - Several features were verified with unit tests only and have not been exercised on real infrastructure yet; see [docs/roadmap.md](docs/roadmap.md#verification-status).

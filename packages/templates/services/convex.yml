@@ -12,9 +12,6 @@ env:
   SERVICE_HEX_64_SECRET: ""
   SERVICE_URL_BACKEND: "http://localhost"
   SERVICE_URL_SITE: "http://localhost"
-  DISABLE_BEACON: ""
-  REDACT_LOGS_TO_CLIENT: ""
-  DO_NOT_REQUIRE_SSL: ""
 compose: |
   services:
     backend:
@@ -31,9 +28,9 @@ compose: |
         # URL of Convex HTTP actions as accessed by the client/frontend.
         - CONVEX_SITE_ORIGIN=${SERVICE_URL_SITE}
         - DATABASE_URL=${DATABASE_URL:-}
-        - DISABLE_BEACON=${DISABLE_BEACON:?false}
-        - REDACT_LOGS_TO_CLIENT=${REDACT_LOGS_TO_CLIENT:?false}
-        - DO_NOT_REQUIRE_SSL=${DO_NOT_REQUIRE_SSL:?true}
+        - DISABLE_BEACON=${DISABLE_BEACON:-false}
+        - REDACT_LOGS_TO_CLIENT=${REDACT_LOGS_TO_CLIENT:-false}
+        - DO_NOT_REQUIRE_SSL=${DO_NOT_REQUIRE_SSL:-true}
         - POSTGRES_URL=${POSTGRES_URL:-}
         - MYSQL_URL=${MYSQL_URL:-}
         - RUST_LOG=${RUST_LOG:-info}
