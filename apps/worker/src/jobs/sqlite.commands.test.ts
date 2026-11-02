@@ -77,9 +77,9 @@ describe("sqlite backup and restore", () => {
     expect(load).toContain("docker exec -i 'c' sh -c");
     expect(load).toContain("rm -f /data/app.db-wal /data/app.db-shm /data/app.db-journal");
     // a bad dump must keep the existing data: load into a temporary file, swap in only on success
-    expect(load).toContain('sqlite3 -bail "$t"');
+    expect(load).toContain('sqlite3 -safe -bail "$t"');
     expect(load).toContain('mv -f "$t" /data/app.db');
-    expect(load.indexOf("sqlite3 -bail")).toBeLessThan(load.indexOf("mv -f"));
+    expect(load.indexOf("sqlite3 -safe -bail")).toBeLessThan(load.indexOf("mv -f"));
     expect(load).not.toMatch(/rm -f \/data\/app\.db /);
     expect(load).toContain("exit $rc");
     expect(load).toContain("< '/b/x.sql.gz.plain'");

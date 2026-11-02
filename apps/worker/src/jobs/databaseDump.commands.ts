@@ -247,12 +247,13 @@ export function buildRestoreSteps(database: Database, containerName: string, fil
       // The dump is SQL text: it is loaded into a temporary file next to the database and only moved over the real
       // file once it loaded completely, so a corrupt or empty dump leaves the existing data untouched. The old
       // WAL/shared-memory side files go with the swap, and the file is made writable again for applications
-      // running as another user.
+      // running as another user. `-safe` refuses the shell's dot-commands (.shell, .read, ...): an uploaded dump is
+      // untrusted text and would otherwise run commands as root inside the container.
       const dbFile = sqliteFilePath(database.databaseName);
       // The path is sanitised by sqliteFilePath (letters, digits, "_", "-", "." and "/" only), so it needs no inner quoting.
       const script =
         `t=${dbFile}.restore; rm -f "$t" "$t-journal"; ` +
-        `if sqlite3 -bail "$t" && chmod 666 "$t"; then rm -f ${dbFile}-wal ${dbFile}-shm ${dbFile}-journal && mv -f "$t" ${dbFile}; ` +
+        `if sqlite3 -safe -bail "$t" && chmod 666 "$t"; then rm -f ${dbFile}-wal ${dbFile}-shm ${dbFile}-journal && mv -f "$t" ${dbFile}; ` +
         `else rc=$?; rm -f "$t" "$t-journal"; exit $rc; fi`;
       return [
         { label: "preparing the dump", command: plainCopyCommand(filePath, plain) },
